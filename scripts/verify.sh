@@ -3,6 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# pnpm omite `prepare` si la instalación ya está al día; esto deja el hook activo siempre.
+git config core.hooksPath .githooks
+
 echo "verify: instalando dependencias"
 pnpm install --frozen-lockfile
 
