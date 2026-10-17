@@ -1,0 +1,11 @@
+import { describe, expect, it } from "vitest";
+import { fechaEnMexico } from "../src/fecha.js";
+
+describe("fechaEnMexico", () => {
+  it("usa la fecha civil de Ciudad de Mexico", () => {
+    expect(fechaEnMexico(new Date("2026-10-18T05:30:00Z"))).toBe("2026-10-17");
+  });
+  it("cambia de dia pasada la medianoche local", () => {
+    expect(fechaEnMexico(new Date("2026-10-18T06:30:00Z"))).toBe("2026-10-18");
+  });
+});
