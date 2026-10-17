@@ -4,20 +4,20 @@ import { ErrorDatos } from "../src/errores.js";
 
 describe("limpiarTexto", () => {
   it("normaliza a NFC y recorta", () => {
-    const r = limpiarTexto("  Culiácan  ");
+    const r = limpiarTexto("  Culia\u0301can  ");
     expect(r).toBe("Culiácan");
     expect(r.length).toBe("Culiacán".normalize("NFC").length);
   });
 
   it("colapsa espacios, NBSP, tabs y saltos", () => {
     expect(limpiarTexto("A  B")).toBe("A B");
-    expect(limpiarTexto("A  B\t\nC")).toBe("A B C");
+    expect(limpiarTexto("A\u00a0\u00a0B\t\nC")).toBe("A B C");
   });
 });
 
 describe("aNfc", () => {
   it("normaliza strings anidados sin mutar la entrada", () => {
-    const entrada = { a: "é", b: ["é", { c: "é" }], n: 1, v: null, ok: true };
+    const entrada = { a: "e\u0301", b: ["e\u0301", { c: "e\u0301" }], n: 1, v: null, ok: true };
     const copia = JSON.parse(JSON.stringify(entrada));
     const r = aNfc(entrada);
     expect(r).toEqual({ a: "é", b: ["é", { c: "é" }], n: 1, v: null, ok: true });
