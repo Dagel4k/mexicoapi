@@ -93,12 +93,47 @@ describe("validarClabe", () => {
     expect(r.detalle?.plaza?.estado).toBe("CDMX");
   });
 
-  it("devuelve null sin catálogo o sin coincidencia", () => {
-    expect(validarClabe("002180012345678906").detalle?.banco).toBeNull();
-    expect(validarClabe("002180012345678906").detalle?.plaza).toBeNull();
-    const r = validarClabe("012180001234567899", { bancos: new Map(), plazas: new Map() });
+  it("devuelve banco y plaza null sin catálogo", () => {
+    const r = validarClabe("002180012345678906");
     expect(r.detalle?.banco).toBeNull();
     expect(r.detalle?.plaza).toBeNull();
+  });
+
+  describe("con catálogo de bancos", () => {
+    const bancos = new Map<string, Banco>([
+      ["002", { codigo: "002", nombre_corto: "BANAMEX" }],
+      ["012", { codigo: "012", nombre_corto: "BBVA MEXICO" }],
+    ]);
+
+    it("da error banco si el código no está en el catálogo", () => {
+      const r = validarClabe("721180000000000005", { bancos });
+      expect(r.errores).toEqual(["banco"]);
+      expect(r.valido).toBe(false);
+      expect(r.formato_valido).toBe(false);
+      expect(r.digito_verificador_valido).toBeNull();
+      expect(r.detalle).toBeNull();
+      expect(r.valor).toBe("721180000000000005");
+    });
+
+    it("sin catálogo la misma CLABE es válida", () => {
+      expect(validarClabe("721180000000000005").valido).toBe(true);
+    });
+
+    it("revisa el banco después de la longitud y antes del dígito", () => {
+      expect(validarClabe("72118000000000000", { bancos }).errores).toEqual(["longitud"]);
+      expect(validarClabe("721180000000000006", { bancos }).errores).toEqual(["banco"]);
+    });
+
+    it("con plaza desconocida sigue siendo válida y plaza es null", () => {
+      const r = validarClabe("012180001234567899", { bancos, plazas: new Map() });
+      expect(r.valido).toBe(true);
+      expect(r.detalle?.banco?.nombre_corto).toBe("BBVA MEXICO");
+      expect(r.detalle?.plaza).toBeNull();
+    });
+
+    it("un catálogo vacío no reconoce ningún banco", () => {
+      expect(validarClabe("012180001234567899", { bancos: new Map() }).errores).toEqual(["banco"]);
+    });
   });
 
   it("propiedad: el dígito calculado siempre valida y otro dígito no", () => {

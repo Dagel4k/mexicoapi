@@ -8,6 +8,7 @@ export type CodigoError =
   | "estructura"
   | "fecha"
   | "entidad"
+  | "banco"
   | "digito_verificador";
 
 export interface ResultadoValidacion<D> {

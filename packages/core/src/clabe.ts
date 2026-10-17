@@ -40,6 +40,11 @@ export function digitoControlClabe(primeros17: string): string {
   return String((10 - (suma % 10)) % 10);
 }
 
+/**
+ * Con `catalogos.bancos`, un código de banco que no está en el catálogo es una falla de
+ * formato (`banco`), revisada después de la longitud y antes del dígito de control.
+ * La plaza solo es informativa: si no está en `catalogos.plazas`, queda en null.
+ */
 export function validarClabe(
   clabe: string,
   catalogos?: { bancos?: ReadonlyMap<string, Banco>; plazas?: ReadonlyMap<string, Plaza> },
@@ -53,12 +58,15 @@ export function validarClabe(
 
   const codigo_banco = valor.slice(0, 3);
   const codigo_plaza = valor.slice(3, 6);
+  const banco = catalogos?.bancos?.get(codigo_banco) ?? null;
+  if (catalogos?.bancos && banco === null) return resultadoInvalido(valor, "banco");
+
   const detalle: DetalleClabe = {
     codigo_banco,
     codigo_plaza,
     cuenta: valor.slice(6, 17),
     digito_control: valor.slice(17),
-    banco: catalogos?.bancos?.get(codigo_banco) ?? null,
+    banco,
     plaza: catalogos?.plazas?.get(codigo_plaza) ?? null,
   };
   return resultadoConFormato(
