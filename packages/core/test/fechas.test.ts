@@ -64,6 +64,8 @@ describe("sumarDias", () => {
   it("lanza RangeError si el resultado sale de 1-9999", () => {
     expect(() => sumarDias("9999-12-31", 1)).toThrow(RangeError);
     expect(() => sumarDias("0001-01-01", -1)).toThrow(RangeError);
+    expect(() => sumarDias("2026-01-01", 1e20)).toThrow(RangeError);
+    expect(() => sumarDias("2026-01-01", -1e20)).toThrow(RangeError);
   });
 });
 
