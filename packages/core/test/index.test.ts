@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type {
   ArchivoCrudo,
-  BancoRegistro,
+  Banco,
   Estado,
   FuenteManifiesto,
   Manifiesto,
@@ -105,7 +105,7 @@ describe("tipos de registros y manifiesto", () => {
       visto_desde: "2024-01-01",
       visto_hasta: "2026-10-01",
     };
-    const banco: BancoRegistro = {
+    const banco: Banco = {
       codigo: "002",
       codigo_spei: "002",
       nombre_corto: "BANAMEX",
