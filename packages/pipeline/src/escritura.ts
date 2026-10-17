@@ -49,12 +49,22 @@ export async function escribirDirectorioAtomico(
     }
     await rename(temporal, destino);
   } catch (error) {
-    await rm(temporal, { recursive: true, force: true });
+    // Primero se restaura el original; la limpieza es de mejor esfuerzo y no tapa el error.
     if (respaldado) {
-      await rm(destino, { recursive: true, force: true });
+      await borrarSiPuede(destino);
       await rename(respaldo, destino);
     }
+    await borrarSiPuede(temporal);
     throw error;
   }
-  if (respaldado) await rm(respaldo, { recursive: true, force: true });
+  if (respaldado) await borrarSiPuede(respaldo);
+}
+
+/** Borra un directorio sin lanzar: en Windows un antivirus puede bloquearlo un momento. */
+async function borrarSiPuede(ruta: string): Promise<void> {
+  try {
+    await rm(ruta, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  } catch {
+    // se ignora: puede quedar un residuo, pero los datos ya están a salvo
+  }
 }
