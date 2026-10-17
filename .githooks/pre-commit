@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git --pre-commit --staged --no-banner --redact
+else
+  echo "pre-commit: aviso, gitleaks no está instalado; se omite el escaneo de secretos" >&2
+fi
+
+pnpm biome check --staged --no-errors-on-unmatched
