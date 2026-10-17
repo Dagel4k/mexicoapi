@@ -121,3 +121,9 @@ describe("digitoVerificadorRfc", () => {
     expect(() => digitoVerificadorRfc("gode561231gr")).toThrow(RangeError);
   });
 });
+
+describe("validarRfc: look-alikes Unicode", () => {
+  it.each(["ſ", "ı", "ß"])("rechaza %j como caracteres", (c) => {
+    expect(validarRfc(`GOD${c}561231GR8`).errores).toEqual(["caracteres"]);
+  });
+});

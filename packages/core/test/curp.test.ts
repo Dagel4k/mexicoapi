@@ -141,3 +141,9 @@ describe("validarCurp", () => {
     expect(r.errores).toEqual(["longitud"]);
   });
 });
+
+describe("validarCurp: look-alikes Unicode", () => {
+  it.each(["ſ", "ı", "ß"])("rechaza %j como caracteres", (c) => {
+    expect(validarCurp(`${c}OXW310820HNERXN09`).errores).toEqual(["caracteres"]);
+  });
+});
