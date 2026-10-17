@@ -3,8 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# pnpm omite `prepare` si la instalación ya está al día; esto deja el hook activo siempre.
-git config core.hooksPath .githooks
+# pnpm omite `prepare` si la instalaciÃ³n ya estÃ¡ al dÃ­a; esto deja el hook activo siempre.
+if git rev-parse --git-dir >/dev/null 2>&1; then git config core.hooksPath .githooks; fi
 
 echo "verify: instalando dependencias"
 pnpm install --frozen-lockfile
@@ -17,6 +17,9 @@ pnpm -r typecheck
 
 echo "verify: pruebas con cobertura"
 pnpm test:coverage
+
+echo "verify: pruebas en zonas horarias"
+pnpm test:tz
 
 echo "verify: build"
 pnpm -r build
