@@ -1,0 +1,66 @@
+import {
+  normalizar,
+  type ResultadoValidacion,
+  resultadoConFormato,
+  resultadoInvalido,
+} from "./validacion.js";
+
+export interface Banco {
+  codigo: string;
+  nombre_corto: string;
+}
+
+export interface Plaza {
+  codigo: string;
+  plaza: string;
+  estado: string;
+}
+
+export interface DetalleClabe {
+  codigo_banco: string;
+  codigo_plaza: string;
+  cuenta: string;
+  digito_control: string;
+  banco: Banco | null;
+  plaza: Plaza | null;
+}
+
+const PESOS = [3, 7, 1] as const;
+
+/** Calcula el dígito de control de los primeros 17 dígitos. Lanza RangeError si no son 17 dígitos. */
+export function digitoControlClabe(primeros17: string): string {
+  if (!/^[0-9]{17}$/.test(primeros17)) {
+    throw new RangeError("Se requieren exactamente 17 dígitos");
+  }
+  let suma = 0;
+  for (let i = 0; i < 17; i++) {
+    suma += Number(primeros17[i]) * (PESOS[i % 3] as number);
+  }
+  return String((10 - (suma % 10)) % 10);
+}
+
+export function validarClabe(
+  clabe: string,
+  catalogos?: { bancos?: ReadonlyMap<string, Banco>; plazas?: ReadonlyMap<string, Plaza> },
+): ResultadoValidacion<DetalleClabe> {
+  const valor = normalizar(clabe);
+  if (valor.length === 0) return resultadoInvalido(valor, "vacio");
+  if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
+  if (valor.length !== 18) return resultadoInvalido(valor, "longitud");
+
+  const codigo_banco = valor.slice(0, 3);
+  const codigo_plaza = valor.slice(3, 6);
+  const detalle: DetalleClabe = {
+    codigo_banco,
+    codigo_plaza,
+    cuenta: valor.slice(6, 17),
+    digito_control: valor.slice(17),
+    banco: catalogos?.bancos?.get(codigo_banco) ?? null,
+    plaza: catalogos?.plazas?.get(codigo_plaza) ?? null,
+  };
+  return resultadoConFormato(
+    valor,
+    detalle,
+    digitoControlClabe(valor.slice(0, 17)) === detalle.digito_control,
+  );
+}
