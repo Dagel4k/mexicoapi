@@ -137,6 +137,10 @@ export async function ejecutarDataset<T extends object>(
   const anteriorParaConstruir = anteriorDisco ?? opciones.anteriorInicial ?? null;
   const construccion = await def.construir(fuentes, anteriorParaConstruir, ctx);
 
+  if (construccion.registros.length === 0) {
+    throw new ErrorDatos("construir no produjo registros", def.id);
+  }
+
   const validados = parsear(def, aNfc(construccion.registros));
   const registros = ordenarPorClave(validados, def.clave);
 

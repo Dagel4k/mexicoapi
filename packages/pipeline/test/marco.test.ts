@@ -247,6 +247,17 @@ describe("ejecutarDataset", () => {
     expect(await foto(join(raiz, "toy"))).toEqual(antes);
   });
 
+  it("rechaza una construccion sin registros y no toca data/", async () => {
+    await ejecutarDataset(def(), ctx());
+    const antes = await foto(join(raiz, "toy"));
+    entrada = [];
+    const e = await ejecutarDataset(def(), ctx()).catch((x) => x);
+    expect(e).toBeInstanceOf(ErrorDatos);
+    expect(e.dataset).toBe("toy.reg");
+    expect(e.message).toContain("construir no produjo registros");
+    expect(await foto(join(raiz, "toy"))).toEqual(antes);
+  });
+
   it("propaga ErrorHttp sin envolver", async () => {
     const d = def();
     d.capturar = async () => {
