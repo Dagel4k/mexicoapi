@@ -59,15 +59,20 @@ export function resultadoInvalido<D>(valor: string, error: CodigoError): Resulta
   };
 }
 
-/** Resultado con formato correcto; `digitoOk` indica si el dígito verificador coincide. */
+/**
+ * Resultado con formato correcto; `digitoOk` indica si el dígito verificador coincide.
+ * Con `digitoInformativo`, un dígito que no coincide se reporta en `errores` pero no
+ * invalida el resultado: `valido` queda igual a `formato_valido`.
+ */
 export function resultadoConFormato<D>(
   valor: string,
   detalle: D,
   digitoOk: boolean,
+  opciones: { digitoInformativo?: boolean } = {},
 ): ResultadoValidacion<D> {
   return {
     valor,
-    valido: digitoOk,
+    valido: digitoOk || opciones.digitoInformativo === true,
     formato_valido: true,
     digito_verificador_valido: digitoOk,
     errores: digitoOk ? [] : ["digito_verificador"],

@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "../src/rfc.js";
 import { NOTA_VALIDACION } from "../src/validacion.js";
@@ -30,13 +31,40 @@ describe("validarRfc", () => {
     }
   });
 
-  it("rechaza un dígito verificador incorrecto", () => {
+  it("reporta un dígito verificador incorrecto sin invalidar el RFC", () => {
     const r = validarRfc("GODE561231GR9");
-    expect(r.valido).toBe(false);
+    expect(r.valido).toBe(true);
     expect(r.formato_valido).toBe(true);
     expect(r.digito_verificador_valido).toBe(false);
     expect(r.errores).toEqual(["digito_verificador"]);
     expect(r.detalle?.tipo).toBe("fisica");
+  });
+
+  it("valido sigue a formato_valido", () => {
+    const moral = validarRfc("MAB9307140T4");
+    expect(moral.valido).toBe(true);
+    expect(moral.digito_verificador_valido).toBe(false);
+    const fecha = validarRfc("GODE560230GR8");
+    expect(fecha.valido).toBe(false);
+    expect(fecha.formato_valido).toBe(false);
+    // Cualquier RFC con formato correcto es válido, coincida o no su dígito verificador.
+    const fecha6 = fc
+      .date({
+        min: new Date(Date.UTC(1950, 0, 1)),
+        max: new Date(Date.UTC(2049, 11, 31)),
+        noInvalidDate: true,
+      })
+      .map((f) => f.toISOString().slice(2, 10).replace(/-/g, ""));
+    const rfcConFormato = fc
+      .tuple(fc.stringMatching(/^[A-Z&Ñ]{3,4}$/), fecha6, fc.stringMatching(/^[A-Z0-9]{2}[0-9A]$/))
+      .map((partes) => partes.join(""));
+    fc.assert(
+      fc.property(rfcConFormato, (rfc) => {
+        const r = validarRfc(rfc);
+        expect(r.formato_valido).toBe(true);
+        expect(r.valido).toBe(true);
+      }),
+    );
   });
 
   it("rechaza una fecha inexistente", () => {

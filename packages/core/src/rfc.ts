@@ -67,9 +67,13 @@ export function validarRfc(rfc: string): ResultadoValidacion<DetalleRfc> {
     fecha_yymmdd: fecha,
     homoclave,
   };
+  // El dígito se reporta pero no invalida: python-stdnum desactiva esa revisión por
+  // defecto porque alrededor de 1.5 % de los RFC en uso tienen dígito inválido, y
+  // rechazar un RFC real es peor que aceptar un error de dedo.
   return resultadoConFormato(
     valor,
     detalle,
     digitoVerificadorRfc(valor.slice(0, -1)) === homoclave.slice(-1),
+    { digitoInformativo: true },
   );
 }
