@@ -36,6 +36,20 @@ describe("ENTIDADES_CURP", () => {
     expect([...ENTIDADES_CURP.keys()].sort()).toEqual([...esperadas].sort());
     expect(ENTIDADES_CURP.size).toBe(33);
   });
+  it("mutar la copia exportada no cambia la validación", () => {
+    const copia = ENTIDADES_CURP as Map<string, string>;
+    copia.set("ZZ", "Inventada");
+    copia.delete("NE");
+    try {
+      expect(validarCurp("BOXW310820HZZRXN09").errores).toEqual(["entidad"]);
+      expect(validarCurp("BOXW310820HNERXN09").detalle?.nombre_entidad).toBe(
+        "Nacido en el extranjero",
+      );
+    } finally {
+      copia.delete("ZZ");
+      copia.set("NE", "Nacido en el extranjero");
+    }
+  });
   it("usa los nombres acordados", () => {
     expect(ENTIDADES_CURP.get("DF")).toBe("Ciudad de México");
     expect(ENTIDADES_CURP.get("MC")).toBe("Estado de México");

@@ -85,6 +85,7 @@ describe("crearCalendario", () => {
         expect(e).toBeInstanceOf(CalendarioIncompletoError);
         const err = e as CalendarioIncompletoError;
         expect(err.name).toBe("CalendarioIncompletoError");
+        expect(err.codigo).toBe("calendario-incompleto");
         expect(err.autoridad).toBe("sat");
         expect(err.fecha).toBe(f);
         expect(err.cobertura).toEqual(cobertura);
@@ -137,6 +138,28 @@ describe("crearCalendario", () => {
     expect(() => {
       (c.cobertura as { hasta: string }).hasta = "2030-01-01";
     }).toThrow(TypeError);
+  });
+});
+
+describe("Calendario congelado", () => {
+  it.each([
+    ["crearCalendario", () => calendario([])],
+    ["calendarioLft", () => calendarioLft()],
+  ])("%s devuelve un objeto congelado", (_nombre, crear) => {
+    const c = crear();
+    expect(Object.isFrozen(c)).toBe(true);
+    const cobertura = c.cobertura;
+    expect(() => {
+      (c as { cobertura: unknown }).cobertura = { desde: "2000-01-01", hasta: "2200-12-31" };
+    }).toThrow(TypeError);
+    expect(() => {
+      (c as { autoridad: string }).autoridad = "cnbv";
+    }).toThrow(TypeError);
+    expect(() => {
+      (c as { inhabil: unknown }).inhabil = () => null;
+    }).toThrow(TypeError);
+    expect(c.cobertura).toBe(cobertura);
+    expect(c.inhabil("2026-10-17")?.tipo).toBe("fin_de_semana");
   });
 });
 

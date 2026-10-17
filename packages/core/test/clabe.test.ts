@@ -93,6 +93,22 @@ describe("validarClabe", () => {
     expect(r.detalle?.plaza?.estado).toBe("CDMX");
   });
 
+  it("devuelve copias de banco y plaza, no los objetos del catálogo", () => {
+    const bancos = new Map<string, Banco>([["002", { codigo: "002", nombre_corto: "BANAMEX" }]]);
+    const plazas = new Map<string, Plaza>([
+      ["180", { codigo: "180", plaza: "Ciudad de México", estado: "CDMX" }],
+    ]);
+    const r = validarClabe("002180012345678906", { bancos, plazas });
+    const banco = r.detalle?.banco;
+    const plaza = r.detalle?.plaza;
+    expect(banco).toEqual({ codigo: "002", nombre_corto: "BANAMEX" });
+    expect(plaza).toEqual({ codigo: "180", plaza: "Ciudad de México", estado: "CDMX" });
+    if (banco) banco.nombre_corto = "ALTERADO";
+    if (plaza) plaza.estado = "ALTERADO";
+    expect(bancos.get("002")?.nombre_corto).toBe("BANAMEX");
+    expect(plazas.get("180")?.estado).toBe("CDMX");
+  });
+
   it("devuelve banco y plaza null sin catálogo", () => {
     const r = validarClabe("002180012345678906");
     expect(r.detalle?.banco).toBeNull();
