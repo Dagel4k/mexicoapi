@@ -51,7 +51,7 @@ function aMs(fecha: FechaISO): number {
 function deMs(ms: number): FechaISO {
   const fecha = new Date(ms);
   const anio = fecha.getUTCFullYear();
-  if (anio < 1 || anio > 9999) {
+  if (!(anio >= 1 && anio <= 9999)) {
     throw new RangeError("La fecha resultante sale del rango 0001-9999");
   }
   const aa = String(anio).padStart(4, "0");
