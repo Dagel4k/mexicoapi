@@ -1,0 +1,27 @@
+{
+  "name": "mexicoapi",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "pnpm -r build",
+    "verify": "./scripts/verify.sh"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "26.6.5",
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "4.10.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
