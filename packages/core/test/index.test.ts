@@ -41,5 +41,6 @@ describe("API pública", () => {
     expect(api.normalizar).toBeUndefined();
     expect(api.resultadoInvalido).toBeUndefined();
     expect(api.resultadoConFormato).toBeUndefined();
+    expect(api.rechazoPorTipo).toBeUndefined();
   });
 });

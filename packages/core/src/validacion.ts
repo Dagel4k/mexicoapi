@@ -20,13 +20,29 @@ export interface ResultadoValidacion<D> {
   detalle: D | null;
 }
 
-// Sin NFKC ni toUpperCase(): solo se suben a mayúscula a-z y ñ, para que ni los
-// dígitos de ancho completo ni letras parecidas (ſ, ı, ß, ligaduras) pasen a ASCII.
+// Sin NFC, NFKC ni toUpperCase(): solo se compone la ñ y se suben a mayúscula a-z y ñ,
+// para que ni los dígitos de ancho completo ni letras parecidas (ſ, ı, ß, ligaduras,
+// el signo Kelvin) pasen a ASCII. Se quitan los separadores Zs, los controles de
+// espacio y los guiones; los caracteres de ancho cero (U+200B, U+FEFF...) se quedan
+// para que el validador los rechace.
 export function normalizar(valor: string): string {
   return valor
-    .replace(/[\s-]/g, "")
+    .replace(/[nN]\u0303/g, "Ñ")
+    .replace(/[\p{Zs}\t\n\r\v\f-]/gu, "")
     .replace(/[a-z]/g, (c) => c.toUpperCase())
     .replace(/ñ/g, "Ñ");
+}
+
+/**
+ * Guardia para llamadas desde JavaScript, donde la entrada puede no ser string:
+ * null o undefined dan `vacio` y cualquier otro tipo da `caracteres`, con `valor: ""`.
+ * No convierte números a texto: una CLABE como número ya perdió precisión.
+ * Devuelve null si la entrada es string.
+ */
+export function rechazoPorTipo<D>(entrada: unknown): ResultadoValidacion<D> | null {
+  if (entrada === null || entrada === undefined) return resultadoInvalido("", "vacio");
+  if (typeof entrada !== "string") return resultadoInvalido("", "caracteres");
+  return null;
 }
 
 /** Resultado inválido por una falla de formato (antes del dígito verificador). */

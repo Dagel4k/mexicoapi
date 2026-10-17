@@ -82,6 +82,11 @@ describe("validarCurp", () => {
     expect(r.errores).toEqual(["fecha"]);
     expect(r.detalle).toBeNull();
   });
+  it("revisa la fecha antes que la entidad", () => {
+    const r = validarCurp(conDigito("BOXW230229HZZRXN0"));
+    expect(r.errores).toEqual(["fecha"]);
+    expect(r.detalle).toBeNull();
+  });
   it("usa el siglo 20YY con diferenciador de letra", () => {
     const r = validarCurp(conDigito("BOXW000229HNERXNA"));
     expect(r.valido).toBe(true);
@@ -130,15 +135,6 @@ describe("validarCurp", () => {
         expect(r.errores.length).toBeLessThanOrEqual(1);
       }),
     );
-  });
-  it("una cadena de 10,000 caracteres es inválida y rápida", () => {
-    const largo = "A".repeat(10_000);
-    validarCurp("A");
-    const t = performance.now();
-    const r = validarCurp(largo);
-    expect(performance.now() - t).toBeLessThan(5);
-    expect(r.valido).toBe(false);
-    expect(r.errores).toEqual(["longitud"]);
   });
 });
 

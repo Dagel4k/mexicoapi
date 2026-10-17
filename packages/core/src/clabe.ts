@@ -1,6 +1,7 @@
 import {
   normalizar,
   type ResultadoValidacion,
+  rechazoPorTipo,
   resultadoConFormato,
   resultadoInvalido,
 } from "./validacion.js";
@@ -43,6 +44,8 @@ export function validarClabe(
   clabe: string,
   catalogos?: { bancos?: ReadonlyMap<string, Banco>; plazas?: ReadonlyMap<string, Plaza> },
 ): ResultadoValidacion<DetalleClabe> {
+  const rechazo = rechazoPorTipo<DetalleClabe>(clabe);
+  if (rechazo) return rechazo;
   const valor = normalizar(clabe);
   if (valor.length === 0) return resultadoInvalido(valor, "vacio");
   if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");

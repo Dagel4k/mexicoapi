@@ -2,6 +2,7 @@ import { type FechaISO, fechaValida } from "./fechas.js";
 import {
   normalizar,
   type ResultadoValidacion,
+  rechazoPorTipo,
   resultadoConFormato,
   resultadoInvalido,
 } from "./validacion.js";
@@ -67,6 +68,8 @@ export function digitoVerificadorCurp(primeros17: string): string {
 }
 
 export function validarCurp(curp: string): ResultadoValidacion<DetalleCurp> {
+  const rechazo = rechazoPorTipo<DetalleCurp>(curp);
+  if (rechazo) return rechazo;
   const valor = normalizar(curp);
   if (valor.length === 0) return resultadoInvalido(valor, "vacio");
   // La CURP nunca lleva Ñ: RENAPO la sustituye por X.
