@@ -60,14 +60,16 @@ export function validarClabe(
   const codigo_plaza = valor.slice(3, 6);
   const banco = catalogos?.bancos?.get(codigo_banco) ?? null;
   if (catalogos?.bancos && banco === null) return resultadoInvalido(valor, "banco");
+  const plaza = catalogos?.plazas?.get(codigo_plaza) ?? null;
 
+  // Copias, para que quien reciba el resultado no altere el catálogo.
   const detalle: DetalleClabe = {
     codigo_banco,
     codigo_plaza,
     cuenta: valor.slice(6, 17),
     digito_control: valor.slice(17),
-    banco,
-    plaza: catalogos?.plazas?.get(codigo_plaza) ?? null,
+    banco: banco ? { ...banco } : null,
+    plaza: plaza ? { ...plaza } : null,
   };
   return resultadoConFormato(
     valor,

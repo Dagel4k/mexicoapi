@@ -3,6 +3,8 @@ import type { FechaISO } from "./fechas.js";
 
 /** Se consultó una fecha que el calendario de la autoridad no cubre. */
 export class CalendarioIncompletoError extends Error {
+  /** Código fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
+  readonly codigo = "calendario-incompleto";
   readonly autoridad: Autoridad;
   readonly fecha: FechaISO;
   readonly cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO };

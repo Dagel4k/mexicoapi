@@ -15,7 +15,10 @@ export interface DetalleRfc {
   homoclave: string;
 }
 
-export const RFC_GENERICOS: ReadonlySet<string> = new Set(["XAXX010101000", "XEXX010101000"]);
+const GENERICOS = new Set(["XAXX010101000", "XEXX010101000"]);
+
+/** Copia para consulta: modificarla no cambia la validación. */
+export const RFC_GENERICOS: ReadonlySet<string> = new Set(GENERICOS);
 
 const TABLA = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ";
 const ESTRUCTURA = /^([A-ZÑ&]{3,4})([0-9]{6})([A-Z0-9]{2}[0-9A])$/;
@@ -59,7 +62,7 @@ export function validarRfc(rfc: string): ResultadoValidacion<DetalleRfc> {
   }
   if (!fechaRfcValida(fecha)) return resultadoInvalido(valor, "fecha");
 
-  if (RFC_GENERICOS.has(valor)) {
+  if (GENERICOS.has(valor)) {
     return resultadoConFormato(valor, { tipo: "generico", fecha_yymmdd: fecha, homoclave }, true);
   }
   const detalle: DetalleRfc = {

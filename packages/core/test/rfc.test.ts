@@ -20,6 +20,20 @@ describe("validarRfc", () => {
     expect(r.detalle).toEqual({ tipo: "moral", fecha_yymmdd: "930714", homoclave: "8T4" });
   });
 
+  it("mutar la copia exportada de RFC_GENERICOS no cambia la validación", () => {
+    const copia = RFC_GENERICOS as Set<string>;
+    copia.add("GODE561231GR9");
+    copia.delete("XAXX010101000");
+    try {
+      expect(validarRfc("GODE561231GR9").detalle?.tipo).toBe("fisica");
+      expect(validarRfc("GODE561231GR9").digito_verificador_valido).toBe(false);
+      expect(validarRfc("XAXX010101000").detalle?.tipo).toBe("generico");
+    } finally {
+      copia.delete("GODE561231GR9");
+      copia.add("XAXX010101000");
+    }
+  });
+
   it("acepta los RFC genéricos", () => {
     expect(RFC_GENERICOS.has("XAXX010101000")).toBe(true);
     for (const g of ["XAXX010101000", "XEXX010101000"]) {

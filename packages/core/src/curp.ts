@@ -7,7 +7,7 @@ import {
   resultadoInvalido,
 } from "./validacion.js";
 
-export const ENTIDADES_CURP: ReadonlyMap<string, string> = new Map([
+const ENTIDADES = new Map([
   ["AS", "Aguascalientes"],
   ["BC", "Baja California"],
   ["BS", "Baja California Sur"],
@@ -42,6 +42,9 @@ export const ENTIDADES_CURP: ReadonlyMap<string, string> = new Map([
   ["ZS", "Zacatecas"],
   ["NE", "Nacido en el extranjero"],
 ]);
+
+/** Copia para consulta: modificarla no cambia la validación. */
+export const ENTIDADES_CURP: ReadonlyMap<string, string> = new Map(ENTIDADES);
 
 export interface DetalleCurp {
   fecha: FechaISO;
@@ -85,7 +88,7 @@ export function validarCurp(curp: string): ResultadoValidacion<DetalleCurp> {
   if (!fechaValida(anio, mes, dia)) return resultadoInvalido(valor, "fecha");
 
   const entidad = valor.slice(11, 13);
-  const nombreEntidad = ENTIDADES_CURP.get(entidad);
+  const nombreEntidad = ENTIDADES.get(entidad);
   if (nombreEntidad === undefined) return resultadoInvalido(valor, "entidad");
 
   const detalle: DetalleCurp = {

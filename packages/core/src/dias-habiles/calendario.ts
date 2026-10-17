@@ -5,11 +5,12 @@ import type { Autoridad, DiaInhabil, Fuente } from "./tipos.js";
 
 type Cobertura = { readonly desde: FechaISO; readonly hasta: FechaISO };
 
+/** `crearCalendario` y `calendarioLft` lo devuelven congelado. */
 export interface Calendario {
-  autoridad: Autoridad;
-  cobertura: { desde: FechaISO; hasta: FechaISO };
+  readonly autoridad: Autoridad;
+  readonly cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO };
   /** Incluye fines de semana; lanza CalendarioIncompletoError fuera de cobertura. */
-  inhabil(fecha: FechaISO): DiaInhabil | null;
+  readonly inhabil: (fecha: FechaISO) => DiaInhabil | null;
 }
 
 function congelar(dia: DiaInhabil): DiaInhabil {
@@ -34,7 +35,7 @@ function construir(
 ): Calendario {
   const fija = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
   const fuenteFds = Object.freeze({ ...fuenteFinDeSemana });
-  return {
+  const calendario: Calendario = {
     autoridad,
     cobertura: fija,
     inhabil(fecha) {
@@ -58,6 +59,7 @@ function construir(
       return null;
     },
   };
+  return Object.freeze(calendario);
 }
 
 export function crearCalendario(opciones: {
