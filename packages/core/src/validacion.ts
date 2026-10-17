@@ -20,9 +20,13 @@ export interface ResultadoValidacion<D> {
   detalle: D | null;
 }
 
-// Sin NFKC: los dígitos de ancho completo deben seguir siendo inválidos.
+// Sin NFKC ni toUpperCase(): solo se suben a mayúscula a-z y ñ, para que ni los
+// dígitos de ancho completo ni letras parecidas (ſ, ı, ß, ligaduras) pasen a ASCII.
 export function normalizar(valor: string): string {
-  return valor.replace(/[\s-]/g, "").toUpperCase();
+  return valor
+    .replace(/[\s-]/g, "")
+    .replace(/[a-z]/g, (c) => c.toUpperCase())
+    .replace(/ñ/g, "Ñ");
 }
 
 /** Resultado inválido por una falla de formato (antes del dígito verificador). */
