@@ -329,7 +329,7 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 | `GET /v1/estados/{cve_ent}/municipios` | Municipios del estado | Estático |
 | `GET /v1/municipios/{cvegeo}` | Un municipio | Estático |
 | `GET /v1/bancos` · `GET /v1/bancos/{codigo}` | Bancos y participantes SPEI | Estático |
-| `GET /v1/clabe/{clabe}` | `valida`, `banco`, `plaza`, `cuenta`, `digito_control`, `errores[]` | Worker (función pura) |
+| `GET /v1/clabe/{clabe}` | `valido`, `banco`, `plaza`, `cuenta`, `digito_control`, `errores[]` | Worker (función pura) |
 | `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` · `?operacion=AAAA-MM-DD` · `/v1/tipo-cambio/fix/ultimo` | FIX por fecha de publicación o para una operación (sección 8.1) | Worker sobre un archivo anual estático |
 | `GET /v1/udis?fecha=AAAA-MM-DD` | Valor de la UDI | Worker sobre un archivo anual estático |
 | `GET /v1/dias-inhabiles?autoridad=sat&anio=2026` | Lista con citas | Estático |
@@ -395,7 +395,7 @@ El Worker solo ejecuta para las rutas calculadas, con un límite de 100,000 peti
 
 | Amenaza | Mitigación |
 | --- | --- |
-| Paquete malicioso en dependencias | Lockfile, `minimumReleaseAge` de pnpm (no instalar versiones con menos de 7 días), Renovate con revisión, `osv-scanner` en CI, mínimo de dependencias |
+| Paquete malicioso en dependencias | Lockfile, `minimumReleaseAge` de pnpm (no instalar versiones con menos de 7 días), Dependabot con cooldown de 7 días y revisión, `osv-scanner` en CI, mínimo de dependencias |
 | Robo de credenciales de publicación | npm trusted publishing con OIDC y procedencia, 2FA obligatorio, sin tokens largos en el repo |
 | Fuente comprometida o datos envenenados | Solo HTTPS, sha256 del original guardado, umbrales de anomalía, revisión humana de datos curados |
 | Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: token de Cloudflare (despliegue y KV), credenciales de la GitHub App del bot y, en v1.1, token de Banxico SIE. Ninguno en el código |

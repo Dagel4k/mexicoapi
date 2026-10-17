@@ -34,7 +34,7 @@ describe("sumarDiasHabiles", () => {
   });
 
   it("lista los inhábiles saltados en orden cronológico sin fines de semana", () => {
-    // 2026-12-24 (jueves) + 3: salta 25 (vie, descanso), 26-27 (fds), 1 ene (jue) queda fuera.
+    // 2026-12-24 (jueves) + 3: salta 25 (vie, descanso), 26-27 (fds), 1 ene (vie) queda fuera.
     const r = sumarDiasHabiles({ calendario: lft, desde: "2026-12-24", dias: 3 });
     expect(r.resultado).toBe("2026-12-30");
     expect(r.inhabiles_saltados.map((d) => d.fecha)).toEqual(["2026-12-25"]);
@@ -117,6 +117,10 @@ describe("sumarDiasHabiles", () => {
   });
 
   it("acepta los límites 1 y 3650", () => {
+    // 2026-10-16 es viernes: un día hábil después es el lunes 19.
+    expect(sumarDiasHabiles({ calendario: lft, desde: "2026-10-16", dias: 1 }).resultado).toBe(
+      "2026-10-19",
+    );
     expect(
       sumarDiasHabiles({ calendario: lft, desde: "2026-10-16", dias: 3650 }).resultado,
     ).toMatch(/^2041-/);

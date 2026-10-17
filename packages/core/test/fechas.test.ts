@@ -104,6 +104,14 @@ describe("enesimoDiaDeSemana", () => {
   });
 });
 
+describe("zona horaria del proceso", () => {
+  // test:tz corre la suite con TZ=America/Mexico_City y con TZ=UTC; esto confirma
+  // que en cada corrida la zona sí cambió.
+  it.runIf(process.env.TZ !== undefined)("coincide con TZ", () => {
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(process.env.TZ);
+  });
+});
+
 describe("esBisiesto", () => {
   it("aplica la regla gregoriana", () => {
     expect(esBisiesto(1900)).toBe(false);
