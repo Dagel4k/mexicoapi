@@ -108,7 +108,10 @@ describe("zona horaria del proceso", () => {
   // test:tz corre la suite con TZ=America/Mexico_City y con TZ=UTC; esto confirma
   // que en cada corrida la zona sí cambió.
   it.runIf(process.env.TZ !== undefined)("coincide con TZ", () => {
-    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(process.env.TZ);
+    // Intl normaliza alias como Etc/UTC a UTC, así que se compara contra el nombre canónico.
+    const esperada = new Intl.DateTimeFormat("en", { timeZone: process.env.TZ }).resolvedOptions()
+      .timeZone;
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(esperada);
   });
 });
 

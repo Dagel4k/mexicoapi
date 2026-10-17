@@ -5,12 +5,20 @@ export default defineConfig({
     projects: ["packages/*"],
     coverage: {
       provider: "v8",
-      include: ["packages/core/src/**"],
+      include: ["packages/core/src/**", "packages/pipeline/src/**"],
       thresholds: {
-        lines: 95,
-        branches: 95,
-        functions: 95,
-        statements: 95,
+        "packages/core/src/**": {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
+        },
+        "packages/pipeline/src/**": {
+          lines: 85,
+          branches: 85,
+          functions: 85,
+          statements: 85,
+        },
       },
     },
   },
