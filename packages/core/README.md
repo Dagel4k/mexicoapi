@@ -9,7 +9,11 @@ Funciones puras en TypeScript, sin dependencias de runtime. Por ahora el paquete
 - Fechas `YYYY-MM-DD`: `esFechaIsoValida`, `sumarDias`, `diaDeLaSemana`, `enesimoDiaDeSemana`, `esBisiesto` y `fechaValida`.
 - Constantes y tipos: `NOTA_VALIDACION`, `ResultadoValidacion`, `Calendario`, `DiaInhabil`, `Fuente`, entre otros.
 
-Los validadores revisan formato y dígito verificador. No confirman que la CLABE, el RFC, la CURP o el NSS existan ante un banco, el SAT, RENAPO o el IMSS. Nunca lanzan excepciones: una entrada inválida devuelve `valido: false` con los códigos de error. Las funciones de días hábiles sí lanzan `RangeError` por parámetros inválidos y `CalendarioIncompletoError` si la fecha cae fuera de la cobertura del calendario.
+Los validadores revisan formato y dígito verificador. No confirman que la CLABE, el RFC, la CURP o el NSS existan ante un banco, el SAT, RENAPO o el IMSS. Las funciones `validar*` nunca lanzan excepciones, aunque la entrada no sea string: una entrada inválida devuelve `valido: false` con los códigos de error. Las auxiliares `digito*` sí lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados. Las funciones de días hábiles lanzan `RangeError` por parámetros inválidos y `CalendarioIncompletoError` (con `codigo: "calendario-incompleto"`) si la fecha cae fuera de la cobertura del calendario.
+
+En el RFC, un dígito verificador que no coincide aparece en `errores` como `digito_verificador`, pero no invalida el resultado: `valido` es igual a `formato_valido`. Cerca de 1.5 % de los RFC en uso tienen un dígito inválido, y rechazar un RFC real es peor que aceptar un error de dedo.
+
+`validarClabe` acepta catálogos opcionales de bancos y plazas. Con catálogo de bancos, un código que no está en él da el error `banco`. La plaza solo es informativa: si no está en el catálogo, queda en `null`.
 
 ## Ejemplos
 
