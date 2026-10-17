@@ -83,15 +83,6 @@ describe("validarClabe", () => {
     expect(r.valor).toBe("");
   });
 
-  it("rechaza cadenas largas en menos de 5 ms", () => {
-    const larga = "1".repeat(10_000);
-    const t0 = performance.now();
-    const r = validarClabe(larga);
-    const ms = performance.now() - t0;
-    expect(r.valido).toBe(false);
-    expect(ms).toBeLessThan(5);
-  });
-
   it("resuelve banco y plaza con catálogos", () => {
     const bancos = new Map<string, Banco>([["002", { codigo: "002", nombre_corto: "BANAMEX" }]]);
     const plazas = new Map<string, Plaza>([

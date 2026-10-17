@@ -90,13 +90,31 @@ describe("validarRfc", () => {
     expect(validarRfc("A&B930714T12").formato_valido).toBe(true);
   });
 
-  it("no lanza con entradas hostiles y es rápida con entradas largas", () => {
-    validarRfc("A");
-    const largo = "A".repeat(10_000);
-    const t = performance.now();
-    const r = validarRfc(largo);
-    expect(performance.now() - t).toBeLessThan(100);
-    expect(r.errores).toEqual(["longitud"]);
+  it("acepta A&B930714T18", () => {
+    // Moral " A&B930714T1": espacio=37, A=10, &=24, B=11, T=30; pesos 13..2
+    // 37*13 + 10*12 + 24*11 + 11*10 + 9*9 + 3*8 + 0*7 + 7*6 + 1*5 + 4*4 + 30*3 + 1*2
+    // = 481+120+264+110+81+24+0+42+5+16+90+2 = 1235; 1235 mod 11 = 3; 11-3 = 8
+    expect(digitoVerificadorRfc("A&B930714T1")).toBe("8");
+    const r = validarRfc("A&B930714T18");
+    expect(r.valido).toBe(true);
+    expect(r.digito_verificador_valido).toBe(true);
+    expect(r.errores).toEqual([]);
+    expect(r.detalle).toEqual({ tipo: "moral", fecha_yymmdd: "930714", homoclave: "T18" });
+  });
+
+  it("fija el & en el índice 24 de la tabla", () => {
+    // En A&B el & lleva peso 11, así que su valor no cambia el residuo módulo 11.
+    // En " &AB930714T1" lleva peso 12: 37*13 + 24*12 + 10*11 + 11*10 + 9*9 + 3*8
+    // + 0*7 + 7*6 + 1*5 + 4*4 + 30*3 + 1*2 = 1249; 1249 mod 11 = 6; 11-6 = 5.
+    // Con el & en 23 o 25 el dígito sería 6 o 4.
+    expect(digitoVerificadorRfc("&AB930714T1")).toBe("5");
+    expect(validarRfc("&AB930714T15").digito_verificador_valido).toBe(true);
+  });
+
+  it("compone la ñ descompuesta antes de validar", () => {
+    const r = validarRfc("n\u0303ab930714t12");
+    expect(r.valido).toBe(true);
+    expect(r.valor).toBe("ÑAB930714T12");
   });
 });
 

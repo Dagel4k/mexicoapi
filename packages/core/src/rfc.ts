@@ -2,6 +2,7 @@ import { fechaValida } from "./fechas.js";
 import {
   normalizar,
   type ResultadoValidacion,
+  rechazoPorTipo,
   resultadoConFormato,
   resultadoInvalido,
 } from "./validacion.js";
@@ -42,6 +43,8 @@ function fechaRfcValida(yymmdd: string): boolean {
 }
 
 export function validarRfc(rfc: string): ResultadoValidacion<DetalleRfc> {
+  const rechazo = rechazoPorTipo<DetalleRfc>(rfc);
+  if (rechazo) return rechazo;
   const valor = normalizar(rfc);
   if (valor.length === 0) return resultadoInvalido(valor, "vacio");
   if (!/^[A-Z0-9Ñ&]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");

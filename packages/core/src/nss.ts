@@ -1,6 +1,7 @@
 import {
   normalizar,
   type ResultadoValidacion,
+  rechazoPorTipo,
   resultadoConFormato,
   resultadoInvalido,
 } from "./validacion.js";
@@ -23,6 +24,8 @@ export function digitoVerificadorNss(primeros10: string): string {
 }
 
 export function validarNss(nss: string): ResultadoValidacion<null> {
+  const rechazo = rechazoPorTipo<null>(nss);
+  if (rechazo) return rechazo;
   const valor = normalizar(nss);
   if (valor.length === 0) return resultadoInvalido(valor, "vacio");
   if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
