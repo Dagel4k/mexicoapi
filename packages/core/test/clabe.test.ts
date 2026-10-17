@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { type Banco, digitoControlClabe, type Plaza, validarClabe } from "../src/clabe.js";
+import { type BancoClabe, digitoControlClabe, type Plaza, validarClabe } from "../src/clabe.js";
 import { NOTA_VALIDACION, normalizar } from "../src/validacion.js";
 
 describe("normalizar", () => {
@@ -84,7 +84,9 @@ describe("validarClabe", () => {
   });
 
   it("resuelve banco y plaza con catálogos", () => {
-    const bancos = new Map<string, Banco>([["002", { codigo: "002", nombre_corto: "BANAMEX" }]]);
+    const bancos = new Map<string, BancoClabe>([
+      ["002", { codigo: "002", nombre_corto: "BANAMEX" }],
+    ]);
     const plazas = new Map<string, Plaza>([
       ["180", { codigo: "180", plaza: "Ciudad de México", estado: "CDMX" }],
     ]);
@@ -94,7 +96,9 @@ describe("validarClabe", () => {
   });
 
   it("devuelve copias de banco y plaza, no los objetos del catálogo", () => {
-    const bancos = new Map<string, Banco>([["002", { codigo: "002", nombre_corto: "BANAMEX" }]]);
+    const bancos = new Map<string, BancoClabe>([
+      ["002", { codigo: "002", nombre_corto: "BANAMEX" }],
+    ]);
     const plazas = new Map<string, Plaza>([
       ["180", { codigo: "180", plaza: "Ciudad de México", estado: "CDMX" }],
     ]);
@@ -116,7 +120,7 @@ describe("validarClabe", () => {
   });
 
   describe("con catálogo de bancos", () => {
-    const bancos = new Map<string, Banco>([
+    const bancos = new Map<string, BancoClabe>([
       ["002", { codigo: "002", nombre_corto: "BANAMEX" }],
       ["012", { codigo: "012", nombre_corto: "BBVA MEXICO" }],
     ]);

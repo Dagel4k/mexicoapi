@@ -1,8 +1,8 @@
-export type { Banco, DetalleClabe, Plaza } from "./clabe.js";
+export type { BancoClabe, DetalleClabe, Plaza } from "./clabe.js";
 export { digitoControlClabe, validarClabe } from "./clabe.js";
 export type { DetalleCurp } from "./curp.js";
 export { digitoVerificadorCurp, ENTIDADES_CURP, validarCurp } from "./curp.js";
-export type { Banco as BancoRegistro, PeriodoBanco, TipoBanco } from "./datos/bancos.js";
+export type { Banco, PeriodoBanco, TipoBanco } from "./datos/bancos.js";
 export type { Estado, Municipio } from "./datos/inegi.js";
 export type { ArchivoCrudo, FuenteManifiesto, Manifiesto } from "./datos/manifiesto.js";
 export type { Calendario } from "./dias-habiles/calendario.js";

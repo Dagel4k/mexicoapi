@@ -6,7 +6,7 @@ import {
   resultadoInvalido,
 } from "./validacion.js";
 
-export interface Banco {
+export interface BancoClabe {
   codigo: string;
   nombre_corto: string;
 }
@@ -22,7 +22,7 @@ export interface DetalleClabe {
   codigo_plaza: string;
   cuenta: string;
   digito_control: string;
-  banco: Banco | null;
+  banco: BancoClabe | null;
   plaza: Plaza | null;
 }
 
@@ -47,7 +47,7 @@ export function digitoControlClabe(primeros17: string): string {
  */
 export function validarClabe(
   clabe: string,
-  catalogos?: { bancos?: ReadonlyMap<string, Banco>; plazas?: ReadonlyMap<string, Plaza> },
+  catalogos?: { bancos?: ReadonlyMap<string, BancoClabe>; plazas?: ReadonlyMap<string, Plaza> },
 ): ResultadoValidacion<DetalleClabe> {
   const rechazo = rechazoPorTipo<DetalleClabe>(clabe);
   if (rechazo) return rechazo;
