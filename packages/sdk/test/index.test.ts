@@ -18,11 +18,13 @@ import type {
   OpcionesFix,
   PeriodoBanco,
   Plaza,
+  ProblemaConsulta,
   ResultadoDiasHabiles,
   ResultadoValidacion,
   TipoBanco,
   TipoCambioFix,
   TipoPlazo,
+  TipoProblema,
   TipoRfc,
   Udi,
 } from "../src/index.js";
@@ -38,6 +40,8 @@ describe("tipos públicos", () => {
     // @ts-expect-error los nombres de cada superficie son internos: no se publican
     type NoPublicado = mexicoapi.NombresTipoPlazo;
     expectTypeOf<NoPublicado>().toBeAny();
+    expectTypeOf<ProblemaConsulta["tipo"]>().toEqualTypeOf<TipoProblema>();
+    expectTypeOf<"dato-no-disponible">().toExtend<TipoProblema>();
     expectTypeOf(mexicoapi.revisarTipoPlazo).parameters.toEqualTypeOf<
       [autoridad: Autoridad, tipoPlazo: TipoPlazo | undefined]
     >();

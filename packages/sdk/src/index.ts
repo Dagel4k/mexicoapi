@@ -33,6 +33,7 @@ export type {
   TipoCambioFix,
   TipoDiaCurado,
   TipoPlazo,
+  TipoProblema,
   TipoRfc,
   TramoIsr,
   Udi,
