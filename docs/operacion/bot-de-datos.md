@@ -26,7 +26,7 @@ El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre 
    Con esa regla, quien no es administrador, la App incluida, solo puede crear, actualizar y borrar ramas `datos/**` (y Dependabot las suyas); `main` sigue con su propia protección. Sin ella, la App puede hacer push a cualquier rama, también a la de un PR de una persona: `solo-datos` solo mira quién disparó cada corrida de CI, así que si después esa persona hace push, la corrida nueva pasa con el commit de la App adentro. Con la regla, la App solo escribe en ramas `datos/**`, y esas siempre pasan por `solo-datos`. Queda `dependabot/**`, que la regla no puede cerrar sin frenar a Dependabot: un push de la App ahí deja `verify` en rojo (lo disparó una cuenta Bot), Dependabot no vuelve a tocar una rama que editó otro, y sus PRs se revisan a mano.
 6. Probar con Actions, Datos, "Run workflow", desde `main`, eligiendo `inegi`, `bancos`, `fix` o `udis`.
 
-Además, el repo necesita tener activos "Allow auto-merge" y "Automatically delete head branches", y la etiqueta `revisar`.
+Además, el repo necesita tener activos "Allow auto-merge" y "Automatically delete head branches", y la etiqueta `revisar`. En la protección de `main` tienen que seguir activos "Require branches to be up to date before merging" y el check `verify` requerido con origen GitHub Actions. No son solo comodidad: `solo-datos` depende de ellos, porque sin el primero la App podría basar una rama `datos/` en un commit viejo de `main` cuyo `ci.yml` no revisa la base, conseguir un verde, cambiar la base a `main` y fusionar.
 
 El workflow ya declara `environment: datos` en los jobs que leen la clave. Si el Environment no existe, GitHub lo crea vacío y sin reglas en la primera corrida, y los secretos del repositorio siguen funcionando: el bot no se detiene mientras se hace el paso 4. Hasta entonces la única barrera de rama es la condición del workflow, que solo corre esos jobs desde `main`. Los pasos 4 y 5 no cambian nada en el código: solo cierran lo que el workflow no puede cerrar solo.
 
@@ -36,7 +36,7 @@ El workflow ya declara `environment: datos` en los jobs que leen la clave. Si el
 - Bancos: todos los días a las 08:00 de la Ciudad de México.
 - Tipo de cambio FIX (grupo `fix`, dataset `tipo-cambio.fix`): todos los días a las 13:30 de la Ciudad de México (cron `30 19 * * *`, en UTC), después de la publicación del DOF.
 - UDIS (grupo `udis`, dataset `udis`): todos los días a las 14:30 de la Ciudad de México (cron `30 20 * * *`).
-- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. Las UDIS corren una hora después del FIX porque `main` exige que la rama del PR esté al día: si los dos PRs se abrieran casi a la vez, el segundo quedaría atrasado en cuanto se fusionara el primero y su auto-merge no avanzaría hasta pulsar "Update branch". México no tiene horario de verano desde 2022, así que las horas no se mueven.
+- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. Las UDIS corren una hora después del FIX porque `main` exige que la rama del PR esté al día (un ajuste de seguridad que no se apaga, ver Puesta en marcha): si los dos PRs se abrieran casi a la vez, el segundo quedaría atrasado en cuanto se fusionara el primero y su auto-merge no avanzaría hasta pulsar "Update branch". México no tiene horario de verano desde 2022, así que las horas no se mueven.
 - A mano con "Run workflow", solo desde `main`. Desde otra rama los jobs se saltan.
 
 ## Cómo está armado
@@ -106,4 +106,4 @@ Hacerlo una vez al año, y de inmediato si se sospecha que la clave se filtró.
 
 ## Nota sobre main
 
-`main` exige que las ramas estén al día. Si `main` avanza mientras un PR de datos espera el auto-merge, puede hacer falta pulsar "Update branch" en ese PR.
+`main` exige que las ramas estén al día. Si `main` avanza mientras un PR de datos espera el auto-merge, puede hacer falta pulsar "Update branch" en ese PR. Ese paso de más es el precio de una protección que el bot necesita: sin ella, un PR del bot podría pasar CI contra una versión vieja de `ci.yml` (ver Puesta en marcha). No hay que desactivarla para que los PRs de datos se fusionen solos.

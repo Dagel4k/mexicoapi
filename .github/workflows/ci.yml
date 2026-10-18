@@ -292,6 +292,11 @@ jobs:
   # aquí; si después le cambian la base a main, ese rojo se queda en el commit hasta un push nuevo
   # o una reapertura, que vuelven a correr esta revisión contra main (la App no puede volver a
   # correr workflows).
+  #
+  # Esto depende de dos ajustes de la protección de main, que no son solo comodidad: "Require
+  # branches to be up to date before merging" y el check verify requerido con origen GitHub
+  # Actions; sin el primero, la App podría basar una rama datos/ en un commit viejo de main cuyo
+  # ci.yml no tiene esta revisión de base, conseguir un verde, cambiar la base a main y fusionar.
   solo-datos:
     name: solo-datos
     runs-on: ubuntu-latest
