@@ -78,6 +78,8 @@ export interface Servidor {
 
 /** Largo máximo de texto del cliente (métodos, nombres) que se repite en un mensaje de error. */
 const MAX_ECO = 64;
+/** Largo máximo de un id de texto. */
+const MAX_LARGO_ID = 256;
 
 export function respuestaError(
   id: IdSolicitud | null,
@@ -99,9 +101,19 @@ function errorInterno(id: IdSolicitud | null): RespuestaJsonRpc {
   return respuestaError(id, ERROR_INTERNO, "Error interno");
 }
 
-/** MCP: los ids son texto o enteros, nunca null. */
+/**
+ * MCP: los ids son texto o enteros, nunca null. Además se exige un largo razonable y enteros
+ * exactos en JavaScript, para poder devolverlos tal cual.
+ */
 function esIdValido(id: unknown): id is IdSolicitud {
-  return typeof id === "string" || Number.isInteger(id);
+  return (typeof id === "string" && id.length <= MAX_LARGO_ID) || Number.isSafeInteger(id);
+}
+
+/** Un pedido con id válido, dentro de un lote. */
+function idDePedido(mensaje: unknown): IdSolicitud | null {
+  return esObjeto(mensaje) && Object.hasOwn(mensaje, "method") && esIdValido(mensaje.id)
+    ? mensaje.id
+    : null;
 }
 
 /** 7 y "7" son ids distintos. */
@@ -187,7 +199,14 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
   const listas = new Map(
     VERSIONES_SOPORTADAS.map((v) => [v, opciones.herramientas.map((h) => publicar(h, v))] as const),
   );
-  const registrar = (mensaje: string): void => opciones.registrar?.(`${info.name}: ${mensaje}`);
+  /** Registro de mejor esfuerzo: si falla, no afecta la respuesta ni el estado de la sesión. */
+  const registrar = (mensaje: string): void => {
+    try {
+      opciones.registrar?.(`${info.name}: ${mensaje}`);
+    } catch {
+      // stderr no disponible: se sigue sin registrar.
+    }
+  };
 
   let version: VersionProtocolo | null = null;
   const idsUsados = new Set<string>();
@@ -230,18 +249,20 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     }
     // Si soporta la versión pedida responde con ella; si no, con la más reciente que soporta.
     const negociada = esVersionSoportada(p.protocolVersion) ? p.protocolVersion : VERSION_RECIENTE;
-    version = negociada;
-    registrar(`sesión iniciada (protocolo ${negociada})`);
     const serverInfo =
       negociada === VERSION_ANTERIOR
         ? { name: info.name, version: info.version }
         : { name: info.name, title: info.title, version: info.version };
-    return exito(id, {
+    const respuesta = exito(id, {
       protocolVersion: negociada,
       capabilities: { tools: { listChanged: false } },
       serverInfo,
       instructions: instrucciones,
     });
+    // El estado cambia solo con la respuesta ya armada.
+    version = negociada;
+    registrar(`sesión iniciada (protocolo ${negociada})`);
+    return respuesta;
   }
 
   function listar(id: IdSolicitud, params: unknown, sesion: VersionProtocolo): RespuestaJsonRpc {
@@ -405,7 +426,11 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     }
     if (lote.length === 0) return serializar(invalida(null, "El lote está vacío"));
     if (lote.length > MAX_MENSAJES_LOTE) {
-      return serializar(invalida(null, `El lote pasa de ${MAX_MENSAJES_LOTE} mensajes`));
+      // No se atiende nada; cada pedido recibe su error para que el cliente no quede esperando.
+      const motivo = `El lote pasa de ${MAX_MENSAJES_LOTE} mensajes`;
+      const ids = lote.map(idDePedido).filter((id) => id !== null);
+      if (ids.length === 0) return serializar(invalida(null, motivo));
+      return `[${ids.map((id) => serializar(invalida(id, motivo))).join(",")}]`;
     }
     // map corre la parte síncrona de cada mensaje en orden; luego se esperan las llamadas.
     const respuestas = await Promise.all(lote.map(atenderSeguro));

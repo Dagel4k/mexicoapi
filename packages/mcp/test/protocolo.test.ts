@@ -232,6 +232,9 @@ describe("mensajes malformados (Review Focus 1)", () => {
     ["id objeto", { jsonrpc: "2.0", id: {}, method: "ping" }, null],
     ["id booleano", { jsonrpc: "2.0", id: true, method: "ping" }, null],
     ["id decimal", { jsonrpc: "2.0", id: 1.5, method: "ping" }, null],
+    ["id fuera de enteros seguros", { jsonrpc: "2.0", id: 2 ** 53, method: "ping" }, null],
+    ["id enorme", { jsonrpc: "2.0", id: 1e300, method: "ping" }, null],
+    ["id de más de 256 caracteres", { jsonrpc: "2.0", id: "x".repeat(257), method: "ping" }, null],
     ["params null", { jsonrpc: "2.0", id: 4, method: "ping", params: null }, 4],
     ["params texto", { jsonrpc: "2.0", id: 4, method: "ping", params: "x" }, 4],
     ["sin method ni resultado", { jsonrpc: "2.0", id: 8 }, 8],
@@ -258,6 +261,36 @@ describe("mensajes malformados (Review Focus 1)", () => {
     expect((await cliente.pedir("ping", undefined, "7")).result).toEqual({});
     // El id del initialize también cuenta.
     expect(await cliente.pedir("tools/list", undefined, 1)).toEqual(error(1, SOLICITUD_INVALIDA));
+  });
+
+  it("acepta ids de hasta 256 caracteres y enteros seguros negativos", async () => {
+    const cliente = conectar();
+    for (const id of ["x".repeat(256), -(2 ** 53 - 1), 0]) {
+      expect(await cliente.pedir("ping", undefined, id)).toEqual({
+        jsonrpc: "2.0",
+        id,
+        result: {},
+      });
+    }
+  });
+
+  it("un id repetido mientras el pedido original sigue en curso da Invalid Request", async () => {
+    const lenta = crearLenta();
+    // Sin historial: el repetido se detecta solo porque el original sigue en curso.
+    const cliente = conectar({ herramientas: [lenta.herramienta], maxIdsRecordados: 0 });
+    await cliente.inicializar();
+    cliente.enviar({ jsonrpc: "2.0", id: "a", method: "tools/call", params: { name: "lenta" } });
+    await cliente.sinRespuesta();
+    expect(await cliente.pedir("ping", undefined, "a")).toEqual(
+      error("a", SOLICITUD_INVALIDA, "El id ya se usó en esta sesión"),
+    );
+    expect(lenta.senales[0]?.aborted).toBe(false);
+    lenta.soltar();
+    expect(await cliente.recibir()).toEqual({
+      jsonrpc: "2.0",
+      id: "a",
+      result: { content: [{ type: "text", text: "listo" }] },
+    });
   });
 
   it("un id que dio error también queda usado", async () => {
@@ -326,49 +359,38 @@ describe("mensajes malformados (Review Focus 1)", () => {
   });
 });
 
-describe("errores inesperados del servidor", () => {
-  it("una excepción al atender un pedido da Internal error y el proceso sigue", async () => {
-    let fallar = true;
-    const cliente = conectar({
-      registrar: () => {
-        if (fallar) throw new Error("stderr roto");
-      },
-    });
-    expect(
-      await cliente.pedir(
-        "initialize",
-        {
-          protocolVersion: "2025-11-25",
-          capabilities: {},
-          clientInfo: {},
-        },
-        1,
-      ),
-    ).toEqual(error(1, ERROR_INTERNO, "Error interno"));
-    fallar = false;
-    await cliente.sinRespuesta();
+describe("registro que falla", () => {
+  const roto = (): void => {
+    throw new Error("stderr roto");
+  };
+
+  it("no cambia la respuesta de initialize ni el estado de la sesión", async () => {
+    const cliente = conectar({ registrar: roto });
+    expect((await cliente.inicializar()).result).toEqual(RESULTADO_INICIAL);
+    expect((await cliente.pedir("tools/list")).result).toHaveProperty("tools");
   });
 
-  it("una excepción al atender una notificación no produce respuesta", async () => {
-    const cliente = conectar({
-      registrar: () => {
-        throw new Error("stderr roto");
-      },
-    });
+  it("no hace responder a una respuesta del cliente", async () => {
+    const cliente = conectar({ registrar: roto });
     cliente.enviar({ jsonrpc: "2.0", id: 1, result: {} });
     await cliente.sinRespuesta();
   });
 
-  it("una excepción asíncrona al registrar el error de una herramienta da Internal error", async () => {
-    const cliente = conectar({
-      registrar: (mensaje) => {
-        if (mensaje.includes("falla")) throw new Error("stderr roto");
-      },
-    });
+  it("no cambia el error interno de una herramienta que falla", async () => {
+    const cliente = conectar({ registrar: roto });
     await cliente.inicializar();
     expect(await cliente.pedir("tools/call", { name: "falla" }, "f")).toEqual(
       error("f", ERROR_INTERNO, "Error interno"),
     );
+  });
+
+  it("no rompe la lectura cuando se descarta un mensaje", async () => {
+    const cliente = conectar({ registrar: roto, maxBytesMensaje: 64 });
+    cliente.escribir(`${"x".repeat(100)}\n`);
+    cliente.escribir(Buffer.from([0xff, 0x0a]));
+    expect((await cliente.recibir()).error).toMatchObject({ code: SOLICITUD_INVALIDA });
+    expect((await cliente.recibir()).error).toMatchObject({ code: ERROR_PARSEO });
+    await cliente.sinRespuesta();
   });
 });
 
@@ -417,13 +439,37 @@ describe("lotes", () => {
     await cliente.sinRespuesta();
   });
 
-  it("en 2025-03-26 un lote vacío o demasiado grande da un solo Invalid Request", async () => {
+  it("en 2025-03-26 un lote vacío da un solo Invalid Request", async () => {
     const cliente = conectar();
     await cliente.inicializar("2025-03-26");
     cliente.escribir("[]\n");
-    expect(await cliente.recibir()).toEqual(error(null, SOLICITUD_INVALIDA));
+    expect(await cliente.recibir()).toEqual(error(null, SOLICITUD_INVALIDA, "El lote está vacío"));
+  });
+
+  it("en 2025-03-26 un lote de más de 50 da un Invalid Request por pedido, sin atender nada", async () => {
+    const cliente = conectar();
+    await cliente.inicializar("2025-03-26");
+    const lote: unknown[] = Array.from({ length: 50 }, (_, i) => ({
+      jsonrpc: "2.0",
+      id: i + 100,
+      method: "ping",
+    }));
+    lote.push({ jsonrpc: "2.0", method: "notifications/initialized" }, 1);
+    cliente.enviar(lote);
+    expect(await cliente.recibir()).toEqual(
+      Array.from({ length: 50 }, (_, i) =>
+        error(i + 100, SOLICITUD_INVALIDA, "El lote pasa de 50 mensajes"),
+      ),
+    );
+    // Los ids no quedaron usados: no se atendió ningún pedido.
+    expect((await cliente.pedir("ping", undefined, 100)).result).toEqual({});
+  });
+
+  it("en 2025-03-26 un lote de más de 50 sin pedidos da un solo Invalid Request", async () => {
+    const cliente = conectar();
+    await cliente.inicializar("2025-03-26");
     cliente.enviar(
-      Array.from({ length: 51 }, (_, i) => ({ jsonrpc: "2.0", id: i + 100, method: "ping" })),
+      Array.from({ length: 51 }, () => ({ jsonrpc: "2.0", method: "notifications/x" })),
     );
     expect(await cliente.recibir()).toEqual(
       error(null, SOLICITUD_INVALIDA, "El lote pasa de 50 mensajes"),
