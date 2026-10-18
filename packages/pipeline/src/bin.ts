@@ -6,7 +6,7 @@ const raizDatos = fileURLToPath(new URL("../../../data/", import.meta.url));
 const escribir = (t: string): void => void process.stdout.write(t);
 const escribirError = (t: string): void => void process.stderr.write(t);
 const entorno = {
-  cliente: crearCliente(),
+  crearCliente: (ms: number) => crearCliente({ intervaloMinimoMs: ms }),
   raizDatos,
   ahora: () => new Date(),
   escribir,

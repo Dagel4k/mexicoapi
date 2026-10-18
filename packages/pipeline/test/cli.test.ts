@@ -209,4 +209,59 @@ describe("bancos-historico", () => {
     expect(entorno.errores.join("")).toContain("sin datos del CEP en 2026-09");
     expect(await readdir(join(raiz, "bancos"))).toContain("bancos.json");
   });
+
+  it("un bloqueo (HTML) a media captura sale 1, no escribe y no pide más", async () => {
+    const entorno = await crearEntorno(raiz, {
+      cepPorFecha: (f) => (f.startsWith("2026-08") ? "<html>bloqueado</html>" : undefined),
+    });
+    const args = ["bancos-historico", "--desde", "2026-06", "--fecha", HOY];
+    expect(await principal(args, entorno)).toBe(1);
+    expect(entorno.errores.join("")).toContain("posible bloqueo");
+    expect(await readdir(raiz)).toEqual([]);
+    expect(entorno.pedidas.map((u) => u.match(/fecha=(\d\d-\d\d-\d{4})/)?.[1])).toEqual([
+      "01-06-2026",
+      "01-07-2026",
+      "01-08-2026",
+    ]);
+  });
+
+  it("un JSON sin instituciones pasa al día siguiente", async () => {
+    const entorno = await crearEntorno(raiz, {
+      cepPorFecha: (f) => (f.endsWith("-01") ? '{"overrideCaptcha":true}' : undefined),
+    });
+    const args = ["bancos-historico", "--desde", "2026-10", "--fecha", HOY];
+    expect(await principal(args, entorno)).toBe(0);
+    expect(entorno.pedidas.slice(0, 2).map((u) => u.slice(-10))).toEqual([
+      "01-10-2026",
+      "02-10-2026",
+    ]);
+  });
+
+  it("--intervalo fija el cliente y se anuncia la duración", async () => {
+    const entorno = await crearEntorno(raiz);
+    const args = ["bancos-historico", "--desde", "2026-10", "--fecha", HOY, "--intervalo", "45"];
+    expect(await principal(args, entorno)).toBe(0);
+    expect(entorno.intervalos).toEqual([45000]);
+    expect(entorno.salida[0]).toBe(
+      "bancos: 1 meses, un pedido cada 45 s; duración estimada: 1 min\n",
+    );
+    const porOmision = await crearEntorno(aparte);
+    await principal(["bancos-historico", "--desde", "2026-10", "--fecha", HOY], porOmision);
+    expect(porOmision.intervalos).toEqual([30000]);
+  });
+
+  it("actualizar usa un cliente de 1 s", async () => {
+    const entorno = await crearEntorno(raiz);
+    await principal(["actualizar", "inegi.estados", "--seco"], entorno);
+    expect(entorno.intervalos).toEqual([1000]);
+  });
+
+  it("rechaza --intervalo inválido", async () => {
+    for (const valor of ["0", "abc", "1.5"]) {
+      const entorno = await crearEntorno(raiz);
+      expect(await principal(["bancos-historico", "--intervalo", valor], entorno)).toBe(1);
+      expect(entorno.errores.join("")).toContain("--intervalo inválido");
+      expect(entorno.intervalos).toEqual([]);
+    }
+  });
 });
