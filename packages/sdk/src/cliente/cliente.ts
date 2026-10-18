@@ -1,3 +1,4 @@
+import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { crearCache } from "./cache.js";
 import { AVISO_RESPALDO, congelar } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
@@ -49,17 +50,6 @@ export type RutaDelPaquete = {
 
 const modoDe = (plantilla: string): (typeof RUTAS)[RutaApi] | undefined =>
   Object.hasOwn(RUTAS, plantilla) ? RUTAS[plantilla as RutaApi] : undefined;
-
-/** Reglas de la API para los valores de la ruta; se revisan antes de armar la URL. */
-const REGLAS_RUTA: Readonly<Record<string, readonly [RegExp, string]>> = {
-  cve_ent: [/^\d{2}$/, "La clave de estado (cve_ent) debe tener 2 dígitos."],
-  cvegeo: [/^\d{5}$/, "La clave de municipio (cvegeo) debe tener 5 dígitos."],
-  codigo: [/^\d{3}$/, "El código de banco debe tener 3 dígitos."],
-  clabe: [/^\d{18}$/, "La CLABE debe tener 18 dígitos."],
-  // No hay año 0000: las fechas van de 0001 a 9999.
-  anio: [/^(?!0000)\d{4}$/, "El año (anio) debe tener 4 dígitos, de 0001 a 9999."],
-  periodo: [/^(?:mensual|anual)$/, "El periodo de la tarifa debe ser mensual o anual."],
-};
 
 function baseDe(base: string | { readonly href: string }): string {
   const texto = typeof base === "string" ? base : base.href;
@@ -159,9 +149,6 @@ function armar(
     .map(([nombre, v]) => `${encodeURIComponent(nombre)}=${encodeURIComponent(v)}`)
     .join("&");
   const sufijo = query === "" ? "" : `?${query}`;
-  const consulta = Object.fromEntries(
-    Object.entries(valores).filter(([nombre]) => !deRuta.some(([n]) => n === nombre)),
-  );
   // Cada valor de la ruta, tal cual y codificado, con su nombre. Se cambian en una sola pasada y
   // los más largos primero, para no cortar un valor que contiene a otro.
   // Solo se ocultan los sensibles (la CLABE): las claves de catálogo (código de banco, cvegeo,
@@ -191,13 +178,16 @@ function armar(
     conMeta: modo === "estable" || modo === "caduca",
     signal,
     valores,
-    consulta,
+    query,
     advertencias: [],
   };
+  // Las reglas de la API para los valores de la ruta, las del núcleo: antes de armar la URL.
   for (const [nombre, v] of deRuta) {
-    const regla = Object.hasOwn(REGLAS_RUTA, nombre) ? REGLAS_RUTA[nombre] : undefined;
-    if (regla !== undefined && !regla[0].test(v)) {
-      throw problemaLocal(pedido, "parametro-invalido", regla[1], { parametro: nombre });
+    const regla = Object.hasOwn(REGLAS_RUTA, nombre)
+      ? REGLAS_RUTA[nombre as keyof typeof REGLAS_RUTA]
+      : undefined;
+    if (regla !== undefined && !cumpleRegla(regla, v)) {
+      throw problemaLocal(pedido, "parametro-invalido", regla.detalle, { parametro: nombre });
     }
   }
   return pedido;

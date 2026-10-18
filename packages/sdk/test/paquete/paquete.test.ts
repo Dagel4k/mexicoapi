@@ -140,9 +140,12 @@ describe("dist", () => {
       archivos.map((a) => relative(DIST, a).split(sep).join("/"));
     const alImportar = enDist((await grafoDeModulos(entrada, { dinamicos: false })).archivos);
     const todo = enDist((await grafoDeModulos(entrada)).archivos);
-    // Del núcleo, al importar solo carga el catálogo de problemas, que no importa nada: el
-    // MexicoApiError de una respuesta de la API lo necesita. Lo demás del núcleo, al usarlo.
-    expect(alImportar.filter((a) => !a.startsWith("cliente/"))).toEqual([
+    // Del núcleo, al importar solo carga el catálogo de problemas (lo necesita el MexicoApiError
+    // de una respuesta de la API) y las reglas de los valores de la ruta, que se revisan antes de
+    // pedirla, con los catálogos de los que salen. Lo demás del núcleo, al usarlo.
+    expect(alImportar.filter((a) => !a.startsWith("cliente/")).sort()).toEqual([
+      "nucleo/dias-habiles/tipos.js",
+      "nucleo/rutas/parametros.js",
       "nucleo/rutas/problemas.js",
     ]);
     expect(alImportar).not.toContain("cliente/paquete.js");

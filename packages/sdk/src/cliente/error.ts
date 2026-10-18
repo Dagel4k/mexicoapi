@@ -65,12 +65,6 @@ export class MexicoApiError extends Error {
   }
 }
 
-/** Los problemas de la API que el cliente también encuentra con los datos del paquete. */
-export type TipoLocal = Exclude<
-  TipoProblema,
-  "metodo-no-permitido" | "demasiadas-peticiones" | "error-interno"
->;
-
 /** Lo que necesita un error que arma el cliente. */
 export interface ContextoLocal {
   urlOculta: string;
@@ -85,7 +79,7 @@ export interface ContextoLocal {
  */
 export function problemaLocal(
   contexto: ContextoLocal,
-  tipo: TipoLocal,
+  tipo: TipoProblema,
   detalle: string,
   extras?: Readonly<Record<string, unknown>>,
 ): MexicoApiError {

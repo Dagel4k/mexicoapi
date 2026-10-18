@@ -9,6 +9,7 @@ import {
   feriadosBancarios,
   plazoDe,
 } from "@mexicoapi/core/curados";
+import { revisarTipoPlazo } from "@mexicoapi/core/parametros";
 import * as cnbv from "./generados/dias-inhabiles-cnbv.js";
 import * as sat from "./generados/dias-inhabiles-sat.js";
 import type { AutoridadCurada, Calendario, FechaISO, MetaDatos, TipoPlazo } from "./tipos.js";
@@ -22,6 +23,8 @@ export interface CalendarioCurado extends CalendarioDelNucleo {
 }
 
 const GENERADOS = { cnbv, sat } as const;
+
+const NOMBRES_SDK = { autoridad: (a: string) => `autoridad=${a}`, tipoPlazo: "tipoPlazo" };
 const memoria = new Map<AutoridadCurada, CalendarioCurado>();
 
 /** Meta de cada calendario: sus publicaciones en el DOF. */
@@ -63,15 +66,12 @@ export function calendario(autoridad: "sat", tipoPlazo: TipoPlazo): Calendario;
 export function calendario(autoridad: AutoridadCurada, tipoPlazo: TipoPlazo): Calendario;
 export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): Calendario {
   const curado = calendarioCurado(autoridad);
-  const { plazos } = curado;
   if (tipoPlazo === undefined) {
-    if (plazos.size > 1) {
-      const tipos = [...plazos.keys()].join(" o ");
-      throw new TypeError(`Con autoridad=${autoridad} falta tipoPlazo: ${tipos}.`);
-    }
-    tipoPlazo = "general";
+    // La regla de la API con el nombre del SDK. A diferencia de la API, la CNBV acepta general.
+    const falta = revisarTipoPlazo(autoridad, undefined, NOMBRES_SDK);
+    if (falta !== null) throw new TypeError(falta.detalle);
   }
-  return plazoDe(curado, tipoPlazo).calendario;
+  return plazoDe(curado, tipoPlazo ?? "general").calendario;
 }
 
 let feriados: ((fecha: FechaISO) => boolean) | undefined;
