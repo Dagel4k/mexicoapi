@@ -94,7 +94,7 @@ Un error de la herramienta (un argumento inválido, un dato que no existe, un ca
 
 ### Datos al día
 
-Los datos del paquete `mexicoapi` tienen la fecha de corte de su versión. `mexicoapi-mcp` depende de `mexicoapi` con un rango `^` y los datos nuevos salen como versiones patch de `mexicoapi`, así que una instalación nueva toma los más recientes. npx guarda lo que instala: si ya usaste el servidor, sigue con esa versión de `mexicoapi` hasta que salga una versión nueva de `mexicoapi-mcp`. `as_of` y las advertencias dicen siempre de cuándo es cada dato.
+Los datos del paquete `mexicoapi` tienen la fecha de corte de su versión. npx guarda lo que instala y no actualiza las dependencias de un paquete que no cambió de versión, así que una versión nueva de `mexicoapi` sola no le llega a quien ya usó el servidor. Por eso cada versión de `mexicoapi` va seguida de una de `mexicoapi-mcp` que pide esa versión como mínimo: npx ve que hay una nueva y la instala con los datos nuevos. `as_of` y las advertencias dicen siempre de cuándo es cada dato.
 
 ## Códigos postales (SEPOMEX)
 
