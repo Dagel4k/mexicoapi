@@ -1,5 +1,6 @@
 // Entrada `mexicoapi/datos/constantes`: la UMA, el salario mínimo y las tarifas de ISR que trae el
 // paquete, publicadas en el DOF y con su fuente en cada registro.
+import { umaVigente as umaVigenteDe } from "@mexicoapi/core/constantes";
 import { meta as metaSalario, datos as salarios } from "./generados/constantes-salario-minimo.js";
 import { datos as listaUma, meta as metaUma } from "./generados/constantes-uma.js";
 import { meta as metaIsr, datos as tarifas } from "./generados/isr-tarifas.js";
@@ -38,14 +39,13 @@ export function uma(anio: number): Uma | undefined {
 }
 
 /**
- * La UMA vigente en `fecha` (AAAA-MM-DD): en enero, la del año anterior. undefined si la fecha cae
- * antes de la primera o después del 31 de enero siguiente a la última que trae el paquete.
+ * La UMA vigente en `fecha` (AAAA-MM-DD), con la regla del núcleo que usa la API: en enero, la
+ * del año anterior. undefined si la fecha cae antes de la primera o después del 31 de enero
+ * siguiente a la última que trae el paquete. Lanza RangeError si la fecha no existe.
  */
 export function umaVigente(fecha: FechaISO): Uma | undefined {
-  if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-    throw new RangeError(`Fecha ISO inválida: ${String(fecha)}`);
-  }
-  return uma(Number(fecha.slice(0, 4)) - (fecha.slice(5) < "02-01" ? 1 : 0));
+  const consulta = umaVigenteDe(listaUma, fecha);
+  return consulta.tipo === "encontrado" ? consulta.registro : undefined;
 }
 
 /** Todos los salarios mínimos, por año y zona. Congelados. */

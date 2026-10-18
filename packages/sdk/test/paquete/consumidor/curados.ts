@@ -24,7 +24,7 @@ const sinTipo = () => calendario("sat");
 const cnbv = calendario("cnbv");
 const sat: CalendarioCurado = calendarioCurado("sat");
 const hastaGeneral: string = sat.general.cobertura.hasta;
-const respaldo: boolean = sat.plazos.general?.respaldo !== undefined;
+const respaldo: boolean = sat.plazos.get("general")?.respaldo !== undefined;
 const dia: DiaInhabilCurado | undefined = undefined;
 const uma: Uma | undefined = umaVigente("2026-01-15");
 const salarios: readonly SalarioMinimo[] = salarioMinimo(2026);

@@ -2,7 +2,13 @@
 // mismas reglas para los parámetros, los mismos problemas y el mismo `meta`. Este módulo, el
 // núcleo y cada dataset se cargan con un import dinámico solo al usarlos: quien solo consulta la
 // API no los carga y un bundler los deja en archivos aparte.
-import type { CoberturaSerie, Consulta, FechaISO } from "@mexicoapi/core";
+import type {
+  CoberturaSerie,
+  Consulta,
+  FechaISO,
+  OpcionesFix,
+  TipoCambioFix,
+} from "@mexicoapi/core";
 import type { MetaDatos } from "../datos/tipos.js";
 import type { RutaDelPaquete } from "./cliente.js";
 import {
@@ -23,6 +29,7 @@ const nucleo = (): Promise<Nucleo> => import("@mexicoapi/core");
 const estados = () => import("../datos/estados.js");
 const municipios = () => import("../datos/municipios.js");
 const bancos = () => import("../datos/bancos.js");
+const calendarios = () => import("../datos/calendarios.js");
 
 /** El texto nombra el valor pedido, como el 404 de la API: se oculta. */
 function existe<T>(c: Contexto, valor: T | undefined, recurso: string): T {
@@ -145,6 +152,20 @@ function deSerie<T>(
   );
 }
 
+/**
+ * La consulta del FIX con solo los fines de semana y, si da no_disponible, otra vez con los
+ * feriados bancarios de la CNBV, como la API: los feriados solo vuelven cierta una respuesta que
+ * sin ellos es no_disponible, así que el calendario se carga solo entonces.
+ */
+async function conFeriados(
+  consultar: (opciones?: OpcionesFix) => Consulta<TipoCambioFix>,
+): Promise<Consulta<TipoCambioFix>> {
+  const consulta = consultar();
+  if (consulta.tipo !== "no_disponible") return consulta;
+  const { feriadoBancario } = await calendarios();
+  return consultar({ sinPublicacion: feriadoBancario });
+}
+
 const empiezaEl = ({ cobertura }: Serie, queFalta: string): string =>
   `La serie del paquete empieza el ${cobertura.desde}; no incluye ${queFalta}.`;
 
@@ -224,7 +245,7 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
           c,
           s,
           "tipo-de-cambio-fix",
-          n.fixPublicado(s.serie, s.tramo, s.cobertura, publicado),
+          await conFeriados((op) => n.fixPublicado(s.serie, s.tramo, s.cobertura, publicado, op)),
           publicado,
           {
             sinDato:
@@ -242,7 +263,7 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
         c,
         s,
         "tipo-de-cambio-fix",
-        n.fixParaOperacion(s.serie, s.tramo, s.cobertura, operacion),
+        await conFeriados((op) => n.fixParaOperacion(s.serie, s.tramo, s.cobertura, operacion, op)),
         operacion,
         {
           sinDato: empiezaEl(s, `la publicación que aplica a una operación del ${operacion}`),

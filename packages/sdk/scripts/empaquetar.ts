@@ -1,5 +1,6 @@
 // Mete el núcleo dentro de dist para que `mexicoapi` no dependa de @mexicoapi/core al publicarse:
-// copia el núcleo compilado a dist/nucleo y cambia sus imports por rutas relativas.
+// copia el núcleo compilado a dist/nucleo y cambia sus imports (también los de sus subrutas, como
+// `@mexicoapi/core/curados`) por rutas relativas.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 //
 //   node scripts/empaquetar.ts preparar  antes de tsc: revisa que el núcleo esté compilado y borra dist
@@ -11,8 +12,9 @@ import { fileURLToPath } from "node:url";
 export const NUCLEO = "@mexicoapi/core";
 const CARPETA_NUCLEO = "nucleo";
 const COMPILADO = /\.(js|d\.ts)$/;
-// Un import, reexport o import() del núcleo por su nombre exacto (sin subrutas), con su comilla.
-const IMPORT_NUCLEO = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])@mexicoapi\/core\2/g;
+// Un import, reexport o import() del núcleo por su nombre o una subruta, con su comilla.
+const IMPORT_NUCLEO =
+  /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])@mexicoapi\/core((?:\/[\w.-]+)*)\2/g;
 
 const USO = "uso: node scripts/empaquetar.ts preparar|nucleo\n";
 
@@ -35,19 +37,26 @@ async function compilados(dir: string): Promise<string[]> {
     .sort();
 }
 
+type Exports = Record<string, { import?: unknown } | undefined>;
+
+/** La carpeta del @mexicoapi/core enlazado en `raiz/node_modules` y el `exports` de su manifiesto. */
+async function exportsDelNucleo(raiz: string): Promise<{ paquete: string; exports?: Exports }> {
+  const paquete = join(raiz, "node_modules", ...NUCLEO.split("/"));
+  try {
+    const manifiesto = JSON.parse(await readFile(join(paquete, "package.json"), "utf8"));
+    return { paquete, exports: manifiesto.exports };
+  } catch {
+    throw new Error(`No se encontró ${NUCLEO} en ${paquete}; falta pnpm install`);
+  }
+}
+
 /**
  * Entrada compilada del núcleo, según el `exports` del @mexicoapi/core enlazado en
  * `raiz/node_modules`: así la copia sigue a la dependencia declarada y no a una ruta fija.
  */
 export async function ubicarNucleo(raiz: string): Promise<string> {
-  const paquete = join(raiz, "node_modules", ...NUCLEO.split("/"));
-  let manifiesto: { exports?: Record<string, { import?: unknown }> };
-  try {
-    manifiesto = JSON.parse(await readFile(join(paquete, "package.json"), "utf8"));
-  } catch {
-    throw new Error(`No se encontró ${NUCLEO} en ${paquete}; falta pnpm install`);
-  }
-  const destino = manifiesto.exports?.["."]?.import;
+  const { paquete, exports } = await exportsDelNucleo(raiz);
+  const destino = exports?.["."]?.import;
   if (typeof destino !== "string") {
     throw new Error(`${NUCLEO} no declara una entrada import en exports["."]`);
   }
@@ -58,6 +67,33 @@ export async function ubicarNucleo(raiz: string): Promise<string> {
     );
   }
   return entrada;
+}
+
+/**
+ * Las subrutas del núcleo (`./curados`) con la ruta de su entrada import, que debe existir y estar
+ * en la carpeta de `entrada`, que es la que se copia a dist/nucleo.
+ */
+export async function subrutasDelNucleo(
+  raiz: string,
+  entrada: string,
+): Promise<Record<string, string>> {
+  const { paquete, exports = {} } = await exportsDelNucleo(raiz);
+  const carpeta = dirname(entrada);
+  const subrutas: Record<string, string> = {};
+  for (const [subruta, condiciones] of Object.entries(exports)) {
+    if (subruta === ".") continue;
+    const destino = condiciones?.import;
+    if (typeof destino !== "string") {
+      throw new Error(`${NUCLEO}: ${subruta} no declara una entrada import`);
+    }
+    const archivo = join(paquete, destino);
+    if (!archivo.startsWith(carpeta + sep)) {
+      throw new Error(`${NUCLEO}: ${subruta} está fuera de ${carpeta}, que es lo que se copia`);
+    }
+    if (!(await existe(archivo))) throw new Error(`Falta ${archivo}: compila el núcleo antes`);
+    subrutas[subruta] = archivo;
+  }
+  return subrutas;
 }
 
 /**
@@ -77,21 +113,35 @@ export async function copiarNucleo(entrada: string, destino: string): Promise<st
 
 /**
  * Cambia `@mexicoapi/core` por la ruta relativa a `entradaNucleo` en los .js y .d.ts de `dist`,
- * salvo los del propio núcleo. Falla si después queda alguna mención (una subruta, un comentario):
- * el paquete publicado no puede pedir un módulo que no viaja con él.
+ * salvo los del propio núcleo, y cada subruta de `subrutas` (`./curados` → su archivo en
+ * dist/nucleo) por la ruta relativa a su archivo. Falla si después queda alguna mención (una
+ * subruta que no está en `subrutas`, un comentario): el paquete publicado no puede pedir un
+ * módulo que no viaja con él.
  */
-export async function reescribirImports(dist: string, entradaNucleo: string): Promise<string[]> {
+export async function reescribirImports(
+  dist: string,
+  entradaNucleo: string,
+  subrutas: Readonly<Record<string, string>> = {},
+): Promise<string[]> {
   const carpetaNucleo = dirname(entradaNucleo);
   const cambiados: string[] = [];
   for (const archivo of await compilados(dist)) {
     const ruta = join(dist, archivo);
     if (ruta.startsWith(carpetaNucleo + sep)) continue;
     const original = await readFile(ruta, "utf8");
-    let destino = aPosix(relative(dirname(ruta), entradaNucleo));
-    if (!destino.startsWith(".")) destino = `./${destino}`;
-    const nuevo = original.replace(IMPORT_NUCLEO, (_todo, antes: string, comilla: string) => {
-      return `${antes}${comilla}${destino}${comilla}`;
-    });
+    const relativa = (archivoNucleo: string): string => {
+      const destino = aPosix(relative(dirname(ruta), archivoNucleo));
+      return destino.startsWith(".") ? destino : `./${destino}`;
+    };
+    const nuevo = original.replace(
+      IMPORT_NUCLEO,
+      (todo, antes: string, comilla: string, subruta: string) => {
+        const archivoNucleo = subruta === "" ? entradaNucleo : subrutas[`.${subruta}`];
+        // Una subruta que no está se deja como está: la revisión de abajo la rechaza.
+        if (archivoNucleo === undefined) return todo;
+        return `${antes}${comilla}${relativa(archivoNucleo)}${comilla}`;
+      },
+    );
     if (nuevo.includes(NUCLEO)) {
       throw new Error(`${archivo} todavía menciona ${NUCLEO} después de reescribir sus imports`);
     }
@@ -130,11 +180,16 @@ export async function principal(
       return 0;
     }
     const destino = join(dist, CARPETA_NUCLEO);
+    const enDestino = (archivo: string): string =>
+      join(destino, relative(dirname(entrada), archivo));
+    const subrutas: Record<string, string> = {};
+    for (const [subruta, archivo] of Object.entries(
+      await subrutasDelNucleo(opciones.raiz, entrada),
+    )) {
+      subrutas[subruta] = enDestino(archivo);
+    }
     const copiados = await copiarNucleo(entrada, destino);
-    const cambiados = await reescribirImports(
-      dist,
-      join(destino, relative(dirname(entrada), entrada)),
-    );
+    const cambiados = await reescribirImports(dist, enDestino(entrada), subrutas);
     opciones.salida(
       `empaquetar: ${plural(copiados.length, "archivo")} del núcleo en dist/${CARPETA_NUCLEO}; ` +
         `imports reescritos en ${plural(cambiados.length, "archivo")}\n`,

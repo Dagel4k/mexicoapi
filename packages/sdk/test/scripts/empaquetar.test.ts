@@ -8,6 +8,7 @@ import {
   copiarNucleo,
   principal,
   reescribirImports,
+  subrutasDelNucleo,
   ubicarNucleo,
 } from "../../scripts/empaquetar.ts";
 
@@ -55,9 +56,16 @@ async function nucleoFalso(raiz = "sdk"): Promise<void> {
           types: "./dist/index.d.ts",
           import: "./dist/index.js",
         },
+        "./curados": {
+          "@mexicoapi/source": "./src/sub/curados.ts",
+          types: "./dist/sub/curados.d.ts",
+          import: "./dist/sub/curados.js",
+        },
       },
     }),
   );
+  await escribir(`${base}/dist/sub/curados.js`, 'export { a } from "../a.js";\n');
+  await escribir(`${base}/dist/sub/curados.d.ts`, 'export { a } from "../a.js";\n');
   await escribir(`${base}/dist/index.js`, 'export { a } from "./a.js";\n');
   await escribir(`${base}/dist/index.d.ts`, 'export { a } from "./a.js";\n');
   await escribir(`${base}/dist/a.js`, "export const a = 1;\n");
@@ -94,6 +102,32 @@ describe("ubicarNucleo", () => {
       JSON.stringify({ name: "@mexicoapi/core", exports }),
     );
     await expect(ubicarNucleo(join(dir, "sdk"))).rejects.toThrow(/entrada import/);
+  });
+});
+
+describe("subrutasDelNucleo", () => {
+  const paquete = () => join(dir, "sdk/node_modules/@mexicoapi/core");
+
+  it("da la entrada import de cada subruta del núcleo", async () => {
+    await nucleoFalso();
+    const raiz = join(dir, "sdk");
+    expect(await subrutasDelNucleo(raiz, await ubicarNucleo(raiz))).toEqual({
+      "./curados": join(paquete(), "dist/sub/curados.js"),
+    });
+  });
+
+  it.each([
+    ["sin entrada import", { types: "./dist/sub/x.d.ts" }, /\.\/x no declara una entrada import/],
+    ["fuera de la carpeta que se copia", { import: "./otra/x.js" }, /\.\/x está fuera de/],
+    ["que no existe", { import: "./dist/sub/x.js" }, /Falta .*x\.js/],
+  ])("falla con una subruta %s", async (_caso, x, error) => {
+    await nucleoFalso();
+    const manifiesto = JSON.parse(await leer("sdk/node_modules/@mexicoapi/core/package.json"));
+    manifiesto.exports["./x"] = x;
+    await escribir("sdk/node_modules/@mexicoapi/core/package.json", JSON.stringify(manifiesto));
+    await escribir("sdk/node_modules/@mexicoapi/core/otra/x.js", "export {};\n");
+    const raiz = join(dir, "sdk");
+    await expect(subrutasDelNucleo(raiz, await ubicarNucleo(raiz))).rejects.toThrow(error);
   });
 });
 
@@ -162,6 +196,30 @@ describe("reescribirImports", () => {
     expect(await leer("dist/sin-nucleo.js")).toBe("export const c = 3;\n");
   });
 
+  it("cambia una subruta del núcleo por la ruta relativa a su archivo", async () => {
+    await escribir("dist/nucleo/index.js", "export {};\n");
+    await escribir("dist/nucleo/sub/curados.js", "export {};\n");
+    await escribir(
+      "dist/cliente/x.js",
+      'import { a } from "@mexicoapi/core";\nimport { b } from "@mexicoapi/core/curados";\n' +
+        "export const c = () => import('@mexicoapi/core/curados');\n",
+    );
+    await escribir("dist/cliente/x.d.ts", 'export type { T } from "@mexicoapi/core/curados";\n');
+    const cambiados = await reescribirImports(
+      join(dir, "dist"),
+      join(dir, "dist/nucleo/index.js"),
+      { "./curados": join(dir, "dist/nucleo/sub/curados.js") },
+    );
+    expect(cambiados).toEqual(["cliente/x.d.ts", "cliente/x.js"]);
+    expect(await leer("dist/cliente/x.js")).toBe(
+      'import { a } from "../nucleo/index.js";\nimport { b } from "../nucleo/sub/curados.js";\n' +
+        "export const c = () => import('../nucleo/sub/curados.js');\n",
+    );
+    expect(await leer("dist/cliente/x.d.ts")).toBe(
+      'export type { T } from "../nucleo/sub/curados.js";\n',
+    );
+  });
+
   it("no toca los archivos del núcleo", async () => {
     const texto = '// copiado de "@mexicoapi/core"\nexport {};\n';
     await escribir("dist/nucleo/index.js", texto);
@@ -212,20 +270,27 @@ describe("principal", () => {
     expect(await listar("sdk/dist")).toEqual(["viejo.js"]);
   });
 
-  it("nucleo copia el núcleo a dist/nucleo y reescribe los imports", async () => {
+  it("nucleo copia el núcleo a dist/nucleo y reescribe los imports, también los de subrutas", async () => {
     await nucleoFalso();
     await escribir("sdk/dist/index.js", 'export { a } from "@mexicoapi/core";\n');
+    await escribir("sdk/dist/datos/x.js", 'export { a } from "@mexicoapi/core/curados";\n');
     const c = consola();
     expect(await principal(["nucleo"], c.opciones)).toBe(0);
     expect(await listar("sdk/dist")).toEqual([
+      "datos/x.js",
       "index.js",
       "nucleo/a.d.ts",
       "nucleo/a.js",
       "nucleo/index.d.ts",
       "nucleo/index.js",
+      "nucleo/sub/curados.d.ts",
+      "nucleo/sub/curados.js",
     ]);
     expect(await leer("sdk/dist/index.js")).toBe('export { a } from "./nucleo/index.js";\n');
-    expect(c.salida.join("")).toMatch(/4 archivos del núcleo.*reescritos en 1 archivo\n/s);
+    expect(await leer("sdk/dist/datos/x.js")).toBe(
+      'export { a } from "../nucleo/sub/curados.js";\n',
+    );
+    expect(c.salida.join("")).toMatch(/6 archivos del núcleo.*reescritos en 2 archivos\n/s);
     expect(c.errores).toEqual([]);
   });
 

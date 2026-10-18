@@ -52,7 +52,12 @@ export function probarCalendarios(
   });
 
   it("exporta exactamente su API", () => {
-    expect(Object.keys(m).sort()).toEqual(["calendario", "calendarioCurado", "meta"]);
+    expect(Object.keys(m).sort()).toEqual([
+      "calendario",
+      "calendarioCurado",
+      "feriadoBancario",
+      "meta",
+    ]);
   });
 
   it("trae los días de data/ sin la autoridad, con la meta de su manifest", () => {
@@ -71,25 +76,24 @@ export function probarCalendarios(
   it("arma los plazos de data/<carpeta>/calendario.json, como la API", async () => {
     const cnbvDatos = await calendarioDe("dias-inhabiles-cnbv");
     const c = m.calendarioCurado("cnbv");
-    expect(Object.keys(c.plazos)).toEqual(["general"]);
+    expect([...c.plazos.keys()]).toEqual(["general"]);
     expect(c.general.cobertura).toEqual(cnbvDatos.plazos.general?.cobertura);
     expect(c.amplia).toEqual(c.general.cobertura);
     expect(c.general.respaldo).toBeUndefined();
     const satDatos = await calendarioDe("dias-inhabiles-sat");
     const s = m.calendarioCurado("sat");
-    expect(Object.keys(s.plazos)).toEqual(["general", "declaraciones_pagos"]);
+    expect([...s.plazos.keys()]).toEqual(["general", "declaraciones_pagos"]);
     const general = satDatos.plazos.general?.cobertura as CoberturaSerie;
     const pagos = satDatos.plazos.declaraciones_pagos?.cobertura as CoberturaSerie;
     expect(s.general.cobertura).toEqual(general);
     expect(s.general.excluirTipos).toEqual([]);
-    expect(s.plazos.declaraciones_pagos?.cobertura).toEqual(pagos);
-    expect(s.plazos.declaraciones_pagos?.excluirTipos).toEqual(["vacaciones"]);
+    expect(s.plazos.get("declaraciones_pagos")?.cobertura).toEqual(pagos);
+    expect(s.plazos.get("declaraciones_pagos")?.excluirTipos).toEqual(["vacaciones"]);
     expect(s.amplia).toEqual(pagos);
     // Un plazo más corto que la cobertura amplia trae su respaldo con la amplia.
     const corto = general.hasta < pagos.hasta;
-    expect(s.general.respaldo !== undefined).toBe(corto);
-    if (corto) expect(s.general.respaldo?.cobertura).toEqual(pagos);
-    expect(s.plazos.declaraciones_pagos?.respaldo).toBeUndefined();
+    expect(s.general.respaldo?.cobertura).toEqual(corto ? pagos : undefined);
+    expect(s.plazos.get("declaraciones_pagos")?.respaldo).toBeUndefined();
   });
 
   it("suma días hábiles con cada plazo, como los ejemplos de la API", () => {
@@ -112,6 +116,18 @@ export function probarCalendarios(
     expect(sabado2025?.tipo).toBe("fin_de_semana");
     expect(sabado2025?.fuente.nombre).toContain("2025");
     expect(sabado2026?.fuente.nombre).toContain("2026");
+  });
+
+  it("feriadoBancario marca los días de descanso de la CNBV dentro de su calendario", () => {
+    const curado = m.calendarioCurado("cnbv");
+    const descansos = curado.dias.filter((d) => d.tipo === "descanso").map((d) => d.fecha);
+    expect(descansos.length).toBeGreaterThan(0);
+    for (const fecha of descansos) expect(m.feriadoBancario(fecha), fecha).toBe(true);
+    // Un día hábil, un fin de semana y lo que el calendario no cubre no son feriados.
+    expect(m.feriadoBancario("2026-07-15")).toBe(false);
+    expect(m.feriadoBancario("2026-07-18")).toBe(false);
+    const despues = `${Number(curado.amplia.hasta.slice(0, 4)) + 1}-01-01`;
+    expect(m.feriadoBancario(despues)).toBe(false);
   });
 
   it("fuera de la cobertura lanza CalendarioIncompletoError", () => {
@@ -218,6 +234,8 @@ export function probarConstantes(cargar: () => Promise<ModuloConstantes>): void 
     expect(m.umaVigente(`${primera.anio}-01-31`)).toBeUndefined();
     expect(m.umaVigente("2026-01-15")?.anio).toBe(2025);
     expect(() => m.umaVigente("15/01/2026")).toThrow(RangeError);
+    // Una fecha con forma pero que no existe tampoco es válida.
+    expect(() => m.umaVigente("2026-02-30")).toThrow(RangeError);
   });
 
   it("da el salario mínimo de un año por zona y la tarifa de ISR por periodo", () => {

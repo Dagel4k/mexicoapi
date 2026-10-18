@@ -1,12 +1,6 @@
 // Tipos de los datos que trae el paquete. Los registros usan los tipos del núcleo.
-import type {
-  AutoridadCurada,
-  CoberturaSerie,
-  FechaISO,
-  FuenteDof,
-  TipoDiaCurado,
-  TipoPlazo,
-} from "@mexicoapi/core";
+import type { FechaISO } from "@mexicoapi/core";
+import type { DatosCalendarioCurado } from "@mexicoapi/core/curados";
 
 export type {
   AutoridadCurada,
@@ -53,18 +47,8 @@ export interface MetaDatos {
   readonly docs: string;
 }
 
-/** Un tipo de plazo de un calendario curado: hasta dónde está completo y qué días no cuenta. */
-export interface PlazoGenerado {
-  readonly cobertura: CoberturaSerie;
-  readonly excluir_tipos: readonly TipoDiaCurado[];
-}
-
 /**
- * Lo que el build arma de un calendario curado además de sus días: los plazos y la fuente que
- * cita los fines de semana de cada año, lo mismo que usa la API.
+ * El `calendario.json` de un calendario curado en data/, que el build copia tal cual: los plazos
+ * con su cobertura y la fuente que cita los fines de semana de cada año, lo mismo que usa la API.
  */
-export interface CalendarioGenerado {
-  readonly autoridad: AutoridadCurada;
-  readonly plazos: Readonly<Partial<Record<TipoPlazo, PlazoGenerado>>>;
-  readonly fuentes_fin_de_semana: Readonly<Record<string, FuenteDof>>;
-}
+export type CalendarioGenerado = Omit<DatosCalendarioCurado, "dias">;
