@@ -9,7 +9,7 @@ const DIAS_POR_MES = 5;
 /**
  * Una observación del CEP por mes, desde `desde` (AAAA-MM) hasta el mes de `hasta`.
  * Prueba los días 1 a 5 y se queda con el primero cuyo JSON trae instituciones;
- * un mes sin ninguno se salta y se avisa. Un fallo de red aborta.
+ * un mes sin ninguno se salta (quien llama detecta el hueco). Un fallo de red aborta.
  */
 export async function capturarHistoricoCep(
   cliente: Cliente,
@@ -40,9 +40,6 @@ export async function capturarHistoricoCep(
       } catch (error) {
         if (!(error instanceof ErrorDatos)) throw error;
       }
-    }
-    if (!encontrada && `${prefijo}-01` <= hasta) {
-      avisar(`Sin datos del CEP para ${prefijo}; se salta el mes.\n`);
     }
     meses++;
     if (meses % 12 === 0) avisar(`Histórico: ${meses} meses revisados (hasta ${prefijo}).\n`);

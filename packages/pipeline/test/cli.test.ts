@@ -8,10 +8,21 @@ import { crearEntorno, HOY, leerFixture } from "./ayudas.js";
 const TODOS = ["inegi.estados", "inegi.municipios", "bancos"];
 
 let raiz: string;
+let aparte: string;
 beforeEach(async () => {
   raiz = await mkdtemp(join(tmpdir(), "cli-"));
+  aparte = await mkdtemp(join(tmpdir(), "cli-aparte-"));
 });
-afterEach(() => rm(raiz, { recursive: true, force: true }));
+afterEach(async () => {
+  await rm(raiz, { recursive: true, force: true });
+  await rm(aparte, { recursive: true, force: true });
+});
+
+async function cepConAlta(): Promise<Uint8Array> {
+  const cep = JSON.parse(new TextDecoder().decode(await leerFixture("bancos/cep-2026-10-17.json")));
+  cep.instituciones.push(["40999", "NUEVO BANCO"]);
+  return new TextEncoder().encode(JSON.stringify(cep));
+}
 
 async function instantanea(): Promise<Map<string, string>> {
   const mapa = new Map<string, string>();
@@ -38,7 +49,16 @@ describe("actualizar", () => {
     expect(await principal(["verificar"], await crearEntorno(raiz))).toBe(0);
   });
 
-  it("usa la fecha de México por omisión y valida --fecha", async () => {
+  it("usa la fecha civil de México por omisión", async () => {
+    // 03:00 UTC del 18 es todavía el 17 en la Ciudad de México
+    const ahora = new Date("2026-10-18T03:00:00Z");
+    const entorno = await crearEntorno(raiz, { ahora });
+    expect(await principal(["actualizar", "bancos"], entorno)).toBe(0);
+    const m = JSON.parse(await readFile(join(raiz, "bancos", "manifest.json"), "utf8"));
+    expect(m.as_of).toBe("2026-10-17");
+  });
+
+  it("valida --fecha y no escribe con --seco", async () => {
     const entorno = await crearEntorno(raiz);
     expect(await principal(["actualizar", "inegi.estados", "--seco"], entorno)).toBe(0);
     expect(await readdir(raiz)).toEqual([]);
@@ -58,7 +78,7 @@ describe("actualizar", () => {
 
   it("un error no impide correr los siguientes, y el HTTP trae URL y estado", async () => {
     const entorno = await crearEntorno(raiz, { estados: { "mgee/": 404 } });
-    const salida = join(raiz, "..", `resumen-${Date.now()}`);
+    const salida = join(aparte, "resumen");
     expect(await principal(["actualizar", ...TODOS, "--resumen", salida], entorno)).toBe(1);
     expect(entorno.errores.join("")).toContain("inegi.estados: ");
     expect(entorno.errores.join("")).toContain("HTTP 404");
@@ -68,8 +88,6 @@ describe("actualizar", () => {
     expect(json.errores[0].dataset).toBe("inegi.estados");
     expect(json.resultados).toHaveLength(2);
     expect(await readFile(`${salida}.md`, "utf8")).toContain("## Errores");
-    await rm(`${salida}.json`);
-    await rm(`${salida}.md`);
   });
 
   it("un alta en el CEP da 3 y escribe", async () => {
@@ -80,12 +98,50 @@ describe("actualizar", () => {
     cep.instituciones.push(["40999", "NUEVO BANCO"]);
     const nuevo = new TextEncoder().encode(JSON.stringify(cep));
     const entorno = await crearEntorno(raiz, { cep: nuevo });
-    const resumen = join(raiz, "salida", "resumen");
+    const resumen = join(aparte, "salida", "resumen");
     expect(await principal(["actualizar", "bancos", "--resumen", resumen], entorno)).toBe(3);
     const bancos = JSON.parse(await readFile(join(raiz, "bancos", "bancos.json"), "utf8"));
     expect(bancos.some((b: { codigo: string }) => b.codigo === "999")).toBe(true);
     expect(await readFile(`${resumen}.md`, "utf8")).toContain("bancos");
     expect(JSON.parse(await readFile(`${resumen}.json`, "utf8")).errores).toEqual([]);
+  });
+
+  it("un error da 1 aunque otro dataset pida revisión, en cualquier orden", async () => {
+    const inicial = await crearEntorno(raiz);
+    expect(await principal(["actualizar", "inegi.estados", "bancos"], inicial)).toBe(0);
+    const nuevo = await cepConAlta();
+    for (const ids of [
+      ["inegi.estados", "bancos"],
+      ["bancos", "inegi.estados"],
+    ]) {
+      const entorno = await crearEntorno(raiz, { cep: nuevo, estados: { "mgee/": 404 } });
+      expect(await principal(["actualizar", ...ids, "--seco"], entorno)).toBe(1);
+      expect(entorno.salida.join("")).toContain("bancos: requiere_revision");
+    }
+  });
+
+  it("explica en consola los motivos de una revisión", async () => {
+    expect(await principal(["actualizar", "bancos"], await crearEntorno(raiz))).toBe(0);
+    const entorno = await crearEntorno(raiz, { cep: await cepConAlta() });
+    expect(await principal(["actualizar", "bancos"], entorno)).toBe(3);
+    expect(entorno.salida.join("")).toMatch(/bancos: requiere_revision[^\n]*\n {2}- /);
+  });
+
+  it("rechaza opciones o argumentos que no aplican al comando", async () => {
+    const entorno = await crearEntorno(raiz);
+    for (const args of [
+      ["bancos-historico", "--seco"],
+      ["actualizar", "bancos", "--desde", "2026-01"],
+      ["verificar", "--resumen", "x"],
+      ["bancos-historico", "sobra"],
+      ["verificar", "sobra"],
+    ]) {
+      expect(await principal(args, entorno)).toBe(1);
+    }
+    const errores = entorno.errores.join("");
+    expect(errores).toContain("Opciones que no aplican a bancos-historico: --seco");
+    expect(errores).toContain("Argumentos de más para verificar: sobra");
+    expect(errores).toContain("Uso:");
   });
 
   it("rechaza ids desconocidos, argumentos vacíos y opciones inválidas", async () => {
@@ -136,9 +192,21 @@ describe("bancos-historico", () => {
     const entorno = await crearEntorno(raiz);
     expect(await principal(["bancos-historico", "--fecha", "x"], entorno)).toBe(1);
     expect(await principal(["bancos-historico", "--desde", "2026-13"], entorno)).toBe(1);
+    expect(await principal(["bancos-historico", "--desde", "2999-11"], entorno)).toBe(1);
+    expect(entorno.errores.join("")).toContain("posterior al mes");
     const caido = await crearEntorno(raiz, { estados: { "cep/instituciones": 404 } });
     expect(await principal(["bancos-historico", "--desde", "2026-10"], caido)).toBe(1);
     expect(caido.errores.join("")).toContain("HTTP 404");
     expect(await readdir(raiz)).toEqual([]);
+  });
+
+  it("con un mes sin datos escribe, avisa el hueco y sale 3", async () => {
+    const entorno = await crearEntorno(raiz, {
+      cepPorFecha: (f) => (f.startsWith("2026-09") ? "{}" : undefined),
+    });
+    const args = ["bancos-historico", "--desde", "2026-09", "--fecha", HOY];
+    expect(await principal(args, entorno)).toBe(3);
+    expect(entorno.errores.join("")).toContain("sin datos del CEP en 2026-09");
+    expect(await readdir(join(raiz, "bancos"))).toContain("bancos.json");
   });
 });

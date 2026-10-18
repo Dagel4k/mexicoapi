@@ -2,14 +2,14 @@ import type { Dirent } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { jsonCanonico, sha256Hex } from "./canonico.js";
+import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
 import { DATASETS } from "./registro.js";
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-const esquemaManifiesto = z.object({
+const esquemaManifiesto = z.strictObject({
   dataset: z.string(),
   schema_version: z.literal(1),
   as_of: fecha,
@@ -18,7 +18,7 @@ const esquemaManifiesto = z.object({
   data_sha256: z.string().regex(SHA256),
   records: z.number().int().nonnegative(),
   sources: z.array(
-    z.object({
+    z.strictObject({
       name: z.string(),
       url: z.string(),
       license: z.string(),
@@ -26,7 +26,7 @@ const esquemaManifiesto = z.object({
       citation: z.string(),
       published_at: fecha.nullable(),
       raw: z.array(
-        z.object({ file: z.string(), url: z.string(), sha256: z.string().regex(SHA256) }),
+        z.strictObject({ file: z.string(), url: z.string(), sha256: z.string().regex(SHA256) }),
       ),
     }),
   ),
@@ -77,6 +77,9 @@ async function verificarDirectorio(raiz: string, nombre: string): Promise<string
     return [`${nombre}: manifest.json inválido (${primerProblema(parseado.error)})`];
   }
   const manifiesto = parseado.data;
+  if (jsonCanonico(json) !== textoManifiesto.toString("utf8")) {
+    falla("manifest.json no está en forma canónica");
+  }
 
   const def = [...DATASETS.values()].find((d) => d.directorio === nombre);
   if (def === undefined) return [`${nombre}: directorio sin dataset registrado`];
@@ -121,6 +124,8 @@ async function verificarDirectorio(raiz: string, nombre: string): Promise<string
   }
   const canonico = jsonCanonico(datos) === texto;
   if (!canonico) falla(`${def.archivo} no está en forma canónica`);
+  else if (jsonCanonico(aNfc(datos)) !== texto)
+    falla(`${def.archivo} trae textos que no están en NFC`);
   if (Array.isArray(datos) && datos.length !== manifiesto.records) {
     falla(`records es ${manifiesto.records} pero el archivo tiene ${datos.length}`);
   }

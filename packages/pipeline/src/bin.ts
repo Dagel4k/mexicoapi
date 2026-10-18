@@ -12,4 +12,9 @@ const entorno = {
   escribir,
   escribirError,
 };
-process.exit(await principal(process.argv.slice(2), entorno));
+try {
+  process.exitCode = await principal(process.argv.slice(2), entorno);
+} catch (error) {
+  escribirError(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 1;
+}
