@@ -159,7 +159,7 @@ mexicoapi/
 
 El manifiesto describe **los datos** y solo cambia cuando cambian los datos. Así, el historial de git sigue siendo el historial de cambios de los datos.
 
-El estado operativo lo escribe el job `estado-kv` de `datos.yml`, aparte del job que actualiza los datos y solo desde `main`. Mientras no haya registro de corridas (por ejemplo, sin los secretos de Cloudflare), `status` es `unknown`.
+El estado operativo lo escribe el job `estado-kv` de `datos.yml`, aparte de los jobs que generan y publican los datos y solo desde `main`. Mientras no haya registro de corridas (por ejemplo, sin los secretos de Cloudflare), `status` es `unknown`.
 
 El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records`, `data_sha256` y, en las series, `cobertura` (`desde` y `hasta`) del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV. `last_success` avanza con `sin_cambios` y con `actualizado` cuando la corrida publicó el cambio (código 0); no avanza con `requiere_revision`, con una corrida que pide revisión (código 3) ni con una fallida.
 
@@ -219,7 +219,7 @@ Si SEPOMEX o la ATDT dan permiso o publican el catálogo tabular abierto, se act
 
 Cada fuente implementa una interfaz común, `Source<TRaw, TRecord>`:
 
-- `fetch()` devuelve bytes y metadatos HTTP. El timeout es de 30 s, con 3 reintentos y backoff exponencial. Usa un User-Agent propio, `mexicoapi-bot/1 (+https://github.com/Dagel4k/mexicoapi)`. Respeta `robots.txt` y hace como máximo 1 petición por segundo por host.
+- `fetch()` devuelve bytes y metadatos HTTP. El timeout es de 30 s, con 3 reintentos y backoff exponencial (`Retry-After` en segundos o como fecha HTTP, con tope de 60 s). Usa un User-Agent propio, `mexicoapi-bot/1 (+https://github.com/Dagel4k/mexicoapi)`. Respeta `robots.txt` y hace como máximo 1 petición por segundo por host. Solo pide por `https` a los hosts de cada dataset; sigue hasta 5 redirecciones y revisa cada salto igual que la URL original. El cuerpo se lee por partes con un tope de 50 MB.
 - `parse()` interpreta CSV, JSON, PDF o HTML con parsers probados contra fixtures reales guardados en `packages/pipeline/test/fixtures/`.
 - `normalize()` convierte al esquema de `@mexicoapi/core`.
 - `validate()` revisa el esquema con Zod y luego los invariantes del dataset. Ejemplos: 32 estados, ≥ 2,400 municipios, códigos de banco únicos.
@@ -273,7 +273,7 @@ GitHub Actions por dataset con `schedule`:
 
 Si hay cambios, el bot abre un PR `datos(<dataset>): AAAA-MM-DD` con el resumen del diff. Se auto-fusiona si pasa CI y está dentro de los umbrales.
 
-El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos, pull requests e issues), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita.
+El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos, pull requests e issues), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita. El job que procesa las fuentes no ve la clave de la App: deja el parche de `data/` como artefacto y otro job, en el Environment `datos` y solo desde `main`, lo revisa y lo publica. En CI, `solo-datos` deja `verify` en rojo si un PR del bot toca algo fuera de `data/` ([docs/operacion/bot-de-datos.md](../operacion/bot-de-datos.md)).
 
 Al terminar cada corrida, el job `estado-kv` escribe el estado operativo en KV, y `frescura.yml` abre un issue cuando un dataset se desactualiza ([docs/operacion/cloudflare.md](../operacion/cloudflare.md)).
 
@@ -473,7 +473,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 | Paquete malicioso en dependencias | Lockfile, `minimumReleaseAge` de pnpm (no instalar versiones con menos de 7 días), Dependabot con cooldown de 7 días y revisión, `osv-scanner` en CI, mínimo de dependencias |
 | Robo de credenciales de publicación | npm trusted publishing con OIDC y procedencia, 2FA obligatorio, sin tokens largos en el repo |
 | Fuente comprometida o datos envenenados | Solo HTTPS, sha256 del original guardado, umbrales de anomalía, revisión humana de datos curados |
-| Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: token de Cloudflare (despliegue y KV, en el Environment `produccion`, solo para `main`), credenciales de la GitHub App del bot y, en v1.1, token de Banxico SIE. Ninguno en el código |
+| Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: tokens de Cloudflare (uno de despliegue y otro solo de KV para `estado-kv`, en el Environment `produccion`, solo para `main`), credenciales de la GitHub App del bot (en el Environment `datos`, solo para `main`, fuera del job que procesa las fuentes) y, en v1.1, token de Banxico SIE. Ninguno en el código |
 | Abuso o saturación de la API | Rutas estáticas sin cómputo; rate limiting del Worker en lo que pasa por él (`/v1`, 600/min por IP y por ubicación; las descargas en `/descargas/*` son assets directos y no cuentan); descargas completas documentadas |
 | Inyección vía parámetros | Expresiones regulares estrictas; nunca se construyen rutas de archivo con entrada sin validar |
 | Prompt injection vía MCP | Herramientas de solo lectura, descripciones fijas, sin texto libre de terceros en las descripciones |
@@ -502,7 +502,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
   El sitio es parte del build: el paso 3 lo genera y el 6 lo prueba en workerd (páginas, `llms.txt` y el 404 de los assets).
 - **Workflows:**
-  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 22.13.0, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador) y `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22.13.0, 22.23.3 y 24.21.0). El check `verify`, el que exige la protección de `main`, pasa solo si los cinco terminan bien;
+  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 22.13.0, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador), `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22.13.0, 22.23.3 y 24.21.0) y `solo-datos` (un PR del bot de datos solo puede tocar `data/`). El check `verify`, el que exige la protección de `main`, pasa solo si los seis terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
