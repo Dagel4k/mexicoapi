@@ -237,17 +237,45 @@ export function crearBancos(
       }
 
       const nombresHoy = new Set([...hoy.values()].map((e) => normalizarNombre(e[1])));
+      // Nombres anteriores de cada código, del periodo más reciente al más viejo, sin repetir
+      // y sin su nombre de hoy ni el nombre que hoy use otro código en el CEP.
+      const anterioresDe = (entrada: EntradaCep, previo: Banco | undefined): string[] => {
+        const propio = normalizarNombre(entrada[1]);
+        const vistos = new Set<string>();
+        const periodos = [...(previo?.historial ?? [])].sort((x, y) =>
+          y.desde.localeCompare(x.desde),
+        );
+        for (const p of periodos) {
+          const n = normalizarNombre(p.nombre_corto);
+          if (n !== propio && !nombresHoy.has(n)) vistos.add(n);
+        }
+        return [...vistos];
+      };
+      // Un nombre anterior que aparece en el historial de dos o más códigos sin pareja en el PDF
+      // por su nombre de hoy es ambiguo: no se usa para ninguno.
+      const codigosPorAnterior = new Map<string, number>();
+      for (const [codigo, entrada] of hoy) {
+        if (filas.has(normalizarNombre(entrada[1]))) continue;
+        for (const n of anterioresDe(entrada, previos.get(codigo))) {
+          codigosPorAnterior.set(n, (codigosPorAnterior.get(n) ?? 0) + 1);
+        }
+      }
       /**
-       * Fila del PDF de un código: primero por su nombre de hoy y, si el CEP lo renombró antes
-       * que el PDF, por su nombre anterior, siempre que no sea hoy el nombre de otro código.
+       * Fila del PDF de un código, en este orden: por su nombre de hoy en el CEP; por el primero de
+       * sus nombres anteriores del historial (del más reciente al más viejo) que no sea hoy el
+       * nombre de otro código; y nunca por un nombre anterior que comparten dos o más códigos sin
+       * pareja por su nombre de hoy.
        */
       const filaDe = (entrada: EntradaCep, previo: Banco | undefined) => {
         const clave = normalizarNombre(entrada[1]);
         const fila = filas.get(clave);
         if (fila !== undefined || previo === undefined) return { clave, fila };
-        const anterior = normalizarNombre(previo.nombre_corto);
-        if (nombresHoy.has(anterior)) return { clave, fila };
-        return { clave: anterior, fila: filas.get(anterior) };
+        for (const n of anterioresDe(entrada, previo)) {
+          if ((codigosPorAnterior.get(n) ?? 0) > 1) continue;
+          const f = filas.get(n);
+          if (f !== undefined) return { clave: n, fila: f };
+        }
+        return { clave, fila };
       };
 
       const usadas = new Set<string>();
