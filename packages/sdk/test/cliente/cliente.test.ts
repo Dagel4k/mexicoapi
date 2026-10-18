@@ -1,4 +1,5 @@
 import { inspect } from "node:util";
+import { problemaDeError } from "@mexicoapi/core/rutas";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import * as cliente from "../../src/cliente/index.js";
 import {
@@ -1187,6 +1188,24 @@ describe("de dónde sale cada respuesta", () => {
     const r = await crearCliente({ offline: true, fetch: sinRed.fetch }).fixUltimo();
     expect(r.origen).toBe("paquete");
     expect(sinRed.llamadas).toHaveLength(0);
+  });
+
+  it("un MexicoApiError de calendario-incompleto no pasa por un error del núcleo", async () => {
+    const { fetch } = fetchFalso(
+      problema("calendario-incompleto", 422, "Calendario incompleto", "No cubre.", {
+        autoridad: "cnbv",
+        fecha: "2027-01-01",
+        cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+      }),
+    );
+    const error = (await rechazo(
+      conFetch(fetch).diasHabiles({ autoridad: "cnbv", desde: "2026-12-30", dias: 3 }),
+    )) as MexicoApiError;
+    expect(error.tipo).toBe("calendario-incompleto");
+    // La cobertura del problema de la API va en problema, no en el error.
+    expect(error.problema.cobertura).toEqual({ desde: "2026-01-01", hasta: "2026-12-31" });
+    expect("cobertura" in error).toBe(false);
+    expect(problemaDeError(error)).toBeNull();
   });
 
   it("valida los valores de la ruta antes de pedirlos a la API", async () => {
