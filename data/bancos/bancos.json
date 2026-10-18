@@ -1,0 +1,3104 @@
+[
+  {
+    "codigo": "001",
+    "codigo_spei": "2001",
+    "nombre_corto": "BANXICO",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banco_central",
+    "participacion": "no_confirmada",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "2001",
+        "nombre_corto": "BANXICO",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "002",
+    "codigo_spei": "40002",
+    "nombre_corto": "BANAMEX",
+    "razon_social": "Banco Nacional de México, S.A., Integrante del Grupo Financiero Banamex",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40002",
+        "nombre_corto": "BANAMEX",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "006",
+    "codigo_spei": "37006",
+    "nombre_corto": "BANCOMEXT",
+    "razon_social": "Banco Nacional de Comercio Exterior, S.N.C.",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37006",
+        "nombre_corto": "BANCOMEXT",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "009",
+    "codigo_spei": "37009",
+    "nombre_corto": "BANOBRAS",
+    "razon_social": "Banco Nacional de Obras y Servicios Públicos, S.N.C.",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37009",
+        "nombre_corto": "BANOBRAS",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "012",
+    "codigo_spei": "40012",
+    "nombre_corto": "BBVA MEXICO",
+    "razon_social": "BBVA México, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA México",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40012",
+        "nombre_corto": "BBVA BANCOMER",
+        "desde": "2010-01-01",
+        "hasta": "2021-12-01"
+      },
+      {
+        "codigo_spei": "40012",
+        "nombre_corto": "BBVA MEXICO",
+        "desde": "2021-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "014",
+    "codigo_spei": "40014",
+    "nombre_corto": "SANTANDER",
+    "razon_social": "Banco Santander (México), S.A., Institución de Banca Múltiple, Grupo Financiero Santander México",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40014",
+        "nombre_corto": "SANTANDER",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "019",
+    "codigo_spei": "37019",
+    "nombre_corto": "BANJERCITO",
+    "razon_social": "Banco Nacional del Ejército, Fuerza Aérea y la Armada, S.N.C.",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37019",
+        "nombre_corto": "BANJERCITO",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "021",
+    "codigo_spei": "40021",
+    "nombre_corto": "HSBC",
+    "razon_social": "HSBC México, S.A., Institución de Banca Múltiple, Grupo Financiero HSBC",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40021",
+        "nombre_corto": "HSBC",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "030",
+    "codigo_spei": "40030",
+    "nombre_corto": "BAJIO",
+    "razon_social": "Banco del Bajío, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40030",
+        "nombre_corto": "BAJIO",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "032",
+    "codigo_spei": "40032",
+    "nombre_corto": "IXE",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2014-09-01",
+    "historial": [
+      {
+        "codigo_spei": "40032",
+        "nombre_corto": "IXE",
+        "desde": "2010-01-01",
+        "hasta": "2014-09-01"
+      }
+    ]
+  },
+  {
+    "codigo": "036",
+    "codigo_spei": "40036",
+    "nombre_corto": "INBURSA",
+    "razon_social": "Banco Inbursa, S.A., Institución de Banca Múltiple, Grupo Financiero Inbursa",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40036",
+        "nombre_corto": "INBURSA",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "037",
+    "codigo_spei": "40037",
+    "nombre_corto": "INTERACCIONES",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-01-01",
+    "historial": [
+      {
+        "codigo_spei": "40037",
+        "nombre_corto": "INTERACCIONES",
+        "desde": "2010-01-01",
+        "hasta": "2019-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "042",
+    "codigo_spei": "40042",
+    "nombre_corto": "MIFEL",
+    "razon_social": "Banca Mifel, S.A., Institución de Banca Múltiple, Grupo Financiero Mifel",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40042",
+        "nombre_corto": "MIFEL",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "044",
+    "codigo_spei": "40044",
+    "nombre_corto": "SCOTIABANK",
+    "razon_social": "Scotiabank Inverlat, S.A., Institución de Banca Múltiple, Grupo Financiero Scotiabank Inverlat",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40044",
+        "nombre_corto": "SCOTIABANK",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "058",
+    "codigo_spei": "40058",
+    "nombre_corto": "BANREGIO",
+    "razon_social": "Banco Regional, S.A., Institución de Banca Múltiple, Banregio Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40058",
+        "nombre_corto": "BANREGIO",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "059",
+    "codigo_spei": "40059",
+    "nombre_corto": "INVEX",
+    "razon_social": "Banco Invex, S.A., Institución de Banca Múltiple, Invex Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40059",
+        "nombre_corto": "INVEX",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "060",
+    "codigo_spei": "40060",
+    "nombre_corto": "BANSI",
+    "razon_social": "Bansi, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40060",
+        "nombre_corto": "BANSI",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "062",
+    "codigo_spei": "40062",
+    "nombre_corto": "AFIRME",
+    "razon_social": "Banca Afirme, S.A., Institución de Banca Múltiple, Afirme Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40062",
+        "nombre_corto": "AFIRME",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "072",
+    "codigo_spei": "40072",
+    "nombre_corto": "BANORTE",
+    "razon_social": "Banco Mercantil del Norte, S.A., Institución de Banca Múltiple, Grupo Financiero Banorte",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40072",
+        "nombre_corto": "BANORTE",
+        "desde": "2010-01-01",
+        "hasta": "2014-09-01"
+      },
+      {
+        "codigo_spei": "40072",
+        "nombre_corto": "BANORTE/IXE",
+        "desde": "2014-09-01",
+        "hasta": "2020-03-01"
+      },
+      {
+        "codigo_spei": "40072",
+        "nombre_corto": "BANORTE",
+        "desde": "2020-03-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "102",
+    "codigo_spei": "40102",
+    "nombre_corto": "ACCENDO BANCO",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2021-10-01",
+    "historial": [
+      {
+        "codigo_spei": "40102",
+        "nombre_corto": "THE ROYAL BANK",
+        "desde": "2010-01-01",
+        "hasta": "2014-06-01"
+      },
+      {
+        "codigo_spei": "40102",
+        "nombre_corto": "INVESTA BANK",
+        "desde": "2014-06-01",
+        "hasta": "2018-06-01"
+      },
+      {
+        "codigo_spei": "40102",
+        "nombre_corto": "ACCENDO BANCO",
+        "desde": "2018-06-01",
+        "hasta": "2021-10-01"
+      }
+    ]
+  },
+  {
+    "codigo": "103",
+    "codigo_spei": "40103",
+    "nombre_corto": "AMERICAN EXPRES",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2021-12-01",
+    "historial": [
+      {
+        "codigo_spei": "40103",
+        "nombre_corto": "AMERICAN EXPRES",
+        "desde": "2010-01-01",
+        "hasta": "2021-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "106",
+    "codigo_spei": "40106",
+    "nombre_corto": "BANK OF AMERICA",
+    "razon_social": "Bank of America México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40106",
+        "nombre_corto": "BAMSA",
+        "desde": "2010-01-01",
+        "hasta": "2018-12-01"
+      },
+      {
+        "codigo_spei": "40106",
+        "nombre_corto": "BANK OF AMERICA",
+        "desde": "2018-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "108",
+    "codigo_spei": "40108",
+    "nombre_corto": "MUFG",
+    "razon_social": "MUFG Bank México, S.A., Institución de Banca Múltiple Filial",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40108",
+        "nombre_corto": "TOKYO",
+        "desde": "2010-01-01",
+        "hasta": "2018-10-01"
+      },
+      {
+        "codigo_spei": "40108",
+        "nombre_corto": "MUFG",
+        "desde": "2018-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "110",
+    "codigo_spei": "40110",
+    "nombre_corto": "JP MORGAN",
+    "razon_social": "Banco J.P. Morgan, S.A., Institución de Banca Múltiple, J.P. Morgan Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40110",
+        "nombre_corto": "JP MORGAN",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "112",
+    "codigo_spei": "40112",
+    "nombre_corto": "BMONEX",
+    "razon_social": "Banco Monex, S.A., Institución de Banca Múltiple, Monex Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40112",
+        "nombre_corto": "BMONEX",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "113",
+    "codigo_spei": "40113",
+    "nombre_corto": "VE POR MAS",
+    "razon_social": "Banco Ve por Más, S.A., Institución de Banca Múltiple, Grupo Financiero Ve por Más",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40113",
+        "nombre_corto": "VE POR MAS",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "116",
+    "codigo_spei": "40116",
+    "nombre_corto": "ING",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2013-05-01",
+    "historial": [
+      {
+        "codigo_spei": "40116",
+        "nombre_corto": "ING",
+        "desde": "2010-01-01",
+        "hasta": "2013-05-01"
+      }
+    ]
+  },
+  {
+    "codigo": "124",
+    "codigo_spei": "40124",
+    "nombre_corto": "CITI MEXICO",
+    "razon_social": "Banco Citi México, S.A., Institución de Banca Múltiple, Grupo Financiero Citi México",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40124",
+        "nombre_corto": "DEUTSCHE",
+        "desde": "2010-01-01",
+        "hasta": "2022-03-01"
+      },
+      {
+        "codigo_spei": "40124",
+        "nombre_corto": "CBM BANCO",
+        "desde": "2024-07-01",
+        "hasta": "2025-02-01"
+      },
+      {
+        "codigo_spei": "40124",
+        "nombre_corto": "CITI MEXICO",
+        "desde": "2025-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "126",
+    "codigo_spei": "40126",
+    "nombre_corto": "CREDIT SUISSE",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2023-07-01",
+    "historial": [
+      {
+        "codigo_spei": "40126",
+        "nombre_corto": "CREDIT SUISSE",
+        "desde": "2010-01-01",
+        "hasta": "2023-07-01"
+      }
+    ]
+  },
+  {
+    "codigo": "127",
+    "codigo_spei": "40127",
+    "nombre_corto": "AZTECA",
+    "razon_social": "Banco Azteca, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40127",
+        "nombre_corto": "AZTECA",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "128",
+    "codigo_spei": "40128",
+    "nombre_corto": "KAPITAL",
+    "razon_social": "KPTL México Bank, S.A., Institución de Banca Múltiple, Kapital México Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40128",
+        "nombre_corto": "AUTOFIN",
+        "desde": "2010-01-01",
+        "hasta": "2025-10-01"
+      },
+      {
+        "codigo_spei": "40128",
+        "nombre_corto": "KAPITAL",
+        "desde": "2025-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "129",
+    "codigo_spei": "40129",
+    "nombre_corto": "BARCLAYS",
+    "razon_social": "Barclays Bank México, S.A., Institución de Banca Multiple, Grupo Financiero Barclays México",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40129",
+        "nombre_corto": "BARCLAYS",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "130",
+    "codigo_spei": "40130",
+    "nombre_corto": "COMPARTAMOS",
+    "razon_social": "Banco Compartamos, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40130",
+        "nombre_corto": "COMPARTAMOS",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "131",
+    "codigo_spei": "40131",
+    "nombre_corto": "BANCO FAMSA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-08-01",
+    "historial": [
+      {
+        "codigo_spei": "40131",
+        "nombre_corto": "FAMSA",
+        "desde": "2010-01-01",
+        "hasta": "2010-11-01"
+      },
+      {
+        "codigo_spei": "40131",
+        "nombre_corto": "BANCO FAMSA",
+        "desde": "2010-11-01",
+        "hasta": "2020-08-01"
+      }
+    ]
+  },
+  {
+    "codigo": "132",
+    "codigo_spei": "40132",
+    "nombre_corto": "MULTIVA BANCO",
+    "razon_social": "Banco Multiva, S.A., Institución de Banca Múltiple, Grupo Financiero Multiva",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40132",
+        "nombre_corto": "BMULTIVA",
+        "desde": "2010-01-01",
+        "hasta": "2016-10-01"
+      },
+      {
+        "codigo_spei": "40132",
+        "nombre_corto": "MULTIVA BANCO",
+        "desde": "2016-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "133",
+    "codigo_spei": "40133",
+    "nombre_corto": "ACTINVER",
+    "razon_social": "Banco Actinver, S.A., Institución de Banca Múltiple, Grupo Financiero Actinver",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40133",
+        "nombre_corto": "PRUDENTIAL",
+        "desde": "2010-01-01",
+        "hasta": "2010-07-01"
+      },
+      {
+        "codigo_spei": "40133",
+        "nombre_corto": "ACTINVER",
+        "desde": "2010-07-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "134",
+    "codigo_spei": "40134",
+    "nombre_corto": "WAL-MART",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2016-04-01",
+    "historial": [
+      {
+        "codigo_spei": "40134",
+        "nombre_corto": "WAL-MART",
+        "desde": "2010-01-01",
+        "hasta": "2016-04-01"
+      }
+    ]
+  },
+  {
+    "codigo": "135",
+    "codigo_spei": "37135",
+    "nombre_corto": "NAFIN",
+    "razon_social": "Nacional Financiera, S.N.C.",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37135",
+        "nombre_corto": "NAFIN",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "136",
+    "codigo_spei": "40136",
+    "nombre_corto": "INTERCAM BANCO",
+    "razon_social": "Intercam Banco, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40136",
+        "nombre_corto": "REGIONAL",
+        "desde": "2010-01-01",
+        "hasta": "2011-06-01"
+      },
+      {
+        "codigo_spei": "40136",
+        "nombre_corto": "INTERBANCO",
+        "desde": "2011-06-01",
+        "hasta": "2015-10-01"
+      },
+      {
+        "codigo_spei": "40136",
+        "nombre_corto": "INTERCAM BANCO",
+        "desde": "2015-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "137",
+    "codigo_spei": "40137",
+    "nombre_corto": "BANCOPPEL",
+    "razon_social": "BanCoppel, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40137",
+        "nombre_corto": "BANCOPPEL",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "138",
+    "codigo_spei": "40138",
+    "nombre_corto": "UALA",
+    "razon_social": "Ualá, S.A. Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40138",
+        "nombre_corto": "AMIGO",
+        "desde": "2010-01-01",
+        "hasta": "2011-11-01"
+      },
+      {
+        "codigo_spei": "40138",
+        "nombre_corto": "ABC CAPITAL",
+        "desde": "2011-11-01",
+        "hasta": "2025-05-01"
+      },
+      {
+        "codigo_spei": "40138",
+        "nombre_corto": "UALA",
+        "desde": "2025-05-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "139",
+    "codigo_spei": "40139",
+    "nombre_corto": "UBS BANK",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-11-01",
+    "historial": [
+      {
+        "codigo_spei": "40139",
+        "nombre_corto": "UBS BANK",
+        "desde": "2010-01-01",
+        "hasta": "2017-11-01"
+      }
+    ]
+  },
+  {
+    "codigo": "140",
+    "codigo_spei": "40140",
+    "nombre_corto": "CONSUBANCO",
+    "razon_social": "Consubanco, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40140",
+        "nombre_corto": "FACIL",
+        "desde": "2010-01-01",
+        "hasta": "2012-12-01"
+      },
+      {
+        "codigo_spei": "40140",
+        "nombre_corto": "CONSUBANCO",
+        "desde": "2012-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "141",
+    "codigo_spei": "40141",
+    "nombre_corto": "VOLKSWAGEN",
+    "razon_social": "Volkswagen Bank, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40141",
+        "nombre_corto": "VOLKSWAGEN",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "143",
+    "codigo_spei": "40143",
+    "nombre_corto": "CIBANCO",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2025-11-01",
+    "historial": [
+      {
+        "codigo_spei": "40143",
+        "nombre_corto": "CIBANCO",
+        "desde": "2010-01-01",
+        "hasta": "2025-11-01"
+      }
+    ]
+  },
+  {
+    "codigo": "145",
+    "codigo_spei": "40145",
+    "nombre_corto": "BBASE",
+    "razon_social": "Banco Base, S.A., Institución de Banca Múltiple, Grupo Financiero Base",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40145",
+        "nombre_corto": "BBASE",
+        "desde": "2011-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "146",
+    "codigo_spei": "40146",
+    "nombre_corto": "BICENTENARIO",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2014-08-01",
+    "historial": [
+      {
+        "codigo_spei": "40146",
+        "nombre_corto": "BICENTENARIO",
+        "desde": "2013-05-01",
+        "hasta": "2014-08-01"
+      }
+    ]
+  },
+  {
+    "codigo": "147",
+    "codigo_spei": "40147",
+    "nombre_corto": "BANKAOOL",
+    "razon_social": "Bankaool, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40147",
+        "nombre_corto": "AGROFINANZAS",
+        "desde": "2013-06-01",
+        "hasta": "2014-09-01"
+      },
+      {
+        "codigo_spei": "40147",
+        "nombre_corto": "BANKAOOL",
+        "desde": "2014-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "148",
+    "codigo_spei": "40148",
+    "nombre_corto": "PAGATODO",
+    "razon_social": "Banco PagaTodo, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40148",
+        "nombre_corto": "PAGATODO",
+        "desde": "2014-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "149",
+    "codigo_spei": "40149",
+    "nombre_corto": "FORJADORES",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "banca_multiple",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-09-01",
+    "historial": [
+      {
+        "codigo_spei": "40149",
+        "nombre_corto": "FORJADORES",
+        "desde": "2014-07-01",
+        "hasta": "2017-09-01"
+      }
+    ]
+  },
+  {
+    "codigo": "150",
+    "codigo_spei": "40150",
+    "nombre_corto": "INMOBILIARIO",
+    "razon_social": "Banco Inmobiliario Mexicano, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40150",
+        "nombre_corto": "INMOBILIARIO",
+        "desde": "2013-11-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "151",
+    "codigo_spei": "40151",
+    "nombre_corto": "DONDE",
+    "razon_social": "Fundación Dondé Banco, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40151",
+        "nombre_corto": "DONDE",
+        "desde": "2013-11-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "152",
+    "codigo_spei": "40152",
+    "nombre_corto": "BANCREA",
+    "razon_social": "Banco Bancrea, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40152",
+        "nombre_corto": "BANCREA",
+        "desde": "2014-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "154",
+    "codigo_spei": "40154",
+    "nombre_corto": "BANCO COVALTO",
+    "razon_social": "Banco Covalto, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40154",
+        "nombre_corto": "BANCO FINTERRA",
+        "desde": "2016-07-01",
+        "hasta": "2022-08-01"
+      },
+      {
+        "codigo_spei": "40154",
+        "nombre_corto": "BANCO COVALTO",
+        "desde": "2022-08-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "155",
+    "codigo_spei": "40155",
+    "nombre_corto": "ICBC",
+    "razon_social": "Industrial and Commercial Bank of China México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40155",
+        "nombre_corto": "ICBC",
+        "desde": "2016-08-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "156",
+    "codigo_spei": "40156",
+    "nombre_corto": "SABADELL",
+    "razon_social": "Banco Sabadell, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40156",
+        "nombre_corto": "SABADELL",
+        "desde": "2016-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "157",
+    "codigo_spei": "40157",
+    "nombre_corto": "SHINHAN",
+    "razon_social": "Banco Shinhan de México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40157",
+        "nombre_corto": "SHINHAN",
+        "desde": "2020-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "158",
+    "codigo_spei": "40158",
+    "nombre_corto": "MIZUHO BANK",
+    "razon_social": "Mizuho Bank México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40158",
+        "nombre_corto": "MIZUHO BANK",
+        "desde": "2017-04-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "159",
+    "codigo_spei": "40159",
+    "nombre_corto": "BANK OF CHINA",
+    "razon_social": "Bank of China México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40159",
+        "nombre_corto": "BANK OF CHINA",
+        "desde": "2022-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "160",
+    "codigo_spei": "40160",
+    "nombre_corto": "BANCO S3",
+    "razon_social": "Banco S3 Caceis México, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40160",
+        "nombre_corto": "BANCO S3",
+        "desde": "2018-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "166",
+    "codigo_spei": "37166",
+    "nombre_corto": "BaBien",
+    "razon_social": "Banco del Bienestar, Sociedad Nacional de Crédito, Institución de Banca de Desarrollo",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37166",
+        "nombre_corto": "BANSEFI",
+        "desde": "2010-01-01",
+        "hasta": "2021-12-01"
+      },
+      {
+        "codigo_spei": "37166",
+        "nombre_corto": "BaBien",
+        "desde": "2021-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "167",
+    "codigo_spei": "40167",
+    "nombre_corto": "HEY BANCO",
+    "razon_social": "Hey Banco, S.A. Institución de Banca Múltiple, Banregio Grupo Financiero",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40167",
+        "nombre_corto": "HEY BANCO",
+        "desde": "2025-06-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "168",
+    "codigo_spei": "37168",
+    "nombre_corto": "HIPOTECARIA FED",
+    "razon_social": "Sociedad Hipotecaria Federal, Sociedad Nacional de Crédito, Institución de Banca de Desarrollo",
+    "sector": "BANCA DE DESARROLLO",
+    "tipo": "banca_desarrollo",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "37168",
+        "nombre_corto": "HIPOTECARIA FED",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "170",
+    "codigo_spei": "40170",
+    "nombre_corto": "REVOLUT BANK",
+    "razon_social": "Revolut Bank, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "40170",
+        "nombre_corto": "REVOLUT BANK",
+        "desde": "2026-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "600",
+    "codigo_spei": "90600",
+    "nombre_corto": "MONEXCB",
+    "razon_social": "Monex Casa de Bolsa, S.A. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90600",
+        "nombre_corto": "MONEXCB",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "601",
+    "codigo_spei": "90601",
+    "nombre_corto": "GBM",
+    "razon_social": "Grupo Bursátil Mexicano, S.A. de C.V., Casa de Bolsa",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90601",
+        "nombre_corto": "GBM",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "602",
+    "codigo_spei": "90602",
+    "nombre_corto": "MASARI",
+    "razon_social": "Masari Casa de Bolsa, S.A.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90602",
+        "nombre_corto": "MASARI",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "605",
+    "codigo_spei": "90605",
+    "nombre_corto": "VALUE",
+    "razon_social": "Value, S.A. de C.V., Casa de Bolsa, Value Grupo Financiero",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90605",
+        "nombre_corto": "VALUE",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "606",
+    "codigo_spei": "90606",
+    "nombre_corto": "ESTRUCTURADORES",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2022-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90606",
+        "nombre_corto": "CB BASE",
+        "desde": "2010-01-01",
+        "hasta": "2012-06-01"
+      },
+      {
+        "codigo_spei": "90606",
+        "nombre_corto": "ESTRUCTURADORES",
+        "desde": "2012-06-01",
+        "hasta": "2022-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "607",
+    "codigo_spei": "90607",
+    "nombre_corto": "TIBER",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2015-05-01",
+    "historial": [
+      {
+        "codigo_spei": "90607",
+        "nombre_corto": "TIBER",
+        "desde": "2010-01-01",
+        "hasta": "2015-05-01"
+      }
+    ]
+  },
+  {
+    "codigo": "608",
+    "codigo_spei": "90608",
+    "nombre_corto": "VECTOR",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2026-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90608",
+        "nombre_corto": "VECTOR",
+        "desde": "2010-01-01",
+        "hasta": "2026-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "610",
+    "codigo_spei": "90610",
+    "nombre_corto": "B&B",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-02-01",
+    "historial": [
+      {
+        "codigo_spei": "90610",
+        "nombre_corto": "B&B",
+        "desde": "2010-01-01",
+        "hasta": "2018-02-01"
+      }
+    ]
+  },
+  {
+    "codigo": "613",
+    "codigo_spei": "90613",
+    "nombre_corto": "MULTIVA CBOLSA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2023-07-01",
+    "historial": [
+      {
+        "codigo_spei": "90613",
+        "nombre_corto": "MULTIVA",
+        "desde": "2016-08-01",
+        "hasta": "2016-10-01"
+      },
+      {
+        "codigo_spei": "90613",
+        "nombre_corto": "MULTIVA CBOLSA",
+        "desde": "2016-10-01",
+        "hasta": "2023-07-01"
+      }
+    ]
+  },
+  {
+    "codigo": "614",
+    "codigo_spei": "90614",
+    "nombre_corto": "ACCIVAL",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-06-01",
+    "historial": [
+      {
+        "codigo_spei": "90614",
+        "nombre_corto": "ACCIVAL",
+        "desde": "2010-01-01",
+        "hasta": "2019-06-01"
+      }
+    ]
+  },
+  {
+    "codigo": "615",
+    "codigo_spei": "90615",
+    "nombre_corto": "MERRILL LYNCH",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90615",
+        "nombre_corto": "MERRILL LYNCH",
+        "desde": "2010-01-01",
+        "hasta": "2017-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "616",
+    "codigo_spei": "90616",
+    "nombre_corto": "FINAMEX",
+    "razon_social": "Casa de Bolsa Finamex, S.A.B. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90616",
+        "nombre_corto": "FINAMEX",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "617",
+    "codigo_spei": "90617",
+    "nombre_corto": "VALMEX",
+    "razon_social": "Valores Mexicanos Casa de Bolsa, S.A. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90617",
+        "nombre_corto": "VALMEX",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "618",
+    "codigo_spei": "90618",
+    "nombre_corto": "UNICA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2016-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90618",
+        "nombre_corto": "UNICA",
+        "desde": "2010-01-01",
+        "hasta": "2016-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "619",
+    "codigo_spei": "90619",
+    "nombre_corto": "MAPFRE",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-02-01",
+    "historial": [
+      {
+        "codigo_spei": "90619",
+        "nombre_corto": "MAPFRE",
+        "desde": "2010-01-01",
+        "hasta": "2018-02-01"
+      }
+    ]
+  },
+  {
+    "codigo": "620",
+    "codigo_spei": "90620",
+    "nombre_corto": "PROFUTURO",
+    "razon_social": "Profuturo Afore, S.A. de C.V.",
+    "sector": "ADMINISTRADORA DE FONDOS PARA EL RETIRO (AFORE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90620",
+        "nombre_corto": "PROFUTURO",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "621",
+    "codigo_spei": "90621",
+    "nombre_corto": "CB ACTINVER",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90621",
+        "nombre_corto": "CB ACTINVER",
+        "desde": "2010-01-01",
+        "hasta": "2019-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "622",
+    "codigo_spei": "90622",
+    "nombre_corto": "OACTIN",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-11-01",
+    "historial": [
+      {
+        "codigo_spei": "90622",
+        "nombre_corto": "ACTINVE SI",
+        "desde": "2010-01-01",
+        "hasta": "2011-02-01"
+      },
+      {
+        "codigo_spei": "90622",
+        "nombre_corto": "ACTINVER-LLOYD",
+        "desde": "2011-02-01",
+        "hasta": "2012-10-01"
+      },
+      {
+        "codigo_spei": "90622",
+        "nombre_corto": "OACTIN",
+        "desde": "2012-10-01",
+        "hasta": "2017-11-01"
+      }
+    ]
+  },
+  {
+    "codigo": "623",
+    "codigo_spei": "90623",
+    "nombre_corto": "SKANDIA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-03-01",
+    "historial": [
+      {
+        "codigo_spei": "90623",
+        "nombre_corto": "SKANDIA",
+        "desde": "2010-01-01",
+        "hasta": "2020-03-01"
+      }
+    ]
+  },
+  {
+    "codigo": "626",
+    "codigo_spei": "90626",
+    "nombre_corto": "CBDEUTSCHE",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90626",
+        "nombre_corto": "CBDEUTSCHE",
+        "desde": "2010-01-01",
+        "hasta": "2018-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "627",
+    "codigo_spei": "90627",
+    "nombre_corto": "ZURICH",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90627",
+        "nombre_corto": "ZURICH",
+        "desde": "2010-01-01",
+        "hasta": "2018-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "628",
+    "codigo_spei": "90628",
+    "nombre_corto": "ZURICHVI",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90628",
+        "nombre_corto": "ZURICHVI",
+        "desde": "2010-01-01",
+        "hasta": "2018-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "629",
+    "codigo_spei": "90629",
+    "nombre_corto": "SU CASITA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2013-05-01",
+    "historial": [
+      {
+        "codigo_spei": "90629",
+        "nombre_corto": "SU CASITA",
+        "desde": "2010-01-01",
+        "hasta": "2013-05-01"
+      }
+    ]
+  },
+  {
+    "codigo": "630",
+    "codigo_spei": "90630",
+    "nombre_corto": "CB INTERCAM",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2026-03-01",
+    "historial": [
+      {
+        "codigo_spei": "90630",
+        "nombre_corto": "CB INTERCAM",
+        "desde": "2010-01-01",
+        "hasta": "2026-03-01"
+      }
+    ]
+  },
+  {
+    "codigo": "631",
+    "codigo_spei": "90631",
+    "nombre_corto": "TRF",
+    "razon_social": "TRF Casa de Bolsa, S.A. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90631",
+        "nombre_corto": "VANGUARDIA",
+        "desde": "2010-01-01",
+        "hasta": "2012-03-01"
+      },
+      {
+        "codigo_spei": "90631",
+        "nombre_corto": "CI BOLSA",
+        "desde": "2012-03-01",
+        "hasta": "2026-08-01"
+      },
+      {
+        "codigo_spei": "90631",
+        "nombre_corto": "TRF",
+        "desde": "2026-08-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "632",
+    "codigo_spei": "90632",
+    "nombre_corto": "BULLTICK CB",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2013-05-01",
+    "historial": [
+      {
+        "codigo_spei": "90632",
+        "nombre_corto": "BULLTICK CB",
+        "desde": "2010-01-01",
+        "hasta": "2013-05-01"
+      }
+    ]
+  },
+  {
+    "codigo": "633",
+    "codigo_spei": "90633",
+    "nombre_corto": "STERLING",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2014-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90633",
+        "nombre_corto": "STERLING",
+        "desde": "2010-01-01",
+        "hasta": "2014-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "634",
+    "codigo_spei": "90634",
+    "nombre_corto": "FINCOMUN",
+    "razon_social": "Fincomún Servicios Financieros, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90634",
+        "nombre_corto": "FINCOMUN",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "636",
+    "codigo_spei": "90636",
+    "nombre_corto": "HDI SEGUROS",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2022-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90636",
+        "nombre_corto": "HDI SEGUROS",
+        "desde": "2010-06-01",
+        "hasta": "2022-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "637",
+    "codigo_spei": "90637",
+    "nombre_corto": "ORDER",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-03-01",
+    "historial": [
+      {
+        "codigo_spei": "90637",
+        "nombre_corto": "ORDER",
+        "desde": "2010-01-01",
+        "hasta": "2020-03-01"
+      }
+    ]
+  },
+  {
+    "codigo": "638",
+    "codigo_spei": "40638",
+    "nombre_corto": "NUBANK",
+    "razon_social": "Nubank, S.A., Institución de Banca Múltiple",
+    "sector": "BANCA MÚLTIPLE",
+    "tipo": "banca_multiple",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90638",
+        "nombre_corto": "AKALA",
+        "desde": "2010-01-01",
+        "hasta": "2022-11-01"
+      },
+      {
+        "codigo_spei": "90638",
+        "nombre_corto": "NU MEXICO",
+        "desde": "2022-11-01",
+        "hasta": "2026-09-01"
+      },
+      {
+        "codigo_spei": "40638",
+        "nombre_corto": "NUBANK",
+        "desde": "2026-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "640",
+    "codigo_spei": "90640",
+    "nombre_corto": "CB JPMORGAN",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-11-01",
+    "historial": [
+      {
+        "codigo_spei": "90640",
+        "nombre_corto": "CB JPMORGAN",
+        "desde": "2010-01-01",
+        "hasta": "2018-11-01"
+      }
+    ]
+  },
+  {
+    "codigo": "642",
+    "codigo_spei": "90642",
+    "nombre_corto": "REFORMA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90642",
+        "nombre_corto": "REFORMA",
+        "desde": "2010-08-01",
+        "hasta": "2020-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "644",
+    "codigo_spei": "90644",
+    "nombre_corto": "C.B. BANORTE",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2012-02-01",
+    "historial": [
+      {
+        "codigo_spei": "90644",
+        "nombre_corto": "C.B. BANORTE",
+        "desde": "2010-01-01",
+        "hasta": "2012-02-01"
+      }
+    ]
+  },
+  {
+    "codigo": "646",
+    "codigo_spei": "90646",
+    "nombre_corto": "STP",
+    "razon_social": "Sistema de Transferencias y Pagos STP, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90646",
+        "nombre_corto": "STP",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "647",
+    "codigo_spei": "90647",
+    "nombre_corto": "TELECOMM",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2016-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90647",
+        "nombre_corto": "TELECOMM",
+        "desde": "2010-05-01",
+        "hasta": "2016-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "648",
+    "codigo_spei": "90648",
+    "nombre_corto": "TACTIV CB",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2023-10-01",
+    "historial": [
+      {
+        "codigo_spei": "90648",
+        "nombre_corto": "PROTEGO",
+        "desde": "2011-06-01",
+        "hasta": "2012-05-01"
+      },
+      {
+        "codigo_spei": "90648",
+        "nombre_corto": "EVERCORE",
+        "desde": "2012-05-01",
+        "hasta": "2021-08-01"
+      },
+      {
+        "codigo_spei": "90648",
+        "nombre_corto": "CB Evercore",
+        "desde": "2021-08-01",
+        "hasta": "2022-04-01"
+      },
+      {
+        "codigo_spei": "90648",
+        "nombre_corto": "TACTIV CB",
+        "desde": "2022-04-01",
+        "hasta": "2023-10-01"
+      }
+    ]
+  },
+  {
+    "codigo": "649",
+    "codigo_spei": "90649",
+    "nombre_corto": "OSKNDIA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-03-01",
+    "historial": [
+      {
+        "codigo_spei": "90649",
+        "nombre_corto": "OSKNDIA",
+        "desde": "2011-02-01",
+        "hasta": "2020-03-01"
+      }
+    ]
+  },
+  {
+    "codigo": "651",
+    "codigo_spei": "90651",
+    "nombre_corto": "SEGMTY",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90651",
+        "nombre_corto": "SEGMTY",
+        "desde": "2011-09-01",
+        "hasta": "2018-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "652",
+    "codigo_spei": "90652",
+    "nombre_corto": "CREDICAPITAL",
+    "razon_social": "Solución Asea, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90652",
+        "nombre_corto": "ASEA",
+        "desde": "2011-09-01",
+        "hasta": "2019-09-01"
+      },
+      {
+        "codigo_spei": "90652",
+        "nombre_corto": "CREDICAPITAL",
+        "desde": "2019-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "653",
+    "codigo_spei": "90653",
+    "nombre_corto": "KUSPIT",
+    "razon_social": "Kuspit Casa de Bolsa, S.A. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90653",
+        "nombre_corto": "KUSPIT",
+        "desde": "2012-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "655",
+    "codigo_spei": "90655",
+    "nombre_corto": "SOFIEXPRESS",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2020-03-01",
+    "historial": [
+      {
+        "codigo_spei": "90655",
+        "nombre_corto": "SOFIEXPRESS",
+        "desde": "2012-04-01",
+        "hasta": "2020-03-01"
+      }
+    ]
+  },
+  {
+    "codigo": "656",
+    "codigo_spei": "90656",
+    "nombre_corto": "UNAGRA",
+    "razon_social": "Unagra, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90656",
+        "nombre_corto": "UNAGRA",
+        "desde": "2012-05-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "659",
+    "codigo_spei": "90659",
+    "nombre_corto": "ASP INTEGRA OPC",
+    "razon_social": "Opciones Empresariales del Noreste, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90659",
+        "nombre_corto": "ASP INTEGRA OPC",
+        "desde": "2012-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "660",
+    "codigo_spei": "90660",
+    "nombre_corto": "Altor",
+    "razon_social": "Altor Casa de Bolsa, S.A. de C.V.",
+    "sector": "CASAS DE BOLSA",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90660",
+        "nombre_corto": "Altor",
+        "desde": "2026-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "661",
+    "codigo_spei": "90661",
+    "nombre_corto": "KLAR",
+    "razon_social": "KLAR TECHNOLOGIES, S.A. DE C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90661",
+        "nombre_corto": "ALTERNATIVOS",
+        "desde": "2023-02-01",
+        "hasta": "2024-06-01"
+      },
+      {
+        "codigo_spei": "90661",
+        "nombre_corto": "KLAR",
+        "desde": "2024-06-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "670",
+    "codigo_spei": "90670",
+    "nombre_corto": "LIBERTAD",
+    "razon_social": "Libertad Servicios Financieros, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90670",
+        "nombre_corto": "LIBERTAD",
+        "desde": "2012-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "671",
+    "codigo_spei": "90671",
+    "nombre_corto": "HUASTECAS",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90671",
+        "nombre_corto": "HUASTECAS",
+        "desde": "2014-06-01",
+        "hasta": "2018-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "673",
+    "codigo_spei": "90673",
+    "nombre_corto": "GNP",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90673",
+        "nombre_corto": "GNP",
+        "desde": "2013-09-01",
+        "hasta": "2018-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "674",
+    "codigo_spei": "90674",
+    "nombre_corto": "AXA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-05-01",
+    "historial": [
+      {
+        "codigo_spei": "90674",
+        "nombre_corto": "AXA",
+        "desde": "2014-03-01",
+        "hasta": "2019-05-01"
+      }
+    ]
+  },
+  {
+    "codigo": "675",
+    "codigo_spei": "90675",
+    "nombre_corto": "FICREA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2014-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90675",
+        "nombre_corto": "FICREA",
+        "desde": "2014-02-01",
+        "hasta": "2014-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "677",
+    "codigo_spei": "90677",
+    "nombre_corto": "CAJA POP MEXICA",
+    "razon_social": "Caja Popular Mexicana, S.C. de A.P. de R.L. de C.V.",
+    "sector": "SOCIEDADES COOPERATIVAS DE AHORRO Y PRÉSTAMO (SOCAP)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90677",
+        "nombre_corto": "CAJA POP MEXICA",
+        "desde": "2014-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "678",
+    "codigo_spei": "90678",
+    "nombre_corto": "SURA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-01-01",
+    "historial": [
+      {
+        "codigo_spei": "90678",
+        "nombre_corto": "SURA",
+        "desde": "2014-02-01",
+        "hasta": "2015-04-01"
+      },
+      {
+        "codigo_spei": "90678",
+        "nombre_corto": "AFORE SURA",
+        "desde": "2015-04-01",
+        "hasta": "2016-11-01"
+      },
+      {
+        "codigo_spei": "90678",
+        "nombre_corto": "SURA",
+        "desde": "2016-11-01",
+        "hasta": "2019-01-01"
+      }
+    ]
+  },
+  {
+    "codigo": "679",
+    "codigo_spei": "90679",
+    "nombre_corto": "FND",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2019-06-01",
+    "historial": [
+      {
+        "codigo_spei": "90679",
+        "nombre_corto": "FND",
+        "desde": "2015-01-01",
+        "hasta": "2019-06-01"
+      }
+    ]
+  },
+  {
+    "codigo": "680",
+    "codigo_spei": "90680",
+    "nombre_corto": "CRISTOBAL COLON",
+    "razon_social": "Caja Popular Cristóbal Colón, S.C. de R.L. de C.V.",
+    "sector": "SOCIEDADES COOPERATIVAS DE AHORRO Y PRÉSTAMO (SOCAP)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90680",
+        "nombre_corto": "CRISTOBAL COLON",
+        "desde": "2014-11-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "681",
+    "codigo_spei": "90681",
+    "nombre_corto": "PRINCIPAL",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-02-01",
+    "historial": [
+      {
+        "codigo_spei": "90681",
+        "nombre_corto": "PRINCIPAL",
+        "desde": "2014-07-01",
+        "hasta": "2018-02-01"
+      }
+    ]
+  },
+  {
+    "codigo": "682",
+    "codigo_spei": "90682",
+    "nombre_corto": "PERSEVERANCIA",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-06-01",
+    "historial": [
+      {
+        "codigo_spei": "90682",
+        "nombre_corto": "PERSEVERANCIA",
+        "desde": "2014-12-01",
+        "hasta": "2017-06-01"
+      }
+    ]
+  },
+  {
+    "codigo": "683",
+    "codigo_spei": "90683",
+    "nombre_corto": "CAJA TELEFONIST",
+    "razon_social": "Caja de Ahorro de los Telefonistas, S.C. de A.P. de R.L. de C.V.",
+    "sector": "SOCIEDADES COOPERATIVAS DE AHORRO Y PRÉSTAMO (SOCAP)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90683",
+        "nombre_corto": "CAJA TELMEX",
+        "desde": "2014-11-01",
+        "hasta": "2016-01-01"
+      },
+      {
+        "codigo_spei": "90683",
+        "nombre_corto": "CAJA TELEFONIST",
+        "desde": "2016-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "684",
+    "codigo_spei": "90684",
+    "nombre_corto": "TRANSFER",
+    "razon_social": "Operadora de Pagos Móviles México, S.A. de C.V.",
+    "sector": "CÁMARA DE COMPENSACIÓN",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90684",
+        "nombre_corto": "TRANSFER",
+        "desde": "2018-01-01",
+        "hasta": "2021-03-01"
+      },
+      {
+        "codigo_spei": "90684",
+        "nombre_corto": "OPM",
+        "desde": "2021-03-01",
+        "hasta": "2023-11-01"
+      },
+      {
+        "codigo_spei": "90684",
+        "nombre_corto": "TRANSFER",
+        "desde": "2023-11-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "685",
+    "codigo_spei": "90685",
+    "nombre_corto": "FONDO (FIRA)",
+    "razon_social": "Fondo de Garantía y Fomento para la Agricultura, Ganaderia y Avicultura",
+    "sector": "FONDO Y FIDEICOMISO",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90685",
+        "nombre_corto": "FONDO (FIRA)",
+        "desde": "2014-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "686",
+    "codigo_spei": "90686",
+    "nombre_corto": "INVERCAP",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2024-04-01",
+    "historial": [
+      {
+        "codigo_spei": "90686",
+        "nombre_corto": "INVERCAP",
+        "desde": "2014-11-01",
+        "hasta": "2024-04-01"
+      }
+    ]
+  },
+  {
+    "codigo": "687",
+    "codigo_spei": "90687",
+    "nombre_corto": "INFONAVIT",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2018-10-01",
+    "historial": [
+      {
+        "codigo_spei": "90687",
+        "nombre_corto": "INFONAVIT",
+        "desde": "2014-12-01",
+        "hasta": "2018-10-01"
+      }
+    ]
+  },
+  {
+    "codigo": "688",
+    "codigo_spei": "90688",
+    "nombre_corto": "CREDICLUB",
+    "razon_social": "Crediclub, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90688",
+        "nombre_corto": "CREDICLUB",
+        "desde": "2023-02-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "689",
+    "codigo_spei": "90689",
+    "nombre_corto": "FOMPED",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2025-09-01",
+    "historial": [
+      {
+        "codigo_spei": "90689",
+        "nombre_corto": "FOMPED",
+        "desde": "2015-01-01",
+        "hasta": "2025-09-01"
+      }
+    ]
+  },
+  {
+    "codigo": "691",
+    "codigo_spei": "90691",
+    "nombre_corto": "BTG PACTUAL",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": false,
+    "baja_detectada": "2017-12-01",
+    "historial": [
+      {
+        "codigo_spei": "90691",
+        "nombre_corto": "BTG PACTUAL",
+        "desde": "2016-02-01",
+        "hasta": "2017-12-01"
+      }
+    ]
+  },
+  {
+    "codigo": "699",
+    "codigo_spei": "90699",
+    "nombre_corto": "FONDEADORA",
+    "razon_social": "Fondea Technologies, S.A. de C.V., Sociedad Financiera Popular",
+    "sector": "SOCIEDADES FINANCIERAS POPULARES (SOFIPO)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90699",
+        "nombre_corto": "FONDEADORA",
+        "desde": "2024-06-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "703",
+    "codigo_spei": "90703",
+    "nombre_corto": "TESORED",
+    "razon_social": "Cobre Technology, S.A. de C.V.",
+    "sector": "TRANSMISORES DE DINERO",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90703",
+        "nombre_corto": "TESORED",
+        "desde": "2022-12-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "706",
+    "codigo_spei": "90706",
+    "nombre_corto": "ARCUS FI",
+    "razon_social": "ARCUS F.I., S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90706",
+        "nombre_corto": "ARCUS",
+        "desde": "2021-12-01",
+        "hasta": "2025-03-01"
+      },
+      {
+        "codigo_spei": "90706",
+        "nombre_corto": "ARCUS FI",
+        "desde": "2025-03-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "710",
+    "codigo_spei": "90710",
+    "nombre_corto": "NVIO",
+    "razon_social": "NVIO Pagos México, S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90710",
+        "nombre_corto": "NVIO",
+        "desde": "2022-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "714",
+    "codigo_spei": "90714",
+    "nombre_corto": "PPBALANCEMX",
+    "razon_social": "PayPal Payments México, S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90714",
+        "nombre_corto": "PPBALANCEMX",
+        "desde": "2026-04-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "715",
+    "codigo_spei": "90715",
+    "nombre_corto": "CASHI CUENTA",
+    "razon_social": "Cartera Digital Wal-Mart, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90715",
+        "nombre_corto": "Cartera Digital",
+        "desde": "2025-03-01",
+        "hasta": "2025-08-01"
+      },
+      {
+        "codigo_spei": "90715",
+        "nombre_corto": "CASHI CUENTA",
+        "desde": "2025-08-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "720",
+    "codigo_spei": "90720",
+    "nombre_corto": "MexPago",
+    "razon_social": "MexPago Transacciones, S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90720",
+        "nombre_corto": "MexPago",
+        "desde": "2025-08-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "721",
+    "codigo_spei": "90721",
+    "nombre_corto": "albo",
+    "razon_social": "Inteligencia en Finanzas, S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90721",
+        "nombre_corto": "albo",
+        "desde": "2025-06-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "722",
+    "codigo_spei": "90722",
+    "nombre_corto": "Mercado Pago W",
+    "razon_social": "MercadoLibre, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90722",
+        "nombre_corto": "Mercado Pago W",
+        "desde": "2024-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "723",
+    "codigo_spei": "90723",
+    "nombre_corto": "Cuenca",
+    "razon_social": "Cuenca Tecnología Financiera, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90723",
+        "nombre_corto": "Cuenca",
+        "desde": "2024-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "725",
+    "codigo_spei": "90725",
+    "nombre_corto": "COOPDESARROLLO",
+    "razon_social": "Coopdesarrollo, S.C. de A.P. de R.L. de C.V.",
+    "sector": "SOCIEDADES COOPERATIVAS DE AHORRO Y PRÉSTAMO (SOCAP)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90725",
+        "nombre_corto": "COOPDESARROLLO",
+        "desde": "2025-11-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "727",
+    "codigo_spei": "90727",
+    "nombre_corto": "TRANSFER DIRECT",
+    "razon_social": "Transfer Directo México, S.A. de C.V.",
+    "sector": "TRANSMISORES DE DINERO",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90727",
+        "nombre_corto": "TRANSFER DIRECT",
+        "desde": "2026-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "728",
+    "codigo_spei": "90728",
+    "nombre_corto": "SPIN BY OXXO",
+    "razon_social": "Compropago, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90728",
+        "nombre_corto": "SPIN BY OXXO",
+        "desde": "2024-10-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "729",
+    "codigo_spei": "90729",
+    "nombre_corto": "Dep y Pag Dig",
+    "razon_social": "Depósitos y Pagos Digitales S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90729",
+        "nombre_corto": "Dep y Pag Dig",
+        "desde": "2025-09-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "730",
+    "codigo_spei": "90730",
+    "nombre_corto": "Clip",
+    "razon_social": "Clip AI, S.A. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90730",
+        "nombre_corto": "Swap",
+        "desde": "2026-01-01",
+        "hasta": "2026-07-01"
+      },
+      {
+        "codigo_spei": "90730",
+        "nombre_corto": "Clip",
+        "desde": "2026-07-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "732",
+    "codigo_spei": "90732",
+    "nombre_corto": "Peibo",
+    "razon_social": "Peibo Fintech, S.A.P.I. de C.V., Institución de Fondos de Pago Electrónico",
+    "sector": "INSTITUCIONES DE FONDOS DE PAGO ELECTRÓNICO (IFPE)",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90732",
+        "nombre_corto": "Peibo",
+        "desde": "2025-03-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "734",
+    "codigo_spei": "90734",
+    "nombre_corto": "FINCO PAY",
+    "razon_social": "FINCO PAY, S.A. de C.V.",
+    "sector": "TRANSMISORES DE DINERO",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90734",
+        "nombre_corto": "FINCO PAY",
+        "desde": "2025-05-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "738",
+    "codigo_spei": "90738",
+    "nombre_corto": "FINTOC",
+    "razon_social": "FINTOC, S.A. de C.V.",
+    "sector": "TRANSMISORES DE DINERO",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90738",
+        "nombre_corto": "FINTOC",
+        "desde": "2026-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "901",
+    "codigo_spei": "90901",
+    "nombre_corto": "CLS",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90901",
+        "nombre_corto": "CLS",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "902",
+    "codigo_spei": "90902",
+    "nombre_corto": "INDEVAL",
+    "razon_social": "S.D. Indeval, S.A. de C.V. Institución para el Depósito de Valores",
+    "sector": "DEPÓSITO DE VALORES",
+    "tipo": "otra_entidad",
+    "participacion": "directa",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90902",
+        "nombre_corto": "INDEVAL",
+        "desde": "2010-01-01",
+        "hasta": null
+      }
+    ]
+  },
+  {
+    "codigo": "903",
+    "codigo_spei": "90903",
+    "nombre_corto": "CoDi Valida",
+    "razon_social": null,
+    "sector": null,
+    "tipo": "otra_entidad",
+    "participacion": "no_confirmada",
+    "activo": true,
+    "baja_detectada": null,
+    "historial": [
+      {
+        "codigo_spei": "90903",
+        "nombre_corto": "CoDi Valida",
+        "desde": "2019-05-01",
+        "hasta": null
+      }
+    ]
+  }
+]

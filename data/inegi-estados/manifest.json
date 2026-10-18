@@ -1,0 +1,26 @@
+{
+  "dataset": "inegi.estados",
+  "schema_version": 1,
+  "as_of": "2026-10-17",
+  "fetched_at": "2026-10-18T01:09:01.957Z",
+  "data_file": "estados.json",
+  "data_sha256": "6a21ed92ea0d892dd37db6b0b724db2bf681febe86eda7f662d87dcc1127d942",
+  "records": 32,
+  "sources": [
+    {
+      "name": "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
+      "url": "https://gaia.inegi.org.mx/wscatgeo/v2/",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio wscatgeo v2.",
+      "published_at": null,
+      "raw": [
+        {
+          "file": "raw/mgee.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgee/",
+          "sha256": "504d80452aa87d483ae5c927c3dad6f666f517e93a68ee09c2c076ac3422e8c6"
+        }
+      ]
+    }
+  ]
+}
