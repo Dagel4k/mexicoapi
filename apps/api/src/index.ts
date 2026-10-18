@@ -1,4 +1,5 @@
 import type { Entorno, Opciones } from "./entorno.js";
+import { dentroDelLimite } from "./limite.js";
 import {
   CACHE_DATOS,
   DETALLE_ERROR_INTERNO,
@@ -10,16 +11,16 @@ import { RUTAS, resolver } from "./rutas.js";
 
 const METODOS = "GET, HEAD, OPTIONS";
 
-/** Con el binding LIMITE, una IP que lo rebasa recibe 429; si el binding falla, se deja pasar. */
-async function dentroDelLimite(peticion: Request, entorno: Entorno): Promise<boolean> {
-  if (entorno.LIMITE === undefined) return true;
-  const ip = peticion.headers.get("CF-Connecting-IP") ?? "desconocida";
-  try {
-    const { success } = await entorno.LIMITE.limit({ key: `ip:${ip}` });
-    return success !== false;
-  } catch {
-    return true;
-  }
+/** Lo que se sabe de la petición para registrar un error sin datos del usuario. */
+interface Rastro {
+  plantilla?: string;
+}
+
+/** `camino` sin las `/` del final. Recorre desde el final: lineal con cualquier racha de `/`. */
+function sinBarrasFinales(camino: string): string {
+  let fin = camino.length;
+  while (fin > 0 && camino.charCodeAt(fin - 1) === 0x2f) fin -= 1;
+  return camino.slice(0, fin);
 }
 
 async function atender(
@@ -27,6 +28,7 @@ async function atender(
   url: URL,
   entorno: Entorno,
   opciones: Opciones,
+  rastro: Rastro,
 ): Promise<Response> {
   if (!(await dentroDelLimite(peticion, entorno))) {
     const r = respuestaProblema(
@@ -59,7 +61,7 @@ async function atender(
 
   const camino = url.pathname;
   if (camino !== "/" && camino.endsWith("/")) {
-    const destino = camino.replace(/\/+$/, "");
+    const destino = sinBarrasFinales(camino);
     // "//dominio" en Location sería una redirección a otro origen.
     if (destino !== "" && !destino.startsWith("//")) {
       return respuestaVacia(308, { Location: destino + url.search, "Cache-Control": CACHE_DATOS });
@@ -73,7 +75,21 @@ async function atender(
     return respuestaProblema(problema, detalle, extras, camino);
   }
   const { ruta, parametros, consulta } = resolucion;
+  rastro.plantilla = ruta.plantilla;
   return ruta.manejar({ peticion, url, entorno, opciones, parametros, consulta });
+}
+
+/** Un `name` como los de las clases de error; cualquier otro texto podría traer datos. */
+const NOMBRE_DE_ERROR = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+
+/**
+ * Una línea por error interno, con prefijo fijo: el nombre del error y la plantilla de la ruta.
+ * Nunca la URL, la query, la IP ni el mensaje, que pueden traer datos del usuario.
+ */
+function registrarError(error: unknown, rastro: Rastro): void {
+  const nombre =
+    error instanceof Error && NOMBRE_DE_ERROR.test(error.name) ? error.name : "desconocido";
+  console.error(`mexicoapi: error interno: ${nombre} en ${rastro.plantilla ?? "(sin ruta)"}`);
 }
 
 export async function manejar(
@@ -82,13 +98,18 @@ export async function manejar(
   opciones: Opciones = {},
 ): Promise<Response> {
   const url = new URL(peticion.url);
-  let respuesta: Response;
+  const rastro: Rastro = {};
   try {
-    respuesta = await atender(peticion, url, entorno, opciones);
-  } catch {
-    respuesta = respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, url.pathname);
+    const respuesta = await atender(peticion, url, entorno, opciones, rastro);
+    return peticion.method === "HEAD" ? await sinCuerpo(respuesta) : respuesta;
+  } catch (error) {
+    registrarError(error, rastro);
+    const r = respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, url.pathname);
+    // El cuerpo es un texto propio: para HEAD basta con no mandarlo.
+    return peticion.method === "HEAD"
+      ? new Response(null, { status: r.status, headers: r.headers })
+      : r;
   }
-  return peticion.method === "HEAD" ? sinCuerpo(respuesta) : respuesta;
 }
 
 export default {

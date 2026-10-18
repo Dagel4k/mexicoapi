@@ -5,11 +5,13 @@ const nada = () => new Response(null);
 
 const TABLA: readonly Ruta[] = [
   {
+    plantilla: "/x/{id}",
     patron: /^\/x\/(?<id>[^/]+)$/,
     parametros: { id: { patron: /^\d{2}$/, detalle: "El id debe tener 2 dígitos." } },
     manejar: nada,
   },
   {
+    plantilla: "/q",
     patron: /^\/q$/,
     consulta: {
       a: { patron: /^\d+$/, detalle: "a debe ser un entero.", obligatorio: true },
@@ -19,14 +21,20 @@ const TABLA: readonly Ruta[] = [
   },
   {
     // Tabla mal armada: la regla nombra un grupo que el patrón no tiene.
+    plantilla: "/mal/{otro}",
     patron: /^\/mal\/(?<otro>[^/]+)$/,
     parametros: { id: { patron: /^.*$/, detalle: "id inválido." } },
     manejar: nada,
   },
-  { patron: /^\/libre\/(?<libre>[^/]+)$/, manejar: nada },
-  { patron: /^\/libre\/(?<libre>[^/]+)$/, manejar: () => new Response("segunda") },
+  { plantilla: "/libre/{libre}", patron: /^\/libre\/(?<libre>[^/]+)$/, manejar: nada },
+  {
+    plantilla: "/libre/{libre}",
+    patron: /^\/libre\/(?<libre>[^/]+)$/,
+    manejar: () => new Response("segunda"),
+  },
   {
     // `cumple` agrega lo que el patrón no puede decir (un máximo, una fecha que existe).
+    plantilla: "/c/{n}",
     patron: /^\/c\/(?<n>[^/]+)$/,
     parametros: {
       n: { patron: /^\d+$/, cumple: (v) => Number(v) <= 10, detalle: "n va de 0 a 10." },
@@ -214,6 +222,15 @@ describe("RUTAS", () => {
         expect(regla.patron.flags).toBe("");
       }
     }
+  });
+
+  it("cada plantilla es su ruta con los parámetros entre llaves, sin repetirse", () => {
+    for (const ruta of RUTAS) {
+      const nombres = [...ruta.plantilla.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+      expect(nombres, ruta.plantilla).toEqual(grupos(ruta.patron));
+      expect(ruta.patron.test(ruta.plantilla.replace(/\{\w+\}/g, "x")), ruta.plantilla).toBe(true);
+    }
+    expect(new Set(RUTAS.map((r) => r.plantilla)).size).toBe(RUTAS.length);
   });
 
   it("tiene las rutas calculadas", () => {
