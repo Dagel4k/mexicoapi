@@ -1,10 +1,12 @@
 import { MexicoApiError } from "mexicoapi/cliente";
 import { describe, expect, it } from "vitest";
 import { compilarEsquema, type EsquemaJson } from "../src/esquema.js";
-import { ErrorHerramienta } from "../src/herramientas.js";
+import { ErrorHerramienta, type Herramienta } from "../src/herramientas.js";
 import {
   AVISO_SIN_API,
+  conSalidaDeApiRevisada,
   consultar,
+  DATOS_CON_OTRA_FORMA,
   enLinea,
   esquemaSalida,
   type Origen,
@@ -188,7 +190,68 @@ describe("consultar", () => {
     control.abort();
     const uso = new TypeError("uso");
     await expect(consultar(control.signal, () => Promise.reject(uso))).rejects.toBe(uso);
-    await expect(consultar(vivo(), async () => 5)).resolves.toBe(5);
+    const respuesta = { origen: "paquete" as const, data: 5 };
+    await expect(consultar(vivo(), async () => respuesta)).resolves.toBe(respuesta);
+  });
+
+  it("revisa los datos solo si vienen de la API", async () => {
+    const revisar = compilarEsquema({ type: "string", pattern: "^[0-9]+$" });
+    const api = (data: unknown) => async () => ({ origen: "api" as const, data });
+    const error = await consultar(vivo(), api("x"), revisar).catch((e) => e);
+    expect(error).toBeInstanceOf(ErrorHerramienta);
+    expect(error.message).toBe(DATOS_CON_OTRA_FORMA);
+    await expect(consultar(vivo(), api("12"), revisar)).resolves.toEqual({
+      origen: "api",
+      data: "12",
+    });
+    const paquete = { origen: "paquete" as const, data: "x" };
+    await expect(consultar(vivo(), async () => paquete, revisar)).resolves.toBe(paquete);
+    await expect(consultar(vivo(), api("x"))).resolves.toEqual({ origen: "api", data: "x" });
+  });
+});
+
+describe("conSalidaDeApiRevisada", () => {
+  const base = (structuredContent: Record<string, unknown>, isError?: boolean): Herramienta => ({
+    name: "h",
+    title: "H",
+    description: "Prueba.",
+    inputSchema: { type: "object", additionalProperties: false },
+    outputSchema: {
+      type: "object",
+      properties: { n: { type: "integer" }, origen: { type: "string" } },
+      required: ["n"],
+    },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    async ejecutar() {
+      return {
+        content: [{ type: "text", text: "listo" }],
+        structuredContent,
+        ...(isError === undefined ? {} : { isError }),
+      };
+    },
+  });
+  const correr = (h: Herramienta) => conSalidaDeApiRevisada(h).ejecutar({}, { signal: vivo() });
+
+  it("con origen api y otra forma da DATOS_CON_OTRA_FORMA", async () => {
+    expect(await correr(base({ n: "uno", origen: "api" }))).toEqual({
+      content: [{ type: "text", text: DATOS_CON_OTRA_FORMA }],
+      isError: true,
+    });
+  });
+
+  it("deja igual lo que cumple, lo del paquete y los errores de la herramienta", async () => {
+    for (const h of [
+      base({ n: 1, origen: "api" }),
+      base({ n: "uno", origen: "paquete" }),
+      base({ n: "uno", origen: "api" }, true),
+    ]) {
+      expect(await correr(h)).toEqual(await h.ejecutar({}, { signal: vivo() }));
+    }
+  });
+
+  it("una herramienta sin outputSchema queda igual", () => {
+    const { outputSchema: _, ...sinEsquema } = base({ n: 1 });
+    expect(conSalidaDeApiRevisada(sinEsquema)).toBe(sinEsquema);
   });
 });
 

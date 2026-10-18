@@ -3,8 +3,14 @@
 // errores esperables del paquete y de la API.
 import { esFechaIsoValida } from "mexicoapi";
 import { type Cliente, type Meta, MexicoApiError } from "mexicoapi/cliente";
-import type { EsquemaJson } from "./esquema.js";
-import { ErrorHerramienta, type EsquemaObjeto, type ResultadoHerramienta } from "./herramientas.js";
+import { compilarEsquema, type EsquemaJson, type Validador } from "./esquema.js";
+import {
+  ErrorHerramienta,
+  type EsquemaObjeto,
+  type Herramienta,
+  type ResultadoHerramienta,
+  resultadoError,
+} from "./herramientas.js";
 
 /** Con qué responden las herramientas. */
 export interface OpcionesHerramientas {
@@ -59,9 +65,19 @@ const FUENTE_API: Fuente = {
 
 export const FECHA = { type: "string", format: "date" } as const;
 
+/** Un número en texto, como los montos y los valores de las series ("18.4163"). */
+export const TEXTO_NUMERICO = { type: "string", pattern: "^[0-9]+([.][0-9]+)?$" } as const;
+
+/** Una URL http o https: las fuentes se citan y se abren. */
+const URL_HTTP = { type: "string", pattern: "^https?://" } as const;
+
+/** Error de la herramienta cuando la API respondió 200 con datos que no tienen la forma esperada. */
+export const DATOS_CON_OTRA_FORMA =
+  "La API respondió datos con otra forma de la esperada, así que no se usan. Revisa MEXICOAPI_BASE o actualiza mexicoapi-mcp.";
+
 const ESQUEMA_FUENTE = {
   type: "object",
-  properties: { nombre: { type: "string" }, url: { type: "string" } },
+  properties: { nombre: { type: "string" }, url: URL_HTTP },
   required: ["nombre", "url"],
   additionalProperties: false,
 } as const;
@@ -71,7 +87,7 @@ export const ESQUEMA_FUENTE_DATO = {
   type: "object",
   properties: {
     nombre: { type: "string" },
-    url: { type: "string" },
+    url: URL_HTTP,
     fecha_publicacion: FECHA,
     fragmento: { type: "string" },
   },
@@ -244,9 +260,14 @@ export function resultado(
  * tal cual y el protocolo lo responde como error interno, sin detalles. Si la llamada ya se
  * canceló, el error sigue tal cual: no se responde.
  */
-export async function consultar<T>(signal: AbortSignal, consulta: () => Promise<T>): Promise<T> {
+export async function consultar<T extends { origen: Origen; data: unknown }>(
+  signal: AbortSignal,
+  consulta: () => Promise<T>,
+  revisarDatos?: Validador,
+): Promise<T> {
+  let r: T;
   try {
-    return await consulta();
+    r = await consulta();
   } catch (error) {
     if (signal.aborted) throw error;
     if (error instanceof MexicoApiError) {
@@ -254,6 +275,32 @@ export async function consultar<T>(signal: AbortSignal, consulta: () => Promise<
     }
     throw error;
   }
+  // Lo que viene de la API se revisa antes de usarlo: el texto se arma con esos campos.
+  if (r.origen === "api" && revisarDatos !== undefined && revisarDatos(r.data).length > 0) {
+    throw new ErrorHerramienta(DATOS_CON_OTRA_FORMA);
+  }
+  return r;
+}
+
+/**
+ * La herramienta con su resultado revisado contra su outputSchema cuando el dato vino de la API: un
+ * meta con otra forma (una fuente que no es http, un as_of que no es fecha) da DATOS_CON_OTRA_FORMA
+ * como error de la herramienta en vez de un error interno. Lo del paquete lo revisa el protocolo.
+ */
+export function conSalidaDeApiRevisada(herramienta: Herramienta): Herramienta {
+  if (herramienta.outputSchema === undefined) return herramienta;
+  const validar = compilarEsquema(herramienta.outputSchema);
+  return {
+    ...herramienta,
+    async ejecutar(args, contexto) {
+      const r = await herramienta.ejecutar(args, contexto);
+      const contenido = r.structuredContent;
+      if (r.isError !== true && contenido?.origen === "api" && validar(contenido).length > 0) {
+        return resultadoError(DATOS_CON_OTRA_FORMA);
+      }
+      return r;
+    },
+  };
 }
 
 /**

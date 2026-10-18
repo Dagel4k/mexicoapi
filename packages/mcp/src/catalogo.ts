@@ -12,10 +12,10 @@ import {
   validarRfcHerramienta,
 } from "./consultas/validacion.js";
 import type { Herramienta } from "./herramientas.js";
-import type { OpcionesHerramientas } from "./respuesta.js";
+import { conSalidaDeApiRevisada, type OpcionesHerramientas } from "./respuesta.js";
 
 export function crearHerramientas(opciones: OpcionesHerramientas): readonly Herramienta[] {
-  return [
+  const herramientas = [
     buscarMunicipioHerramienta(),
     municipioHerramienta(opciones),
     validarClabeHerramienta(opciones),
@@ -30,6 +30,7 @@ export function crearHerramientas(opciones: OpcionesHerramientas): readonly Herr
     constantesHerramienta(opciones),
     codigoPostalHerramienta(opciones),
   ];
+  return herramientas.map(conSalidaDeApiRevisada);
 }
 
 export type { OpcionesHerramientas } from "./respuesta.js";
