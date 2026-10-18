@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Herramienta } from "../src/herramientas.js";
+import { ErrorHerramienta, type Herramienta } from "../src/herramientas.js";
 import {
   ERROR_INTERNO,
   ERROR_PARSEO,
@@ -731,6 +731,27 @@ describe("tools/call", () => {
     );
     expect(cliente.registros.join("\n")).not.toContain("SECRETO");
     await cliente.sinRespuesta();
+  });
+
+  it("un ErrorHerramienta da un resultado con isError y su mensaje, sin registrar nada", async () => {
+    const fecha: Herramienta = {
+      name: "fecha",
+      title: "Fecha",
+      description: "Rechaza fechas imposibles.",
+      inputSchema: { type: "object", additionalProperties: false },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+      ejecutar: async () => {
+        throw new ErrorHerramienta("Fecha imposible: 2024-02-30.");
+      },
+    };
+    const cliente = conectar({ herramientas: [fecha] });
+    await cliente.inicializar();
+    const registrosAntes = cliente.registros.length;
+    expect((await cliente.pedir("tools/call", { name: "fecha" })).result).toEqual({
+      content: [{ type: "text", text: "Fecha imposible: 2024-02-30." }],
+      isError: true,
+    });
+    expect(cliente.registros).toHaveLength(registrosAntes);
   });
 
   it("registra el tipo si la herramienta lanza algo que no es Error", async () => {

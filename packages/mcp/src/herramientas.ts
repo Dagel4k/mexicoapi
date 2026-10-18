@@ -47,7 +47,8 @@ export interface Herramienta {
   annotations: AnotacionesHerramienta;
   /**
    * Recibe los argumentos ya validados contra inputSchema. Los errores esperables se devuelven
-   * con `resultadoError`; una excepción se responde como error interno, sin detalles.
+   * con `resultadoError` o se lanzan como `ErrorHerramienta`; cualquier otra excepción se
+   * responde como error interno, sin detalles.
    */
   ejecutar(
     args: Record<string, unknown>,
@@ -63,6 +64,18 @@ export interface HerramientaRegistrada {
 
 /** Nombres que recomienda la especificación: 1 a 128 caracteres de A-Z, a-z, 0-9, _, - y punto. */
 const NOMBRE_VALIDO = /^[A-Za-z0-9_.-]{1,128}$/;
+
+/**
+ * Error esperado de una herramienta, con un mensaje que se puede mostrar tal cual (sin datos
+ * internos ni rutas): se responde como resultado con isError para que el modelo corrija la
+ * llamada.
+ */
+export class ErrorHerramienta extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = "ErrorHerramienta";
+  }
+}
 
 /** Resultado de error de una herramienta, con un mensaje que el modelo puede usar para corregir. */
 export function resultadoError(mensaje: string): ResultadoHerramienta {

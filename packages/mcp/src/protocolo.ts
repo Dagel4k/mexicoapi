@@ -8,6 +8,7 @@
 import { esObjeto, type Validador } from "./esquema.js";
 import {
   crearRegistro,
+  ErrorHerramienta,
   type Herramienta,
   type HerramientaRegistrada,
   type ResultadoHerramienta,
@@ -326,6 +327,9 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
       return exito(id, formaResultado(resultado, sesion));
     } catch (error) {
       if (control.signal.aborted) return null;
+      if (error instanceof ErrorHerramienta) {
+        return exito(id, formaResultado(resultadoError(error.message), sesion));
+      }
       const clase = error instanceof Error ? error.name : typeof error;
       registrar(`error interno en la herramienta ${definicion.name} (${clase})`);
       return errorInterno(id);
