@@ -1,0 +1,209 @@
+import {
+  type CoberturaSerie,
+  type Consulta,
+  type FechaISO,
+  FUENTE_CFF_20,
+  fixParaOperacion,
+  fixPublicado,
+  sumarDias,
+  type TipoCambioFix,
+  udiDeFecha,
+} from "@mexicoapi/core";
+import { type Meta, metaInterna, type ShardSerie, shardFix, shardUdis } from "../cargas.js";
+import type { Entorno } from "../entorno.js";
+import { requerido } from "../parametros.js";
+import { URL_DOCS } from "../problemas.js";
+import { CACHE_DATOS, respuestaJson, respuestaProblema } from "../respuestas.js";
+import type { Contexto } from "../rutas.js";
+
+const DOCS_FIX = `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`;
+const DOCS_UDIS = `${URL_DOCS}/api/README.md#udis`;
+
+interface Serie {
+  meta: Meta;
+  cobertura: CoberturaSerie;
+}
+
+/** La meta del dataset (con el enlace a la sección de la API) y la cobertura de la serie. */
+async function serieDe(entorno: Entorno, dataset: string, docs: string): Promise<Serie> {
+  const interno = (await metaInterna(entorno)).datasets[dataset];
+  if (interno?.cobertura === undefined) {
+    throw new Error(`El meta interno no tiene la cobertura de ${dataset}.`);
+  }
+  return { meta: { ...interno.meta, docs }, cobertura: interno.cobertura };
+}
+
+const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
+
+/**
+ * `fecha` llevada a la cobertura. El año que se carga sale de aquí: una fecha fuera de la
+ * serie la resuelve el núcleo (sin_dato antes, no_disponible después) sin pedir años que no
+ * existen.
+ */
+const acotar = (fecha: FechaISO, { desde, hasta }: CoberturaSerie): FechaISO =>
+  fecha < desde ? desde : fecha > hasta ? hasta : fecha;
+
+/**
+ * Une shards de años consecutivos, del más antiguo al más reciente. Sus tramos deben ser
+ * contiguos: un hueco entre años escondería publicaciones y la consulta podría responder una
+ * anterior.
+ */
+function unir<T>(shards: readonly ShardSerie<T>[]): ShardSerie<T> {
+  for (let i = 1; i < shards.length; i++) {
+    const anterior = shards[i - 1] as ShardSerie<T>;
+    const siguiente = shards[i] as ShardSerie<T>;
+    if (sumarDias(anterior.tramo.hasta, 1) !== siguiente.tramo.desde) {
+      throw new Error("Los tramos de los años cargados no son contiguos.");
+    }
+  }
+  const primero = shards[0] as ShardSerie<T>;
+  const ultimo = shards[shards.length - 1] as ShardSerie<T>;
+  return {
+    tramo: { desde: primero.tramo.desde, hasta: ultimo.tramo.hasta },
+    datos: shards.flatMap((s) => s.datos),
+  };
+}
+
+/**
+ * Los años que necesita una operación del día `fecha`: el de la víspera (o el del último
+ * dato, si la víspera todavía no se carga) y, mientras lo cargado no tenga una publicación
+ * anterior a `fecha`, el año previo, hasta el inicio de la serie.
+ */
+async function tramoParaOperacion(
+  entorno: Entorno,
+  cobertura: CoberturaSerie,
+  fecha: FechaISO,
+): Promise<ShardSerie<TipoCambioFix>> {
+  // Con `fecha` <= desde no hay víspera que buscar (y en 0001-01-01 no existe).
+  const referencia = acotar(fecha > cobertura.desde ? sumarDias(fecha, -1) : fecha, cobertura);
+  let anio = anioDe(referencia);
+  const shards = [await shardFix(entorno, anio, cobertura)];
+  const hayAnterior = () =>
+    shards.some((s) => s.datos[0] !== undefined && s.datos[0].fecha_publicacion < fecha);
+  while (!hayAnterior() && (shards[0] as ShardSerie<TipoCambioFix>).tramo.desde > cobertura.desde) {
+    anio -= 1;
+    shards.unshift(await shardFix(entorno, anio, cobertura));
+  }
+  return unir(shards);
+}
+
+interface Textos {
+  /** `detail` del 404 definitivo: no hubo dato ese día o la fecha es anterior a la serie. */
+  sinDato: string;
+  /** `detail` del 404 que puede cambiar: nombra el último dato cargado. */
+  noDisponible: string;
+}
+
+/** 200 con el registro, o el 404 que corresponde, con la fecha pedida y la cobertura. */
+function responder<T>(
+  c: Contexto,
+  consulta: Consulta<T>,
+  serie: Serie,
+  fecha: FechaISO,
+  textos: Textos,
+  data: (registro: T) => unknown = (registro) => registro,
+): Response {
+  if (consulta.tipo === "encontrado") {
+    return respuestaJson(
+      { data: data(consulta.registro), meta: serie.meta },
+      { cache: CACHE_DATOS },
+    );
+  }
+  const { desde, hasta } = serie.cobertura;
+  return respuestaProblema(
+    consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible",
+    consulta.tipo === "sin_dato" ? textos.sinDato : textos.noDisponible,
+    { fecha, cobertura: { desde, hasta } },
+    c.url.pathname,
+  );
+}
+
+async function fixDelDia(c: Contexto, fecha: FechaISO): Promise<Response> {
+  const serie = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
+  const { cobertura } = serie;
+  const { tramo, datos } = await shardFix(c.entorno, anioDe(acotar(fecha, cobertura)), cobertura);
+  return responder(c, fixPublicado(datos, tramo, cobertura, fecha), serie, fecha, {
+    sinDato:
+      fecha < cobertura.desde
+        ? `No hay FIX publicado el ${fecha}: la serie empieza el ${cobertura.desde}.`
+        : `No hubo publicación del FIX en el DOF el ${fecha}.`,
+    noDisponible: `El FIX del ${fecha} todavía no está cargado; la última publicación cargada es del ${cobertura.hasta}.`,
+  });
+}
+
+async function fixDeOperacion(c: Contexto, fecha: FechaISO): Promise<Response> {
+  const serie = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
+  const { cobertura } = serie;
+  const { tramo, datos } = await tramoParaOperacion(c.entorno, cobertura, fecha);
+  return responder(
+    c,
+    fixParaOperacion(datos, tramo, cobertura, fecha),
+    serie,
+    fecha,
+    {
+      sinDato: `No hay FIX publicado antes del ${fecha}: la serie empieza el ${cobertura.desde}.`,
+      noDisponible: `Todavía no está cargado el FIX que aplica a una operación del ${fecha}; la última publicación cargada es del ${cobertura.hasta}.`,
+    },
+    (registro) => ({
+      fecha_operacion: fecha,
+      fecha_publicacion: registro.fecha_publicacion,
+      valor: registro.valor,
+      fundamento: FUENTE_CFF_20,
+    }),
+  );
+}
+
+/**
+ * `GET /v1/tipo-cambio/fix`: con `publicado`, el FIX publicado en el DOF ese día; con
+ * `operacion`, el que aplica a una operación de ese día (CFF art. 20). Exactamente uno.
+ */
+export function consultarFix(c: Contexto): Promise<Response> | Response {
+  const { publicado, operacion } = c.consulta;
+  if (publicado !== undefined) {
+    if (operacion !== undefined) {
+      return respuestaProblema(
+        "parametro-invalido",
+        "Indica solo uno de publicado u operacion.",
+        undefined,
+        c.url.pathname,
+      );
+    }
+    return fixDelDia(c, publicado);
+  }
+  if (operacion === undefined) {
+    return respuestaProblema(
+      "parametro-faltante",
+      "Indica publicado u operacion.",
+      undefined,
+      c.url.pathname,
+    );
+  }
+  return fixDeOperacion(c, operacion);
+}
+
+/** `GET /v1/tipo-cambio/fix/ultimo`: la publicación más reciente de la serie. */
+export async function ultimoFix(c: Contexto): Promise<Response> {
+  const { meta, cobertura } = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
+  const { tramo, datos } = await shardFix(c.entorno, anioDe(cobertura.hasta), cobertura);
+  const ultimo = fixPublicado(datos, tramo, cobertura, cobertura.hasta);
+  // La cobertura termina en el último registro: si no está, el meta y el shard no cuadran.
+  if (ultimo.tipo !== "encontrado") {
+    throw new Error("El shard del último año no tiene la última publicación de la cobertura.");
+  }
+  return respuestaJson({ data: ultimo.registro, meta }, { cache: CACHE_DATOS });
+}
+
+/** `GET /v1/udis`: el valor de la UDI del día `fecha`. */
+export async function consultarUdi(c: Contexto): Promise<Response> {
+  const fecha = requerido(c.consulta, "fecha");
+  const serie = await serieDe(c.entorno, "udis", DOCS_UDIS);
+  const { cobertura } = serie;
+  const { tramo, datos } = await shardUdis(c.entorno, anioDe(acotar(fecha, cobertura)), cobertura);
+  return responder(c, udiDeFecha(datos, tramo, cobertura, fecha), serie, fecha, {
+    sinDato:
+      fecha < cobertura.desde
+        ? `No hay valor de la UDI para el ${fecha}: la serie empieza el ${cobertura.desde}.`
+        : `No hay valor de la UDI para el ${fecha}.`,
+    noDisponible: `El valor de la UDI del ${fecha} todavía no está cargado; el último cargado es del ${cobertura.hasta}.`,
+  });
+}

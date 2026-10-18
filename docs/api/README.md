@@ -314,6 +314,14 @@ Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. L
 }
 ```
 
+## Tipo de cambio FIX
+
+`GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` responde el FIX publicado en el DOF ese día; `GET /v1/tipo-cambio/fix?operacion=AAAA-MM-DD`, el que aplica a una operación de ese día según el artículo 20 del CFF; `GET /v1/tipo-cambio/fix/ultimo`, la publicación más reciente. Un día sin publicación da 404 [`no-encontrado`](problemas.md#no-encontrado) y uno que todavía no se carga, 404 [`dato-no-disponible`](problemas.md#dato-no-disponible).
+
+## UDIS
+
+`GET /v1/udis?fecha=AAAA-MM-DD` responde el valor de la UDI de ese día, con los mismos 404 que el FIX.
+
 ## status
 
 ```bash

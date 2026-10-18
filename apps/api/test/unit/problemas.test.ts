@@ -16,6 +16,7 @@ describe("PROBLEMAS", () => {
       "parametro-desconocido": 400,
       "parametro-faltante": 400,
       "no-encontrado": 404,
+      "dato-no-disponible": 404,
       "metodo-no-permitido": 405,
       "calendario-incompleto": 422,
       "demasiadas-peticiones": 429,

@@ -3,6 +3,7 @@ import { describe, expect, inject, it } from "vitest";
 import { probarHumo } from "../../scripts/humo.ts";
 import {
   BASE_PROBLEMAS,
+  datosDe,
   leerPublico,
   pedir,
   pedirCruda,
@@ -122,10 +123,13 @@ describe("datos reales del build", () => {
     expect(fechas.every((f: string) => f.startsWith("2026-"))).toBe(true);
   });
 
-  it("/v1/status: sin binding de KV, todo dataset está en unknown", async () => {
+  it("/v1/status: los datasets del meta interno; sin binding de KV, todos en unknown", async () => {
     const { data } = await datos("/v1/status");
+    const interna = JSON.parse((await leerPublico("v1/_internos/meta.json")).toString("utf8")) as {
+      datasets: Record<string, Obj>;
+    };
     const ids = data.map((d: Obj) => d.dataset);
-    expect(ids).toEqual(["bancos", "inegi.estados", "inegi.municipios"]);
+    expect(ids).toEqual(Object.keys(interna.datasets).sort());
     for (const d of data) {
       expect(d, d.dataset).toMatchObject({
         status: "unknown",
@@ -138,6 +142,8 @@ describe("datos reales del build", () => {
       bancos: await registrosDe("bancos"),
       "inegi.estados": 32,
       "inegi.municipios": await registrosDe("inegi-municipios"),
+      "tipo-cambio.fix": await registrosDe("tipo-cambio-fix"),
+      udis: await registrosDe("udis"),
     });
   });
 
@@ -145,6 +151,129 @@ describe("datos reales del build", () => {
     const respuesta = await pedir("/v1/openapi.json");
     expect(respuesta.status).toBe(200);
     expect(await respuesta.text()).toBe((await leerPublico("v1/openapi.json")).toString("utf8"));
+  });
+});
+
+interface Fix {
+  fecha_publicacion: string;
+  valor: string;
+}
+
+interface Udi {
+  fecha: string;
+  valor: string;
+}
+
+const FIX = await datosDe<Fix>("tipo-cambio-fix");
+const UDIS = await datosDe<Udi>("udis");
+
+describe("tipo de cambio FIX y UDIS con los datos reales", () => {
+  const fixDe = (fecha: string) => FIX.find((r) => r.fecha_publicacion === fecha);
+  const ultimoFix = FIX.at(-1) as Fix;
+  const ultimaUdi = UDIS.at(-1) as Udi;
+  const coberturaFix = { desde: FIX[0]?.fecha_publicacion, hasta: ultimoFix.fecha_publicacion };
+  const coberturaUdis = { desde: UDIS[0]?.fecha, hasta: ultimaUdi.fecha };
+
+  /** Un 404 de serie: tipo, fecha pedida, cobertura de la serie y sin caché. */
+  async function sinDato(ruta: string, tipo: string, fecha: string, cobertura: Obj) {
+    const { respuesta, cuerpo } = await pedirJson(ruta);
+    expect(respuesta.status, ruta).toBe(404);
+    expect(respuesta.headers.get("Cache-Control"), ruta).toBe("no-store");
+    expect(cuerpo, ruta).toMatchObject({ type: `${BASE_PROBLEMAS}${tipo}`, fecha, cobertura });
+    return cuerpo as Obj;
+  }
+
+  it("los datos tienen los casos que se prueban", () => {
+    expect(coberturaFix.desde).toBe("2020-01-02");
+    expect(coberturaUdis.desde).toBe("2020-01-01");
+    for (const fecha of ["2020-12-31", "2021-01-04", "2026-10-16"]) {
+      expect(fixDe(fecha), fecha).toBeDefined();
+    }
+    // 2021-01-01 fue feriado bancario y luego fin de semana.
+    for (const fecha of ["2021-01-01", "2021-01-02", "2021-01-03", "2026-10-10"]) {
+      expect(fixDe(fecha), fecha).toBeUndefined();
+    }
+  });
+
+  it("publicado: el FIX del día, con la meta del dataset y sin ETag", async () => {
+    const respuesta = await pedir("/v1/tipo-cambio/fix?publicado=2026-10-16");
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.headers.get("Cache-Control")).toMatch(/^public, max-age=3600/);
+    expect(respuesta.headers.get("ETag")).toBeNull();
+    const { data, meta } = (await respuesta.json()) as Obj;
+    expect(data).toEqual(fixDe("2026-10-16"));
+    expect(meta.dataset).toBe("tipo-cambio.fix");
+    expect(meta.docs).toMatch(/\/api\/README\.md#tipo-de-cambio-fix$/);
+    expect(meta.sources[0].license_url).toBe(
+      "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+    );
+  });
+
+  it("operacion en lunes: el FIX del viernes anterior, con el CFF art. 20", async () => {
+    const { data } = await datos("/v1/tipo-cambio/fix?operacion=2026-10-19");
+    expect(data).toMatchObject({ fecha_operacion: "2026-10-19", ...fixDe("2026-10-16") });
+    expect(data.fundamento.nombre).toMatch(/artículo 20/);
+  });
+
+  it.each(["2021-01-01", "2021-01-02", "2021-01-04"])(
+    "operacion %s: cruza el cambio de año y usa la última publicación de diciembre",
+    async (fecha) => {
+      const { data } = await datos(`/v1/tipo-cambio/fix?operacion=${fecha}`);
+      expect(data).toMatchObject({ fecha_operacion: fecha, ...fixDe("2020-12-31") });
+    },
+  );
+
+  it("ultimo: la última publicación de la serie", async () => {
+    const { data, meta } = await datos("/v1/tipo-cambio/fix/ultimo");
+    expect(data).toEqual(ultimoFix);
+    expect(meta.dataset).toBe("tipo-cambio.fix");
+  });
+
+  it.each(["2021-01-01", "2020-02-29", ultimaUdi.fecha])("udis %s: el valor del día", async (f) => {
+    const { data, meta } = await datos(`/v1/udis?fecha=${f}`);
+    expect(data).toEqual(UDIS.find((r) => r.fecha === f));
+    expect(meta.dataset).toBe("udis");
+    expect(meta.docs).toMatch(/\/api\/README\.md#udis$/);
+  });
+
+  it.each([
+    ["/v1/tipo-cambio/fix?publicado=2026-10-10", "2026-10-10"],
+    ["/v1/tipo-cambio/fix?publicado=2021-01-01", "2021-01-01"],
+    ["/v1/tipo-cambio/fix?publicado=2019-12-31", "2019-12-31"],
+    ["/v1/tipo-cambio/fix?operacion=2020-01-02", "2020-01-02"],
+  ])("%s: 404 no-encontrado definitivo", async (ruta, fecha) => {
+    await sinDato(ruta, "no-encontrado", fecha, coberturaFix);
+  });
+
+  it.each([
+    ["/v1/tipo-cambio/fix?publicado=2099-01-02", "2099-01-02"],
+    ["/v1/tipo-cambio/fix?operacion=2099-01-06", "2099-01-06"],
+  ])("%s: 404 dato-no-disponible con el último dato cargado", async (ruta, fecha) => {
+    const cuerpo = await sinDato(ruta, "dato-no-disponible", fecha, coberturaFix);
+    expect(cuerpo.detail).toContain(ultimoFix.fecha_publicacion);
+    expect(JSON.stringify(cuerpo)).not.toContain(ultimoFix.valor);
+  });
+
+  it("udis: 404 no-encontrado antes de la serie y dato-no-disponible después", async () => {
+    await sinDato("/v1/udis?fecha=2019-12-31", "no-encontrado", "2019-12-31", coberturaUdis);
+    const cuerpo = await sinDato(
+      "/v1/udis?fecha=2099-01-01",
+      "dato-no-disponible",
+      "2099-01-01",
+      coberturaUdis,
+    );
+    expect(cuerpo.detail).toContain(ultimaUdi.fecha);
+  });
+
+  it.each([
+    ["/v1/tipo-cambio/fix", "parametro-faltante"],
+    ["/v1/tipo-cambio/fix?publicado=2026-10-16&operacion=2026-10-19", "parametro-invalido"],
+    ["/v1/tipo-cambio/fix?publicado=2026-02-30", "parametro-invalido"],
+    ["/v1/udis", "parametro-faltante"],
+  ])("%s: 400 %s", async (ruta, tipo) => {
+    const { respuesta, cuerpo } = await pedirJson(ruta);
+    expect(respuesta.status).toBe(400);
+    expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}${tipo}` });
   });
 });
 
@@ -220,20 +349,23 @@ describe("caché con ETag", () => {
 });
 
 describe("HEAD", () => {
-  it.each(["/v1/estados/25", "/v1/status", "/v1/estados/33"])(
-    "HEAD %s responde como GET, sin cuerpo",
-    async (ruta) => {
-      const get = await pedir(ruta);
-      await get.arrayBuffer();
-      const head = await pedir(ruta, { method: "HEAD" });
-      expect(head.status).toBe(get.status);
-      expect(await head.text()).toBe("");
-      for (const nombre of ["Content-Type", "Cache-Control", "ETag"]) {
-        expect(head.headers.get(nombre), nombre).toBe(get.headers.get(nombre));
-      }
-      esperarSeguridad(head, `HEAD ${ruta}`);
-    },
-  );
+  it.each([
+    "/v1/estados/25",
+    "/v1/status",
+    "/v1/estados/33",
+    "/v1/tipo-cambio/fix?operacion=2026-10-19",
+    "/v1/udis?fecha=2099-01-01",
+  ])("HEAD %s responde como GET, sin cuerpo", async (ruta) => {
+    const get = await pedir(ruta);
+    await get.arrayBuffer();
+    const head = await pedir(ruta, { method: "HEAD" });
+    expect(head.status).toBe(get.status);
+    expect(await head.text()).toBe("");
+    for (const nombre of ["Content-Type", "Cache-Control", "ETag"]) {
+      expect(head.headers.get(nombre), nombre).toBe(get.headers.get(nombre));
+    }
+    esperarSeguridad(head, `HEAD ${ruta}`);
+  });
 });
 
 describe("encabezados de seguridad", () => {
@@ -242,7 +374,9 @@ describe("encabezados de seguridad", () => {
     ["GET", "/v1/estados/25", 200],
     ["GET", "/v1/clabe/002010077777777771", 200],
     ["GET", "/v1/status", 200],
+    ["GET", "/v1/tipo-cambio/fix/ultimo", 200],
     ["GET", "/v1/estados?x=1", 400],
+    ["GET", "/v1/tipo-cambio/fix?publicado=2099-01-02", 404],
     ["GET", "/v1/estados/33", 404],
     ["GET", "/no-existe", 404],
     ["POST", "/v1/estados", 405],

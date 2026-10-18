@@ -6,6 +6,7 @@ export type TipoProblema =
   | "parametro-desconocido"
   | "parametro-faltante"
   | "no-encontrado"
+  | "dato-no-disponible"
   | "metodo-no-permitido"
   | "calendario-incompleto"
   | "demasiadas-peticiones"
@@ -20,6 +21,7 @@ export const PROBLEMAS: Readonly<Record<TipoProblema, { title: string; status: n
     "parametro-desconocido": problema("Parámetro desconocido", 400),
     "parametro-faltante": problema("Falta un parámetro obligatorio", 400),
     "no-encontrado": problema("Recurso no encontrado", 404),
+    "dato-no-disponible": problema("Dato todavía no disponible", 404),
     "metodo-no-permitido": problema("Método no permitido", 405),
     "calendario-incompleto": problema("Calendario incompleto", 422),
     "demasiadas-peticiones": problema("Demasiadas peticiones", 429),
