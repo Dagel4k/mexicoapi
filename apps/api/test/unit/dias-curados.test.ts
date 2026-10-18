@@ -42,6 +42,12 @@ const DETALLE_GENERAL = (fecha: string) =>
 const PRORROGA = (fecha: string, hechos: string) =>
   `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 
+/** Lo que nombra el SAT fuera de la cobertura, con o sin sus vacaciones. */
+const FALTA_ART_12 =
+  "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero.";
+const FALTA_ART_12_Y_VACACIONES =
+  "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero, y vacaciones del SAT.";
+
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
 
@@ -309,7 +315,10 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       const { cuerpo } = await datos(permitir("2100-12-31", 1));
       expect(cuerpo.data).toMatchObject({
         resultado: "2101-01-03",
-        advertencias: ["Calendario incompleto: SAT 2101; solo se descontaron fines de semana."],
+        // Nombra lo que puede faltar después de 2100 (antes, solo "fines de semana").
+        advertencias: [
+          `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+        ],
       });
     });
 
@@ -317,7 +326,9 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       const { cuerpo } = await datos(permitir("2025-12-30", 2));
       expect(cuerpo.data).toMatchObject({
         resultado: "2026-01-02",
-        advertencias: ["Calendario incompleto: SAT 2025; solo se descontaron fines de semana."],
+        advertencias: [
+          `Calendario incompleto: SAT 2025; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+        ],
       });
     });
   });
@@ -348,7 +359,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       sat("declaraciones_pagos", "2100-12-31", 1, "&permitir_incompleto=true"),
     );
     expect(permitido.cuerpo.data.advertencias).toEqual([
-      "Calendario incompleto: SAT 2101; solo se descontaron fines de semana.",
+      `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. ${FALTA_ART_12}`,
     ]);
   });
 

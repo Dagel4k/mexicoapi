@@ -398,7 +398,7 @@ function operaciones(): Operacion[] {
           in: "query",
           required: false,
           description:
-            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días del art. 12 del CFF después del último periodo de vacaciones del SAT capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana, y la advertencia dice qué puede faltar (con cnbv, días de cierre bancario como el 1 de enero).",
+            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días del art. 12 del CFF después del último periodo de vacaciones del SAT capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana, y la advertencia dice qué puede faltar (con cnbv, días de cierre bancario como el 1 de enero; con sat, antes de 2026 o después de 2100, días del art. 12 del CFF).",
           schema: { type: "string", enum: ["true", "false"] },
           example: "false",
         },

@@ -604,15 +604,21 @@ function siguienteHabil(desde: string, publicados: readonly DiaReal[]): string {
   return fecha;
 }
 
-/** El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`. */
 /** El aviso de la prórroga del quinto párrafo del art. 12 del CFF en declaraciones_pagos. */
 const prorroga = (fecha: string, hechos: string) =>
   `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 
-function avisosDelNucleo(cobertura: Rango, resultado: string): string[] {
+/**
+ * El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`, con lo que
+ * puede faltar: los días del art. 12 y, en un plazo que las cuenta, las vacaciones.
+ */
+function avisosDelNucleo(cobertura: Rango, resultado: string, vacaciones: boolean): string[] {
+  const falta = `Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero${vacaciones ? ", y vacaciones del SAT" : ""}.`;
   const avisos: string[] = [];
   for (let anio = Number(anioDe(despues(cobertura))); anio <= Number(anioDe(resultado)); anio++) {
-    avisos.push(`Calendario incompleto: SAT ${anio}; solo se descontaron fines de semana.`);
+    avisos.push(
+      `Calendario incompleto: SAT ${anio}; solo se descontaron fines de semana. ${falta}`,
+    );
   }
   return avisos;
 }
@@ -803,7 +809,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       expect(largo.data.resultado > declaraciones.hasta).toBe(true);
       expect(largo.data.advertencias).toEqual([
         aviso,
-        ...avisosDelNucleo(declaraciones, largo.data.resultado),
+        ...avisosDelNucleo(declaraciones, largo.data.resultado, true),
       ]);
       // Un plazo largo desde el fin de general descuenta el 1 de enero de 2027, que da la regla.
       const enero = await datos(permitir(general.hasta, 40));
@@ -821,7 +827,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     // Nuevo: si vence en viernes, también el aviso de la prórroga del art. 12.
     const viernes = diaDeLaSemana(data.resultado) === 5;
     expect(data.advertencias).toEqual([
-      ...avisosDelNucleo(declaraciones, data.resultado),
+      ...avisosDelNucleo(declaraciones, data.resultado, false),
       ...(viernes ? [prorroga(data.resultado, "viernes")] : []),
     ]);
   });

@@ -79,6 +79,18 @@ export function probarCalendarios(
     expect(m.calendarioCurado("cnbv").dias).toHaveLength(cnbv.registros.length);
   });
 
+  it("los calendarios de cada plazo nombran lo que puede faltar fuera de su cobertura", () => {
+    expect(m.calendario("sat", "general").faltaFuera).toBe(
+      "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero, y vacaciones del SAT.",
+    );
+    expect(m.calendario("sat", "declaraciones_pagos").faltaFuera).toBe(
+      "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero.",
+    );
+    expect(m.calendario("cnbv").faltaFuera).toBe(
+      "Pueden faltar días de cierre bancario, como el 1 de enero.",
+    );
+  });
+
   it("el SAT calcula los días del art. 12 de cada año hasta 2100", () => {
     const { dias, amplia } = m.calendarioCurado("sat");
     expect(amplia.hasta).toBe("2100-12-31");

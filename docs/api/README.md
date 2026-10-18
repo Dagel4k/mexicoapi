@@ -460,7 +460,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
 }
 ```
 
-El resultado puede cambiar cuando se publique el periodo de vacaciones faltante. Si el cálculo sigue más allá de la cobertura más amplia del calendario (para el SAT, el 31 de diciembre de 2100), se suma el aviso de solo fines de semana de arriba, con la autoridad en mayúsculas (`Calendario incompleto: SAT 2101; …`). Si el cálculo no entra en la zona incompleta, no hay aviso.
+El resultado puede cambiar cuando se publique el periodo de vacaciones faltante. Si el cálculo sigue más allá de la cobertura más amplia del calendario (para el SAT, el 31 de diciembre de 2100), se suma el aviso de solo fines de semana de arriba, con la autoridad en mayúsculas y lo que puede faltar: `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero, y vacaciones del SAT.` (sin las vacaciones con `declaraciones_pagos`). Lo mismo antes de 2026. Si el cálculo no entra en la zona incompleta, no hay aviso.
 
 Con la CNBV no hay respaldo: después del 31 de diciembre de 2026 solo se descuentan fines de semana, y la advertencia nombra el riesgo, porque los bancos cierran días que no son fin de semana:
 

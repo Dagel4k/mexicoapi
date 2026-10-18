@@ -55,6 +55,12 @@ export function calendarioCurado(autoridad: AutoridadCurada): CalendarioCurado {
  * CalendarioIncompletoError, como la API. Con el SAT el tipo de plazo es obligatorio, como en la
  * API: sin él lanza TypeError. Lanza RangeError si la autoridad no tiene ese plazo (la CNBV solo
  * tiene `general`, que es el de omisión).
+ *
+ * Con `permitirIncompleto`, fuera de la cobertura del plazo solo se descuentan fines de semana y
+ * la advertencia nombra lo que puede faltar (en el SAT, los días del art. 12 y las vacaciones). No
+ * sigue con el `respaldo` del plazo como la API: el respaldo no sabe hasta dónde están publicadas
+ * las vacaciones y, usado solo, daría el resultado sin ese aviso. Para el resultado y las
+ * advertencias de la API, usa el cliente (`crearCliente`, también sin red).
  */
 export function calendario(autoridad: "cnbv", tipoPlazo?: "general"): Calendario;
 export function calendario(autoridad: "sat", tipoPlazo: TipoPlazo): Calendario;
