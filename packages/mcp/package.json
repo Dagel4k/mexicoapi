@@ -1,0 +1,26 @@
+{
+  "name": "mexicoapi-mcp",
+  "version": "0.1.0",
+  "description": "Servidor MCP por stdio con datos de referencia oficiales de México.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dagel4k/mexicoapi.git",
+    "directory": "packages/mcp"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "bin": {
+    "mexicoapi-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test:integracion": "vitest run --config vitest.integracion.config.ts"
+  }
+}
