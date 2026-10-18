@@ -247,9 +247,10 @@ async function ejecutar(
 
 /**
  * Cliente de la API de MéxicoAPI. Los datos estables (estados, municipios, bancos, validación de
- * la CLABE) salen del paquete sin red; los que caducan (días hábiles e inhábiles, FIX, UDIS) se
- * piden a la API y, si no responde, salen del paquete con `origen: "paquete"` y advertencias.
- * Cada respuesta dice su `origen`; todo lo que entrega está congelado.
+ * la CLABE) salen del paquete sin red; los que caducan (días hábiles e inhábiles, FIX, UDIS, UMA,
+ * salario mínimo y tarifas de ISR) se piden a la API y, si no responde, salen del paquete con
+ * `origen: "paquete"` y advertencias. Cada respuesta dice su `origen`; todo lo que entrega está
+ * congelado. Los métodos usan los nombres del núcleo y `consultar` los de la API (ver `Cliente`).
  */
 export function crearCliente(opciones: OpcionesCliente): Cliente {
   const c = configurar(opciones ?? ({} as OpcionesCliente));

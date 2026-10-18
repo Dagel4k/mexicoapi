@@ -284,6 +284,12 @@ export interface ConsultaDiasInhabiles {
 /**
  * Cliente de la API. Cada método lanza `MexicoApiError` si la API (o el paquete) responde con un
  * problema, o si la API no responde y no hay respaldo.
+ *
+ * Nombres: los métodos tipados (`diasHabiles`, `umaVigente`, `fixParaOperacion`...) y sus
+ * parámetros van en camelCase, como el núcleo (`tipoPlazo`, `permitirIncompleto`, igual que en
+ * `sumarDiasHabiles`). `consultar`, las rutas de `RutasApi` y lo que llega en `data`, `meta` y los
+ * problemas usan los nombres de la API (`tipo_plazo`, `permitir_incompleto`, `inhabiles_saltados`),
+ * igual que la CLI en sus opciones (`--tipo-plazo`) y en su salida `--json`.
  */
 export interface Cliente {
   /** Cualquier ruta de `RutasApi`, con las mismas reglas de origen que los métodos. */
