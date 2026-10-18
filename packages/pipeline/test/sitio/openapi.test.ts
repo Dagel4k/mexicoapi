@@ -1,8 +1,15 @@
 import { readFile } from "node:fs/promises";
+import { FUENTE_CFF_20 } from "@mexicoapi/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
-import { esquemaBanco, esquemaEstado, esquemaMunicipio } from "../../src/esquemas.js";
-import { sobre } from "../../src/sitio/esquemas-api.js";
+import {
+  esquemaBanco,
+  esquemaEstado,
+  esquemaMunicipio,
+  esquemaTipoCambioFix,
+  esquemaUdi,
+} from "../../src/esquemas.js";
+import { esquemaFixOperacion, sobre } from "../../src/sitio/esquemas-api.js";
 import { documentoOpenApi, PROBLEMAS } from "../../src/sitio/openapi.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
 
@@ -17,6 +24,13 @@ const operaciones: Array<{ ruta: string; metodo: string; op: Obj }> = Object.ent
 );
 
 const leerJson = async (url: URL) => JSON.parse(await readFile(url, "utf8"));
+
+/** Esquema de la respuesta 200 en JSON de la operación de `ruta`. */
+function esquema200(ruta: string): Obj {
+  const o = operaciones.find((x) => x.ruta === ruta);
+  if (o === undefined) throw new Error(`${ruta} no está en el documento`);
+  return o.op.responses["200"].content["application/json"].schema;
+}
 
 function referencias(valor: unknown, acumulado: string[] = []): string[] {
   if (Array.isArray(valor)) {
@@ -102,6 +116,7 @@ describe("documento OpenAPI", () => {
     expect(doc.info.version).toBe("1.0.0");
     expect(doc.info.license).toEqual({ name: "MIT", identifier: "MIT" });
     expect(doc.info.description).toContain("meta.sources");
+    expect(doc.info.description).toContain("tipo de cambio FIX y UDIS");
     expect(doc.servers).toEqual([{ url: "/" }]);
   });
 
@@ -119,6 +134,9 @@ describe("documento OpenAPI", () => {
       ["/v1/clabe/{clabe}", "validarClabe"],
       ["/v1/dias-habiles", "sumarDiasHabiles"],
       ["/v1/dias-inhabiles", "listarDiasInhabiles"],
+      ["/v1/tipo-cambio/fix", "consultarFix"],
+      ["/v1/tipo-cambio/fix/ultimo", "ultimoFix"],
+      ["/v1/udis", "consultarUdi"],
       ["/v1/status", "estadoDatasets"],
       ["/v1/openapi.json", "openapi"],
     ];
@@ -164,8 +182,11 @@ describe("documento OpenAPI", () => {
     expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "400", "405", "429", "500"]);
     expect(codigos("/v1/dias-habiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
     expect(codigos("/v1/dias-inhabiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
+    for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis"]) {
+      expect(codigos(ruta), ruta).toEqual(["200", "400", "404", "405", "429", "500"]);
+    }
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
-    for (const ruta of ["/", "/v1", "/v1/status"]) {
+    for (const ruta of ["/", "/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
       expect(codigos(ruta), ruta).toEqual(["200", "400", "405", "429", "500"]);
     }
     for (const ruta of ["/v1/estados", "/v1/municipios", "/v1/bancos", "/v1/openapi.json"]) {
@@ -221,6 +242,87 @@ describe("documento OpenAPI", () => {
     const inhabiles = params("/v1/dias-inhabiles");
     expect(inhabiles.anio.schema.pattern).toBe("^\\d{4}$");
     expect(inhabiles.autoridad.required).toBe(true);
+    const fecha = { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
+    expect(habiles.desde.schema).toEqual(fecha);
+    // Se pide exactamente uno de los dos: ninguno es obligatorio por sí solo.
+    const fix = params("/v1/tipo-cambio/fix");
+    expect(Object.keys(fix).sort()).toEqual(["operacion", "publicado"]);
+    for (const nombre of ["operacion", "publicado"]) {
+      expect(fix[nombre].in, nombre).toBe("query");
+      expect(fix[nombre].required, nombre).toBe(false);
+      expect(fix[nombre].schema, nombre).toEqual(fecha);
+      expect(fix[nombre].example, nombre).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    const udis = params("/v1/udis");
+    expect(Object.keys(udis)).toEqual(["fecha"]);
+    expect(udis.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
+    expect(params("/v1/tipo-cambio/fix/ultimo")).toEqual({});
+  });
+
+  it("consultarFix dice que se indica exactamente uno de publicado u operacion", () => {
+    const op = operaciones.find((o) => o.ruta === "/v1/tipo-cambio/fix")?.op as Obj;
+    expect(op.description).toContain("exactamente uno de publicado u operacion");
+    expect(op.description).toContain("parametro-faltante");
+    expect(op.description).toContain("parametro-invalido");
+  });
+
+  it("las operaciones de FIX y UDIS van en la etiqueta Indicadores", () => {
+    const indicadores = operaciones
+      .filter((o) => o.op.tags.includes("Indicadores"))
+      .map((o) => o.op.operationId);
+    expect(indicadores).toEqual(["consultarFix", "ultimoFix", "consultarUdi"]);
+    expect(doc.tags.map((t: Obj) => t.name)).toContain("Indicadores");
+  });
+
+  it("FIX y UDIS responden 404 con los dos tipos de problema", () => {
+    for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis"]) {
+      const op = operaciones.find((o) => o.ruta === ruta)?.op as Obj;
+      expect(op.responses["404"], ruta).toEqual({ $ref: "#/components/responses/SinDato" });
+    }
+    const sinDato = doc.components.responses.SinDato;
+    expect(sinDato.content["application/problem+json"].schema).toEqual({
+      $ref: "#/components/schemas/Problema",
+    });
+    expect(sinDato.description).toContain("no-encontrado");
+    expect(sinDato.description).toContain("dato-no-disponible");
+    expect(PROBLEMAS["dato-no-disponible"]).toEqual({
+      title: "Dato todavía no disponible",
+      status: 404,
+    });
+  });
+
+  it("la respuesta de consultarFix es TipoCambioFix o FixOperacion", () => {
+    const schema = esquema200("/v1/tipo-cambio/fix");
+    // anyOf y no oneOf: con esquemas abiertos, una FixOperacion también cumple TipoCambioFix.
+    expect(schema.properties.data).toEqual({
+      anyOf: [
+        { $ref: "#/components/schemas/TipoCambioFix" },
+        { $ref: "#/components/schemas/FixOperacion" },
+      ],
+    });
+    expect(esquema200("/v1/tipo-cambio/fix/ultimo").properties.data).toEqual({
+      $ref: "#/components/schemas/TipoCambioFix",
+    });
+    expect(esquema200("/v1/udis").properties.data).toEqual({ $ref: "#/components/schemas/Udi" });
+  });
+
+  it("DiaInhabil y FixOperacion citan su fuente con el esquema Fuente", () => {
+    const { DiaInhabil, FixOperacion, Fuente } = doc.components.schemas;
+    expect(DiaInhabil.properties.fuente.$ref).toBe("#/components/schemas/Fuente");
+    expect(FixOperacion.properties.fundamento.$ref).toBe("#/components/schemas/Fuente");
+    expect([...FixOperacion.required].sort()).toEqual([
+      "fecha_operacion",
+      "fecha_publicacion",
+      "fundamento",
+      "valor",
+    ]);
+    expect([...Fuente.required].sort()).toEqual(["nombre", "url"]);
+    expect(Object.keys(Fuente.properties).sort()).toEqual([
+      "fecha_publicacion",
+      "fragmento",
+      "nombre",
+      "url",
+    ]);
   });
 
   it("todo $ref resuelve", () => {
@@ -239,6 +341,8 @@ describe("documento OpenAPI", () => {
         "DiaInhabil",
         "Estado",
         "EstadoDataset",
+        "FixOperacion",
+        "Fuente",
         "FuenteMeta",
         "Indice",
         "Meta",
@@ -247,6 +351,8 @@ describe("documento OpenAPI", () => {
         "Problema",
         "ResultadoClabe",
         "ResultadoDiasHabiles",
+        "TipoCambioFix",
+        "Udi",
       ].sort(),
     );
     for (const esquema of Object.values(doc.components.schemas as Obj)) {
@@ -255,13 +361,15 @@ describe("documento OpenAPI", () => {
   });
 
   it(
-    "los esquemas de Estado, Municipio y Banco validan el primer registro real",
+    "los esquemas de cada dataset validan su primer registro real",
     async () => {
       const ajv = new Ajv2020({ strict: false });
       const casos: Array<[string, string]> = [
         ["Estado", "inegi-estados/estados.json"],
         ["Municipio", "inegi-municipios/municipios.json"],
         ["Banco", "bancos/bancos.json"],
+        ["TipoCambioFix", "tipo-cambio-fix/fix.json"],
+        ["Udi", "udis/udis.json"],
       ];
       for (const [nombre, archivo] of casos) {
         const registros = (await leerJson(
@@ -305,6 +413,52 @@ describe("documento OpenAPI", () => {
     PRUEBA_LENTA,
   );
 
+  it(
+    "FIX, FixOperacion y UDI de los datos reales validan contra el documento y zod",
+    async () => {
+      const fix = (await leerJson(
+        new URL("../../../../data/tipo-cambio-fix/fix.json", import.meta.url),
+      )) as Array<{ fecha_publicacion: string; valor: string }>;
+      const udis = (await leerJson(
+        new URL("../../../../data/udis/udis.json", import.meta.url),
+      )) as unknown[];
+      const publicado = fix.at(-1) as { fecha_publicacion: string; valor: string };
+      const operacion = {
+        fecha_operacion: "2026-10-19",
+        fecha_publicacion: publicado.fecha_publicacion,
+        valor: publicado.valor,
+        fundamento: FUENTE_CFF_20,
+      };
+      const meta = {
+        dataset: "tipo-cambio.fix",
+        as_of: "2026-10-18",
+        sources: [
+          { name: "n", url: "https://x", license: "l", license_url: "https://l", citation: "c" },
+        ],
+        docs: "https://d",
+      };
+      const ajv = new Ajv2020({ strict: false });
+      const respuesta = (ruta: string) =>
+        ajv.compile({ components: doc.components, ...esquema200(ruta) });
+      const consultar = respuesta("/v1/tipo-cambio/fix");
+      expect(consultar({ data: publicado, meta }), JSON.stringify(consultar.errors)).toBe(true);
+      expect(consultar({ data: operacion, meta }), JSON.stringify(consultar.errors)).toBe(true);
+      expect(consultar({ data: { valor: publicado.valor }, meta })).toBe(false);
+      const udi = respuesta("/v1/udis");
+      expect(udi({ data: udis[0], meta: { ...meta, dataset: "udis" } })).toBe(true);
+      expect(respuesta("/v1/tipo-cambio/fix/ultimo")({ data: publicado, meta })).toBe(true);
+
+      expect(sobre(esquemaTipoCambioFix).safeParse({ data: publicado, meta }).success).toBe(true);
+      expect(sobre(esquemaFixOperacion).safeParse({ data: operacion, meta }).success).toBe(true);
+      expect(sobre(esquemaUdi).safeParse({ data: udis[0], meta }).success).toBe(true);
+      const sinFundamento = { ...operacion, fundamento: undefined };
+      expect(sobre(esquemaFixOperacion).safeParse({ data: sinFundamento, meta }).success).toBe(
+        false,
+      );
+    },
+    PRUEBA_LENTA,
+  );
+
   it("Problema.type nombra la base de los tipos de problema", () => {
     const base = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
     const descripcion = doc.components.schemas.Problema.properties.type.description as string;
@@ -312,6 +466,7 @@ describe("documento OpenAPI", () => {
     for (const tipo of Object.keys(PROBLEMAS)) expect(descripcion).toContain(tipo);
     expect(Object.keys(PROBLEMAS).sort()).toEqual([
       "calendario-incompleto",
+      "dato-no-disponible",
       "demasiadas-peticiones",
       "error-interno",
       "metodo-no-permitido",
@@ -409,5 +564,8 @@ describe("documento OpenAPI", () => {
     for (const k of ["instance", "parametro", "autoridad", "fecha", "cobertura"]) {
       expect(p.properties[k], k).toBeDefined();
     }
+    // `fecha` y `cobertura` sirven también para las series (FIX y UDIS).
+    expect(p.properties.fecha.description).toContain("la serie");
+    expect(p.properties.cobertura.description).toContain("la serie");
   });
 });

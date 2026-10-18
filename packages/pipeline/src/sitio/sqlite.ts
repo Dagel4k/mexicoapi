@@ -2,7 +2,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Banco, Estado, Municipio } from "@mexicoapi/core";
+import type { Banco, Estado, Municipio, TipoCambioFix, Udi } from "@mexicoapi/core";
 import { borrarSiPuede } from "../escritura.js";
 
 export interface FilaDataset {
@@ -17,6 +17,8 @@ export interface DatosSqlite {
   estados: readonly Estado[];
   municipios: readonly Municipio[];
   bancos: readonly Banco[];
+  tipoCambioFix: readonly TipoCambioFix[];
+  udis: readonly Udi[];
   datasets: readonly FilaDataset[];
 }
 
@@ -38,6 +40,8 @@ CREATE TABLE bancos_historial (
   nombre_corto TEXT NOT NULL, desde TEXT NOT NULL, hasta TEXT,
   PRIMARY KEY (codigo, desde)
 ) STRICT;
+CREATE TABLE tipo_cambio_fix (fecha_publicacion TEXT PRIMARY KEY, valor TEXT NOT NULL) STRICT;
+CREATE TABLE udis (fecha TEXT PRIMARY KEY, valor TEXT NOT NULL) STRICT;
 CREATE TABLE datasets (
   dataset TEXT PRIMARY KEY, as_of TEXT NOT NULL, records INTEGER NOT NULL,
   data_sha256 TEXT NOT NULL, manifest TEXT NOT NULL
@@ -69,6 +73,10 @@ function insertar(db: DatabaseSync, datos: DatosSqlite): void {
       periodo.run(b.codigo, p.codigo_spei, p.nombre_corto, p.desde, p.hasta);
     }
   }
+  const fix = db.prepare("INSERT INTO tipo_cambio_fix VALUES (?, ?)");
+  for (const f of datos.tipoCambioFix) fix.run(f.fecha_publicacion, f.valor);
+  const udi = db.prepare("INSERT INTO udis VALUES (?, ?)");
+  for (const u of datos.udis) udi.run(u.fecha, u.valor);
   const dataset = db.prepare("INSERT INTO datasets VALUES (?, ?, ?, ?, ?)");
   for (const d of datos.datasets) {
     dataset.run(d.dataset, d.as_of, d.records, d.data_sha256, d.manifest);

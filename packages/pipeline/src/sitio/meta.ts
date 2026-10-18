@@ -1,4 +1,4 @@
-import type { FechaISO, Manifiesto } from "@mexicoapi/core";
+import type { CoberturaSerie, FechaISO, Manifiesto } from "@mexicoapi/core";
 
 export const URL_DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
 
@@ -17,11 +17,17 @@ export interface Meta {
   docs: string;
 }
 
+export interface DatasetInterno {
+  meta: Meta;
+  records: number;
+  data_sha256: string;
+  frescura_horas: number;
+  /** Solo en las series (FIX y UDIS): fechas del primer y del último registro. */
+  cobertura?: CoberturaSerie;
+}
+
 export interface MetaInterna {
-  datasets: Record<
-    string,
-    { meta: Meta; records: number; data_sha256: string; frescura_horas: number }
-  >;
+  datasets: Record<string, DatasetInterno>;
 }
 
 /** Horas que un dataset puede pasar sin actualizarse antes de considerarse rancio. */

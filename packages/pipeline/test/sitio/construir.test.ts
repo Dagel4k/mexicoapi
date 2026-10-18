@@ -3,6 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
+import {
+  type CoberturaSerie,
+  fixPublicado,
+  type TipoCambioFix,
+  type Udi,
+  udiDeFecha,
+} from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
 import { ErrorDatos } from "../../src/errores.js";
@@ -59,6 +66,20 @@ const bancos = [
   },
 ];
 
+// La serie cruza tres años: el primero y el último se recortan a la cobertura.
+const fix = [
+  { fecha_publicacion: "2024-12-31", valor: "20.2683" },
+  { fecha_publicacion: "2025-01-02", valor: "20.5098" },
+  { fecha_publicacion: "2025-12-31", valor: "17.9852" },
+  { fecha_publicacion: "2026-01-02", valor: "17.9123" },
+  { fecha_publicacion: "2026-10-16", valor: "18.4250" },
+];
+const udis = [
+  { fecha: "2025-12-30", valor: "8.590112" },
+  { fecha: "2025-12-31", valor: "8.591234" },
+  { fecha: "2026-01-01", valor: "8.592345" },
+];
+
 function manifiesto(dataset: string, archivo: string, datos: unknown[]): string {
   return jsonCanonico({
     dataset,
@@ -87,6 +108,8 @@ async function crearDatos(raiz: string): Promise<void> {
     ["inegi-estados", "inegi.estados", "estados.json", estados],
     ["inegi-municipios", "inegi.municipios", "municipios.json", municipios],
     ["bancos", "bancos", "bancos.json", bancos],
+    ["tipo-cambio-fix", "tipo-cambio.fix", "fix.json", fix],
+    ["udis", "udis", "udis.json", udis],
   ];
   for (const [dir, id, archivo, datos] of conjuntos) {
     await mkdir(join(raiz, dir), { recursive: true });
@@ -144,7 +167,18 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/inegi-municipios.json",
         "descargas/inegi-municipios.manifest.json",
         "descargas/mexicoapi.sqlite",
+        "descargas/tipo-cambio-fix.csv",
+        "descargas/tipo-cambio-fix.json",
+        "descargas/tipo-cambio-fix.manifest.json",
+        "descargas/udis.csv",
+        "descargas/udis.json",
+        "descargas/udis.manifest.json",
+        "v1/_internos/fix/2024.json",
+        "v1/_internos/fix/2025.json",
+        "v1/_internos/fix/2026.json",
         "v1/_internos/meta.json",
+        "v1/_internos/udis/2025.json",
+        "v1/_internos/udis/2026.json",
         "v1/bancos.json",
         "v1/bancos/002.json",
         "v1/bancos/099.json",
@@ -219,6 +253,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       "bancos",
       "inegi.estados",
       "inegi.municipios",
+      "tipo-cambio.fix",
+      "udis",
     ]);
     expect(interna.datasets.bancos).toMatchObject({ records: 2, frescura_horas: 72 });
     expect(interna.datasets["inegi.estados"]).toMatchObject({
@@ -227,6 +263,57 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       data_sha256: sha256Hex(jsonCanonico(estados)),
     });
     expect(interna.datasets["inegi.municipios"]?.meta.dataset).toBe("inegi.municipios");
+    expect(interna.datasets["tipo-cambio.fix"]).toMatchObject({ records: 5, frescura_horas: 72 });
+    expect(interna.datasets["tipo-cambio.fix"]?.meta.docs).toBe(
+      "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/tipo-cambio-fix.md",
+    );
+  });
+
+  it("meta interna trae la cobertura solo de las series", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    expect(interna.datasets["tipo-cambio.fix"]?.cobertura).toEqual({
+      desde: "2024-12-31",
+      hasta: "2026-10-16",
+    });
+    expect(interna.datasets.udis?.cobertura).toEqual({ desde: "2025-12-30", hasta: "2026-01-01" });
+    for (const id of ["bancos", "inegi.estados", "inegi.municipios"]) {
+      expect(interna.datasets[id], id).not.toHaveProperty("cobertura");
+    }
+  });
+
+  it("escribe un shard minificado por año de cada serie, con su tramo", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const texto = await readFile(join(salida, "v1/_internos/fix/2024.json"), "utf8");
+    expect(texto).toBe(
+      '{"tramo":{"desde":"2024-12-31","hasta":"2024-12-31"},"datos":[{"fecha_publicacion":"2024-12-31","valor":"20.2683"}]}',
+    );
+    expect(await leerJson(join(salida, "v1/_internos/fix/2025.json"))).toEqual({
+      tramo: { desde: "2025-01-01", hasta: "2025-12-31" },
+      datos: [fix[1], fix[2]],
+    });
+    expect(await leerJson(join(salida, "v1/_internos/fix/2026.json"))).toEqual({
+      tramo: { desde: "2026-01-01", hasta: "2026-10-16" },
+      datos: [fix[3], fix[4]],
+    });
+    expect(await leerJson(join(salida, "v1/_internos/udis/2025.json"))).toEqual({
+      tramo: { desde: "2025-12-30", hasta: "2025-12-31" },
+      datos: [udis[0], udis[1]],
+    });
+    expect(await leerJson(join(salida, "v1/_internos/udis/2026.json"))).toEqual({
+      tramo: { desde: "2026-01-01", hasta: "2026-01-01" },
+      datos: [udis[2]],
+    });
+  });
+
+  it("falla sin escribir si una serie no está en orden por fecha", async () => {
+    const desordenada = [fix[1], fix[0], ...fix.slice(2)];
+    await writeFile(join(datos, "tipo-cambio-fix/fix.json"), jsonCanonico(desordenada));
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      name: "ErrorDatos",
+      dataset: "tipo-cambio.fix",
+    });
+    await expect(readdir(salida)).rejects.toThrow();
   });
 
   it("las descargas json y manifiesto son idénticas byte a byte a data/", async () => {
@@ -235,6 +322,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       ["inegi-estados", "estados.json"],
       ["inegi-municipios", "municipios.json"],
       ["bancos", "bancos.json"],
+      ["tipo-cambio-fix", "fix.json"],
+      ["udis", "udis.json"],
     ] as const) {
       expect(await readFile(join(salida, "descargas", `${dir}.json`))).toEqual(
         await readFile(join(datos, dir, archivo)),
@@ -266,6 +355,14 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "099,90098,ANTES,2010-01-01,2015-01-01\r\n" +
         "099,90099,VIEJO,2015-01-01,2020-05-01\r\n",
     );
+    expect(await csv("tipo-cambio-fix.csv")).toBe(
+      "fecha_publicacion,valor\r\n" +
+        "2024-12-31,20.2683\r\n2025-01-02,20.5098\r\n2025-12-31,17.9852\r\n" +
+        "2026-01-02,17.9123\r\n2026-10-16,18.4250\r\n",
+    );
+    expect(await csv("udis.csv")).toBe(
+      "fecha,valor\r\n2025-12-30,8.590112\r\n2025-12-31,8.591234\r\n2026-01-01,8.592345\r\n",
+    );
   });
 
   it("el sqlite trae todos los datasets", async () => {
@@ -275,7 +372,13 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       { dataset: "bancos", records: 2 },
       { dataset: "inegi.estados", records: 2 },
       { dataset: "inegi.municipios", records: 3 },
+      { dataset: "tipo-cambio.fix", records: 5 },
+      { dataset: "udis", records: 3 },
     ]);
+    expect(db.prepare("SELECT * FROM tipo_cambio_fix ORDER BY fecha_publicacion").all()).toEqual(
+      fix,
+    );
+    expect(db.prepare("SELECT * FROM udis ORDER BY fecha").all()).toEqual(udis);
     db.close();
   });
 
@@ -302,6 +405,10 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       "/descargas/inegi-estados.json\n  Content-Type: application/json; charset=utf-8",
     );
     expect(texto).toContain("/descargas/bancos.csv\n  Content-Type: text/csv; charset=utf-8");
+    expect(texto).toContain("/descargas/udis.csv\n  Content-Type: text/csv; charset=utf-8");
+    expect(texto).toContain(
+      "/descargas/tipo-cambio-fix.manifest.json\n  Content-Type: application/json; charset=utf-8",
+    );
     expect(texto).toContain("/descargas/mexicoapi.sqlite\n  Content-Type: application/vnd.sqlite3");
     expect(texto).toContain("/descargas/SHA256SUMS\n  Content-Type: text/plain; charset=utf-8");
     expect(texto).toContain("/descargas/*\n  Access-Control-Allow-Origin: *");
@@ -442,6 +549,64 @@ describe("con los datos reales del repositorio", () => {
         readFile(join(docs, d.meta.docs.slice(URL_DOCS.length + 1))),
         id,
       ).resolves.toBeDefined();
+    }
+  }, 120_000);
+
+  it("parte cada serie en shards por año que el núcleo acepta y juntos son la serie", async () => {
+    vi.restoreAllMocks();
+    const real = fileURLToPath(new URL("../../../../data", import.meta.url));
+    await construirSitio({ raizDatos: real, salida });
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    type Consultar = (
+      datos: unknown[],
+      tramo: CoberturaSerie,
+      cobertura: CoberturaSerie,
+      fecha: string,
+    ) => string;
+    const casos: [string, string, string, string, Consultar][] = [
+      [
+        "tipo-cambio.fix",
+        "tipo-cambio-fix/fix.json",
+        "fix",
+        "fecha_publicacion",
+        (d, t, c, f) => fixPublicado(d as TipoCambioFix[], t, c, f).tipo,
+      ],
+      [
+        "udis",
+        "udis/udis.json",
+        "udis",
+        "fecha",
+        (d, t, c, f) => udiDeFecha(d as Udi[], t, c, f).tipo,
+      ],
+    ];
+    for (const [id, archivo, carpeta, clave, consultar] of casos) {
+      const serie = (await leerJson(join(real, archivo))) as Record<string, string>[];
+      const fechas = serie.map((r) => r[clave] as string);
+      const cobertura = { desde: fechas[0] as string, hasta: fechas.at(-1) as string };
+      expect(interna.datasets[id]?.cobertura, id).toEqual(cobertura);
+      const anios = Array.from(
+        { length: Number(cobertura.hasta.slice(0, 4)) - Number(cobertura.desde.slice(0, 4)) + 1 },
+        (_, i) => String(Number(cobertura.desde.slice(0, 4)) + i),
+      );
+      expect((await readdir(join(salida, "v1/_internos", carpeta))).sort(), id).toEqual(
+        anios.map((a) => `${a}.json`),
+      );
+      const juntos: unknown[] = [];
+      for (const anio of anios) {
+        const shard = (await leerJson(join(salida, "v1/_internos", carpeta, `${anio}.json`))) as {
+          tramo: { desde: string; hasta: string };
+          datos: Record<string, string>[];
+        };
+        const desde = `${anio}-01-01` < cobertura.desde ? cobertura.desde : `${anio}-01-01`;
+        const hasta = `${anio}-12-31` > cobertura.hasta ? cobertura.hasta : `${anio}-12-31`;
+        expect(shard.tramo, `${id} ${anio}`).toEqual({ desde, hasta });
+        const primera = shard.datos[0]?.[clave] as string;
+        expect(consultar(shard.datos, shard.tramo, cobertura, primera), `${id} ${anio}`).toBe(
+          "encontrado",
+        );
+        juntos.push(...shard.datos);
+      }
+      expect(juntos, id).toEqual(serie);
     }
   }, 120_000);
 });

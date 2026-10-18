@@ -1,11 +1,13 @@
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { principal } from "../src/cli.js";
 import { crearEntorno, HOY, leerFixture, PRUEBA_LENTA } from "./ayudas.js";
 
 const TODOS = ["inegi.estados", "inegi.municipios", "bancos"];
+const REAL = fileURLToPath(new URL("../../../data", import.meta.url));
 
 let raiz: string;
 let aparte: string;
@@ -269,6 +271,10 @@ describe("bancos-historico", { timeout: PRUEBA_LENTA }, () => {
 describe("construir", { timeout: PRUEBA_LENTA }, () => {
   it("construye el sitio con los datos actualizados y sale 0", async () => {
     expect(await principal(["actualizar", ...TODOS], await crearEntorno(raiz))).toBe(0);
+    // Las series se copian de los datos reales: sus fixtures no cubren todos los años.
+    for (const dir of ["tipo-cambio-fix", "udis"]) {
+      await cp(join(REAL, dir), join(raiz, dir), { recursive: true });
+    }
     const entorno = await crearEntorno(raiz);
     const salida = join(aparte, "sitio");
     expect(await principal(["construir", "--salida", salida], entorno)).toBe(0);

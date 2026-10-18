@@ -26,21 +26,21 @@ export const esquemaProblema = z.object({
   instance: z.string().optional().describe("Ruta pedida."),
   parametro: z.string().optional().describe("Parámetro que causó el problema."),
   autoridad: z.string().optional().describe("Autoridad del calendario consultado."),
-  fecha: fechaIso.optional().describe("Fecha que el calendario no cubre."),
+  fecha: fechaIso.optional().describe("Fecha pedida que el calendario o la serie no cubre."),
   cobertura: z
     .object({
       desde: fechaIso.describe("Primer día cubierto."),
       hasta: fechaIso.describe("Último día cubierto."),
     })
     .optional()
-    .describe("Rango que cubre el calendario."),
+    .describe("Rango que cubre el calendario o la serie."),
 });
 
-const esquemaFuente = z.object({
+export const esquemaFuente = z.object({
   nombre: z.string().describe("Nombre de la fuente."),
   url: z.string().describe("Dirección de la fuente."),
   fecha_publicacion: fechaIso.optional().describe("Fecha de publicación (AAAA-MM-DD)."),
-  fragmento: z.string().optional().describe("Texto de la fuente que respalda el día."),
+  fragmento: z.string().optional().describe("Texto de la fuente que lo respalda."),
 });
 
 const autoridad = z.enum(["lft", "cnbv", "sat"]).describe("Autoridad del calendario.");
@@ -61,6 +61,18 @@ export const esquemaResultadoDiasHabiles = z.object({
     .array(esquemaDiaInhabil)
     .describe("Días inhábiles saltados, sin los fines de semana."),
   advertencias: z.array(z.string()).describe("Avisos, como un calendario incompleto."),
+});
+
+export const esquemaFixOperacion = z.object({
+  fecha_operacion: fechaIso.describe("Fecha de la operación consultada (AAAA-MM-DD)."),
+  fecha_publicacion: fechaIso.describe(
+    "Fecha de publicación en el DOF del FIX que aplica: la última antes de la operación.",
+  ),
+  valor: z
+    .string()
+    .regex(/^\d+\.\d{4}$/)
+    .describe("Pesos por dólar, con 4 decimales, como lo publica el DOF."),
+  fundamento: esquemaFuente.describe("Regla que fija qué publicación aplica (CFF art. 20)."),
 });
 
 const codigoError = z.enum([
