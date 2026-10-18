@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { AVISO_SIN_API } from "../src/respuesta.js";
 import {
   apiOk,
   apiProblema,
@@ -39,7 +38,8 @@ describe("dias_inhabiles", () => {
       "2026-12-25",
     ]);
     expect(c).toMatchObject({ fuente: LFT_74, fuentes: [LFT_74], origen: "paquete" });
-    expect(c.advertencias).toEqual([AVISO_SIN_API]);
+    // Sin API los calendarios no avisan: fuera de su cobertura responden error, no un dato viejo.
+    expect(c.advertencias).toEqual([]);
     const t = texto(r);
     expect(t).toContain("7 días inhábiles de 2026 según la LFT, sin contar sábados y domingos:");
     expect(t).toContain("- 2026-12-25 25 de diciembre (descanso)");
@@ -131,7 +131,8 @@ describe("sumar_dias_habiles", () => {
       inhabiles_saltados: [{ fecha: "2026-12-25", tipo: "descanso" }],
       advertencias: [],
     });
-    expect(c.advertencias).toEqual([AVISO_SIN_API]);
+    // Sin API los calendarios no avisan: fuera de su cobertura responden error, no un dato viejo.
+    expect(c.advertencias).toEqual([]);
     const t = texto(r);
     expect(t).toContain("2026-12-23 + 3 días hábiles según la LFT: 2026-12-29.");
     expect(t).toContain("Inhábiles saltados (sin contar sábados y domingos):");
@@ -196,7 +197,7 @@ describe("sumar_dias_habiles", () => {
     const datos = c.datos as { resultado: string; advertencias: string[] };
     expect(datos.resultado).toBe("2026-12-28");
     expect(datos.advertencias).toHaveLength(1);
-    expect(c.advertencias).toEqual([AVISO_SIN_API, datos.advertencias[0]]);
+    expect(c.advertencias).toEqual([datos.advertencias[0]]);
     expect(texto(r)).toContain(`Advertencia: ${datos.advertencias[0]}`);
     esError(
       await llamar("sumar_dias_habiles", { autoridad: "lft", desde: "2100-12-30", dias: 3 }),

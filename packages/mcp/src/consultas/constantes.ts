@@ -53,7 +53,7 @@ function problema({ tipo, anio, fecha, periodo }: Argumentos): string | null {
   return anio === undefined ? `Con tipo=${tipo} falta el parámetro anio.` : null;
 }
 
-export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
+export function constantesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
   return {
     name: "constantes",
     title: "UMA, salario mínimo e ISR",
@@ -90,7 +90,6 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
       const mal = problema(a);
       if (mal !== null) return resultadoError(mal);
       const op = { signal };
-      const sinApi = !conApi;
       const extra = { tipo: a.tipo };
       if (a.tipo === "uma") {
         const r: Respuesta<Uma> = await consultar(signal, () =>
@@ -106,7 +105,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
           a.fecha === undefined
             ? `UMA de ${u.anio}: ${montos}`
             : `UMA vigente el ${a.fecha}: la de ${u.anio}, ${montos}`;
-        return conFuentes([linea], r, [u.fuente], sinApi, extra);
+        return conFuentes([linea], r, [u.fuente], extra);
       }
       if (a.tipo === "salario_minimo") {
         const r: Respuesta<readonly SalarioMinimo[]> = await consultar(signal, () =>
@@ -121,7 +120,6 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
           lineas,
           r,
           zonas.map((z) => z.fuente),
-          sinApi,
           extra,
         );
       }
@@ -138,7 +136,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
           ),
         ),
       ];
-      return conFuentes(lineas, r, [t.fuente], sinApi, extra);
+      return conFuentes(lineas, r, [t.fuente], extra);
     },
   };
 }
@@ -148,9 +146,8 @@ function conFuentes(
   lineas: string[],
   r: Respuesta<unknown>,
   fuentes: readonly { nombre: string; url: string }[],
-  sinApi: boolean,
   extra: Record<string, unknown>,
 ): ResultadoHerramienta {
-  const p = procedencia(r, { fuentes: fuentes.map(fuenteDe), sinApi });
+  const p = procedencia(r, { fuentes: fuentes.map(fuenteDe) });
   return resultado(lineas, r.data, p, { extra });
 }

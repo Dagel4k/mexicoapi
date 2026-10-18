@@ -35,13 +35,16 @@ export interface Procedencia {
   advertencias: string[];
 }
 
-/** Advertencia de los datos que caducan cuando el servidor no tiene MEXICOAPI_BASE. */
+/**
+ * Advertencia, sin MEXICOAPI_BASE, de una respuesta del paquete que puede no estar al día: el FIX
+ * más reciente o una fecha cerca del final de su serie (ver indicadores.ts).
+ */
 export const AVISO_SIN_API =
   "Respuesta con los datos del paquete mexicoapi, sin consultar la API (no hay MEXICOAPI_BASE): pueden faltar publicaciones recientes.";
 
 /** Cierre de la descripción de las herramientas de datos que caducan. */
 export const RESPALDO_API =
-  "Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.";
+  "Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete.";
 
 /** Documentación de los validadores, la fuente de las validaciones por algoritmo. */
 export const FUENTE_VALIDADORES: Fuente = {

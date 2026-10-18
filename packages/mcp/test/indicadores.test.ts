@@ -20,6 +20,10 @@ import {
 const SIDOF = { nombre: fix.meta.sources[0]?.name, url: fix.meta.sources[0]?.url };
 const RESPALDO = /^Respuesta de los datos del paquete porque la API falló: /;
 
+/** La fecha `dias` días antes de `fecha` (AAAA-MM-DD). */
+const restar = (fecha: string, dias: number): string =>
+  new Date(Date.parse(fecha) - dias * 86_400_000).toISOString().slice(0, 10);
+
 let sinRed: Llamador;
 
 beforeAll(async () => {
@@ -27,17 +31,30 @@ beforeAll(async () => {
 });
 
 describe("tipo_de_cambio_fix sin API", () => {
-  it("con publicado da el FIX publicado ese día, con la advertencia de que no hubo API", async () => {
+  it("con publicado da el FIX publicado ese día, del paquete", async () => {
     const r = await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-12" });
     const c = contenido(r);
     expect(c.datos).toEqual({ fecha_publicacion: "2026-10-12", valor: "18.4163" });
     expect(c).toMatchObject({ as_of: fix.meta.as_of, fuente: SIDOF, fuentes: [SIDOF] });
     expect(c.origen).toBe("paquete");
-    expect(c.advertencias).toContain(AVISO_SIN_API);
     const t = texto(r);
     expect(t).toContain("FIX publicado en el DOF el 2026-10-12: 18.4163 pesos por dólar.");
-    expect(t).toContain(`Advertencia: ${AVISO_SIN_API}`);
     expect(t).toContain(`as_of (corte de los datos): ${fix.meta.as_of}`);
+  });
+
+  it("sin API avisa en la publicación más reciente y a 7 días o menos del final de la serie", async () => {
+    const { hasta } = fix.cobertura;
+    const avisa = async (args: Record<string, unknown>) => {
+      const r = await sinRed("tipo_de_cambio_fix", args);
+      const tiene = (contenido(r).advertencias as string[]).includes(AVISO_SIN_API);
+      expect(texto(r).includes(`Advertencia: ${AVISO_SIN_API}`)).toBe(tiene);
+      return tiene;
+    };
+    expect(await avisa({})).toBe(true);
+    expect(await avisa({ operacion: hasta })).toBe(true);
+    expect(await avisa({ operacion: restar(hasta, 7) })).toBe(true);
+    expect(await avisa({ operacion: restar(hasta, 8) })).toBe(false);
+    expect(await avisa({ publicado: "2025-01-15" })).toBe(false);
   });
 
   it("con operacion aplica el CFF, artículo 20, y cita el fundamento", async () => {
@@ -228,8 +245,17 @@ describe("udis", () => {
       fuente: { nombre: udis.meta.sources[0]?.name, url: udis.meta.sources[0]?.url },
       origen: "paquete",
     });
-    expect(c.advertencias).toContain(AVISO_SIN_API);
     expect(texto(r)).toContain("UDI del 2026-10-01: 8.836029 pesos.");
+  });
+
+  it("sin API avisa solo a 7 días o menos del último valor del paquete", async () => {
+    const { hasta } = udis.cobertura;
+    const avisa = async (fecha: string) =>
+      (contenido(await sinRed("udis", { fecha })).advertencias as string[]).includes(AVISO_SIN_API);
+    expect(await avisa(hasta)).toBe(true);
+    expect(await avisa(restar(hasta, 7))).toBe(true);
+    expect(await avisa(restar(hasta, 8))).toBe(false);
+    expect(await avisa("2025-01-15")).toBe(false);
   });
 
   it("antes de la serie o sin fecha es error", async () => {
