@@ -109,8 +109,8 @@ describe("ciclo de vida", () => {
 });
 
 describe("negociación de versión (Review Focus 2)", () => {
-  it("soporta 2025-11-25, 2025-06-18 y 2025-03-26, en ese orden", () => {
-    expect(VERSIONES_SOPORTADAS).toEqual(["2025-11-25", "2025-06-18", "2025-03-26"]);
+  it("soporta 2025-11-25, 2025-06-18, 2025-03-26 y 2024-11-05, en ese orden", () => {
+    expect(VERSIONES_SOPORTADAS).toEqual(["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]);
     expect(VERSION_RECIENTE).toBe("2025-11-25");
   });
 
@@ -120,7 +120,7 @@ describe("negociación de versión (Review Focus 2)", () => {
     expect((result as { protocolVersion: string }).protocolVersion).toBe(version);
   });
 
-  it.each(["2024-11-05", "1.0.0", "2099-01-01", ""])(
+  it.each(["2024-10-07", "1.0.0", "2099-01-01", ""])(
     "con %j responde la versión soportada más reciente",
     async (version) => {
       const cliente = conectar();
@@ -189,6 +189,35 @@ describe("negociación de versión (Review Focus 2)", () => {
     });
     const llamada = await cliente.pedir("tools/call", { name: "eco", arguments: { texto: "a" } });
     expect(llamada.result).toEqual({ content: [{ type: "text", text: "a" }] });
+  });
+});
+
+describe("versión 2024-11-05", () => {
+  it("publica solo lo que esa versión conoce", async () => {
+    const cliente = conectar({ herramientas: [eco] });
+    expect((await cliente.inicializar("2024-11-05")).result).toEqual({
+      ...RESULTADO_INICIAL,
+      protocolVersion: "2024-11-05",
+      serverInfo: { name: INFO.name, version: INFO.version },
+    });
+    const lista = await cliente.pedir("tools/list");
+    expect((lista.result as { tools: unknown[] }).tools[0]).toEqual({
+      name: eco.name,
+      description: eco.description,
+      inputSchema: eco.inputSchema,
+    });
+    const llamada = await cliente.pedir("tools/call", { name: "eco", arguments: { texto: "a" } });
+    expect(llamada.result).toEqual({ content: [{ type: "text", text: "a" }] });
+  });
+
+  it("no acepta lotes", async () => {
+    const cliente = conectar();
+    await cliente.inicializar("2024-11-05");
+    cliente.escribir('[{"jsonrpc":"2.0","id":"l","method":"ping"}]\n');
+    expect((await cliente.recibir()).error).toEqual({
+      code: SOLICITUD_INVALIDA,
+      message: "No se admiten lotes JSON-RPC en esta versión del protocolo",
+    });
   });
 });
 
