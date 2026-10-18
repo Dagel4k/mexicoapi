@@ -1,3 +1,5 @@
+import { FechaFueraDeRangoError } from "./errores.js";
+
 /** Fecha en formato "YYYY-MM-DD". */
 export type FechaISO = string;
 /** 0 = domingo ... 6 = sábado. */
@@ -87,11 +89,9 @@ export function aDias(fecha: FechaISO): number {
   throw new RangeError(`Fecha ISO inválida: ${fecha}`);
 }
 
-/** Fecha ISO del día contado desde 1970-01-01; lanza RangeError fuera de 0001-9999. */
+/** Fecha ISO del día contado desde 1970-01-01; lanza FechaFueraDeRangoError fuera de 0001-9999. */
 export function deDias(dias: number): FechaISO {
-  if (!(dias >= DIA_MIN && dias <= DIA_MAX)) {
-    throw new RangeError("La fecha resultante sale del rango 0001-9999");
-  }
+  if (!(dias >= DIA_MIN && dias <= DIA_MAX)) throw new FechaFueraDeRangoError();
   const z = dias + 719_468;
   const era = (z / 146_097) | 0;
   const doe = z - era * 146_097;

@@ -29,6 +29,11 @@ const META_LFT = {
   docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#dias-habiles",
 };
 
+const META_INHABILES = {
+  ...META_LFT,
+  docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#dias-inhabiles",
+};
+
 const COBERTURA = { desde: "2007-01-01", hasta: "2100-12-31" };
 
 /** Las rutas de días nunca tocan ASSETS. */
@@ -321,7 +326,7 @@ describe("GET /v1/dias-inhabiles", () => {
       "2026-12-25",
     ]);
     expect(cuerpo.data).toEqual(JSON.parse(JSON.stringify(diasDescansoLft(2026))));
-    expect(cuerpo.meta).toEqual(META_LFT);
+    expect(cuerpo.meta).toEqual(META_INHABILES);
   });
 
   it("acepta los extremos de la cobertura, 2007 y 2100", async () => {
@@ -334,7 +339,7 @@ describe("GET /v1/dias-inhabiles", () => {
   });
 
   it("un año fuera de la cobertura da 422 con fecha el 1 de enero de ese año", async () => {
-    for (const anio of ["2006", "2101", "0000", "9999"]) {
+    for (const anio of ["2006", "2101", "0001", "9999"]) {
       const r = await pedir(inhabiles(`autoridad=lft&anio=${anio}`));
       expect(r.status, anio).toBe(422);
       expect(r.headers.get("cache-control")).toBe("no-store");
@@ -351,8 +356,9 @@ describe("GET /v1/dias-inhabiles", () => {
     }
   });
 
-  it("un año que no tiene 4 dígitos da 400 en anio", async () => {
+  it("un año que no tiene 4 dígitos, o es 0000, da 400 en anio", async () => {
     for (const anio of [
+      "0000",
       "26",
       "02026",
       "2026.0",
@@ -366,7 +372,7 @@ describe("GET /v1/dias-inhabiles", () => {
         type: `${TIPO}parametro-invalido`,
         title: "Parámetro inválido",
         status: 400,
-        detail: "El año (anio) debe tener 4 dígitos.",
+        detail: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
         instance: "/v1/dias-inhabiles",
         parametro: "anio",
       });
