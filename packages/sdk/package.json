@@ -35,6 +35,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./datos": {
+      "types": "./dist/datos/index.d.ts",
+      "import": "./dist/datos/index.js"
+    },
+    "./datos/fix": {
+      "types": "./dist/datos/fix.d.ts",
+      "import": "./dist/datos/fix.js"
+    },
+    "./datos/udis": {
+      "types": "./dist/datos/udis.d.ts",
+      "import": "./dist/datos/udis.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -47,7 +59,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && node scripts/empaquetar.ts nucleo",
+    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
     "test:paquete": "vitest run --config vitest.paquete.config.ts"
   },
   "dependencies": {},

@@ -65,6 +65,16 @@ describe("package.json de mexicoapi", () => {
     }
   });
 
+  it("publica la entrada principal y los datos, con el FIX y las UDIS aparte", () => {
+    expect(Object.keys(manifiesto.exports)).toEqual([
+      ".",
+      "./datos",
+      "./datos/fix",
+      "./datos/udis",
+      "./package.json",
+    ]);
+  });
+
   it("main y types apuntan a la entrada principal", () => {
     expect(manifiesto.exports["."]).toEqual({ types: manifiesto.types, import: manifiesto.main });
   });
