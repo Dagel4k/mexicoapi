@@ -29,12 +29,12 @@ jobs:
       - name: Comprobar secretos del bot
         id: bot
         env:
-          TIENE_BOT: ${{ secrets.BOT_APP_ID != '' && secrets.BOT_PRIVATE_KEY != '' }}
+          TIENE_BOT: ${{ secrets.BOT_CLIENT_ID != '' && secrets.BOT_PRIVATE_KEY != '' }}
         run: |
           set -euo pipefail
           echo "tiene_bot=${TIENE_BOT}" >> "${GITHUB_OUTPUT}"
           if [ "${TIENE_BOT}" != "true" ]; then
-            echo "::notice::Faltan los secretos BOT_APP_ID y BOT_PRIVATE_KEY; no se actualizan datos. Ver docs/operacion/bot-de-datos.md"
+            echo "::notice::Faltan los secretos BOT_CLIENT_ID y BOT_PRIVATE_KEY; no se actualizan datos. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/bot-de-datos.md"
           fi
 
       - name: Resolver grupo de datos
@@ -65,12 +65,10 @@ jobs:
       - name: Token de la GitHub App
         id: app
         if: steps.bot.outputs.tiene_bot == 'true'
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          app-id: ${{ secrets.BOT_APP_ID }}
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
@@ -106,12 +104,12 @@ jobs:
           RESUMEN_DIR: ${{ runner.temp }}
         run: |
           set -uo pipefail
+          # GitHub corre bash con -e; el || evita abortar con los códigos 1 y 3.
+          codigo=0
           # IDS son varios argumentos: se deja sin comillas a propósito.
           # shellcheck disable=SC2086
-          node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${RESUMEN_DIR}/resumen"
-          codigo=$?
+          node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${RESUMEN_DIR}/resumen" || codigo=$?
           echo "codigo=${codigo}" >> "${GITHUB_OUTPUT}"
-          exit 0
 
       - name: Publicar resultado
         if: steps.bot.outputs.tiene_bot == 'true'
@@ -120,6 +118,7 @@ jobs:
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
           GRUPO: ${{ steps.grupo.outputs.grupo }}
           CODIGO: ${{ steps.cli.outputs.codigo }}
+          GH_REPO: ${{ github.repository }}
           RESUMEN_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
@@ -183,6 +182,21 @@ jobs:
             exit 0
           fi
 
+          # Si ya hay un PR de revisión abierto para este grupo, no se abre otro.
+          pr_pendiente="$(gh pr list --state open --label revisar --json url,headRefName             | jq -r --arg p "datos/${GRUPO}-" '[.[] | select(.headRefName | startswith($p))][0].url // empty')"
+          if [ -n "${pr_pendiente}" ]; then
+            cuerpo="${RUNNER_TEMP}/issue-pendiente.md"
+            {
+              echo "Hay cambios nuevos en \`${GRUPO}\`, pero el PR ${pr_pendiente} sigue pendiente de revisión, así que no se abrió otro."
+              echo
+              motivos
+              echo
+              echo "Corrida: ${url_corrida}"
+            } > "${cuerpo}"
+            abrir_o_comentar "Revisar datos: ${GRUPO}" "${cuerpo}"
+            exit 0
+          fi
+
           # Identidad del bot
           id_bot="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
           git config user.name "${APP_SLUG}[bot]"
@@ -198,7 +212,8 @@ jobs:
 
           git switch -c "${rama}"
           git add data/
-          git commit -m "datos(${GRUPO}): ${fecha}"
+          # Sin hooks y sin el token en el entorno: el check verify del PR cubre biome y gitleaks.
+          env -u GH_TOKEN git -c core.hooksPath=/dev/null commit -q -m "datos(${GRUPO}): ${fecha}"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${rama}"
 
           cuerpo_pr="${RUNNER_TEMP}/pr.md"
@@ -224,4 +239,31 @@ jobs:
             url_pr="$(gh pr create --base main --head "${rama}" --title "datos(${GRUPO}): ${fecha}" \
               --body-file "${cuerpo_pr}")"
             gh pr merge "${url_pr}" --auto --rebase
+          fi
+
+      - name: Reportar falla previa al CLI
+        if: failure() && steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != '1'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          GRUPO: ${{ steps.grupo.outputs.grupo }}
+        run: |
+          set -euo pipefail
+          url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          if [ -z "${GH_TOKEN}" ] || [ -z "${GRUPO}" ]; then
+            echo "::error::La corrida falló antes de obtener el token; no se puede abrir un issue."
+            exit 0
+          fi
+          titulo="Falla en datos: ${GRUPO}"
+          cuerpo="${RUNNER_TEMP}/issue-falla-previa.md"
+          {
+            echo "La corrida de datos de \`${GRUPO}\` falló (token, instalación, compilación o publicación)."
+            echo
+            echo "Corrida: ${url_corrida}"
+          } > "${cuerpo}"
+          numero="$(gh issue list --state open --search "in:title \"${titulo}\"" --json number,title             | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
+          if [ -n "${numero}" ]; then
+            gh issue comment "${numero}" --body-file "${cuerpo}"
+          else
+            gh issue create --title "${titulo}" --body-file "${cuerpo}"
           fi
