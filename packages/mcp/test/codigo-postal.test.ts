@@ -2,6 +2,8 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AVISO_SEPOMEX, URL_DESCARGA } from "mexicoapi/sepomex";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { ResultadoHerramienta } from "../src/herramientas.js";
+import { conectar } from "./ayudas.js";
 import {
   contenido,
   esError,
@@ -89,15 +91,37 @@ describe("codigo_postal con catálogo", () => {
     expect(lineas).toContain(`- ${COLONIA_MALICIOSA} (Colonia, Urbano, Culiacán Rosales)`);
   });
 
-  it("recorta la lista del texto pero entrega todos en structuredContent", async () => {
+  it("el texto trae todos los asentamientos: 30 con detalle y el resto con su nombre", async () => {
     const r = await llamar("codigo_postal", { cp: "80100" });
     expect((contenido(r).datos as { asentamientos: unknown[] }).asentamientos).toHaveLength(45);
-    const t = texto(r);
-    expect(t).toContain("45 asentamientos:");
-    expect(t).toContain("- Asentamiento numerado 30 (Colonia, Rural, Culiacán Rosales)");
-    expect(t).not.toContain("Asentamiento numerado 31 (");
-    expect(t).toContain("… y 15 más (todos vienen en structuredContent).");
+    const lineas = texto(r).split("\n");
+    expect(lineas).toContain("45 asentamientos:");
+    expect(lineas).toContain("- Asentamiento numerado 30 (Colonia, Rural, Culiacán Rosales)");
+    expect(lineas).toContain("Los otros 15, solo con el nombre:");
+    for (let i = 31; i <= 45; i++) expect(lineas).toContain(`- Asentamiento numerado ${i}`);
+    expect(texto(r)).not.toContain("Asentamiento numerado 31 (");
+    expect(texto(r)).not.toContain("structuredContent");
   });
+
+  // En 2025-03-26 y 2024-11-05 no hay structuredContent: el texto es lo único que llega.
+  it.each(["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"])(
+    "con el protocolo %s el texto nombra los 45 asentamientos",
+    async (version) => {
+      const { herramientas } = herramientasSinTocarRed({ dirSepomex: trabajo.cache });
+      const cliente = conectar({ herramientas });
+      await cliente.inicializar(version);
+      const { result } = await cliente.pedir("tools/call", {
+        name: "codigo_postal",
+        arguments: { cp: "80100" },
+      });
+      const r = result as ResultadoHerramienta;
+      const t = texto(r);
+      for (let i = 1; i <= 45; i++) expect(t).toContain(`- Asentamiento numerado ${i}`);
+      expect(t).not.toContain("structuredContent");
+      const conEstructura = version === "2025-11-25" || version === "2025-06-18";
+      expect(r.structuredContent === undefined).toBe(!conEstructura);
+    },
+  );
 
   it("avisa cuando el municipio no está en INEGI y omite la ciudad vacía", async () => {
     const r = await llamar("codigo_postal", { cp: "80500" });
