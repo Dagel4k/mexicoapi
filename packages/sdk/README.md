@@ -302,7 +302,7 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 | Cloudflare Workers | Probado en workerd, sin `nodejs_compat` |
 | Navegador con bundler | Entradas universales, sin módulos de Node; `sideEffects: false` |
 | Deno y Bun | Entradas universales; sin pruebas propias |
-| TypeScript | Tipos incluidos, probados con `moduleResolution` NodeNext y Bundler |
+| TypeScript | Tipos incluidos, probados con `moduleResolution` NodeNext y Bundler. Las subrutas (`mexicoapi/datos`, `mexicoapi/cliente`...) piden `node16`, `nodenext` o `bundler`: con `node10` TypeScript no lee `exports` y da TS2307 |
 
 `mexicoapi/sepomex` y la CLI piden Node. El SQLite de SEPOMEX pide Node 22.13 o posterior.
 
