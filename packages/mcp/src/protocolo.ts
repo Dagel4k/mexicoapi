@@ -87,7 +87,10 @@ export interface OpcionesServidor {
   porPagina?: number;
   /** Ids recientes que se recuerdan para detectar repetidos. */
   maxIdsRecordados?: number;
-  /** Llamadas a herramientas que pueden estar en curso a la vez. */
+  /**
+   * Llamadas a herramientas de red (`openWorldHint: true`) que pueden estar en curso a la vez. Las
+   * locales no cuentan: no salen del equipo y terminan enseguida.
+   */
   maxLlamadasEnCurso?: number;
 }
 
@@ -237,6 +240,8 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
   let version: VersionProtocolo | null = null;
   const idsUsados = new Set<string>();
   const enCurso = new Map<string, AbortController>();
+  /** Llamadas de red en curso, las que cuenta el tope. */
+  let enRed = 0;
 
   function recordarId(clave: string): void {
     idsUsados.add(clave);
@@ -318,7 +323,9 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     const { definicion, validarSalida } = herramienta;
     const clave = claveId(id);
     const control = new AbortController();
+    const deRed = definicion.annotations.openWorldHint;
     enCurso.set(clave, control);
+    if (deRed) enRed++;
     try {
       const resultado = await definicion.ejecutar(args, { signal: control.signal });
       if (control.signal.aborted) return null;
@@ -338,6 +345,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
       return errorInterno(id);
     } finally {
       enCurso.delete(clave);
+      if (deRed) enRed--;
     }
   }
 
@@ -369,7 +377,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
       const mensaje = `Argumentos inválidos para ${params.name}: ${errores.join("; ")}`;
       return exito(id, formaResultado(resultadoError(mensaje), sesion));
     }
-    if (enCurso.size >= maxEnCurso) {
+    if (herramienta.definicion.annotations.openWorldHint && enRed >= maxEnCurso) {
       const mensaje = "Hay demasiadas llamadas en curso; intenta de nuevo cuando terminen.";
       return exito(id, formaResultado(resultadoError(mensaje), sesion));
     }
