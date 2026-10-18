@@ -28,7 +28,11 @@ import {
 } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
-import { type ShardCalendario, shardCalendario } from "../../src/sitio/calendarios.js";
+import {
+  coberturasDe,
+  type ShardCalendario,
+  shardCalendario,
+} from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
@@ -198,6 +202,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/dias-inhabiles-cnbv.csv",
         "descargas/dias-inhabiles-cnbv.json",
         "descargas/dias-inhabiles-cnbv.manifest.json",
+        "descargas/dias-inhabiles-coberturas.csv",
+        "descargas/dias-inhabiles-coberturas.json",
         "descargas/dias-inhabiles-sat.csv",
         "descargas/dias-inhabiles-sat.json",
         "descargas/dias-inhabiles-sat.manifest.json",
@@ -527,6 +533,49 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(isr[1]?.startsWith("2025,anual,1,0.01,8952.49,0.00,1.92,")).toBe(true);
     expect(isr[11]?.startsWith("2025,anual,11,4511707.38,,1414947.85,35.00,")).toBe(true);
     expect(isr[33]?.startsWith("2026,mensual,11,425642.00,,133488.54,35.00,")).toBe(true);
+  });
+
+  it("publica la cobertura de cada calendario por tipo de plazo en json, csv y sqlite", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const esperadas = [
+      { autoridad: "cnbv", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-12-31" },
+      { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
+      {
+        autoridad: "sat",
+        tipo_plazo: "declaraciones_pagos",
+        desde: "2026-01-01",
+        hasta: "2026-12-31",
+      },
+    ];
+    const json = await readFile(join(salida, "descargas/dias-inhabiles-coberturas.json"), "utf8");
+    expect(json).toBe(jsonCanonico(esperadas));
+    expect(await readFile(join(salida, "descargas/dias-inhabiles-coberturas.csv"), "utf8")).toBe(
+      "autoridad,tipo_plazo,desde,hasta\r\n" +
+        "cnbv,general,2026-01-01,2026-12-31\r\n" +
+        "sat,general,2026-01-01,2026-11-30\r\n" +
+        "sat,declaraciones_pagos,2026-01-01,2026-12-31\r\n",
+    );
+    // Es la misma cobertura que usa el Worker.
+    for (const autoridad of ["cnbv", "sat"] as const) {
+      const shard = (await leerJson(
+        join(salida, `v1/_internos/calendarios/${autoridad}.json`),
+      )) as ShardCalendario;
+      expect(esperadas.filter((c) => c.autoridad === autoridad)).toEqual(coberturasDe(shard));
+    }
+    const db = new DatabaseSync(join(salida, "descargas/mexicoapi.sqlite"), { readOnly: true });
+    expect(
+      db.prepare("SELECT * FROM coberturas_calendario ORDER BY autoridad, tipo_plazo").all(),
+    ).toEqual([esperadas[0], esperadas[2], esperadas[1]]);
+    db.close();
+    const encabezados = await readFile(join(salida, "_headers"), "utf8");
+    expect(encabezados).toContain(
+      "/descargas/dias-inhabiles-coberturas.json\n  Content-Type: application/json; charset=utf-8",
+    );
+    expect(encabezados).toContain(
+      "/descargas/dias-inhabiles-coberturas.csv\n  Content-Type: text/csv; charset=utf-8",
+    );
+    const sumas = await readFile(join(salida, "descargas/SHA256SUMS"), "utf8");
+    expect(sumas).toContain(`${sha256Hex(json)}  dias-inhabiles-coberturas.json\n`);
   });
 
   it("falla con ErrorDatos si falta un curado o su YAML", async () => {
@@ -867,22 +916,26 @@ describe("con los datos reales del repositorio", () => {
       "isr/tarifa/anual",
       "isr/tarifa/mensual",
     ]);
+    const coberturas: unknown[] = [];
     for (const [def, autoridad] of [
       [curadoDiasCnbv, "cnbv"],
       [curadoDiasSat, "sat"],
     ] as const) {
       const lectura = await leerCurado(def, real);
+      const shard = shardCalendario(
+        autoridad,
+        await registrosDe<DiaInhabilCurado>(def),
+        lectura?.documento?.cobertura ?? null,
+      );
       expect(
         await leerJson(join(salida, `v1/_internos/calendarios/${autoridad}.json`)),
         autoridad,
-      ).toEqual(
-        shardCalendario(
-          autoridad,
-          await registrosDe<DiaInhabilCurado>(def),
-          lectura?.documento?.cobertura ?? null,
-        ),
-      );
+      ).toEqual(shard);
+      coberturas.push(...coberturasDe(shard));
     }
+    expect(await leerJson(join(salida, "descargas/dias-inhabiles-coberturas.json"))).toEqual(
+      coberturas,
+    );
   }, 120_000);
 
   it("parte cada serie en shards por año que el núcleo acepta y juntos son la serie", async () => {

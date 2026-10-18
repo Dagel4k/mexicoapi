@@ -3,7 +3,9 @@ import type {
   CoberturaCurada,
   DiaInhabil,
   DiaInhabilCurado,
+  FechaISO,
   FuenteDof,
+  TipoPlazo,
 } from "@mexicoapi/core";
 import { PLAZOS, type PlazoCalendario, type RangoFechas, revisarPlazos } from "../curado/plazos.js";
 import { ErrorDatos } from "../errores.js";
@@ -59,6 +61,29 @@ function fuentesFinDeSemana(
     fuentes[String(anio)] = { ...fuente };
   }
   return fuentes;
+}
+
+/**
+ * Un renglón de `dias-inhabiles-coberturas` y de la tabla `coberturas_calendario`: el rango en
+ * que la lista de una autoridad está completa para un tipo de plazo.
+ */
+export interface CoberturaCalendario {
+  autoridad: AutoridadCurada;
+  tipo_plazo: TipoPlazo;
+  desde: FechaISO;
+  hasta: FechaISO;
+}
+
+/** Las coberturas de los plazos de un shard, en su orden (`general` primero). */
+export function coberturasDe(shard: ShardCalendario): CoberturaCalendario[] {
+  return (Object.entries(shard.plazos) as [TipoPlazo, PlazoCalendario][]).map(
+    ([tipo_plazo, { cobertura }]) => ({
+      autoridad: shard.autoridad,
+      tipo_plazo,
+      desde: cobertura.desde,
+      hasta: cobertura.hasta,
+    }),
+  );
 }
 
 /** Arma el shard interno del calendario de una autoridad; `registros` va ordenado por fecha. */

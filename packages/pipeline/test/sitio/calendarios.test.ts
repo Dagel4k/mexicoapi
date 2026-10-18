@@ -14,7 +14,11 @@ import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado, leerCurado } from "../../src/curado/leer.js";
 import { curadoDiasCnbv, curadoDiasSat, type DefinicionCurado } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
-import { type ShardCalendario, shardCalendario } from "../../src/sitio/calendarios.js";
+import {
+  coberturasDe,
+  type ShardCalendario,
+  shardCalendario,
+} from "../../src/sitio/calendarios.js";
 import { YAML_CNBV, YAML_SAT } from "../curado/ejemplos.js";
 
 function documento(
@@ -88,6 +92,18 @@ describe("shardCalendario", () => {
     expect(shard.fuentes_fin_de_semana["2026"]?.nombre).toBe(
       "Código Fiscal de la Federación, artículo 12",
     );
+  });
+
+  it("coberturasDe da una fila por tipo de plazo, en el orden del shard", () => {
+    expect(coberturasDe(shardDe("sat", documento(curadoDiasSat, YAML_SAT)))).toEqual([
+      { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
+      {
+        autoridad: "sat",
+        tipo_plazo: "declaraciones_pagos",
+        desde: "2026-01-01",
+        hasta: "2026-12-31",
+      },
+    ]);
   });
 
   it("CNBV: solo el plazo general, con la cobertura de descanso", () => {

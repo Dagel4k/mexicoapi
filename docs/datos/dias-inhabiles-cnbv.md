@@ -32,7 +32,9 @@ Cada día trae su `fuente` completa:
 
 ## Cobertura
 
-La lista está completa solo dentro del rango que declara `cobertura` en el YAML. Fuera de ese rango no se puede saber si un día es inhábil, así que un cálculo de plazos que lo cruce no debe tomar como hábil un día que no aparece. Cuando la CNBV publique el calendario de un año nuevo, se agregan sus días y se extiende la cobertura.
+La lista está completa solo dentro del rango que declara `cobertura` en el YAML. Hoy va del 2025-01-01 al 2026-12-31. Fuera de ese rango no se puede saber si un día es inhábil, así que un cálculo de plazos que lo cruce no debe tomar como hábil un día que no aparece. Cuando la CNBV publique el calendario de un año nuevo, se agregan sus días y se extiende la cobertura.
+
+La lista de días por sí sola no dice hasta dónde está completa: un año sin días listados puede ser un año que todavía no se carga. La cobertura viene aparte en `/descargas/dias-inhabiles-coberturas.json` y `.csv` y en la tabla `coberturas_calendario` del SQLite (con `autoridad` igual a `cnbv` y `tipo_plazo` igual a `general`), y la API la manda en el 422 `calendario-incompleto`.
 
 ## Dónde consultarlo
 

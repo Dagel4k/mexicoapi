@@ -15,6 +15,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { borrarSiPuede } from "../escritura.js";
+import type { CoberturaCalendario } from "./calendarios.js";
 
 export interface FilaDataset {
   dataset: string;
@@ -31,6 +32,7 @@ export interface DatosSqlite {
   tipoCambioFix: readonly TipoCambioFix[];
   udis: readonly Udi[];
   diasInhabiles: readonly DiaInhabilCurado[];
+  coberturasCalendario: readonly CoberturaCalendario[];
   uma: readonly Uma[];
   salarioMinimo: readonly SalarioMinimo[];
   tarifasIsr: readonly TarifaIsr[];
@@ -66,6 +68,10 @@ CREATE TABLE dias_inhabiles (
   ${FUENTE},
   PRIMARY KEY (autoridad, fecha)
 ) STRICT;
+CREATE TABLE coberturas_calendario (
+  autoridad TEXT NOT NULL, tipo_plazo TEXT NOT NULL, desde TEXT NOT NULL, hasta TEXT NOT NULL,
+  PRIMARY KEY (autoridad, tipo_plazo)
+) STRICT;
 CREATE TABLE uma (
   anio INTEGER PRIMARY KEY, diaria TEXT NOT NULL, mensual TEXT NOT NULL, anual TEXT NOT NULL,
   vigencia_desde TEXT NOT NULL, ${FUENTE}
@@ -93,6 +99,10 @@ function insertarCurados(db: DatabaseSync, datos: DatosSqlite): void {
   const dia = db.prepare("INSERT INTO dias_inhabiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   for (const d of datos.diasInhabiles) {
     dia.run(d.autoridad, d.fecha, d.motivo, d.tipo, ...fuente(d.fuente));
+  }
+  const cobertura = db.prepare("INSERT INTO coberturas_calendario VALUES (?, ?, ?, ?)");
+  for (const c of datos.coberturasCalendario) {
+    cobertura.run(c.autoridad, c.tipo_plazo, c.desde, c.hasta);
   }
   const uma = db.prepare("INSERT INTO uma VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
   for (const u of datos.uma) {
