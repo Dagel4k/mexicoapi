@@ -19,7 +19,7 @@ ${navegacion(false)}
 </header>
 <main id="contenido" class="marco">
 <h1>Estado de los datos</h1>
-<p class="intro">Un bot revisa la fuente oficial de cada dataset automático y actualiza los datos cuando cambian. Esta tabla dice cuándo terminó bien su última revisión y si eso fue dentro del plazo del dataset. Sale de <a href="/v1/status"><code>/v1/status</code></a>; las horas son de la Ciudad de México.</p>
+<p class="intro">Un bot revisa la fuente oficial de cada dataset automático y actualiza los datos cuando cambian. Para cada uno, <a href="/v1/status"><code>/v1/status</code></a> dice cuándo terminó bien su última revisión y si eso fue dentro de su plazo. Las horas son de la Ciudad de México.</p>
 <noscript><p class="aviso">La tabla se llena con JavaScript. Sin él, el mismo estado está en <a href="/v1/status">/v1/status</a>, en JSON.</p></noscript>
 <div class="acciones">
 <button type="button" id="actualizar-estado" hidden>Actualizar</button>

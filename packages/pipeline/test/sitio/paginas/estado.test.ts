@@ -89,6 +89,15 @@ describe("página de estado", () => {
     expect(html).toContain("hasta un minuto");
   });
 
+  // La tabla puede no verse (sin JS o con una falla): la intro no habla de "esta tabla".
+  it("la intro se lee bien aunque la tabla no se vea", () => {
+    const intro = html.match(/<p class="intro">([\s\S]*?)<\/p>/)?.[1] ?? "";
+    expect(intro).not.toMatch(/tabla/i);
+    expect(intro).toContain(
+      'Para cada uno, <a href="/v1/status"><code>/v1/status</code></a> dice cuándo terminó bien su última revisión y si eso fue dentro de su plazo.',
+    );
+  });
+
   it("sin JavaScript enlaza a /v1/status", () => {
     expect(html).toMatch(/<noscript>[\s\S]*<a href="\/v1\/status">[\s\S]*<\/noscript>/);
   });
