@@ -1,20 +1,27 @@
 // Fallos del sistema de archivos (disco lleno, sin permiso) y lectura acotada de `importar`, con
 // node:fs/promises envuelto para provocar los errores.
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cp, estado, importar, LIMITES, sync } from "../../src/sepomex/index.js";
 import { cargarSqlite, nodeConSqlite } from "../../src/sepomex/sqlite.js";
-import { fetchFalso, zipOficial } from "./ayudas.js";
+import { fetchFalso, txt, zipOficial } from "./ayudas.js";
 import { rechazo } from "./comun.js";
 
 const fs = vi.hoisted(() => ({
   /** Parte de la ruta en la que `open`, `mkdir` o `writeFile` fallan, con su código. */
   falla: undefined as { en: string; codigo: string; funcion: string } | undefined,
-  /** `stat` dice que el archivo pesa 10 bytes (como si creciera después de revisarlo). */
-  statChico: false,
+  /**
+   * Tamaño que dice el `stat` del descriptor de `grande.txt` (como si el archivo cambiara después
+   * de revisarlo); undefined deja el real.
+   */
+  tamanoDescriptor: undefined as number | undefined,
+  /** Lecturas de meta.json, por ruta o por descriptor. */
   lecturasMeta: 0,
+  /** `stat` por ruta de lo que se importa o de meta.json (lo que debe revisarse en el descriptor). */
+  statPorRuta: [] as string[],
 }));
 
 vi.mock("node:fs/promises", async (original) => {
@@ -31,7 +38,24 @@ vi.mock("node:fs/promises", async (original) => {
     ...real,
     open: async (ruta: string, ...resto: [never]) => {
       fallar("open", ruta);
-      return real.open(ruta, ...resto);
+      const archivo = await real.open(ruta, ...resto);
+      const nombre = String(ruta);
+      if (nombre.endsWith("meta.json")) {
+        const leer = archivo.readFile.bind(archivo);
+        archivo.readFile = ((...args: Parameters<typeof leer>) => {
+          fs.lecturasMeta++;
+          return leer(...args);
+        }) as typeof archivo.readFile;
+      }
+      const tamano = fs.tamanoDescriptor;
+      if (tamano !== undefined && nombre.endsWith("grande.txt")) {
+        const revisar = archivo.stat.bind(archivo);
+        archivo.stat = (async () => {
+          const info = await revisar();
+          return Object.assign(Object.create(Object.getPrototypeOf(info)), info, { size: tamano });
+        }) as typeof archivo.stat;
+      }
+      return archivo;
     },
     mkdir: async (ruta: string, ...resto: [never]) => {
       fallar("mkdir", ruta);
@@ -46,11 +70,11 @@ vi.mock("node:fs/promises", async (original) => {
       return real.readFile(ruta, ...resto);
     },
     stat: async (ruta: string, ...resto: [never]) => {
-      const info = await real.stat(ruta, ...resto);
-      if (fs.statChico && String(ruta).endsWith("grande.txt")) {
-        return Object.assign(Object.create(Object.getPrototypeOf(info)), info, { size: 10 });
+      const nombre = String(ruta);
+      if (/(meta\.json|grande\.txt|carpeta\.zip|cp\.zip)$/.test(nombre)) {
+        fs.statPorRuta.push(nombre);
       }
-      return info;
+      return real.stat(ruta, ...resto);
     },
   };
 });
@@ -63,7 +87,8 @@ beforeEach(async () => {
   trabajo = await mkdtemp(join(tmpdir(), "mexicoapi-sepomex-"));
   dir = join(trabajo, "cache");
   fs.falla = undefined;
-  fs.statChico = false;
+  fs.tamanoDescriptor = undefined;
+  fs.statPorRuta = [];
 });
 
 afterEach(async () => {
@@ -114,9 +139,52 @@ it("importar deja de leer al pasar del límite aunque el tamaño cambie después
   const grande = join(trabajo, "grande.txt");
   await writeFile(grande, "");
   await truncate(grande, LIMITES.txt + 1);
-  fs.statChico = true;
+  fs.tamanoDescriptor = 10;
   await rechazo(importar(grande, { dir, aviso }), "archivo-invalido", /pasa de 60\.0 MB/);
 });
+
+it("importar revisa el tamaño en el archivo abierto, no en la ruta", async () => {
+  // La ruta tiene un archivo chico y el descriptor dice más del límite: manda el descriptor.
+  const grande = await archivo("grande.txt", txt());
+  fs.tamanoDescriptor = LIMITES.txt + 1;
+  await rechazo(
+    importar(grande, { dir, aviso }),
+    "archivo-invalido",
+    /pesa 60\.0 MB y el límite es 60\.0 MB/,
+  );
+  expect(fs.statPorRuta).toEqual([]);
+});
+
+it("importar abre primero y revisa sobre el descriptor, sin stat de la ruta", async () => {
+  await importar(await archivo("cp.zip", zipOficial()), { dir, aviso });
+  await mkdir(join(trabajo, "carpeta.zip"));
+  await rechazo(
+    importar(join(trabajo, "carpeta.zip"), { dir, aviso }),
+    "archivo-invalido",
+    /carpeta\.zip no es un archivo/,
+  );
+  expect(fs.statPorRuta.filter((r) => !r.endsWith("meta.json"))).toEqual([]);
+});
+
+it("una carpeta que el sistema no deja abrir (EISDIR) tampoco es un archivo", async () => {
+  const ruta = await archivo("cp.zip", zipOficial());
+  fs.falla = { en: "cp.zip", codigo: "EISDIR", funcion: "open" };
+  await rechazo(importar(ruta, { dir, aviso }), "archivo-invalido", /cp\.zip no es un archivo\./);
+});
+
+it.skipIf(process.platform === "win32")(
+  "importar rechaza un FIFO y un dispositivo sin quedarse esperando",
+  async () => {
+    const fifo = join(trabajo, "tuberia.zip");
+    execFileSync("mkfifo", [fifo]);
+    await rechazo(
+      importar(fifo, { dir, aviso }),
+      "archivo-invalido",
+      /tuberia\.zip no es un archivo/,
+    );
+    await rechazo(importar("/dev/null", { dir, aviso }), "archivo-invalido", /no es un archivo/);
+  },
+);
 
 it("no vuelve a leer meta.json en cada consulta si no cambió", async () => {
   await importar(await archivo("cp.zip", zipOficial()), { dir, aviso });
@@ -129,6 +197,8 @@ it("no vuelve a leer meta.json en cada consulta si no cambió", async () => {
   fs.lecturasMeta = 0;
   await cp("80000", { dir });
   expect(fs.lecturasMeta).toBe(1);
+  // La marca (mtime, tamaño, inodo) sale del descriptor abierto, no de un stat de la ruta.
+  expect(fs.statPorRuta.filter((r) => r.endsWith("meta.json"))).toEqual([]);
 });
 
 it("sabe desde qué Node hay node:sqlite y lo dice si no lo hay", async () => {

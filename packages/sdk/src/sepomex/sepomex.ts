@@ -2,7 +2,7 @@
 // usuario. MéxicoAPI no lo redistribuye: sus términos lo prohíben.
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { open, stat } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   cargarCodigos,
@@ -266,9 +266,9 @@ function estadoDe(dir: string, meta: MetaGuardada): EstadoSepomex {
 }
 
 /**
- * Lee un archivo regular de hasta `LIMITE_TXT` bytes. Rechaza carpetas, FIFOs y dispositivos
- * (se abre sin bloquear y se revisa otra vez) y deja de leer al pasar del límite aunque el archivo
- * crezca después de revisarlo.
+ * Lee un archivo regular de hasta `LIMITE_TXT` bytes. Lo abre primero (sin bloquear) y revisa el
+ * descriptor, no la ruta: rechaza carpetas, FIFOs y dispositivos aunque la ruta cambie entre la
+ * revisión y la lectura, y deja de leer al pasar del límite aunque el archivo crezca.
  */
 async function leerArchivoAcotado(ruta: string): Promise<Uint8Array> {
   const noEsArchivo = () => archivoInvalido(`${ruta} no es un archivo.`);
@@ -278,20 +278,21 @@ async function leerArchivoAcotado(ruta: string): Promise<Uint8Array> {
       : archivoInvalido(`No se pudo leer ${ruta}: ${mensajeDe(error)}`, error);
   let archivo: Awaited<ReturnType<typeof open>>;
   try {
-    const info = await stat(ruta);
+    // O_NONBLOCK no existe en Windows; en los demás evita quedarse esperando en un FIFO.
+    archivo = await open(ruta, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+  } catch (error) {
+    // Hay sistemas que no abren una carpeta para leer.
+    if ((error as { code?: unknown } | null)?.code === "EISDIR") throw noEsArchivo();
+    throw noSePudo(error);
+  }
+  try {
+    const info = await archivo.stat();
     if (!info.isFile()) throw noEsArchivo();
     if (info.size > LIMITE_TXT) {
       throw archivoInvalido(
         `El archivo pesa ${tamanoLegible(info.size)} y el límite es ${tamanoLegible(LIMITE_TXT)}.`,
       );
     }
-    // O_NONBLOCK no existe en Windows; en los demás evita quedarse esperando en un FIFO.
-    archivo = await open(ruta, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
-  } catch (error) {
-    throw noSePudo(error);
-  }
-  try {
-    if (!(await archivo.stat()).isFile()) throw noEsArchivo();
     const trozos: Uint8Array[] = [];
     let total = 0;
     for (;;) {
