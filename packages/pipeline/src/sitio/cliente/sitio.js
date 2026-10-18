@@ -202,7 +202,8 @@ const esTiempoAgotado = (error) =>
 
 /**
  * Pide `/v1/status` y devuelve el cuerpo JSON. La señal corta la petición y la lectura del
- * cuerpo. Toda falla sale como `ErrorEstado` con su explicación.
+ * cuerpo. Revalida la caché del navegador (con ETag), así que "Consultado el <ahora>" es cierto.
+ * Toda falla sale como `ErrorEstado` con su explicación.
  * @param {Pedir} pedir `fetch` o uno hecho a mano.
  * @param {number} [espera]
  * @returns {Promise<unknown>}
@@ -212,6 +213,7 @@ export async function consultarEstado(pedir, espera = ESPERA_MS) {
     const respuesta = await pedir("/v1/status", {
       signal: AbortSignal.timeout(espera),
       headers: { accept: "application/json" },
+      cache: "no-cache",
     });
     if (respuesta.status !== 200) throw new ErrorEstado(motivoHttp(respuesta));
     return await respuesta.json();

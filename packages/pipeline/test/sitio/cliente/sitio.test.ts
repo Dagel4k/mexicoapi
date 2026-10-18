@@ -351,6 +351,8 @@ describe("consultarEstado", () => {
     const [{ url, init }] = pedidas as [Pedida];
     expect(url).toBe("/v1/status");
     expect(init.headers).toEqual({ accept: "application/json" });
+    // Actualizar dice "Consultado el <ahora>": la caché del navegador se revalida (con ETag).
+    expect(init.cache).toBe("no-cache");
     expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(init.signal?.aborted).toBe(false);
   });
