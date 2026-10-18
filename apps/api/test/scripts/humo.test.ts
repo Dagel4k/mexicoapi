@@ -314,13 +314,16 @@ describe("principal", () => {
   );
 
   it("el script corre con Node: sin base sale con 2", () => {
-    const r = spawnSync(process.execPath, [SCRIPT], { encoding: "utf8" });
+    const r = spawnSync(process.execPath, [SCRIPT], { encoding: "utf8", timeout: 30_000 });
     expect(r.status).toBe(2);
     expect(r.stdout).toContain("Uso:");
   });
 
   it("el script corre con Node: un origen inalcanzable sale con 1", () => {
-    const r = spawnSync(process.execPath, [SCRIPT, "http://127.0.0.1:1"], { encoding: "utf8" });
+    const r = spawnSync(process.execPath, [SCRIPT, "http://127.0.0.1:1"], {
+      encoding: "utf8",
+      timeout: 30_000,
+    });
     expect(r.status).toBe(1);
     expect(r.stdout).toContain("FALLA");
   });

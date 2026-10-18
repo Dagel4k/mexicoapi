@@ -17,14 +17,22 @@ const leerJson = async (ruta: string): Promise<Record<string, unknown>> =>
 describe("mexicoapi instalado desde su .tgz", () => {
   it("pasa la prueba de humo con este Node (la misma que corre CI en Node 22.13.0, 22.23.3, 24.21.0 y 26.11.1)", async () => {
     await copyFile(HUMO, join(dir, "humo.mjs"));
-    const r = spawnSync(process.execPath, ["humo.mjs"], { cwd: dir, encoding: "utf8" });
+    const r = spawnSync(process.execPath, ["humo.mjs"], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^humo: OK$/m);
   });
 
   it("pasa la prueba de las entradas universales (la que corre CI en Bun y Deno) con este Node", async () => {
     await copyFile(UNIVERSAL, join(dir, "universal.mjs"));
-    const r = spawnSync(process.execPath, ["universal.mjs"], { cwd: dir, encoding: "utf8" });
+    const r = spawnSync(process.execPath, ["universal.mjs"], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^universal: OK$/m);
   });

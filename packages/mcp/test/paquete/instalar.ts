@@ -29,9 +29,13 @@ declare module "vitest" {
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 const SDK = fileURLToPath(new URL("../../../sdk/", import.meta.url));
 
-/** Corre npm (en Windows es un .cmd: va con shell y el comando entero, con las rutas entre comillas). */
+/**
+ * Corre npm (en Windows es un .cmd: va con shell y el comando entero, con las rutas entre comillas).
+ * Con tiempo límite: un npm colgado no deja la corrida esperando hasta el límite del job.
+ */
 function npm(comando: string, cwd: string): string {
-  const r = spawnSync(`npm ${comando}`, { cwd, encoding: "utf8", shell: true });
+  const r = spawnSync(`npm ${comando}`, { cwd, encoding: "utf8", shell: true, timeout: 120_000 });
+  if (r.error !== undefined) throw new Error(`npm ${comando} no terminó: ${r.error.message}`);
   if (r.status !== 0) throw new Error(`npm ${comando} salió con ${r.status}:\n${r.stderr}`);
   return r.stdout;
 }
@@ -55,6 +59,7 @@ export default async function instalarPaquetes(
     const script = join(RAIZ, "scripts", "publicable.ts");
     const armado = spawnSync(process.execPath, [script, join(temporal, "publicable-mcp")], {
       encoding: "utf8",
+      timeout: 120_000,
     });
     if (armado.status !== 0) {
       throw new Error(`publicable.ts salió con ${armado.status}:\n${armado.stderr}`);

@@ -1,7 +1,8 @@
 // globalSetup de las pruebas del paquete: arma el paquete como se publica (scripts/publicable.ts),
 // lo empaqueta con npm pack ahí e instala el .tgz en un proyecto nuevo de una carpeta temporal,
 // como lo haría quien lo usa. Las pruebas reciben la carpeta del proyecto y lo que npm dijo del
-// paquete. Pide `pnpm -r build` antes.
+// paquete. npm instala con --offline: el paquete no tiene dependencias y el .tgz es local, así
+// que nunca consulta el registro. Pide `pnpm -r build` antes.
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,9 +31,13 @@ declare module "vitest" {
 
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 
-/** Corre npm (en Windows es un .cmd: va con shell y el comando entero, con las rutas entre comillas). */
+/**
+ * Corre npm (en Windows es un .cmd: va con shell y el comando entero, con las rutas entre comillas).
+ * Con tiempo límite: un npm colgado no deja la corrida esperando hasta el límite del job.
+ */
 function npm(comando: string, cwd: string): string {
-  const r = spawnSync(`npm ${comando}`, { cwd, encoding: "utf8", shell: true });
+  const r = spawnSync(`npm ${comando}`, { cwd, encoding: "utf8", shell: true, timeout: 120_000 });
+  if (r.error !== undefined) throw new Error(`npm ${comando} no terminó: ${r.error.message}`);
   if (r.status !== 0) throw new Error(`npm ${comando} salió con ${r.status}:\n${r.stderr}`);
   return r.stdout;
 }
@@ -53,7 +58,7 @@ export default async function instalarPaquete(proyecto: TestProject): Promise<()
       `${JSON.stringify({ name: "consumidor", private: true, type: "module" })}\n`,
     );
     npm(
-      `install --no-audit --no-fund --no-package-lock --ignore-scripts "${join(temporal, empaquetado.filename)}"`,
+      `install --offline --no-audit --no-fund --no-package-lock --ignore-scripts "${join(temporal, empaquetado.filename)}"`,
       dir,
     );
     proyecto.provide("paqueteInstalado", { dir, empaquetado });
