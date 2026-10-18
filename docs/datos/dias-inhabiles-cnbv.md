@@ -1,6 +1,6 @@
 # Días inhábiles de la CNBV
 
-Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores (bancos, casas de bolsa y demás entidades que enumeran las disposiciones) deben cerrar sus puertas y suspender operaciones. Sirve para contar plazos con el calendario bancario. La API también lo usa para saber si ya puede responder el [FIX de una operación](../api/README.md#publicado-y-operación) después de un feriado bancario.
+Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores (bancos, casas de bolsa y demás entidades que enumeran las disposiciones) deben cerrar sus puertas y suspender operaciones. Sirve para contar plazos con el calendario bancario. No es el calendario de la CNBV como autoridad: en un procedimiento ante la Comisión cuentan sus propios días de suspensión de labores, que no están aquí. La API también lo usa para saber si ya puede responder el [FIX de una operación](../api/README.md#publicado-y-operación) después de un feriado bancario, y para avisar de la prórroga del artículo 12 del CFF en los plazos de declaraciones y pagos del SAT.
 
 - Identificador: `dias-inhabiles.cnbv`
 - Clave: `fecha`
@@ -32,7 +32,7 @@ Cada día trae su `fuente` completa:
 
 ## Cobertura
 
-La lista está completa solo dentro del rango que declara `cobertura` en el YAML. Hoy va del 2025-01-01 al 2026-12-31. Fuera de ese rango no se puede saber si un día es inhábil, así que un cálculo de plazos que lo cruce no debe tomar como hábil un día que no aparece. Cuando la CNBV publique el calendario de un año nuevo, se agregan sus días y se extiende la cobertura.
+La lista está completa solo dentro del rango que declara `cobertura` en el YAML. Hoy va del 2025-01-01 al 2026-12-31. Fuera de ese rango no se puede saber si un día es inhábil, así que un cálculo de plazos que lo cruce no debe tomar como hábil un día que no aparece: con `permitir_incompleto=true` la API solo descuenta fines de semana y avisa que pueden faltar días de cierre bancario, como el 1 de enero. Cuando la CNBV publique el calendario de un año nuevo, se agregan sus días y se extiende la cobertura.
 
 La lista de días por sí sola no dice hasta dónde está completa: un año sin días listados puede ser un año que todavía no se carga. La cobertura viene aparte en `/descargas/dias-inhabiles-coberturas.json` y `.csv` y en la tabla `coberturas_calendario` del SQLite (con `autoridad` igual a `cnbv` y `tipo_plazo` igual a `general`), y la API la manda en el 422 `calendario-incompleto`.
 

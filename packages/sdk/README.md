@@ -64,7 +64,7 @@ Con el catálogo, un código de banco que no existe es un error de formato (`ban
 
 ## Días hábiles
 
-La LFT (artículos 74 y 715) se calcula por regla y viene en la entrada principal:
+La LFT se calcula por regla y viene en la entrada principal: sábados, domingos y los días de descanso obligatorio del artículo 74. No incluye los días en que las autoridades laborales suspenden labores (artículo 715), y cada resultado lo dice en `advertencias`:
 
 ```ts
 import { calendarioLft, sumarDiasHabiles } from "mexicoapi";
@@ -72,9 +72,12 @@ import { calendarioLft, sumarDiasHabiles } from "mexicoapi";
 const r = sumarDiasHabiles({ calendario: calendarioLft(), desde: "2026-11-13", dias: 3 });
 r.resultado; // "2026-11-19": salta el lunes 16 de noviembre
 r.inhabiles_saltados; // [{ fecha: "2026-11-16", motivo: "Tercer lunes de noviembre...", tipo: "descanso", fuente }]
+r.advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; ..."]
 ```
 
-Los calendarios de la CNBV y el SAT se transcriben del DOF y están en `mexicoapi/datos/calendarios`. Con el SAT el tipo de plazo es obligatorio: en `declaraciones_pagos` sus vacaciones cuentan como hábiles (CFF, artículo 12) y en `general` no.
+`desde` no se cuenta: en un plazo que corre desde una notificación, es el día en que surte efectos, no el día en que se hizo.
+
+Los calendarios de la CNBV y el SAT están en `mexicoapi/datos/calendarios`. El de la CNBV (el calendario bancario) y las vacaciones del SAT se transcriben del DOF; los días del artículo 12 del CFF se calculan por regla de 2026 a 2100. Con el SAT el tipo de plazo es obligatorio: en `declaraciones_pagos` sus vacaciones cuentan como hábiles (CFF, artículo 12) y en `general` no.
 
 ```ts
 import { sumarDiasHabiles } from "mexicoapi";
@@ -97,6 +100,8 @@ sat.plazos.get("general")?.cobertura; // { desde: "2026-01-01", hasta: "..." }
 ```
 
 `calendarioCurado(autoridad).plazos` es un `ReadonlyMap`: cada plazo trae su `cobertura`, su `calendario` y, si aplica, un `respaldo`. Fuera de la cobertura, `sumarDiasHabiles` lanza `CalendarioIncompletoError`; con `permitirIncompleto: true` calcula de todos modos con lo publicado (o solo con los fines de semana) y lo dice en `advertencias`.
+
+El cliente (`crearCliente`, también sin red) da las mismas advertencias que la API, además de las del calendario: con `declaraciones_pagos`, la de la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un día de cierre bancario, que `resultado` no aplica.
 
 ## Tipo de cambio FIX y UDIS
 

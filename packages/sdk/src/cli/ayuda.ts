@@ -61,12 +61,15 @@ const COMANDOS: Readonly<Record<string, string>> = {
                              [--tipo-plazo general|declaraciones_pagos] [--json]
 
 Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad: la LFT (Ley
-Federal del Trabajo, por omisión), la CNBV o el SAT. Con el SAT, --tipo-plazo es obligatorio
-(sin él sale con 2): en declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12).
-Fuera de la cobertura del calendario sale con 1.
+Federal del Trabajo, por omisión), la CNBV (calendario bancario) o el SAT. Con el SAT,
+--tipo-plazo es obligatorio (sin él sale con 2): en declaraciones_pagos sus vacaciones cuentan
+como hábiles (CFF art. 12). La LFT solo descuenta sábados, domingos y los días del art. 74, no
+las suspensiones de labores del art. 715; los avisos lo dicen. Fuera de la cobertura del
+calendario sale con 1.
 
 Opciones:
-  --desde AAAA-MM-DD   fecha de partida
+  --desde AAAA-MM-DD   fecha de partida, que no se cuenta: en un plazo que corre desde una
+                       notificación, el día en que surte efectos
   --dias N             días hábiles a sumar
   --autoridad <a>      lft, cnbv o sat
   --tipo-plazo <t>     general o declaraciones_pagos (solo con sat)

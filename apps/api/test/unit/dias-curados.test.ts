@@ -325,7 +325,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
   it("declaraciones_pagos cruza a 2027 con los días del art. 12; después de 2100, 422", async () => {
     const { cuerpo } = await datos(sat("declaraciones_pagos", "2026-11-27", 2));
     expect(cuerpo.data).toMatchObject({ resultado: "2026-12-01", advertencias: [] });
-    // Los casos de la auditoría: antes, 422 desde el 2027-01-01.
+    // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha.
     for (const [desde, dias, resultado] of [
       ["2026-12-30", 2, "2027-01-04"],
       ["2026-11-20", 30, "2027-01-05"],

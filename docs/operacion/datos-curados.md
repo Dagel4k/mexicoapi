@@ -5,12 +5,14 @@ Los calendarios de la CNBV y el SAT, la UMA, el salario mínimo y las tarifas de
 | Archivo en `data/curado/` | Dataset | Cuándo hay publicación nueva |
 | --- | --- | --- |
 | `dias-inhabiles-cnbv.yaml` | `dias-inhabiles.cnbv` | Cada diciembre, las disposiciones de la CNBV del año siguiente |
-| `dias-inhabiles-sat.yaml` | `dias-inhabiles.sat` | Cada diciembre, la RMF del año siguiente; durante el año, sus resoluciones de modificaciones (regla 2.1.6) |
+| `dias-inhabiles-sat.yaml` | `dias-inhabiles.sat` | Cada diciembre, la RMF del año siguiente; durante el año, sus resoluciones de modificaciones (regla 2.1.6). Solo las vacaciones: los días del artículo 12 del CFF los calcula el núcleo |
 | `constantes-uma.yaml` | `constantes.uma` | Cada enero, la UMA que publica el INEGI |
 | `constantes-salario-minimo.yaml` | `constantes.salario-minimo` | Cada diciembre, la resolución de la CONASAMI |
 | `isr-tarifas.yaml` | `isr.tarifas` | Cada diciembre, el Anexo 8 de la RMF |
 
-Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) con el JSON canónico y el manifiesto. Los calendarios llevan además `calendario.json`: sus tipos de plazo con la cobertura de cada uno y la publicación que cita los fines de semana de cada año, lo mismo que usa la API, sin los días; el paquete `mexicoapi` lo lee tal cual. Esa carpeta nunca se edita a mano: `verificar` la regenera desde el YAML y falla si no coincide byte a byte.
+Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) con el JSON canónico y el manifiesto. Los calendarios llevan además `calendario.json`: sus tipos de plazo con la cobertura de cada uno y la publicación que cita los fines de semana de cada año (en el SAT, ninguna: los cita el artículo 12), lo mismo que usa la API, sin los días; el paquete `mexicoapi` lo lee tal cual. Esa carpeta nunca se edita a mano: `verificar` la regenera desde el YAML y falla si no coincide byte a byte.
+
+Los días del primer párrafo del artículo 12 del CFF (1o. de enero, primer lunes de febrero, etc.) no se capturan: los calcula una regla del núcleo (`diasDescansoCff`) de 2026 a 2100, con el texto y la fecha de la última reforma del CFF que guarda el núcleo (`FUENTE_CFF_12` y `VIGENCIA_CFF`). `curar` los agrega a la lista publicada del SAT en los años que cubre el YAML. Si se reforma el artículo 12, se cambia la regla del núcleo y su prueba, no el YAML.
 
 ## Pasos
 
@@ -78,8 +80,11 @@ Los pasos 6 y 7 se repiten cada vez que se edita el YAML.
 Los calendarios (`dias-inhabiles-cnbv.yaml` y `dias-inhabiles-sat.yaml`) declaran en `cobertura` el rango en que su lista está completa, por tipo de día:
 
 ```yaml
+# dias-inhabiles-cnbv.yaml
 cobertura:
-  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }
+  descanso: { desde: 2025-01-01, hasta: 2026-12-31 }
+# dias-inhabiles-sat.yaml: solo las vacaciones; la de descanso es la de la regla del artículo 12
+cobertura:
   vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }
 ```
 
@@ -87,12 +92,12 @@ La API no puede saber si un día fuera de ese rango es inhábil, así que respon
 
 Para el SAT, cada tipo de plazo calcula su propia cobertura a partir de los tipos de día que cuenta:
 
-- `declaraciones_pagos` solo cuenta `descanso` (las vacaciones son hábiles en esos plazos), así que llega hasta donde llegue la cobertura de `descanso`.
+- `declaraciones_pagos` solo cuenta `descanso` (las vacaciones son hábiles en esos plazos), así que llega hasta donde llega la regla del artículo 12: el 31 de diciembre de 2100.
 - `general` cuenta `descanso` y `vacaciones`, así que llega hasta donde coinciden ambas coberturas (la intersección).
 
-Es lo que pasa hoy en 2026: `descanso` llega al 31 de diciembre, `vacaciones` al 30 de noviembre, y por eso `general` termina el 30 de noviembre. Ver la [documentación de la API](../api/README.md#cobertura-de-la-cnbv-y-el-sat).
+Es lo que pasa hoy: `vacaciones` llega al 30 de noviembre de 2026, y por eso `general` termina ahí. Ver la [documentación de la API](../api/README.md#cobertura-de-la-cnbv-y-el-sat).
 
-Cada día tiene que caer en la cobertura de su tipo y, además, en la de algún tipo de plazo. En el SAT, la más amplia es la de `declaraciones_pagos`, es decir, la de `descanso`: un día de vacaciones posterior a la cobertura de `descanso` no cabe en ningún plazo y el YAML falla, aunque esté dentro de la cobertura de `vacaciones`.
+Cada día tiene que caer en la cobertura de su tipo y, además, en la de algún tipo de plazo. En el SAT, la más amplia es la de `declaraciones_pagos`, es decir, la de la regla: unas vacaciones antes de 2026 (por ejemplo, la cola de 2025 de un segundo periodo) no caben en ningún plazo y el YAML falla, aunque estén dentro de la cobertura de `vacaciones`. El YAML del SAT tampoco puede traer días de `descanso`, ni la cobertura de `descanso`, ni unas vacaciones en un día del artículo 12: los da la regla.
 
 Cuando se amplía la cobertura de un tipo para un año completo, hay que capturar todos los días de ese tipo en el año, no solo los de la publicación nueva.
 
@@ -108,7 +113,7 @@ La API usa los días de la CNBV para responder el [FIX de una operación](../api
 - una URL no es https o no está en `dof.gob.mx`, `sidof.segob.gob.mx` o `www.diputados.gob.mx`;
 - la fecha de una nota del DOF no coincide con la de su URL;
 - una fecha, una clave o un registro están duplicados, o una fuente declarada no se usa;
-- en un calendario, un día cae fuera de la cobertura de su tipo o de la de todos los tipos de plazo, un plazo se queda sin cobertura, o su `autoridad` no es la del archivo; en el de la CNBV, además, un día o una cobertura de un tipo que no sea `descanso`;
+- en un calendario, un día cae fuera de la cobertura de su tipo o de la de todos los tipos de plazo, un plazo se queda sin cobertura, o su `autoridad` no es la del archivo; en el de la CNBV, además, un día o una cobertura de un tipo que no sea `descanso`; en el del SAT, un día o una cobertura de `descanso` (los da la regla del artículo 12) o unas vacaciones en un día del artículo 12;
 - el `motivo` de un día de regla ("tercer lunes de noviembre") no da la fecha capturada. El motivo debe nombrar el mes ("tercer lunes de noviembre"); un ordinal con día de la semana que no se pueda leer (como "3er lunes") también falla, para que ninguna regla pase sin revisar;
 - un `motivo` que empieza con un día y un mes ("16 de septiembre", "1o. de enero", "17 y 18 de abril") no coincide con la fecha capturada (con alguna de ellas, si nombra varias);
 - en la UMA, la mensual no es la diaria por 30.4, la anual no es la mensual por 12, la vigencia no es el 1 de febrero del año, o el `fragmento` no contiene los montos capturados;
@@ -143,21 +148,23 @@ excepciones_cuota_fija:
 El SAT suele fijar el segundo periodo general de vacaciones de diciembre en una resolución de modificaciones a la RMF, o en la RMF del año siguiente. Cuando se publique:
 
 1. Agregar la fuente en `data/curado/dias-inhabiles-sat.yaml`, con el `fragmento` de la regla 2.1.6 donde aparece el periodo.
-2. Agregar un registro `tipo: vacaciones` por cada día del periodo, incluidos sábados y domingos, con `fuente` apuntando a esa fuente. Un día que ya es de descanso (el 25 de diciembre) se queda como `descanso`: la clave es la fecha.
-3. Extender `cobertura.vacaciones.hasta` al 2026-12-31. Con eso, `general` y `declaraciones_pagos` quedan con la misma cobertura y la advertencia de `dias-inhabiles` para 2026 desaparece.
+2. Agregar un registro `tipo: vacaciones` por cada día del periodo, incluidos sábados y domingos, con `fuente` apuntando a esa fuente. Un día del artículo 12 (el 25 de diciembre, el 1 de enero) no se captura: ya es de descanso por la regla, y `verificar` falla si se repite como vacaciones.
+3. Extender `cobertura.vacaciones.hasta` al 2026-12-31. Con eso, la advertencia de `dias-inhabiles` para 2026 desaparece y `general` llega al 31 de diciembre.
 4. Quitar del encabezado del YAML el párrafo que dice que el periodo no se ha publicado.
 5. Seguir los pasos 6 a 9.
 
-Si el periodo cruza al 2027 (por ejemplo, hasta el 4 de enero), esos días de 2027 tienen que caer en la cobertura de `vacaciones` y en la de `descanso`; si no, el YAML falla. Hay que extender las dos en el mismo cambio, y para extender `descanso` a 2027 basta capturar los días del artículo 12 de 2027, que no esperan a la RMF (ver la sección siguiente).
+Si el periodo cruza al 2027 (por ejemplo, hasta el 4 de enero), se extiende la cobertura de `vacaciones` hasta ese día. Los días del artículo 12 de 2027 ya los da la regla, y `curar` agrega a la lista los de 2027 porque el YAML ya cubre parte de ese año.
 
 ### Calendarios de 2027
 
 Las disposiciones de la CNBV para 2027 se publican en el DOF en diciembre de 2026, y la RMF 2027 con su regla 2.1.6 se publica a fines de diciembre. Para cada una:
 
-1. Agregar una fuente por publicación. En el calendario de la CNBV, la del artículo 1 de las disposiciones; en el del SAT, el artículo 12 del CFF (ya declarado como `cff-12`, aunque su `fecha_publicacion` es la de la última reforma, que habrá que actualizar si cambió) y la regla 2.1.6 de la RMF 2027.
-2. Agregar los días de 2027: los de las disposiciones en la CNBV; los del artículo 12 y las vacaciones o días inhábiles de la regla 2.1.6 en el SAT. Los días de regla llevan en `motivo` la regla ("Tercer lunes de noviembre, en conmemoración del 20 de noviembre") para que la verificación recalcule la fecha.
-3. Extender la `cobertura` al 2027-12-31 para los tipos que queden completos. En el SAT, los días de `descanso` son los del artículo 12 del CFF: están en la ley, así que se pueden capturar y cerrar su cobertura sin esperar la RMF (solo cambian si se reforma el artículo, o el 1o. de diciembre en los años de transmisión del Poder Ejecutivo). `vacaciones` queda en el último día de periodo publicado, y entonces `general` termina ahí hasta que se publique el resto.
+1. Agregar una fuente por publicación. En el calendario de la CNBV, la del artículo 1 de las disposiciones; en el del SAT, la regla 2.1.6 de la RMF 2027.
+2. Agregar los días de 2027: los de las disposiciones en la CNBV; las vacaciones o días inhábiles de la regla 2.1.6 en el SAT. Los del artículo 12 del CFF no se capturan: los da la regla del núcleo. Los días de regla de la CNBV llevan en `motivo` la regla ("Tercer lunes de noviembre, en conmemoración del 20 de noviembre") para que la verificación recalcule la fecha.
+3. Extender la `cobertura` al 2027-12-31 para los tipos que queden completos. En el SAT, `vacaciones` queda en el último día de periodo publicado, y entonces `general` termina ahí hasta que se publique el resto; `declaraciones_pagos` ya llega a 2100.
 4. Seguir los pasos 6 a 9.
+
+Si se reforma el artículo 12 del CFF (o se publica un decreto o una regla que declare inhábil la transmisión del Poder Ejecutivo de 2030), se cambian la regla del núcleo (`packages/core/src/dias-habiles/cff.ts`), su fecha de vigencia y sus pruebas.
 
 Los calendarios de 2025 y 2026 no se borran: la cobertura es un rango continuo y los plazos que empiezan en un año pueden terminar en el siguiente.
 

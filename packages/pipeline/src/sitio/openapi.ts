@@ -205,7 +205,7 @@ const AUTORIDAD: Json = {
   in: "query",
   required: true,
   description:
-    "Autoridad cuyo calendario se usa: lft (Ley Federal del Trabajo, arts. 74 y 715), cnbv (días en que cierran las entidades supervisadas por la CNBV) o sat (CFF art. 12 y vacaciones de la regla 2.1.6 de la RMF).",
+    "Autoridad cuyo calendario se usa. lft: sábados, domingos y días de descanso obligatorio del art. 74 de la Ley Federal del Trabajo; no incluye los días en que las autoridades laborales suspenden labores (art. 715), y cada respuesta lo advierte. cnbv: calendario bancario, los días en que cierran las entidades supervisadas por la CNBV; no es el calendario de la CNBV como autoridad. sat: días del art. 12 del CFF, calculados por regla, y vacaciones de la regla 2.1.6 de la RMF.",
   schema: { type: "string", enum: ["lft", "cnbv", "sat"] },
   example: "lft",
 };
@@ -375,12 +375,16 @@ function operaciones(): Operacion[] {
       operationId: "sumarDiasHabiles",
       summary: "Suma días hábiles a una fecha",
       description:
-        "Con autoridad=sat, tipo_plazo es obligatorio: sin él la respuesta es 400 parametro-faltante. Con lft o cnbv, tipo_plazo no se acepta (400). Si el cálculo sale de la cobertura del calendario, la respuesta es 422 calendario-incompleto, salvo con permitir_incompleto=true.",
+        "Con autoridad=sat, tipo_plazo es obligatorio: sin él la respuesta es 400 parametro-faltante. Con lft o cnbv, tipo_plazo no se acepta (400). Si el cálculo sale de la cobertura del calendario, la respuesta es 422 calendario-incompleto, salvo con permitir_incompleto=true. El resultado es el último día del cómputo y no aplica la prórroga del quinto párrafo del art. 12 del CFF: con tipo_plazo=declaraciones_pagos, si cae en viernes, en vacaciones del SAT o en un cierre bancario, advertencias lo dice. Con lft, advertencias siempre dice que no se descuentan las suspensiones de labores del art. 715.",
       tag: "Cálculos",
       parametros: [
         AUTORIDAD,
         TIPO_PLAZO,
-        parametroFecha("desde", true, "Fecha de partida (AAAA-MM-DD); no se cuenta."),
+        parametroFecha(
+          "desde",
+          true,
+          "Fecha de partida (AAAA-MM-DD); no se cuenta. En un plazo que corre desde una notificación es el día en que surte efectos, no el día en que se hizo: si una notificación del lunes surte efectos el martes, desde es el martes.",
+        ),
         {
           name: "dias",
           in: "query",
@@ -394,7 +398,7 @@ function operaciones(): Operacion[] {
           in: "query",
           required: false,
           description:
-            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días de descanso del SAT después del último periodo de vacaciones capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana.",
+            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días del art. 12 del CFF después del último periodo de vacaciones del SAT capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana, y la advertencia dice qué puede faltar (con cnbv, días de cierre bancario como el 1 de enero).",
           schema: { type: "string", enum: ["true", "false"] },
           example: "false",
         },
@@ -407,7 +411,7 @@ function operaciones(): Operacion[] {
       operationId: "listarDiasInhabiles",
       summary: "Lista los días inhábiles de un año",
       description:
-        "Lista los días inhábiles publicados del año, sin los fines de semana, cada uno con su tipo y su fuente. Si la lista solo está completa para algunos tipos de plazo, la respuesta lo dice en advertencias. Es el caso del SAT 2026 mientras no se publique su segundo periodo de vacaciones: la lista está completa para tipo_plazo=declaraciones_pagos, que no cuenta las vacaciones, pero no para general. Un año fuera de la cobertura del calendario da 422 calendario-incompleto.",
+        "Lista los días inhábiles del año, sin los fines de semana, cada uno con su tipo y su fuente. Si la lista solo está completa para algunos tipos de plazo, la respuesta lo dice en advertencias. Es el caso del SAT desde diciembre de 2026 mientras no se publique su segundo periodo de vacaciones: los días del art. 12 del CFF se calculan por regla hasta 2100 y la lista está completa para tipo_plazo=declaraciones_pagos, que no cuenta las vacaciones, pero no para general. Con lft, advertencias dice que la lista no tiene las suspensiones de labores del art. 715. Un año fuera de la cobertura del calendario da 422 calendario-incompleto.",
       tag: "Cálculos",
       parametros: [
         AUTORIDAD,
@@ -425,7 +429,7 @@ function operaciones(): Operacion[] {
           type: "array",
           items: { type: "string" },
           description:
-            "Avisos sobre lo que puede faltar en la lista, como días de un tipo que solo están completos en parte del año y los tipo_plazo para los que la lista sí está completa. Vacía si la lista está completa.",
+            "Avisos sobre lo que puede faltar en la lista, como días de un tipo que solo están completos en parte del año y los tipo_plazo para los que la lista sí está completa, los días de la transmisión del Poder Ejecutivo que el SAT no descuenta o, con lft, las suspensiones de labores del art. 715. Vacía si la lista está completa.",
         },
       }),
       errores: [422],
