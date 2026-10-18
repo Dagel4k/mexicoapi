@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true,
+    // Solo es un binario: nadie importa sus tipos, así que no se generan.
+    "declaration": false,
     "customConditions": [],
     "types": ["node"]
   },
