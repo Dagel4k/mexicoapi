@@ -85,6 +85,7 @@ export function documento({ titulo, descripcion, cuerpo, scripts = [] }: Documen
 <meta name="description" content="${escaparHtml(descripcion)}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/estilo.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${modulos.join("")}</head>
 <body>
 ${cuerpo}

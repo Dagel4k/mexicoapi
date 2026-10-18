@@ -44,6 +44,7 @@ import {
   RUTAS_SITIO,
 } from "../../src/sitio/paginas/encabezados.js";
 import { ESTILO } from "../../src/sitio/paginas/estilo.js";
+import { FAVICON } from "../../src/sitio/paginas/favicon.js";
 import { enlaceSeguro } from "../../src/sitio/paginas/html.js";
 import { paginaNoEncontrada } from "../../src/sitio/paginas/no-encontrado.js";
 import { ROBOTS } from "../../src/sitio/paginas/robots.js";
@@ -238,6 +239,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.json",
         "descargas/udis.manifest.json",
         "estilo.css",
+        "favicon.svg",
         "index.html",
         "robots.txt",
         "v1/_internos/calendarios/cnbv.json",
@@ -763,7 +765,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(texto).toContain(`\n/\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
   });
 
-  it("escribe la página de inicio, el 404, la hoja de estilo y robots.txt", async () => {
+  it("escribe la página de inicio, el 404, la hoja de estilo, el favicon y robots.txt", async () => {
     await construirSitio({ raizDatos: datos, salida });
     const inicio = await readFile(join(salida, "index.html"), "utf8");
     // Un renglón por dataset, con la fecha de su manifiesto.
@@ -779,6 +781,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "404.html"), "utf8")).toBe(paginaNoEncontrada());
     expect(await readFile(join(salida, "estilo.css"), "utf8")).toBe(ESTILO);
     expect(await readFile(join(salida, "robots.txt"), "utf8")).toBe(ROBOTS);
+    expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
   });
 
   it("es determinista", async () => {
@@ -1042,7 +1045,14 @@ describe("con los datos reales del repositorio", () => {
     await construirSitio({ raizDatos: real, salida: otra });
     const archivos = await listar(salida);
     expect(await listar(otra)).toEqual(archivos);
-    for (const n of ["index.html", "404.html", "estilo.css", "robots.txt", "_headers"]) {
+    for (const n of [
+      "index.html",
+      "404.html",
+      "estilo.css",
+      "favicon.svg",
+      "robots.txt",
+      "_headers",
+    ]) {
       expect(archivos).toContain(n);
     }
     for (const n of archivos) {

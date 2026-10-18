@@ -101,6 +101,7 @@ describe("documento", () => {
       '<meta name="description" content="Descripción con &quot;comillas&quot;">',
     );
     expect(html).toContain('<link rel="stylesheet" href="/estilo.css">');
+    expect(html).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
     expect(html).not.toContain("<script");
     expect(html.endsWith("</html>\n")).toBe(true);
   });

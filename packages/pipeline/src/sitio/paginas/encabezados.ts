@@ -53,6 +53,7 @@ const REGLAS_SITIO: readonly Regla[] = [
   sitio("/estado/", CSP_PAGINAS, CACHE_SITIO),
   sitio("/estilo.css", CSP_ARCHIVOS, CACHE_SITIO),
   sitio("/sitio.js", CSP_ARCHIVOS, CACHE_SITIO),
+  sitio("/favicon.svg", CSP_ARCHIVOS, "public, max-age=86400"),
   sitio("/robots.txt", CSP_ARCHIVOS, "public, max-age=86400"),
   sitio("/llms.txt", CSP_ARCHIVOS, "public, max-age=3600", TEXTO_PARA_TODOS),
   sitio("/llms-full.txt", CSP_ARCHIVOS, "public, max-age=3600", TEXTO_PARA_TODOS),
