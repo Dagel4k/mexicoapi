@@ -130,7 +130,39 @@ describe("binario por stdio real", () => {
   );
 });
 
-describe("servidor con herramienta por stdio real", () => {
+describe("servidor con herramientas de prueba por stdio real", () => {
+  it("con EOF termina aunque una herramienta ignore la cancelación", async () => {
+    const proceso = lanzar(SERVIDOR_PRUEBA);
+    proceso.enviar(INITIALIZE);
+    await proceso.recibir();
+    proceso.enviar({ jsonrpc: "2.0", id: 9, method: "tools/call", params: { name: "eterna" } });
+    proceso.enviar({ jsonrpc: "2.0", id: 10, method: "ping" });
+    expect(await proceso.recibir()).toEqual({ jsonrpc: "2.0", id: 10, result: {} });
+    const inicio = Date.now();
+    proceso.hijo.stdin.end();
+    expect(await proceso.fin).toEqual({ codigo: 0, senal: null });
+    // 300 ms de gracia más 2 s de salida forzada, con holgura; nunca el minuto de la herramienta.
+    expect(Date.now() - inicio).toBeLessThan(15_000);
+    expect(proceso.lineas.join("\n")).not.toContain('"id":9');
+    expect(proceso.errores()).toContain("lo pendiente no terminó en 300 ms; se cancela");
+  }, 30_000);
+
+  it("lo que una herramienta escribe con console va a stderr, no a stdout", async () => {
+    const proceso = lanzar(SERVIDOR_PRUEBA);
+    proceso.enviar(INITIALIZE);
+    await proceso.recibir();
+    proceso.enviar({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "ruidosa" } });
+    expect((await proceso.recibir()).result).toEqual({
+      content: [{ type: "text", text: "listo" }],
+    });
+    proceso.hijo.stdin.end();
+    expect(await proceso.fin).toEqual({ codigo: 0, senal: null });
+    for (const linea of proceso.lineas) expect(() => JSON.parse(linea)).not.toThrow();
+    for (const texto of ["ruido log", "ruido info", "ruido debug", "dir", "tabla"]) {
+      expect(proceso.errores()).toContain(texto);
+    }
+  });
+
   it("responde tools/call completo aunque la entrada se cierre enseguida", async () => {
     const proceso = lanzar(SERVIDOR_PRUEBA);
     proceso.enviar(INITIALIZE);
@@ -140,6 +172,8 @@ describe("servidor con herramienta por stdio real", () => {
     const lista = await proceso.recibir();
     expect((lista.result as { tools: Array<{ name: string }> }).tools.map((t) => t.name)).toEqual([
       "repite",
+      "eterna",
+      "ruidosa",
     ]);
     proceso.enviar({
       jsonrpc: "2.0",

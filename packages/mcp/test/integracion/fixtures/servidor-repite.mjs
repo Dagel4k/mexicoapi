@@ -1,5 +1,5 @@
-// Servidor de prueba: el código compilado del paquete con una herramienta que repite una letra.
-import { ejecutarStdio } from "../../../dist/stdio.js";
+// Servidor de prueba: el arranque compilado del paquete con herramientas de prueba.
+import { arrancar } from "../../../dist/binario.js";
 
 const repite = {
   name: "repite",
@@ -25,12 +25,40 @@ const repite = {
   },
 };
 
-const conexion = ejecutarStdio({
-  entrada: process.stdin,
-  salida: process.stdout,
-  registrar: (mensaje) => process.stderr.write(`${mensaje}\n`),
+// Ignora la cancelación y deja un temporizador que mantiene vivo el proceso.
+const eterna = {
+  name: "eterna",
+  title: "Eterna",
+  description: "No termina en un minuto e ignora la cancelación.",
+  inputSchema: { type: "object", additionalProperties: false },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  ejecutar() {
+    return new Promise((resolver) => {
+      setTimeout(() => resolver({ content: [{ type: "text", text: "tarde" }] }), 60_000);
+    });
+  },
+};
+
+// Escribe con console.* como lo haría una dependencia descuidada.
+const ruidosa = {
+  name: "ruidosa",
+  title: "Ruidosa",
+  description: "Escribe en la consola y responde.",
+  inputSchema: { type: "object", additionalProperties: false },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  async ejecutar() {
+    console.log("ruido log");
+    console.info("ruido info");
+    console.debug("ruido debug");
+    console.dir({ ruido: "dir" });
+    console.table([{ ruido: "tabla" }]);
+    return { content: [{ type: "text", text: "listo" }] };
+  },
+};
+
+await arrancar({
   info: { name: "prueba", title: "Prueba", version: "0.0.0" },
   instrucciones: "Servidor de prueba.",
-  herramientas: [repite],
+  herramientas: [repite, eterna, ruidosa],
+  msGraciaCierre: 300,
 });
-await conexion.terminado;

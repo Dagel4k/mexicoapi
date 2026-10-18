@@ -13,6 +13,9 @@ import {
 /** Tope por mensaje: un mensaje más grande se rechaza y se descarta hasta el siguiente salto. */
 export const MAX_BYTES_MENSAJE = 1024 * 1024;
 
+/** Espera máxima tras el fin de la entrada; después se cancela lo que siga en curso. */
+export const MS_GRACIA_CIERRE = 5000;
+
 const SALTO = 0x0a;
 const RETORNO = 0x0d;
 
@@ -20,10 +23,11 @@ export interface OpcionesStdio extends OpcionesServidor {
   entrada: Readable;
   salida: Writable;
   maxBytesMensaje?: number;
+  msGraciaCierre?: number;
 }
 
 export interface ConexionStdio {
-  /** Se cumple con EOF, una vez respondido lo pendiente, o al cerrar. */
+  /** Se cumple con EOF (respondido lo pendiente o vencida la gracia) o al cerrar. */
   readonly terminado: Promise<void>;
   /** Aborta lo que esté en curso, deja de leer y no escribe nada más. */
   cerrar(): void;
@@ -37,6 +41,7 @@ function esBlanco(linea: Buffer): boolean {
 export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
   const { entrada, salida } = opciones;
   const maxBytes = opciones.maxBytesMensaje ?? MAX_BYTES_MENSAJE;
+  const msGracia = opciones.msGraciaCierre ?? MS_GRACIA_CIERRE;
   const registrar = (mensaje: string): void => {
     try {
       opciones.registrar?.(`${opciones.info.name}: ${mensaje}`);
@@ -132,7 +137,18 @@ export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
     // La última línea puede llegar sin salto.
     if (!descartando && trozos.length > 0) atenderLinea(Buffer.concat(trozos));
     trozos = [];
-    void Promise.all(pendientes).then(() => avisarFin());
+    // Una herramienta que no respeta la cancelación no debe dejar el proceso vivo para siempre.
+    const gracia = setTimeout(() => {
+      registrar(`la entrada se cerró y lo pendiente no terminó en ${msGracia} ms; se cancela`);
+      cerrado = true;
+      servidor.cancelarTodo();
+      avisarFin();
+    }, msGracia);
+    gracia.unref();
+    void Promise.all(pendientes).then(() => {
+      clearTimeout(gracia);
+      avisarFin();
+    });
   }
 
   function cerrar(): void {
