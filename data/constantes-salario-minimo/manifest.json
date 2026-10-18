@@ -1,0 +1,83 @@
+{
+  "dataset": "constantes.salario-minimo",
+  "schema_version": 1,
+  "as_of": "2025-12-09",
+  "fetched_at": "2025-12-09T00:00:00Z",
+  "data_file": "salario-minimo.json",
+  "data_sha256": "0a10359fe311a66a0dcbc0af25997fd7197b7c3cccf1d6355178a56efc9b9f1e",
+  "records": 16,
+  "sources": [
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2019",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5547224&fecha=26/12/2018",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2019. Diario Oficial de la Federación, 26/12/2018. https://dof.gob.mx/nota_detalle.php?codigo=5547224&fecha=26/12/2018",
+      "published_at": "2018-12-26",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2020",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5582641&fecha=23/12/2019",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2020. Diario Oficial de la Federación, 23/12/2019. https://dof.gob.mx/nota_detalle.php?codigo=5582641&fecha=23/12/2019",
+      "published_at": "2019-12-23",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2021",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5608587&fecha=23/12/2020",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2021. Diario Oficial de la Federación, 23/12/2020. https://dof.gob.mx/nota_detalle.php?codigo=5608587&fecha=23/12/2020",
+      "published_at": "2020-12-23",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2022",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5637615&fecha=08/12/2021",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2022. Diario Oficial de la Federación, 08/12/2021. https://dof.gob.mx/nota_detalle.php?codigo=5637615&fecha=08/12/2021",
+      "published_at": "2021-12-08",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2023",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5673550&fecha=07/12/2022",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2023. Diario Oficial de la Federación, 07/12/2022. https://dof.gob.mx/nota_detalle.php?codigo=5673550&fecha=07/12/2022",
+      "published_at": "2022-12-07",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2024",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5711066&fecha=12/12/2023",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2024. Diario Oficial de la Federación, 12/12/2023. https://dof.gob.mx/nota_detalle.php?codigo=5711066&fecha=12/12/2023",
+      "published_at": "2023-12-12",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2025",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5745678&fecha=19/12/2024",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2025. Diario Oficial de la Federación, 19/12/2024. https://dof.gob.mx/nota_detalle.php?codigo=5745678&fecha=19/12/2024",
+      "published_at": "2024-12-19",
+      "raw": []
+    },
+    {
+      "name": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775534&fecha=09/12/2025",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2026. Diario Oficial de la Federación, 09/12/2025. https://dof.gob.mx/nota_detalle.php?codigo=5775534&fecha=09/12/2025",
+      "published_at": "2025-12-09",
+      "raw": []
+    }
+  ]
+}

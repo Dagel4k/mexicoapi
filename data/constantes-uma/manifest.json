@@ -1,0 +1,101 @@
+{
+  "dataset": "constantes.uma",
+  "schema_version": 1,
+  "as_of": "2026-01-09",
+  "fetched_at": "2026-01-09T00:00:00Z",
+  "data_file": "uma.json",
+  "data_sha256": "efee6053455c4faf9c3bbb3aa9fd4d402a196bb30f8b26881a309147796dbeb2",
+  "records": 10,
+  "sources": [
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5468844&fecha=10/01/2017",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2017. https://dof.gob.mx/nota_detalle.php?codigo=5468844&fecha=10/01/2017",
+      "published_at": "2017-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5510380&fecha=10/01/2018",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2018. https://dof.gob.mx/nota_detalle.php?codigo=5510380&fecha=10/01/2018",
+      "published_at": "2018-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5547867&fecha=10/01/2019",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2019. https://dof.gob.mx/nota_detalle.php?codigo=5547867&fecha=10/01/2019",
+      "published_at": "2019-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5583733&fecha=10/01/2020",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2020. https://dof.gob.mx/nota_detalle.php?codigo=5583733&fecha=10/01/2020",
+      "published_at": "2020-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5609633&fecha=08/01/2021",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 08/01/2021. https://dof.gob.mx/nota_detalle.php?codigo=5609633&fecha=08/01/2021",
+      "published_at": "2021-01-08",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5640427&fecha=10/01/2022",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2022. https://dof.gob.mx/nota_detalle.php?codigo=5640427&fecha=10/01/2022",
+      "published_at": "2022-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5676670&fecha=10/01/2023",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2023. https://dof.gob.mx/nota_detalle.php?codigo=5676670&fecha=10/01/2023",
+      "published_at": "2023-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5714085&fecha=10/01/2024",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2024. https://dof.gob.mx/nota_detalle.php?codigo=5714085&fecha=10/01/2024",
+      "published_at": "2024-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5746930&fecha=10/01/2025",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 10/01/2025. https://dof.gob.mx/nota_detalle.php?codigo=5746930&fecha=10/01/2025",
+      "published_at": "2025-01-10",
+      "raw": []
+    },
+    {
+      "name": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, 09/01/2026. https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026",
+      "published_at": "2026-01-09",
+      "raw": []
+    }
+  ]
+}

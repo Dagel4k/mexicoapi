@@ -1,0 +1,194 @@
+[
+  {
+    "anio": 2019,
+    "zona": "general",
+    "diario": "102.68",
+    "vigencia_desde": "2019-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2019",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5547224&fecha=26/12/2018",
+      "fecha_publicacion": "2018-12-26",
+      "fragmento": "El salario mínimo general que tendrá vigencia a partir del 1 ° de enero de 2019 en el área geográfica de la Zona libre de la Frontera Norte será de 176.72 pesos diarios por jornada diaria de trabajo; mientras que el monto del salario mínimo general para el área de Salarios Mínimos Generales será de 102.68 pesos diarios por jornada diaria [...]"
+    }
+  },
+  {
+    "anio": 2019,
+    "zona": "zlfn",
+    "diario": "176.72",
+    "vigencia_desde": "2019-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2019",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5547224&fecha=26/12/2018",
+      "fecha_publicacion": "2018-12-26",
+      "fragmento": "El salario mínimo general que tendrá vigencia a partir del 1 ° de enero de 2019 en el área geográfica de la Zona libre de la Frontera Norte será de 176.72 pesos diarios por jornada diaria de trabajo; mientras que el monto del salario mínimo general para el área de Salarios Mínimos Generales será de 102.68 pesos diarios por jornada diaria [...]"
+    }
+  },
+  {
+    "anio": 2020,
+    "zona": "general",
+    "diario": "123.22",
+    "vigencia_desde": "2020-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2020",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5582641&fecha=23/12/2019",
+      "fecha_publicacion": "2019-12-23",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1 ° de enero de 2020 será de 185.56 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, cuyo incremento corresponde únicamente a la fijación del 5%. Para el Resto del país el salario mínimo general será de 123.22 pesos diarios por jornada diaria de trabajo, cuyo incremento corresponde a 14.67 pesos de MIR más 5% de incremento por fijación."
+    }
+  },
+  {
+    "anio": 2020,
+    "zona": "zlfn",
+    "diario": "185.56",
+    "vigencia_desde": "2020-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2020",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5582641&fecha=23/12/2019",
+      "fecha_publicacion": "2019-12-23",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1 ° de enero de 2020 será de 185.56 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, cuyo incremento corresponde únicamente a la fijación del 5%. Para el Resto del país el salario mínimo general será de 123.22 pesos diarios por jornada diaria de trabajo, cuyo incremento corresponde a 14.67 pesos de MIR más 5% de incremento por fijación."
+    }
+  },
+  {
+    "anio": 2021,
+    "zona": "general",
+    "diario": "141.70",
+    "vigencia_desde": "2021-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2021",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5608587&fecha=23/12/2020",
+      "fecha_publicacion": "2020-12-23",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2021, se incrementarán en 15%, en las dos zonas descritas en el primer resolutivo, por tanto, serán de 213.39 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 141.70 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2021,
+    "zona": "zlfn",
+    "diario": "213.39",
+    "vigencia_desde": "2021-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2021",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5608587&fecha=23/12/2020",
+      "fecha_publicacion": "2020-12-23",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2021, se incrementarán en 15%, en las dos zonas descritas en el primer resolutivo, por tanto, serán de 213.39 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 141.70 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2022,
+    "zona": "general",
+    "diario": "172.87",
+    "vigencia_desde": "2022-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2022",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5637615&fecha=08/12/2021",
+      "fecha_publicacion": "2021-12-08",
+      "fragmento": "[...] se incrementarán en 22% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 260.34 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 172.87 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2022,
+    "zona": "zlfn",
+    "diario": "260.34",
+    "vigencia_desde": "2022-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2022",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5637615&fecha=08/12/2021",
+      "fecha_publicacion": "2021-12-08",
+      "fragmento": "[...] se incrementarán en 22% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 260.34 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 172.87 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2023,
+    "zona": "general",
+    "diario": "207.44",
+    "vigencia_desde": "2023-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2023",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5673550&fecha=07/12/2022",
+      "fecha_publicacion": "2022-12-07",
+      "fragmento": "[...] se incrementarán en 20% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 312.41 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 207.44 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2023,
+    "zona": "zlfn",
+    "diario": "312.41",
+    "vigencia_desde": "2023-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2023",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5673550&fecha=07/12/2022",
+      "fecha_publicacion": "2022-12-07",
+      "fragmento": "[...] se incrementarán en 20% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 312.41 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte, [...] y para el Resto del país el salario mínimo general será de 207.44 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2024,
+    "zona": "general",
+    "diario": "248.93",
+    "vigencia_desde": "2024-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2024",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5711066&fecha=12/12/2023",
+      "fecha_publicacion": "2023-12-12",
+      "fragmento": "[...] se incrementarán en 20.0% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 374.89 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte (ZLFN), [...] y para el Resto del País el salario mínimo general será de 248.93 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2024,
+    "zona": "zlfn",
+    "diario": "374.89",
+    "vigencia_desde": "2024-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2024",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5711066&fecha=12/12/2023",
+      "fecha_publicacion": "2023-12-12",
+      "fragmento": "[...] se incrementarán en 20.0% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 374.89 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte (ZLFN), [...] y para el Resto del País el salario mínimo general será de 248.93 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2025,
+    "zona": "general",
+    "diario": "278.80",
+    "vigencia_desde": "2025-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2025",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5745678&fecha=19/12/2024",
+      "fecha_publicacion": "2024-12-19",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2025, se incrementarán en 12% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 419.88 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte (ZLFN), [...] y para La Zona del Salario Mínimo General (ZSMG) el salario mínimo será de 278.80 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2025,
+    "zona": "zlfn",
+    "diario": "419.88",
+    "vigencia_desde": "2025-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2025",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5745678&fecha=19/12/2024",
+      "fecha_publicacion": "2024-12-19",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2025, se incrementarán en 12% en las dos zonas descritas en el primer resolutivo, por tanto, serán de 419.88 pesos diarios por jornada diaria de trabajo en el área geográfica de la Zona Libre de la Frontera Norte (ZLFN), [...] y para La Zona del Salario Mínimo General (ZSMG) el salario mínimo será de 278.80 pesos diarios, por jornada diaria de trabajo [...]"
+    }
+  },
+  {
+    "anio": 2026,
+    "zona": "general",
+    "diario": "315.04",
+    "vigencia_desde": "2026-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775534&fecha=09/12/2025",
+      "fecha_publicacion": "2025-12-09",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2026, reflejan un incremento de la siguiente manera: · En 13.0% en la Zona del Salario Mínimo General (ZSMG), con lo que será de 315.04 pesos por jornada diaria de trabajo; que se compone de 17.01 pesos de MIR más un aumento por fijación de 6.5%. · En 5.0% en la Zona Libre de la Frontera Norte (ZLFN), con lo que será de 440.87 pesos por jornada diaria de trabajo. En este caso no se aplica el MIR."
+    }
+  },
+  {
+    "anio": 2026,
+    "zona": "zlfn",
+    "diario": "440.87",
+    "vigencia_desde": "2026-01-01",
+    "fuente": {
+      "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775534&fecha=09/12/2025",
+      "fecha_publicacion": "2025-12-09",
+      "fragmento": "Los salarios mínimos generales que tendrán vigencia a partir del 1º de enero de 2026, reflejan un incremento de la siguiente manera: · En 13.0% en la Zona del Salario Mínimo General (ZSMG), con lo que será de 315.04 pesos por jornada diaria de trabajo; que se compone de 17.01 pesos de MIR más un aumento por fijación de 6.5%. · En 5.0% en la Zona Libre de la Frontera Norte (ZLFN), con lo que será de 440.87 pesos por jornada diaria de trabajo. En este caso no se aplica el MIR."
+    }
+  }
+]
