@@ -62,5 +62,7 @@ export {
 export { digitoVerificadorNss, validarNss } from "./nss.js";
 export type { DetalleRfc, TipoRfc } from "./rfc.js";
 export { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "./rfc.js";
+export type { NombresTipoPlazo, ProblemaConsulta } from "./rutas/parametros.js";
+export { revisarFix, revisarTipoPlazo } from "./rutas/parametros.js";
 export type { CodigoError, ResultadoValidacion } from "./validacion.js";
 export { NOTA_VALIDACION } from "./validacion.js";

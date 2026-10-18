@@ -1,3 +1,4 @@
+import type { ProblemaConsulta } from "@mexicoapi/core/rutas";
 import { PROBLEMAS, type TipoProblema, URL_PROBLEMAS } from "./problemas.js";
 
 export const CACHE_DATOS =
@@ -72,3 +73,9 @@ export function respuestaProblema(
   h.set("Cache-Control", "no-store");
   return new Response(JSON.stringify(cuerpo), { status, headers: h });
 }
+
+/** La respuesta de un problema del núcleo (sus reglas, sus errores, una consulta sin registro). */
+export const respuestaDe = (
+  { tipo, detalle, extras }: ProblemaConsulta,
+  instancia: string,
+): Response => respuestaProblema(tipo, detalle, extras, instancia);

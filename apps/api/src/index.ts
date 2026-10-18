@@ -79,7 +79,15 @@ async function atender(
   }
   const { ruta, parametros, consulta } = resolucion;
   rastro.plantilla = ruta.plantilla;
-  return ruta.manejar({ peticion, url, entorno, opciones, parametros, consulta });
+  return ruta.manejar({
+    peticion,
+    url,
+    entorno,
+    opciones,
+    plantilla: ruta.plantilla,
+    parametros,
+    consulta,
+  });
 }
 
 /** Un `name` como los de las clases de error; cualquier otro texto podría traer datos. */

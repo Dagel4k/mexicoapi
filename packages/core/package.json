@@ -23,6 +23,16 @@
       "@mexicoapi/source": "./src/rutas/problemas.ts",
       "types": "./dist/rutas/problemas.d.ts",
       "import": "./dist/rutas/problemas.js"
+    },
+    "./parametros": {
+      "@mexicoapi/source": "./src/rutas/parametros.ts",
+      "types": "./dist/rutas/parametros.d.ts",
+      "import": "./dist/rutas/parametros.js"
+    },
+    "./rutas": {
+      "@mexicoapi/source": "./src/rutas/index.ts",
+      "types": "./dist/rutas/index.d.ts",
+      "import": "./dist/rutas/index.js"
     }
   },
   "scripts": {

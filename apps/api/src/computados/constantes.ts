@@ -1,9 +1,10 @@
 import { anioDeConstante, umaVigente } from "@mexicoapi/core/constantes";
+import { problemaSinRegistro } from "@mexicoapi/core/rutas";
 import { aniosConstantes, listaUma } from "../cargas.js";
 import { servirShard } from "../estaticos.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
-import { CACHE_DATOS, respuestaJson, respuestaProblema } from "../respuestas.js";
+import { CACHE_DATOS, respuestaDe, respuestaJson } from "../respuestas.js";
 import type { Contexto, Parametros } from "../rutas.js";
 
 const DOCS_CONSTANTES = `${URL_DOCS}/api/README.md#constantes`;
@@ -18,10 +19,9 @@ export async function consultarUma(c: Contexto): Promise<Response> {
   const { umas, meta } = await listaUma(c.entorno);
   const consulta = umaVigente(umas, fecha);
   if (consulta.tipo !== "encontrado") {
-    return respuestaProblema(
-      consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible",
-      consulta.detalle,
-      { fecha, cobertura: consulta.cobertura },
+    const extras = { fecha, cobertura: consulta.cobertura };
+    return respuestaDe(
+      problemaSinRegistro(consulta.tipo, consulta.detalle, extras),
       c.url.pathname,
     );
   }
@@ -49,12 +49,7 @@ async function anioSinShard(c: Contexto, { carpeta, nombre }: Constante, anio: s
   if (consulta === undefined || consulta.tipo === "encontrado") {
     throw new Error(`El índice de años no cuadra con los shards de ${carpeta}.`);
   }
-  return respuestaProblema(
-    consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible",
-    consulta.detalle,
-    undefined,
-    c.url.pathname,
-  );
+  return respuestaDe(problemaSinRegistro(consulta.tipo, consulta.detalle), c.url.pathname);
 }
 
 /** Manejador del shard de un año de constantes: `v1/{carpeta}/{anio}.json`. */

@@ -10,6 +10,7 @@ import {
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
+import { consultarConFeriados, problemaSinRegistro, revisarFix } from "@mexicoapi/core/rutas";
 import {
   anioDe,
   feriadosDeLaCnbv,
@@ -22,7 +23,7 @@ import {
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
-import { CACHE_DATOS, CACHE_ULTIMO, respuestaJson, respuestaProblema } from "../respuestas.js";
+import { CACHE_DATOS, CACHE_ULTIMO, respuestaDe, respuestaJson } from "../respuestas.js";
 import type { Contexto } from "../rutas.js";
 
 const DOCS_FIX = `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`;
@@ -125,12 +126,9 @@ function responder<T>(
     );
   }
   const { desde, hasta } = serie.cobertura;
-  return respuestaProblema(
-    consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible",
-    consulta.tipo === "sin_dato" ? textos.sinDato : textos.noDisponible,
-    { fecha, cobertura: { desde, hasta } },
-    c.url.pathname,
-  );
+  const texto = consulta.tipo === "sin_dato" ? textos.sinDato : textos.noDisponible;
+  const extras = { fecha, cobertura: { desde, hasta } };
+  return respuestaDe(problemaSinRegistro(consulta.tipo, texto, extras), c.url.pathname);
 }
 
 const AVISO_SIN_CNBV =
@@ -147,20 +145,12 @@ async function feriadosParaElFix(entorno: Entorno): Promise<OpcionesFix["sinPubl
   return feriados;
 }
 
-/**
- * La consulta con solo los fines de semana y, si da no_disponible, otra vez con los feriados
- * bancarios. Los feriados solo vuelven cierta una respuesta que sin ellos es no_disponible, así
- * que el calendario se pide solo entonces.
- */
-async function conFeriados(
+/** La consulta del FIX del núcleo: los feriados bancarios se piden solo si hacen falta. */
+const conFeriados = (
   entorno: Entorno,
   consultar: (opciones?: OpcionesFix) => Consulta<TipoCambioFix>,
-): Promise<Consulta<TipoCambioFix>> {
-  const consulta = consultar();
-  if (consulta.tipo !== "no_disponible") return consulta;
-  const sinPublicacion = await feriadosParaElFix(entorno);
-  return sinPublicacion === undefined ? consulta : consultar({ sinPublicacion });
-}
+): Promise<Consulta<TipoCambioFix>> =>
+  consultarConFeriados(consultar, () => feriadosParaElFix(entorno));
 
 async function fixDelDia(c: Contexto, fecha: FechaISO): Promise<Response> {
   const serie = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
@@ -210,26 +200,9 @@ async function fixDeOperacion(c: Contexto, fecha: FechaISO): Promise<Response> {
  */
 export function consultarFix(c: Contexto): Promise<Response> | Response {
   const { publicado, operacion } = c.consulta;
-  if (publicado !== undefined) {
-    if (operacion !== undefined) {
-      return respuestaProblema(
-        "parametro-invalido",
-        "Indica solo uno de publicado u operacion.",
-        undefined,
-        c.url.pathname,
-      );
-    }
-    return fixDelDia(c, publicado);
-  }
-  if (operacion === undefined) {
-    return respuestaProblema(
-      "parametro-faltante",
-      "Indica publicado u operacion.",
-      undefined,
-      c.url.pathname,
-    );
-  }
-  return fixDeOperacion(c, operacion);
+  const combinacion = revisarFix(publicado, operacion);
+  if (combinacion !== null) return respuestaDe(combinacion, c.url.pathname);
+  return publicado !== undefined ? fixDelDia(c, publicado) : fixDeOperacion(c, operacion as string);
 }
 
 /** `GET /v1/tipo-cambio/fix/ultimo`: la publicación más reciente de la serie. */
