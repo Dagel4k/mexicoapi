@@ -222,6 +222,7 @@ describe("RUTAS", () => {
       /^\/v1\/clabe\/(?<clabe>[^/]+)$/,
       /^\/v1\/dias-habiles$/,
       /^\/v1\/dias-inhabiles$/,
+      /^\/v1\/status$/,
     ]) {
       expect(fuentes).toContain(patron.source);
     }
