@@ -59,6 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           url="$(node apps/api/scripts/cloudflare.ts configurar --entorno staging --salida apps/api/wrangler.staging.json)"
+          [[ "${url}" =~ ^https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$ ]] || { echo "::error::URL inesperada: ${url}"; exit 1; }
           echo "url=${url}" >> "${GITHUB_OUTPUT}"
 
       - name: Desplegar a staging
@@ -66,10 +67,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SALIDA_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
           cd apps/api
-          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.staging.json
+          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.staging.json 2>&1 | tee "${SALIDA_DIR}/deploy-staging.txt"
+          version="$(grep -m1 'Current Version ID:' "${SALIDA_DIR}/deploy-staging.txt" | sed 's/.*Current Version ID:[[:space:]]*//' || true)"
+          echo "${version:-desconocida}" > "${SALIDA_DIR}/version-staging.txt"
 
       - name: Prueba de humo en staging
         if: steps.cf.outputs.tiene_cf == 'true'
@@ -77,8 +81,18 @@ jobs:
           URL_STAGING: ${{ steps.conf_staging.outputs.url }}
           SALIDA_DIR: ${{ runner.temp }}
         run: |
-          set -euo pipefail
-          node apps/api/scripts/humo.ts "${URL_STAGING}" 2>&1 | tee "${SALIDA_DIR}/humo-staging.txt"
+          set -uo pipefail
+          # Un Worker recién desplegado o un subdominio nuevo tardan en propagarse: 5 intentos, 10 s entre ellos.
+          codigo=1
+          for intento in 1 2 3 4 5; do
+            codigo=0
+            node apps/api/scripts/humo.ts "${URL_STAGING}" > "${SALIDA_DIR}/humo-staging.txt" 2>&1 || codigo=$?
+            cat "${SALIDA_DIR}/humo-staging.txt"
+            if [ "${codigo}" -eq 0 ]; then break; fi
+            echo "Intento ${intento} de 5 fallido."
+            if [ "${intento}" -lt 5 ]; then sleep 10; fi
+          done
+          exit "${codigo}"
 
       - name: Configurar producción
         id: conf_prod
@@ -89,6 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           url="$(node apps/api/scripts/cloudflare.ts configurar --entorno produccion --salida apps/api/wrangler.produccion.json)"
+          [[ "${url}" =~ ^https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$ ]] || { echo "::error::URL inesperada: ${url}"; exit 1; }
           echo "url=${url}" >> "${GITHUB_OUTPUT}"
 
       - name: Desplegar a producción
@@ -96,10 +111,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SALIDA_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
           cd apps/api
-          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.produccion.json
+          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.produccion.json 2>&1 | tee "${SALIDA_DIR}/deploy-produccion.txt"
+          version="$(grep -m1 'Current Version ID:' "${SALIDA_DIR}/deploy-produccion.txt" | sed 's/.*Current Version ID:[[:space:]]*//' || true)"
+          echo "${version:-desconocida}" > "${SALIDA_DIR}/version-produccion.txt"
 
       - name: Prueba de humo en producción
         id: humo_prod
@@ -110,9 +128,16 @@ jobs:
         run: |
           set -uo pipefail
           # El humo fallido no aborta el paso: el rollback del siguiente paso necesita el resultado.
-          codigo=0
-          node apps/api/scripts/humo.ts "${URL_PROD}" > "${SALIDA_DIR}/humo-produccion.txt" 2>&1 || codigo=$?
-          cat "${SALIDA_DIR}/humo-produccion.txt"
+          # Un Worker recién desplegado tarda en propagarse: 5 intentos, 10 s entre ellos.
+          codigo=1
+          for intento in 1 2 3 4 5; do
+            codigo=0
+            node apps/api/scripts/humo.ts "${URL_PROD}" > "${SALIDA_DIR}/humo-produccion.txt" 2>&1 || codigo=$?
+            cat "${SALIDA_DIR}/humo-produccion.txt"
+            if [ "${codigo}" -eq 0 ]; then break; fi
+            echo "Intento ${intento} de 5 fallido."
+            if [ "${intento}" -lt 5 ]; then sleep 10; fi
+          done
           if [ "${codigo}" -eq 0 ]; then
             echo "ok=true" >> "${GITHUB_OUTPUT}"
           else
@@ -128,7 +153,7 @@ jobs:
         run: |
           set -euo pipefail
           cd apps/api
-          pnpm --filter @mexicoapi/api exec wrangler rollback --config wrangler.produccion.json --message "humo fallido en ${GITHUB_SHA}"
+          pnpm --filter @mexicoapi/api exec wrangler rollback --config wrangler.produccion.json --yes --message "humo fallido en ${GITHUB_SHA}"
           echo "::error::La prueba de humo de producción falló; se revirtió al despliegue anterior."
           exit 1
 
@@ -145,8 +170,8 @@ jobs:
             echo "## Despliegue"
             echo
             echo "- Commit: \`${GITHUB_SHA}\`"
-            echo "- Staging: ${URL_STAGING:-sin configurar}"
-            echo "- Producción: ${URL_PROD:-sin configurar}"
+            echo "- Staging: ${URL_STAGING:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-staging.txt" 2>/dev/null || echo desconocida))"
+            echo "- Producción: ${URL_PROD:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-produccion.txt" 2>/dev/null || echo desconocida))"
             if [ "${REVERTIDO}" != "skipped" ]; then
               echo "- Producción revertida al despliegue anterior (resultado: ${REVERTIDO})"
             fi
