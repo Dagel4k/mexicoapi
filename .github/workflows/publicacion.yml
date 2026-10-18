@@ -208,9 +208,9 @@ jobs:
         run: |
           set -euo pipefail
           guia="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/publicacion-npm.md"
-          echo "::error::npm publish falló. Con E404, ENEEDAUTH o un error de OIDC, revisa el publicador de confianza del paquete en npmjs.com. Ver ${guia}"
+          echo "::error::npm publish falló. Con E403, E404, ENEEDAUTH, un error de OIDC o una acción no permitida, revisa el publicador de confianza del paquete en npmjs.com (y que permita npm publish). Ver ${guia}"
           {
             echo "## npm publish falló"
             echo
-            echo "Con E404, ENEEDAUTH o un error de OIDC, lo más probable es que el paquete no confíe en este workflow: revisa su publicador de confianza en npmjs.com (usuario, repositorio, publicacion.yml y el Environment npm) en [publicacion-npm.md](${guia})."
+            echo "Con E403, E404, ENEEDAUTH, un error de OIDC o un aviso de acción no permitida, lo más probable es que el paquete no confíe en este workflow o no le permita npm publish: revisa su publicador de confianza en npmjs.com (usuario, repositorio, publicacion.yml, el Environment npm y, en Allowed actions, npm publish) en [publicacion-npm.md](${guia})."
           } >> "${GITHUB_STEP_SUMMARY}"
