@@ -13,9 +13,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  desplegar:
+  # workflow_dispatch deja elegir cualquier rama, pero solo main despliega: el job desplegar se
+  # salta en las demás y este deja el aviso.
+  aviso-rama:
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Avisar que solo main despliega
+        env:
+          RAMA: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "::notice::El despliegue solo corre desde main; ${RAMA} no se despliega."
+
+  desplegar:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Con los secretos en este Environment y su regla de ramas (solo main), ninguna otra rama
+    # los puede leer.
+    environment: produccion
     steps:
       - name: Comprobar secretos de Cloudflare
         id: cf
@@ -76,13 +95,16 @@ jobs:
           echo "${version:-desconocida}" > "${SALIDA_DIR}/version-staging.txt"
 
       - name: Prueba de humo en staging
+        id: humo_staging
         if: steps.cf.outputs.tiene_cf == 'true'
         env:
           URL_STAGING: ${{ steps.conf_staging.outputs.url }}
           SALIDA_DIR: ${{ runner.temp }}
         run: |
-          set -uo pipefail
-          # Un Worker recién desplegado o un subdominio nuevo tardan en propagarse: 5 intentos, 10 s entre ellos.
+          set -euo pipefail
+          # Un Worker recién desplegado o un subdominio nuevo tardan en propagarse: hasta 5
+          # intentos, con esperas de 10, 20, 30 y 60 s entre ellos.
+          esperas=(10 20 30 60)
           codigo=1
           for intento in 1 2 3 4 5; do
             codigo=0
@@ -90,7 +112,7 @@ jobs:
             cat "${SALIDA_DIR}/humo-staging.txt"
             if [ "${codigo}" -eq 0 ]; then break; fi
             echo "Intento ${intento} de 5 fallido."
-            if [ "${intento}" -lt 5 ]; then sleep 10; fi
+            if [ "${intento}" -lt 5 ]; then sleep "${esperas[intento - 1]}"; fi
           done
           exit "${codigo}"
 
@@ -107,6 +129,7 @@ jobs:
           echo "url=${url}" >> "${GITHUB_OUTPUT}"
 
       - name: Desplegar a producción
+        id: deploy_prod
         if: steps.cf.outputs.tiene_cf == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -119,16 +142,20 @@ jobs:
           version="$(grep -m1 'Current Version ID:' "${SALIDA_DIR}/deploy-produccion.txt" | sed 's/.*Current Version ID:[[:space:]]*//' || true)"
           echo "${version:-desconocida}" > "${SALIDA_DIR}/version-produccion.txt"
 
+      # Corre también si el despliegue a producción falló: pudo fallar después de subir la
+      # versión. Si staging falló, el despliegue a producción se saltó y esto no corre.
       - name: Prueba de humo en producción
         id: humo_prod
-        if: steps.cf.outputs.tiene_cf == 'true'
+        if: always() && steps.cf.outputs.tiene_cf == 'true' && steps.humo_staging.outcome == 'success' && steps.deploy_prod.outcome != 'skipped'
         env:
           URL_PROD: ${{ steps.conf_prod.outputs.url }}
           SALIDA_DIR: ${{ runner.temp }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           # El humo fallido no aborta el paso: el rollback del siguiente paso necesita el resultado.
-          # Un Worker recién desplegado tarda en propagarse: 5 intentos, 10 s entre ellos.
+          # Un Worker recién desplegado tarda en propagarse: hasta 5 intentos, con esperas de 10,
+          # 20, 30 y 60 s entre ellos.
+          esperas=(10 20 30 60)
           codigo=1
           for intento in 1 2 3 4 5; do
             codigo=0
@@ -136,7 +163,7 @@ jobs:
             cat "${SALIDA_DIR}/humo-produccion.txt"
             if [ "${codigo}" -eq 0 ]; then break; fi
             echo "Intento ${intento} de 5 fallido."
-            if [ "${intento}" -lt 5 ]; then sleep 10; fi
+            if [ "${intento}" -lt 5 ]; then sleep "${esperas[intento - 1]}"; fi
           done
           if [ "${codigo}" -eq 0 ]; then
             echo "ok=true" >> "${GITHUB_OUTPUT}"
@@ -144,17 +171,23 @@ jobs:
             echo "ok=false" >> "${GITHUB_OUTPUT}"
           fi
 
+      # En el primer despliegue no hay versión anterior y el rollback falla: el resumen lo dice.
       - name: Revertir producción
         id: rollback
-        if: steps.cf.outputs.tiene_cf == 'true' && steps.humo_prod.outputs.ok == 'false'
+        if: always() && steps.cf.outputs.tiene_cf == 'true' && steps.humo_prod.outputs.ok == 'false'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           cd apps/api
-          pnpm --filter @mexicoapi/api exec wrangler rollback --config wrangler.produccion.json --yes --message "humo fallido en ${GITHUB_SHA}"
-          echo "::error::La prueba de humo de producción falló; se revirtió al despliegue anterior."
+          if pnpm --filter @mexicoapi/api exec wrangler rollback --config wrangler.produccion.json --yes --message "humo fallido en ${GITHUB_SHA}"; then
+            echo "revertido=si" >> "${GITHUB_OUTPUT}"
+            echo "::error::La prueba de humo de producción falló; se revirtió a la versión anterior."
+          else
+            echo "revertido=no" >> "${GITHUB_OUTPUT}"
+            echo "::error::No se pudo revertir; producción quedó con ${GITHUB_SHA}"
+          fi
           exit 1
 
       - name: Resumen
@@ -162,7 +195,8 @@ jobs:
         env:
           URL_STAGING: ${{ steps.conf_staging.outputs.url }}
           URL_PROD: ${{ steps.conf_prod.outputs.url }}
-          REVERTIDO: ${{ steps.rollback.outcome }}
+          REVERTIDO: ${{ steps.rollback.outputs.revertido }}
+          ROLLBACK: ${{ steps.rollback.outcome }}
           SALIDA_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
@@ -172,8 +206,12 @@ jobs:
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Staging: ${URL_STAGING:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-staging.txt" 2>/dev/null || echo desconocida))"
             echo "- Producción: ${URL_PROD:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-produccion.txt" 2>/dev/null || echo desconocida))"
-            if [ "${REVERTIDO}" != "skipped" ]; then
-              echo "- Producción revertida al despliegue anterior (resultado: ${REVERTIDO})"
+            if [ "${REVERTIDO}" = "si" ]; then
+              echo "- El humo de producción falló y producción se revirtió a la versión anterior."
+            elif [ "${REVERTIDO}" = "no" ]; then
+              echo "- El humo de producción falló y no se pudo revertir: producción quedó con \`${GITHUB_SHA}\`."
+            elif [ -n "${ROLLBACK}" ] && [ "${ROLLBACK}" != "skipped" ]; then
+              echo "- La reversión no terminó (resultado: ${ROLLBACK})."
             fi
             for entorno in staging produccion; do
               archivo="${SALIDA_DIR}/humo-${entorno}.txt"
