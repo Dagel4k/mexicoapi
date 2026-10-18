@@ -24,6 +24,9 @@ pnpm test:tz
 echo "verify: build"
 pnpm -r build
 
+echo "verify: paquete mexicoapi"
+pnpm --filter mexicoapi test:paquete
+
 echo "verify: integración de la API"
 pnpm --filter @mexicoapi/api test:integracion
 
