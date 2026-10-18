@@ -140,6 +140,9 @@ function invariantesBanco(b: Banco): string[] {
   }
   if (b.activo !== (fin.hasta === null)) p("activo no coincide con el último periodo");
   if (b.baja_detectada !== fin.hasta) p("baja_detectada no coincide con el último periodo");
+  if (!b.activo && b.participacion !== "no_confirmada") {
+    p("un registro inactivo debe tener participacion no_confirmada");
+  }
   return f;
 }
 
@@ -263,8 +266,16 @@ export function crearBancos(
               ? SIN_PDF
               : { razon_social: fila.razon_social, sector: fila.sector, participacion: "directa" };
         } else {
-          // Un código inactivo conserva lo que se supo de él cuando estuvo activo.
-          complemento = previo ?? SIN_PDF;
+          // Un código inactivo conserva su última razón social y su último sector, pero ya no
+          // participa.
+          complemento =
+            previo === undefined
+              ? SIN_PDF
+              : {
+                  razon_social: previo.razon_social,
+                  sector: previo.sector,
+                  participacion: "no_confirmada",
+                };
         }
         registros.push(registroDesdeHistorial(codigo, historial, complemento));
       }

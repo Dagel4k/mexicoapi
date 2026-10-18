@@ -20,7 +20,9 @@ Cada dataset trae en su `manifest.json` la fuente, la URL de los términos, la c
 - Cita: "Fuente: Banco de México." Las citas exactas de cada fuente están en `data/bancos/manifest.json`.
 - Qué hace MéxicoAPI: normaliza a NFC, une la lista del CEP con el PDF de participantes (razón social y sector), deriva el código de tres dígitos de la CLABE a partir del código SPEI y clasifica el tipo de institución por el prefijo de ese código. Las instituciones que dejan de aparecer no se borran: quedan con `activo: false`.
 
-`razon_social` y `sector` salen solo del PDF oficial vigente de participantes directos. Las instituciones inactivas y las que aparecen únicamente en el CEP (001 BANXICO, 901 CLS y 903 CoDi Valida) los tienen en `null`: MéxicoAPI no los completa sin una fuente.
+`razon_social` y `sector` salen solo del PDF oficial de participantes directos: MéxicoAPI no los completa sin una fuente. Las instituciones activas que aparecen únicamente en el CEP (001 BANXICO, 901 CLS y 903 CoDi Valida) los tienen en `null` y su `participacion` es `no_confirmada`.
+
+Una institución inactiva conserva la última `razon_social` y el último `sector` conocidos. Si nunca apareció en el PDF desde que MéxicoAPI la registra, quedan en `null`. Su `participacion` pasa a `no_confirmada`, porque ya no participa.
 
 ### El historial de bancos son periodos observados
 

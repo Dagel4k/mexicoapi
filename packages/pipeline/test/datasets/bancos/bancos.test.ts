@@ -164,10 +164,13 @@ describe("construir", () => {
     const base = (await construir(null)).registros;
     const r = (await construir([...base, wal()])).registros;
     const baja = por(r, "134");
+    // Conserva la última razón social y el último sector; ya no participa.
     expect(baja).toMatchObject({
       activo: false,
       baja_detectada: HOY,
       razon_social: "Walmart de México",
+      sector: "BANCA MÚLTIPLE",
+      participacion: "no_confirmada",
     });
     expect(baja.historial).toEqual([
       { codigo_spei: "40134", nombre_corto: "WAL-MART", desde: "2012-01-03", hasta: HOY },
@@ -184,6 +187,7 @@ describe("construir", () => {
     const bbva = por(base, "012");
     const inactivo: Banco = {
       ...bbva,
+      participacion: "no_confirmada",
       activo: false,
       baja_detectada: "2026-01-01",
       historial: [
@@ -197,6 +201,7 @@ describe("construir", () => {
     };
     const r = por((await construir([inactivo])).registros, "012");
     expect(r.activo).toBe(true);
+    expect(r.participacion).toBe("directa");
     expect(r.baja_detectada).toBeNull();
     expect(r.historial).toEqual([
       {
@@ -421,6 +426,21 @@ describe("invariantes", () => {
     ];
     for (const m of malos) expect(bancos.invariantes([m]).length).toBeGreaterThan(0);
   });
+
+  it("un registro inactivo tiene participacion no_confirmada", async () => {
+    const b = por((await construir(null)).registros, "012");
+    const periodo = b.historial[0] as Banco["historial"][number];
+    const inactivo: Banco = {
+      ...b,
+      activo: false,
+      baja_detectada: "2026-10-18",
+      historial: [{ ...periodo, hasta: "2026-10-18" }],
+    };
+    expect(bancos.invariantes([inactivo])).toEqual([
+      "012: un registro inactivo debe tener participacion no_confirmada",
+    ]);
+    expect(bancos.invariantes([{ ...inactivo, participacion: "no_confirmada" }])).toEqual([]);
+  });
 });
 
 describe("registrosDesdeHistorico", () => {
@@ -492,7 +512,14 @@ describe("corridas diarias", () => {
     expect(baja.resultado.estado).toBe("requiere_revision");
     expect(baja.resultado.motivos).toContain("baja: 012 BBVA MEXICO");
     const r = JSON.parse(await bytes()) as Banco[];
-    expect(por(r, "012")).toMatchObject({ activo: false, baja_detectada: "2026-10-18" });
+    expect(por(r, "012")).toMatchObject({
+      activo: false,
+      baja_detectada: "2026-10-18",
+      razon_social:
+        "BBVA México, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA México",
+      sector: "BANCA MÚLTIPLE",
+      participacion: "no_confirmada",
+    });
 
     cep = completo;
     const vuelta = await ejecutar("2026-10-20");
