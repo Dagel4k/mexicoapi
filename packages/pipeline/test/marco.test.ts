@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { sha256Hex } from "../src/canonico.js";
 import { ErrorDatos } from "../src/errores.js";
-import { ErrorHttp } from "../src/http.js";
+import { type Cliente, ErrorHttp, type OpcionesObtener } from "../src/http.js";
 import {
   type Construccion,
   type Contexto,
@@ -13,6 +13,7 @@ import {
   ejecutarDataset,
   type FuenteCapturada,
   leerRegistros,
+  restringirCliente,
 } from "../src/marco.js";
 
 interface Reg {
@@ -45,6 +46,7 @@ const mkCrudos = (): FuenteCapturada["crudos"] => [
 
 const def = (): DefinicionDataset<Reg> => ({
   id: "toy.reg",
+  hosts: ["x.test"],
   directorio: "toy",
   archivo: "reg.json",
   esquema: z.object({ id: z.string().min(1), nombre: z.string() }),
@@ -299,6 +301,45 @@ describe("ejecutarDataset", () => {
       crudos = [{ ...(mkCrudos()[0] as FuenteCapturada["crudos"][number]), file: mala }];
       await expect(ejecutarDataset(def(), ctx())).rejects.toBeInstanceOf(ErrorDatos);
     }
+  });
+
+  it("el dataset pide con su lista de hosts, sin perder sus otras opciones", async () => {
+    const pedidos: [string, OpcionesObtener | undefined][] = [];
+    const cliente: Cliente = {
+      obtener: async (url, opciones) => {
+        pedidos.push([url, opciones]);
+        return { url, estado: 200, tipo: null, cuerpo: new Uint8Array(), obtenido_en: instante };
+      },
+    };
+    const base = def();
+    const d: DefinicionDataset<Reg> = {
+      ...base,
+      capturar: async (c) => {
+        await c.cliente.obtener("https://x.test/a", { aceptar: [404], hosts: ["otro.test"] });
+        await c.cliente.obtener("https://x.test/b");
+        return base.capturar(c);
+      },
+    };
+    await ejecutarDataset(d, { ...ctx(), cliente });
+    expect(pedidos).toEqual([
+      ["https://x.test/a", { aceptar: [404], hosts: ["x.test"] }],
+      ["https://x.test/b", { hosts: ["x.test"] }],
+    ]);
+  });
+});
+
+describe("restringirCliente", () => {
+  it("fija los hosts de cada pedido", async () => {
+    const vistas: (OpcionesObtener | undefined)[] = [];
+    const cliente: Cliente = {
+      obtener: async (url, opciones) => {
+        vistas.push(opciones);
+        return { url, estado: 200, tipo: null, cuerpo: new Uint8Array(), obtenido_en: instante };
+      },
+    };
+    const restringido = restringirCliente(cliente, ["a.test", "b.test"]);
+    await restringido.obtener("https://a.test/x", { topeBytes: 5 });
+    expect(vistas).toEqual([{ topeBytes: 5, hosts: ["a.test", "b.test"] }]);
   });
 });
 

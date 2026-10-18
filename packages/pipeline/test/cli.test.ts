@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { principal } from "../src/cli.js";
+import { type Entorno, principal } from "../src/cli.js";
 import { CURADOS } from "../src/curado/registro.js";
+import { HOSTS_BANCOS } from "../src/datasets/bancos/bancos.js";
 import { crearEntorno, HOY, leerFixture, PRUEBA_LENTA } from "./ayudas.js";
 
 const TODOS = ["inegi.estados", "inegi.municipios", "bancos"];
@@ -25,6 +26,22 @@ async function cepConAlta(): Promise<Uint8Array> {
   const cep = JSON.parse(new TextDecoder().decode(await leerFixture("bancos/cep-2026-10-17.json")));
   cep.instituciones.push(["40999", "NUEVO BANCO"]);
   return new TextEncoder().encode(JSON.stringify(cep));
+}
+
+/** Anota, por URL, los hosts con que se pidió al cliente del entorno. */
+function espiarHosts(entorno: Entorno): Map<string, readonly string[] | undefined> {
+  const vistos = new Map<string, readonly string[] | undefined>();
+  const crear = entorno.crearCliente;
+  entorno.crearCliente = (ms) => {
+    const cliente = crear(ms);
+    return {
+      obtener: (url, opciones) => {
+        vistos.set(url, opciones?.hosts);
+        return cliente.obtener(url, opciones);
+      },
+    };
+  };
+  return vistos;
 }
 
 async function instantanea(): Promise<Map<string, string>> {
@@ -157,6 +174,20 @@ describe("actualizar", { timeout: PRUEBA_LENTA }, () => {
     expect(await principal([], entorno)).toBe(1);
   });
 
+  it("cada dataset pide solo a sus hosts", async () => {
+    const entorno = await crearEntorno(raiz);
+    const hosts = espiarHosts(entorno);
+    expect(await principal(["actualizar", ...TODOS, "--seco"], entorno)).toBe(0);
+    for (const [url, lista] of hosts) {
+      const esperados = url.startsWith("https://gaia.inegi.org.mx/")
+        ? ["gaia.inegi.org.mx"]
+        : HOSTS_BANCOS;
+      expect(lista, url).toEqual(esperados);
+    }
+    expect([...hosts.keys()].some((u) => u.includes("banxico"))).toBe(true);
+    expect([...hosts.keys()].some((u) => u.includes("inegi"))).toBe(true);
+  });
+
   it("--datos reemplaza la raíz del entorno", async () => {
     const otra = join(raiz, "otra");
     const entorno = await crearEntorno(join(raiz, "no-se-usa"));
@@ -251,6 +282,15 @@ describe("bancos-historico", { timeout: PRUEBA_LENTA }, () => {
     const porOmision = await crearEntorno(aparte);
     await principal(["bancos-historico", "--desde", "2026-10", "--fecha", HOY], porOmision);
     expect(porOmision.intervalos).toEqual([30000]);
+  });
+
+  it("el arranque histórico pide solo a los hosts de bancos", async () => {
+    const entorno = await crearEntorno(raiz);
+    const hosts = espiarHosts(entorno);
+    const args = ["bancos-historico", "--desde", "2026-10", "--fecha", HOY];
+    expect(await principal(args, entorno)).toBe(0);
+    expect(hosts.size).toBeGreaterThan(1);
+    for (const [url, lista] of hosts) expect(lista, url).toEqual(HOSTS_BANCOS);
   });
 
   it("actualizar usa un cliente de 1 s", async () => {

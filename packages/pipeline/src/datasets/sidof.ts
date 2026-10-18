@@ -288,6 +288,7 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
 
   return {
     id: c.id,
+    hosts: [new URL(BASE).host],
     directorio: c.directorio,
     archivo: c.archivo,
     esquema: c.esquema,

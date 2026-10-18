@@ -29,6 +29,11 @@ const ID = "bancos";
 const DIRECTORIO = "bancos";
 const URL_INFO = "https://www.banxico.org.mx/servicios/spei_-informacion-banco-mex.html";
 const URL_CEP_HISTORICO = "https://www.banxico.org.mx/cep/instituciones.do";
+/**
+ * Hosts de Banxico a los que pide el dataset. El robots.txt de www redirige al de
+ * anterior.banxico.org.mx, que es el que se aplica.
+ */
+export const HOSTS_BANCOS: readonly string[] = [new URL(URL_INFO).host, "anterior.banxico.org.mx"];
 const ARCHIVO_CEP = "raw/cep-instituciones.json";
 const ARCHIVO_HISTORICO = "raw/cep-historico.json";
 const ARCHIVO_PDF = "raw/participantes-spei.pdf";
@@ -155,6 +160,7 @@ export function crearBancos(
 ): DefinicionDataset<Banco> {
   const def: DefinicionDataset<Banco> = {
     id: ID,
+    hosts: HOSTS_BANCOS,
     directorio: DIRECTORIO,
     archivo: "bancos.json",
     esquema: esquemaBanco,

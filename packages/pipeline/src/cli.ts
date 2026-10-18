@@ -4,12 +4,17 @@ import { parseArgs } from "node:util";
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { curarDatos } from "./curado/curar.js";
 import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
-import { crearBancos, registrosDesdeHistorico } from "./datasets/bancos/bancos.js";
+import { crearBancos, HOSTS_BANCOS, registrosDesdeHistorico } from "./datasets/bancos/bancos.js";
 import type { Diferencias } from "./diferencias.js";
 import { fechaEnMexico } from "./fecha.js";
 import { capturarHistoricoCep } from "./historico.js";
 import type { Cliente } from "./http.js";
-import { type Contexto, ejecutarDataset, type ResultadoCorrida } from "./marco.js";
+import {
+  type Contexto,
+  ejecutarDataset,
+  type ResultadoCorrida,
+  restringirCliente,
+} from "./marco.js";
 import { DATASETS } from "./registro.js";
 import { resumenMarkdown } from "./resumen.js";
 import { construirSitio } from "./sitio/construir.js";
@@ -202,7 +207,7 @@ async function bancosHistorico(
   entorno.escribir(
     `bancos: ${meses.length} meses, un pedido cada ${segundos} s; duración estimada: ${Math.ceil((meses.length * segundos) / 60)} min\n`,
   );
-  const cliente = entorno.crearCliente(segundos * 1000);
+  const cliente = restringirCliente(entorno.crearCliente(segundos * 1000), HOSTS_BANCOS);
   try {
     const historico = await capturarHistoricoCep(cliente, desde, fecha, entorno.escribir);
     const omitidos = meses.filter((mes) => !historico.some((o) => o.fecha.startsWith(mes)));
