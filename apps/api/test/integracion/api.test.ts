@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, inject, it } from "vitest";
+import { probarHumo } from "../../scripts/humo.ts";
 import {
   BASE_PROBLEMAS,
   leerPublico,
@@ -295,5 +296,13 @@ describe("descargas", () => {
       archivos.push(archivo as string);
     }
     expect(archivos).toEqual(expect.arrayContaining(["inegi-estados.csv", "mexicoapi.sqlite"]));
+  });
+});
+
+describe("prueba de humo", () => {
+  it("pasa contra el Worker local", async () => {
+    const resultado = await probarHumo(inject("urlApi"));
+    expect(resultado.fallas).toEqual([]);
+    expect(resultado.ok).toBe(true);
   });
 });
