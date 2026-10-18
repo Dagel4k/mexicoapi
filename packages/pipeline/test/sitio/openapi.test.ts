@@ -321,6 +321,24 @@ describe("documento OpenAPI", () => {
     });
     expect(habiles.tipo_plazo.description).toContain("autoridad=sat");
     expect(habiles.tipo_plazo.description).toContain("vacaciones");
+    // Lo que cada calendario aplica y lo que no, y qué fecha va en desde.
+    expect(habiles.autoridad.description).toContain(
+      "no incluye los días en que las autoridades laborales suspenden labores (art. 715)",
+    );
+    expect(habiles.autoridad.description).toContain(
+      "no es el calendario de la CNBV como autoridad",
+    );
+    expect(habiles.autoridad.description).toContain("art. 12 del CFF, calculados por regla");
+    expect(habiles.desde.description).toContain(
+      "el día en que surte efectos, no el día en que se hizo",
+    );
+    expect(habiles.permitir_incompleto.description).toContain(
+      "días de cierre bancario como el 1 de enero",
+    );
+    const sumar = doc.paths["/v1/dias-habiles"].get;
+    expect(sumar.description).toContain(
+      "no aplica la prórroga del quinto párrafo del art. 12 del CFF",
+    );
     expect(habiles.dias.schema.pattern).toBe("^[1-9]\\d{0,3}$");
     expect(habiles.dias.required).toBe(true);
     expect(habiles.permitir_incompleto.required).toBeFalsy();

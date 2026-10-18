@@ -739,7 +739,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       resultado: "2026-12-01",
       advertencias: [],
     });
-    // Los casos de la auditoría: antes, 422 desde el 2027-01-01, y con permitirIncompleto un
+    // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha, y con permitirIncompleto un
     // vencimiento en el 1 de enero. Ahora, el resultado legal.
     for (const [desde, dias, resultado] of [
       ["2026-12-30", 2, "2027-01-04"],

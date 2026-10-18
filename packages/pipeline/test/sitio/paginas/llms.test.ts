@@ -92,6 +92,9 @@ describe("llms.txt", () => {
     expect(docs[3]).toContain(
       "con `autoridad=sat`, `tipo_plazo` (`general` o `declaraciones_pagos`) es obligatorio",
     );
+    // Lo que no descuenta la LFT y qué fecha va en desde.
+    expect(docs[3]).toContain("no incluye las suspensiones de labores del art. 715");
+    expect(docs[3]).toContain("`desde` es el día en que surte efectos la notificación");
     expect(docs[4]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\/ultimo\]\(/);
     expect(texto).toContain("Las fechas van en `AAAA-MM-DD`.");
   });

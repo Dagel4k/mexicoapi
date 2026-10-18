@@ -60,13 +60,19 @@ export const esquemaDiaInhabil = z.object({
 
 export const esquemaResultadoDiasHabiles = z.object({
   autoridad,
-  desde: fechaIso.describe("Fecha de partida; no se cuenta."),
+  desde: fechaIso.describe(
+    "Fecha de partida; no se cuenta. En un plazo que corre desde una notificación, el día en que surte efectos.",
+  ),
   dias: z.number().int().describe("Días hábiles sumados."),
   resultado: fechaIso.describe("Fecha resultante."),
   inhabiles_saltados: z
     .array(esquemaDiaInhabil)
     .describe("Días inhábiles saltados, sin los fines de semana."),
-  advertencias: z.array(z.string()).describe("Avisos, como un calendario incompleto."),
+  advertencias: z
+    .array(z.string())
+    .describe(
+      "Avisos: un calendario incompleto, lo que el calendario no descuenta (con lft, las suspensiones de labores del art. 715) o la prórroga del art. 12 del CFF que el resultado no aplica.",
+    ),
 });
 
 export const esquemaFixOperacion = z.object({

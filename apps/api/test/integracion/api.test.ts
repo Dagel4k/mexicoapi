@@ -691,7 +691,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   });
 
   it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni advertencias", async () => {
-    // Los casos de la auditoría: antes, 422 desde el 2027-01-01.
+    // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha.
     for (const [desde, dias, resultado] of [
       ["2026-12-30", 2, "2027-01-04"],
       ["2026-11-20", 30, "2027-01-05"],
@@ -704,7 +704,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   });
 
   it("declaraciones_pagos avisa de la prórroga del art. 12 en viernes, vacaciones y cierres bancarios", async () => {
-    // Los casos de la auditoría: el resultado no cambia; se agrega la advertencia.
+    // Un cierre bancario, vacaciones del SAT y un viernes: el resultado no cambia; se agrega la advertencia.
     for (const [desde, resultado, hechos] of [
       ["2026-10-30", "2026-11-02", "día de cierre bancario según la CNBV"],
       [

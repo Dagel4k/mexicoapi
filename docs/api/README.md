@@ -226,16 +226,22 @@ Suma días hábiles a una fecha según el calendario de una autoridad: `lft`, `c
     "dias": 3,
     "resultado": "2026-12-23",
     "inhabiles_saltados": [],
-    "advertencias": []
+    "advertencias": [
+      "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación."
+    ]
   }
 }
 ```
+
+En un plazo que corre desde una notificación, `desde` es el día en que la notificación surte efectos, no el día en que se hizo. Por ejemplo, una notificación del SAT hecha el lunes 2 de marzo de 2026 surte efectos el día hábil siguiente (CFF, art. 135), así que `desde=2026-03-03`. En materia laboral los términos corren desde el día siguiente al en que surte efectos la notificación (LFT, art. 733). Si se pasa la fecha en que se hizo la notificación, el vencimiento sale un día hábil antes.
+
+El `resultado` es el último día del cómputo. No aplica prórrogas que dependen de dónde se hace el trámite (ver [la prórroga del artículo 12](#prórroga-del-artículo-12-del-cff)); cuando el cálculo puede tener una, `advertencias` lo dice.
 
 | Parámetro | Obligatorio | Valores |
 | --- | --- | --- |
 | `autoridad` | sí | `lft`, `cnbv` o `sat` |
 | `tipo_plazo` | solo con `sat` | `general` o `declaraciones_pagos`; con otra autoridad da 400 |
-| `desde` | sí | Fecha real con formato `AAAA-MM-DD` |
+| `desde` | sí | Fecha real con formato `AAAA-MM-DD`: el día en que surte efectos la notificación |
 | `dias` | sí | Entero de 1 a 3650, sin ceros a la izquierda |
 | `permitir_incompleto` | no | `true` o `false` |
 
@@ -243,11 +249,13 @@ Cada autoridad tiene su calendario de días inhábiles, además de los sábados 
 
 | `autoridad` | Días inhábiles | Años que cubre |
 | --- | --- | --- |
-| `lft` | Los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año | 2007 a 2100 |
-| `cnbv` | Los días en que las entidades financieras cierran, según las disposiciones que la CNBV publica en el DOF cada año ([detalle](../datos/dias-inhabiles-cnbv.md)) | 2025 y 2026 |
-| `sat` | Los del artículo 12 del Código Fiscal de la Federación y los periodos de vacaciones de la regla 2.1.6 de la RMF ([detalle](../datos/dias-inhabiles-sat.md)) | 2026, con el límite que se explica abajo |
+| `lft` | Los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año. No incluye los días en que las autoridades laborales suspenden labores (art. 715) | 2007 a 2100 |
+| `cnbv` | Calendario bancario: los días en que las entidades financieras cierran, según las disposiciones que la CNBV publica en el DOF cada año ([detalle](../datos/dias-inhabiles-cnbv.md)) | 2025 y 2026 |
+| `sat` | Los del artículo 12 del Código Fiscal de la Federación, calculados por regla, y los periodos de vacaciones de la regla 2.1.6 de la RMF ([detalle](../datos/dias-inhabiles-sat.md)) | Del art. 12, 2026 a 2100; las vacaciones, hasta donde están publicadas (ver abajo) |
 
-Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. `inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
+Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. El artículo 715 también excluye los días en que las autoridades laborales suspenden labores (la Semana Santa, sus vacaciones y otras suspensiones), pero cada tribunal y centro de conciliación publica los suyos y este calendario no los tiene. Por eso cada respuesta con `lft` trae esa advertencia, y el resultado puede ser anterior al vencimiento real de un plazo procesal: del martes 31 de marzo de 2026, 3 días hábiles dan el viernes 3 de abril, que es Viernes Santo. Para nómina (días de descanso obligatorio, art. 75) la lista del artículo 74 sí es la que aplica.
+
+`inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
 
 ```json
 {
@@ -267,15 +275,15 @@ Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligat
       }
     }
   ],
-  "advertencias": []
+  "advertencias": ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …"]
 }
 ```
 
-El `fragmento` real trae el artículo completo; aquí se acortó con "…".
+El `fragmento` y la advertencia reales traen el texto completo; aquí se acortaron con "…".
 
 ### CNBV
 
-Con `autoridad=cnbv` se descuentan los días que las disposiciones de la CNBV mandan cerrar a las entidades financieras (por ejemplo, el 12 y el 25 de diciembre), además de sábados y domingos. Del miércoles 23 de diciembre de 2026, 3 días hábiles caen el martes 29:
+Con `autoridad=cnbv` se descuentan los días que las disposiciones de la CNBV mandan cerrar a las entidades financieras (por ejemplo, el 12 y el 25 de diciembre), además de sábados y domingos. Es el calendario bancario, no el de la CNBV como autoridad: para un plazo en un procedimiento ante la Comisión cuentan sus propios días de suspensión de labores, que no están aquí. Del miércoles 23 de diciembre de 2026, 3 días hábiles caen el martes 29:
 
 ```bash
 curl "https://<base>/v1/dias-habiles?autoridad=cnbv&desde=2026-12-23&dias=3"
@@ -322,7 +330,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
 curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-07-17&dias=3"
 ```
 
-Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` trae los 12 días de vacaciones (del 2026-07-20 al 2026-07-31, con `tipo: "vacaciones"`). Con `declaraciones_pagos` el resultado es el miércoles 2026-07-22 y `inhabiles_saltados` queda vacío:
+Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` trae los 12 días de vacaciones (del 2026-07-20 al 2026-07-31, con `tipo: "vacaciones"`). Con `declaraciones_pagos` el resultado es el miércoles 2026-07-22 y `inhabiles_saltados` queda vacío. Como el 22 de julio es de vacaciones del SAT, `advertencias` trae el aviso de la [prórroga del artículo 12](#prórroga-del-artículo-12-del-cff):
 
 ```json
 {
@@ -331,13 +339,33 @@ Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` tr
   "dias": 3,
   "resultado": "2026-07-22",
   "inhabiles_saltados": [],
-  "advertencias": []
+  "advertencias": [
+    "El resultado (2026-07-22) es día de vacaciones del SAT. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga."
+  ]
 }
 ```
 
 Sin `tipo_plazo` responde 400 `parametro-faltante`; con `lft` o `cnbv` y `tipo_plazo`, 400 `parametro-invalido`.
 
+Los días del primer párrafo del artículo 12 (1o. de enero, primer lunes de febrero, tercer lunes de marzo, 1o. y 5 de mayo, 16 de septiembre, tercer lunes de noviembre y 25 de diciembre) los fija la ley, así que se calculan por regla para cada año de 2026 a 2100, como los de la LFT. Del 30 de diciembre de 2026, 2 días hábiles con `declaraciones_pagos` dan el lunes 4 de enero de 2027: el 1 de enero no cuenta.
+
 El 2 y 3 de abril de 2026 (regla 2.1.6, fracción II) no son vacaciones generales, sino días inhábiles para el SAT. Aquí se tratan como vacaciones: en un plazo de declaraciones y pagos cuentan como hábiles y el plazo vence antes, no después. Es el lado seguro para el contribuyente.
+
+#### Transmisión del Poder Ejecutivo
+
+El artículo 12 también excluye "el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo". Desde 2024 la transmisión es el 1o. de octubre, y el artículo no se ha reformado. Por eso en 2030 (y cada seis años hasta 2096) no se descuenta ni el 1o. de octubre ni el 1o. de diciembre: con eso el plazo vence antes, no después. Un cálculo que pasa por alguno de esos dos días trae una advertencia que lo explica, y la lista de `dias-inhabiles` de ese año también.
+
+#### Prórroga del artículo 12 del CFF
+
+El quinto párrafo del artículo 12 prorroga el plazo al siguiente día hábil si el último día están cerradas las oficinas donde se hace el trámite, incluidos los bancos autorizados para recibir el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. La prórroga depende de dónde se presenta y se paga, así que `resultado` no la aplica: es el último día del cómputo, que nunca es posterior al vencimiento legal.
+
+Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día de vacaciones del SAT (hábil en estos plazos) o en un día de cierre bancario del [calendario de la CNBV](#cnbv), `advertencias` lo dice:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
+```
+
+El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". Fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos, y esa parte no se revisa.
 
 ### Cobertura del calendario
 
@@ -382,10 +410,10 @@ La CNBV publica su calendario año con año y el SAT publica sus periodos de vac
 | Calendario | Cobertura |
 | --- | --- |
 | `cnbv` | del 2025-01-01 al 2026-12-31 |
-| `sat`, `tipo_plazo=declaraciones_pagos` | del 2026-01-01 al 2026-12-31 |
+| `sat`, `tipo_plazo=declaraciones_pagos` | del 2026-01-01 al 2100-12-31 |
 | `sat`, `tipo_plazo=general` | del 2026-01-01 al 2026-11-30 |
 
-El plazo `general` del SAT termina el 30 de noviembre de 2026 porque el segundo periodo general de vacaciones de 2026 todavía no se publica, y sin él no se sabe qué días de diciembre son inhábiles. Los días de descanso del artículo 12 sí están completos todo el año, y por eso `declaraciones_pagos`, que no cuenta las vacaciones, llega al 31 de diciembre. Cada calendario se amplía cuando se captura la publicación correspondiente ([cómo se hace](../operacion/datos-curados.md)).
+El plazo `general` del SAT termina el 30 de noviembre de 2026 porque el segundo periodo general de vacaciones de 2026 todavía no se publica, y sin él no se sabe qué días de diciembre son inhábiles. Los días de descanso del artículo 12 se calculan por regla, y por eso `declaraciones_pagos`, que no cuenta las vacaciones, llega a 2100. El calendario de la CNBV y las vacaciones del SAT se amplían cuando se captura la publicación correspondiente ([cómo se hace](../operacion/datos-curados.md)).
 
 Fuera de la cobertura responde 422 `calendario-incompleto`. Cuando otro `tipo_plazo` sí cubre la fecha, el `detail` lo dice:
 
@@ -398,7 +426,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
   "title": "Calendario incompleto",
   "status": 422,
-  "detail": "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.",
+  "detail": "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.",
   "instance": "/v1/dias-habiles",
   "autoridad": "sat",
   "fecha": "2026-12-01",
@@ -406,7 +434,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
 }
 ```
 
-Con `permitir_incompleto=true`, un plazo que tiene calendario de respaldo no se limita a los fines de semana: sigue descontando los días ya publicados (el 25 de diciembre, que el artículo 12 fija) y avisa de lo que puede faltar. Del 27 de noviembre de 2026, 20 días hábiles con `tipo_plazo=general`:
+Con `permitir_incompleto=true`, un plazo que tiene calendario de respaldo no se limita a los fines de semana: sigue descontando los días ya conocidos (el 25 de diciembre y los demás días del artículo 12) y avisa de lo que puede faltar. Del 27 de noviembre de 2026, 20 días hábiles con `tipo_plazo=general`:
 
 ```bash
 curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=20&permitir_incompleto=true"
@@ -432,7 +460,26 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
 }
 ```
 
-El resultado puede cambiar cuando se publique el periodo de vacaciones faltante. Si el cálculo sigue más allá de la cobertura más amplia del calendario (para el SAT, el 31 de diciembre de 2026), se suma el aviso de solo fines de semana de arriba, con la autoridad en mayúsculas (`Calendario incompleto: SAT 2027; …`). Si el cálculo no entra en la zona incompleta, no hay aviso.
+El resultado puede cambiar cuando se publique el periodo de vacaciones faltante. Si el cálculo sigue más allá de la cobertura más amplia del calendario (para el SAT, el 31 de diciembre de 2100), se suma el aviso de solo fines de semana de arriba, con la autoridad en mayúsculas (`Calendario incompleto: SAT 2101; …`). Si el cálculo no entra en la zona incompleta, no hay aviso.
+
+Con la CNBV no hay respaldo: después del 31 de diciembre de 2026 solo se descuentan fines de semana, y la advertencia nombra el riesgo, porque los bancos cierran días que no son fin de semana:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=cnbv&desde=2026-12-31&dias=1&permitir_incompleto=true"
+```
+
+```json
+{
+  "autoridad": "cnbv",
+  "desde": "2026-12-31",
+  "dias": 1,
+  "resultado": "2027-01-01",
+  "inhabiles_saltados": [],
+  "advertencias": [
+    "Calendario incompleto: CNBV 2027; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero."
+  ]
+}
+```
 
 Esta ruta es una calculadora, no asesoría legal. Para un plazo procesal o fiscal, confirma el calendario de la autoridad que corresponde.
 
@@ -444,7 +491,7 @@ curl "https://<base>/v1/dias-inhabiles?autoridad=cnbv&anio=2026"
 curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
-Lista los días inhábiles publicados de un año. Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
+Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
 
 | `autoridad` | Para 2026 devuelve |
 | --- | --- |
@@ -467,11 +514,11 @@ Lista los días inhábiles publicados de un año. Los sábados y domingos no se 
 }
 ```
 
-Un año que la cobertura del calendario no alcanza da 422 `calendario-incompleto`: fuera de 2007 a 2100 con `lft`, de 2025 a 2026 con `cnbv` y fuera de 2026 con `sat`.
+Un año que la cobertura del calendario no alcanza da 422 `calendario-incompleto`: fuera de 2007 a 2100 con `lft`, de 2025 a 2026 con `cnbv` y de 2026 a 2100 con `sat`.
 
 ### Advertencias de la lista
 
-`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo. Es `[]` cuando la lista está completa, como en `lft` y `cnbv`.
+`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo o de lo que no incluye. Es `[]` cuando la lista está completa, como en `cnbv`. Con `lft` siempre trae el aviso de que la lista no tiene las suspensiones de labores del artículo 715; con `sat`, en 2030 y cada seis años, el de la [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo).
 
 El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha publicado, y la lista de vacaciones solo está completa hasta el 30 de noviembre. La lista de 2026 se responde igual, con los 23 días publicados, y la advertencia dice qué puede faltar:
 
@@ -485,7 +532,7 @@ El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha pu
 }
 ```
 
-Para un plazo de declaraciones y pagos la lista de 2026 está completa; para un plazo general falta lo que el SAT publique para diciembre. Cuando se capture ese periodo, la advertencia desaparece. Un año que ni siquiera tiene la cobertura de descanso, como 2027, no se responde: da 422.
+Para un plazo de declaraciones y pagos la lista de 2026 está completa; para un plazo general falta lo que el SAT publique para diciembre. Cuando se capture ese periodo, la advertencia desaparece. De 2027 a 2100 la lista trae los 8 días del artículo 12, calculados por regla, con la misma advertencia mientras no se publiquen las vacaciones de ese año:
 
 ```bash
 curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2027"
@@ -493,16 +540,15 @@ curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2027"
 
 ```json
 {
-  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
-  "title": "Calendario incompleto",
-  "status": 422,
-  "detail": "El calendario del SAT no cubre el año 2027; cubre del 2026-01-01 al 2026-12-31.",
-  "instance": "/v1/dias-inhabiles",
-  "autoridad": "sat",
-  "fecha": "2027-01-01",
-  "cobertura": { "desde": "2026-01-01", "hasta": "2026-12-31" }
+  "data": [ "…2027-01-01, 02-01, 03-15, 05-01, 05-05, 09-16, 11-15 y 12-25…" ],
+  "advertencias": [
+    "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa."
+  ],
+  "meta": { "dataset": "dias-inhabiles.sat", "…": "…" }
 }
 ```
+
+Un año después de 2100 no se responde: `anio=2101` da 422 con `"detail": "El calendario del SAT no cubre el año 2101; cubre del 2026-01-01 al 2100-12-31."`.
 
 ## Tipo de cambio FIX
 

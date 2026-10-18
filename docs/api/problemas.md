@@ -192,7 +192,7 @@ Qué hacer: usa `GET`.
 
 ## calendario-incompleto
 
-Status 422. El cálculo cruza fechas que el calendario no cubre. Hoy el calendario `lft` va del 2007-01-01 al 2100-12-31, el de la `cnbv` del 2025-01-01 al 2026-12-31 y el del `sat` del 2026-01-01 al 2026-12-31 (con `tipo_plazo=general`, hasta el 2026-11-30). El problema trae además `autoridad`, `fecha` (la primera fecha sin cobertura) y `cobertura`.
+Status 422. El cálculo cruza fechas que el calendario no cubre. Hoy el calendario `lft` va del 2007-01-01 al 2100-12-31, el de la `cnbv` del 2025-01-01 al 2026-12-31 y el del `sat` del 2026-01-01 al 2100-12-31 (con `tipo_plazo=general`, hasta el 2026-11-30, mientras no se publique el segundo periodo de vacaciones de 2026). El problema trae además `autoridad`, `fecha` (la primera fecha sin cobertura) y `cobertura`.
 
 ```bash
 curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
