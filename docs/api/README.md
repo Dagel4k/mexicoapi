@@ -62,6 +62,8 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 
 `meta` no trae el estado de frescura, porque eso cambiaría la respuesta (y su `ETag`) con la hora. La frescura se consulta en [`/v1/status`](#status).
 
+Una respuesta puede ganar campos nuevos dentro de `/v1`: los esquemas del documento OpenAPI son abiertos y no prohíben campos adicionales, así que tu cliente debe ignorar los que no conozca. Quitar o cambiar un campo sí es un cambio incompatible e iría a `/v2`.
+
 Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta`, y `/` y `/v1` responden un objeto de índice:
 
 ```json
@@ -297,7 +299,7 @@ Esta ruta es una calculadora, no asesoría legal. Para un plazo procesal o fisca
 curl "https://<base>/v1/dias-inhabiles?autoridad=lft&anio=2026"
 ```
 
-Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. Los parámetros son `autoridad` (`lft`) y `anio` (cuatro dígitos, obligatorios). Para 2026 devuelve 7 fechas: 01-01, 02-02, 03-16, 05-01, 09-16, 11-16 y 12-25. Cada elemento trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`). Un año fuera de 2007 a 2100 da 422 `calendario-incompleto`.
+Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. Los parámetros son `autoridad` (`lft`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. Para 2026 devuelve 7 fechas: 01-01, 02-02, 03-16, 05-01, 09-16, 11-16 y 12-25. Cada elemento trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`). Un año fuera de 2007 a 2100 da 422 `calendario-incompleto`.
 
 ```json
 {
@@ -342,7 +344,7 @@ La respuesta trae un elemento por dataset (`bancos`, `inegi.estados` e `inegi.mu
 | Campo | Significado |
 | --- | --- |
 | `as_of`, `records`, `data_sha256` | Los del dataset publicado |
-| `status` | `ok`, `stale` si el último éxito pasó de `frescura_horas`, o `unknown` si no hay registro de corridas |
+| `status` | `ok`; `stale` si el último éxito pasó de `frescura_horas` o si hay corridas pero ninguna exitosa (`last_success` es `null`); `unknown` si no hay registro de corridas |
 | `last_attempt`, `last_success` | Instantes UTC de la última corrida y del último éxito; `null` si no hay registro |
 | `frescura_horas` | Antigüedad máxima antes de considerar el dato desactualizado |
 
@@ -358,7 +360,7 @@ El ejemplo es de una corrida local, sin registro de corridas, por eso `status` e
 
 Los datos se actualizan como máximo una vez al día, así que una hora de caché es segura. No se usa `s-maxage`: un caché compartido de 24 horas rompería la meta de frescura.
 
-Las rutas de estados, municipios y bancos traen `ETag`. Si lo mandas en `If-None-Match`, responde 304 sin cuerpo:
+Las rutas de estados, municipios y bancos, y `/v1/openapi.json`, traen `ETag`. Si lo mandas en `If-None-Match`, responde 304 sin cuerpo:
 
 ```bash
 curl -i -H 'If-None-Match: "2124ff58da103db22f553c325831f0c5"' https://<base>/v1/estados/25
@@ -402,7 +404,7 @@ Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `sta
 
 ## Límite de peticiones
 
-Cuando el despliegue lo tenga activado, una IP que rebasa el límite recibe 429 (`demasiadas-peticiones`) con `Retry-After: 60`. Si necesitas todos los datos, no hace falta consultar uno por uno: baja las descargas.
+Cuando el despliegue lo tenga activado, una IP que rebasa el límite (en IPv6 cuenta el bloque /64 completo) recibe 429 (`demasiadas-peticiones`) con `Retry-After: 60`. Si necesitas todos los datos, no hace falta consultar uno por uno: baja las descargas.
 
 ## Descargas
 
@@ -424,15 +426,15 @@ curl -O https://<base>/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash.
+Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash. El manifiesto es el mismo archivo de `data/`, así que su `data_file` conserva el nombre original: `estados.json` y `municipios.json`, que en `/descargas/` se llaman `inegi-estados.json` e `inegi-municipios.json` (`bancos.json` no cambia). El hash `data_sha256` es el del archivo descargado.
 
-Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Si un campo empezara con `=`, `+`, `-` o `@`, el build falla en vez de alterarlo.
+Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
 `mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
 
 ## Privacidad
 
-El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete de npm cuando esté disponible.
+El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete de npm cuando esté disponible.
 
 Los datos son públicos y la API no usa cookies.
 
