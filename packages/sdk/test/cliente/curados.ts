@@ -32,11 +32,14 @@ const PLAZOS_SAT = (
 
 /**
  * Si el plazo general del SAT termina antes que declaraciones_pagos, porque faltan vacaciones por
- * publicar: entonces tiene respaldo y la lista del año lo advierte. Se lee de data/ al definir las
- * pruebas, para saltar las que solo aplican entonces.
+ * publicar: entonces tiene respaldo. Con la regla del art. 12, declaraciones_pagos llega a 2100 y
+ * esto vale aunque se capture el segundo periodo de 2026. Se lee de data/ al definir las pruebas,
+ * para saltar las que solo aplican entonces.
  */
 const SAT_GENERAL_CORTO =
   PLAZOS_SAT.general.cobertura.hasta < PLAZOS_SAT.declaraciones_pagos.cobertura.hasta;
+/** Mientras falten vacaciones del SAT de 2026, la lista de ese año lo advierte. */
+const FALTAN_VACACIONES_2026 = PLAZOS_SAT.general.cobertura.hasta < "2026-12-31";
 
 const cubre = ({ desde, hasta }: CoberturaSerie): string => `cubre del ${desde} al ${hasta}`;
 const siguiente = (fecha: string): string =>
@@ -264,7 +267,7 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     const { general, amplia } = m.calendarios.calendarioCurado("sat");
     // Mientras falte el segundo periodo de vacaciones de 2026, la lista lo advierte.
     expect(sat.advertencias).toEqual(
-      SAT_GENERAL_CORTO
+      FALTAN_VACACIONES_2026
         ? [
             `Los días de tipo vacaciones del SAT solo están completos del ${general.cobertura.desde} al ${general.cobertura.hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.`,
           ]

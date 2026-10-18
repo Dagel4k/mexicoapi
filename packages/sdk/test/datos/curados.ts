@@ -99,7 +99,7 @@ export function probarCalendarios(
     expect(despues).toEqual(
       Array.from({ length: 2100 - ultimo }, (_, i) => diasDescansoCff(ultimo + 1 + i)).flat(),
     );
-    expect(despues.find((d) => d.fecha === "2027-01-01")?.fuente.nombre).toBe(
+    expect(despues.find((d) => d.fecha === `${ultimo + 1}-01-01`)?.fuente.nombre).toBe(
       "Código Fiscal de la Federación, artículo 12",
     );
   });
