@@ -299,56 +299,68 @@ describe("generarDatos", () => {
         fuente: FDS,
       },
     ];
-    const YAML =
-      "dataset: prueba.cal\ncobertura:\n  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }\n";
+    const CALENDARIO = {
+      autoridad: "cnbv",
+      plazos: {
+        general: { cobertura: { desde: "2026-01-01", hasta: "2026-12-31" }, excluir_tipos: [] },
+      },
+      fuentes_fin_de_semana: { "2026": FDS },
+    };
     const CON_CALENDARIO = `${DECLARACION}export declare const calendario: {};\n`;
 
-    it("un calendario exporta sus plazos y las fuentes de los fines de semana", async () => {
+    it("un calendario exporta su calendario.json tal cual, congelado", async () => {
       await dataset("dias-cal", DIAS);
-      await escribir("data/curado/dias-cal.yaml", YAML);
+      await escribir("data/dias-cal/calendario.json", canonico(CALENDARIO));
       await escribir("src/generados/dias-cal.d.ts", CON_CALENDARIO);
       await generarDatos(opciones());
       const m = await importar(await leer("dist/generados/dias-cal.js"), "dias-cal");
       expect(Object.keys(m).sort()).toEqual(["calendario", "datos", "meta"]);
-      expect(m.calendario).toEqual({
-        autoridad: "cnbv",
-        plazos: {
-          general: { cobertura: { desde: "2026-01-01", hasta: "2026-12-31" }, excluir_tipos: [] },
-        },
-        fuentes_fin_de_semana: { "2026": FDS },
-      });
+      expect(m.calendario).toEqual(CALENDARIO);
       expect(Object.isFrozen((m.calendario as { plazos: object }).plazos)).toBe(true);
     });
 
-    it("un YAML sin cobertura no da calendario", async () => {
+    it("sin calendario.json no hay calendario", async () => {
       await dataset("constante", [{ anio: 2026 }]);
-      await escribir("data/curado/constante.yaml", "dataset: prueba.constante\nregistros: []\n");
       expect((await leerDataset(join(dir, "data"), "constante")).calendario).toBeUndefined();
     });
 
-    it("la declaración y el YAML deben coincidir en el calendario", async () => {
+    it("la declaración y calendario.json deben coincidir", async () => {
       await dataset("dias-cal", DIAS);
-      await escribir("data/curado/dias-cal.yaml", YAML);
+      await escribir("data/dias-cal/calendario.json", canonico(CALENDARIO));
       await escribir("src/generados/dias-cal.d.ts", DECLARACION);
       await expect(generarDatos(opciones())).rejects.toThrow(
-        "data/curado/dias-cal.yaml trae cobertura, pero dias-cal.d.ts no declara calendario",
+        "data/dias-cal/calendario.json existe, pero dias-cal.d.ts no declara calendario",
       );
-      await rm(join(dir, "data/curado"), { recursive: true });
+      await rm(join(dir, "data/dias-cal/calendario.json"));
       await escribir("src/generados/dias-cal.d.ts", CON_CALENDARIO);
       await expect(generarDatos(opciones())).rejects.toThrow(
-        "dias-cal.d.ts declara calendario, pero data/curado/dias-cal.yaml no trae cobertura",
+        "dias-cal.d.ts declara calendario, pero falta data/dias-cal/calendario.json",
       );
     });
 
-    it("una cobertura que no se entiende detiene el build", async () => {
+    it.each([
+      ["no es JSON", "{", /dias-cal\/calendario\.json no es JSON válido/],
+      ["no está en forma canónica", JSON.stringify(CALENDARIO), /no está en la forma canónica/],
+      ["no es un objeto", canonico([CALENDARIO]), /solo autoridad, plazos y fuentes_fin_de_semana/],
+      [
+        "le falta una llave",
+        canonico({ autoridad: "cnbv", plazos: CALENDARIO.plazos }),
+        /solo autoridad, plazos y fuentes_fin_de_semana/,
+      ],
+      [
+        "trae los días",
+        canonico({ ...CALENDARIO, dias: [] }),
+        /solo autoridad, plazos y fuentes_fin_de_semana/,
+      ],
+      [
+        "es de otra autoridad que sus días",
+        canonico({ ...CALENDARIO, autoridad: "sat" }),
+        /calendario\.json es de sat y sus días de cnbv/,
+      ],
+    ])("un calendario.json que %s detiene el build", async (_caso, texto, error) => {
       await dataset("dias-cal", DIAS);
-      await escribir(
-        "data/curado/dias-cal.yaml",
-        "cobertura:\n  descanso:\n    desde: 2026-01-01\n",
-      );
-      await expect(leerDataset(join(dir, "data"), "dias-cal")).rejects.toThrow(
-        /curado\/dias-cal\.yaml: no se entiende la línea 2/,
-      );
+      await escribir("data/dias-cal/calendario.json", texto);
+      await expect(leerDataset(join(dir, "data"), "dias-cal")).rejects.toThrow(error);
     });
   });
 });

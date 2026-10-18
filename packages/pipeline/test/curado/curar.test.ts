@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type Entorno, principal } from "../../src/cli.js";
-import { YAML_ISR, YAML_SAT, YAML_UMA } from "./ejemplos.js";
+import { YAML_CNBV, YAML_ISR, YAML_SAT, YAML_UMA } from "./ejemplos.js";
 
 let raiz: string;
 beforeEach(async () => {
@@ -65,6 +65,12 @@ describe("curar", () => {
       "manifest.json",
       "uma.json",
     ]);
+    // Un calendario lleva además sus plazos y las fuentes de sus fines de semana.
+    expect((await readdir(join(raiz, "dias-inhabiles-sat"))).sort()).toEqual([
+      "calendario.json",
+      "dias-inhabiles.json",
+      "manifest.json",
+    ]);
     expect(await principal(["verificar"], entorno())).toBe(0);
 
     const antes = await instantanea();
@@ -102,6 +108,23 @@ describe("curar", () => {
       "curado/constantes-uma.yaml: invariante: 2026: anual es 42749.64, se esperaba 42794.64 (mensual × 12)\n",
     );
     expect(e.salida).toEqual([]);
+    expect(await readdir(raiz)).toEqual(["curado"]);
+  });
+
+  it("un calendario que no puede citar sus fines de semana sale 1 sin escribir nada", async () => {
+    // La cobertura llega a 2027, que no tiene días de descanso con que citar sus fines de semana.
+    await escribirYaml(
+      "dias-inhabiles-cnbv.yaml",
+      YAML_CNBV.replace(
+        "descanso: { desde: 2026-01-01, hasta: 2026-12-31 }",
+        "descanso: { desde: 2026-01-01, hasta: 2027-01-31 }",
+      ),
+    );
+    const e = entorno();
+    expect(await principal(["curar"], e)).toBe(1);
+    expect(e.errores.join("")).toContain(
+      "curado/dias-inhabiles-cnbv.yaml: el calendario está sin días de descanso en 2027",
+    );
     expect(await readdir(raiz)).toEqual(["curado"]);
   });
 

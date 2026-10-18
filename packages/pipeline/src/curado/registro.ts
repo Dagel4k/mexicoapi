@@ -1,4 +1,5 @@
 import type {
+  AutoridadCurada,
   CoberturaCurada,
   DiaInhabilCurado,
   FuenteDof,
@@ -45,6 +46,11 @@ export interface DefinicionCurado<T extends { fuente: FuenteDof }> {
   clave(r: T): string;
   /** Los calendarios declaran en el YAML el rango en que su lista está completa. */
   conCobertura: boolean;
+  /**
+   * Solo en los calendarios de días: su autoridad. `curar` escribe además `calendario.json`, con
+   * sus tipos de plazo y las fuentes de sus fines de semana.
+   */
+  calendario?: AutoridadCurada | undefined;
   /** Las tarifas de ISR pueden declarar `excepciones_cuota_fija` en el YAML. */
   conExcepciones: boolean;
   invariantes(registros: readonly T[], contexto: ContextoCurado): string[];
@@ -59,6 +65,7 @@ function dias(autoridad: DiaInhabilCurado["autoridad"]): DefinicionCurado<DiaInh
     esquema: esquemaDiaInhabilCurado,
     clave: (r) => r.fecha,
     conCobertura: true,
+    calendario: autoridad,
     conExcepciones: false,
     invariantes: (registros, { cobertura }) => invariantesDias(autoridad)(registros, cobertura),
   };

@@ -43,7 +43,7 @@ La lista de días por sí sola no dice hasta dónde está completa: un año sin 
 | API | `GET /v1/dias-habiles?autoridad=cnbv` y `GET /v1/dias-inhabiles?autoridad=cnbv&anio=` |
 | Descarga | `/descargas/dias-inhabiles-cnbv.json`, `.csv` y `.manifest.json`; la cobertura, en `/descargas/dias-inhabiles-coberturas.json` y `.csv` |
 | SQLite | tablas `dias_inhabiles` y `coberturas_calendario` de `/descargas/mexicoapi.sqlite`, con `autoridad = 'cnbv'` |
-| Repositorio | `data/dias-inhabiles-cnbv/dias-inhabiles.json` y `manifest.json` |
+| Repositorio | `data/dias-inhabiles-cnbv/dias-inhabiles.json`, `manifest.json` y `calendario.json` (tipos de plazo y fuentes de los fines de semana) |
 | Transcripción con citas | `data/curado/dias-inhabiles-cnbv.yaml` |
 
 Ver [API v1](../api/README.md#cnbv).
