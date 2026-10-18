@@ -199,7 +199,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       422,
     );
     expect(fuera.detail).toBe(
-      "El calendario de lft no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+      "El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
     );
     expect(fuera.problema).toMatchObject({
       instance: "/v1/dias-habiles",
@@ -214,7 +214,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       422,
     );
     expect(anio.detail).toBe(
-      "El calendario de lft no cubre el año 2200; cubre del 2007-01-01 al 2100-12-31.",
+      "El calendario de la LFT no cubre el año 2200; cubre del 2007-01-01 al 2100-12-31.",
     );
     expect(anio.problema.fecha).toBe("2200-01-01");
 
@@ -235,9 +235,9 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
         "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
       ],
       [
-        api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "sat" }),
+        api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "imss" as "lft" }),
         "autoridad",
-        "Autoridades disponibles: lft.",
+        "Autoridades disponibles: lft, cnbv y sat.",
       ],
       [
         api.diasHabiles({ desde: "9999-12-30", dias: 5, permitirIncompleto: true }),

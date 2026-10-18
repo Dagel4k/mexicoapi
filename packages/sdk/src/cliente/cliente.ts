@@ -2,7 +2,7 @@ import { crearCache } from "./cache.js";
 import { congelar } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
 import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
-import type { Contexto } from "./paquete.js";
+import type { Contexto } from "./paquete-comun.js";
 import type {
   Cliente,
   OpcionesCliente,
@@ -34,6 +34,11 @@ export const RUTAS = {
   "/v1/tipo-cambio/fix": "caduca",
   "/v1/tipo-cambio/fix/ultimo": "caduca",
   "/v1/udis": "caduca",
+  // Los calendarios curados y las constantes cambian con cada publicación en el DOF.
+  "/v1/constantes/uma": "caduca",
+  "/v1/constantes/uma/{anio}": "caduca",
+  "/v1/constantes/salario-minimo/{anio}": "caduca",
+  "/v1/isr/tarifa/{periodo}/{anio}": "caduca",
   "/v1/status": "api",
 } as const satisfies Record<RutaApi, "estable" | "caduca" | "api">;
 
@@ -51,6 +56,9 @@ const REGLAS_RUTA: Readonly<Record<string, readonly [RegExp, string]>> = {
   cvegeo: [/^\d{5}$/, "La clave de municipio (cvegeo) debe tener 5 dígitos."],
   codigo: [/^\d{3}$/, "El código de banco debe tener 3 dígitos."],
   clabe: [/^\d{18}$/, "La CLABE debe tener 18 dígitos."],
+  // No hay año 0000: las fechas van de 0001 a 9999.
+  anio: [/^(?!0000)\d{4}$/, "El año (anio) debe tener 4 dígitos, de 0001 a 9999."],
+  periodo: [/^(?:mensual|anual)$/, "El periodo de la tarifa debe ser mensual o anual."],
 };
 
 function baseDe(base: string | { readonly href: string }): string {
@@ -197,8 +205,14 @@ async function desdePaquete(
       `Respuesta de los datos del paquete porque la API falló: ${causa.message}`,
     );
   }
-  const { data, meta } = await responderPaquete(plantilla, contexto);
-  return congelar({ data, meta, origen: "paquete" as const, advertencias: contexto.advertencias });
+  const { data, meta, advertencias = [] } = await responderPaquete(plantilla, contexto);
+  return congelar({
+    data,
+    meta,
+    origen: "paquete" as const,
+    // Primero las del cliente (respaldo, antigüedad) y luego las que daría la API.
+    advertencias: [...contexto.advertencias, ...advertencias],
+  });
 }
 
 async function ejecutar(
@@ -257,10 +271,10 @@ export function crearCliente(opciones: OpcionesCliente): Cliente {
     bancos: (op) => pedir("/v1/bancos", {}, op),
     banco: (codigo, op) => pedir("/v1/bancos/{codigo}", { codigo }, op),
     clabe: (clabe, op) => pedir("/v1/clabe/{clabe}", { clabe }, op),
-    diasHabiles: ({ desde, dias, autoridad = "lft", permitirIncompleto }, op) =>
+    diasHabiles: ({ desde, dias, autoridad = "lft", tipoPlazo, permitirIncompleto }, op) =>
       pedir(
         "/v1/dias-habiles",
-        { autoridad, desde, dias, permitir_incompleto: permitirIncompleto },
+        { autoridad, tipo_plazo: tipoPlazo, desde, dias, permitir_incompleto: permitirIncompleto },
         op,
       ),
     diasInhabiles: ({ anio, autoridad = "lft" }, op) =>
@@ -269,6 +283,11 @@ export function crearCliente(opciones: OpcionesCliente): Cliente {
     fixParaOperacion: (fecha, op) => pedir("/v1/tipo-cambio/fix", { operacion: fecha }, op),
     fixUltimo: (op) => pedir("/v1/tipo-cambio/fix/ultimo", {}, op),
     udi: (fecha, op) => pedir("/v1/udis", { fecha }, op),
+    uma: (anio, op) => pedir("/v1/constantes/uma/{anio}", { anio }, op),
+    umaVigente: (fecha, op) => pedir("/v1/constantes/uma", { fecha }, op),
+    salarioMinimo: (anio, op) => pedir("/v1/constantes/salario-minimo/{anio}", { anio }, op),
+    tarifaIsr: (periodo, anio, op) =>
+      pedir("/v1/isr/tarifa/{periodo}/{anio}", { periodo, anio }, op),
     status: (op) => pedir("/v1/status", {}, op),
   });
 }

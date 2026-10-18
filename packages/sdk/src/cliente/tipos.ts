@@ -10,8 +10,12 @@ import type {
   Municipio,
   ResultadoDiasHabiles,
   ResultadoValidacion,
+  SalarioMinimo,
+  TarifaIsr,
   TipoCambioFix,
+  TipoPlazo,
   Udi,
+  Uma,
 } from "@mexicoapi/core";
 import type { BancoCatalogo } from "../datos/bancos.js";
 import type { MetaDatos } from "../datos/tipos.js";
@@ -27,8 +31,11 @@ export interface RespuestaSinMeta<D> {
   readonly data: D;
   readonly origen: Origen;
   /**
-   * Avisos del cliente: que la API no respondió y se usó el paquete, o que los datos del paquete
-   * de una serie llegan a más de 7 días antes de hoy. Vacío si no hay nada que avisar.
+   * Avisos. Los de la API en su campo `advertencias` de primer nivel (`/v1/dias-inhabiles`: la
+   * lista de un año puede estar incompleta para algún tipo de plazo), o los mismos calculados con
+   * el paquete; antes, los del cliente: que la API no respondió y se usó el paquete o una
+   * respuesta guardada, o que los datos del paquete de una serie llegan a más de 7 días antes de
+   * hoy. Vacío si no hay nada que avisar.
    */
   readonly advertencias: readonly string[];
 }
@@ -94,6 +101,8 @@ export interface RutasApi {
   "/v1/dias-habiles": Ruta<
     {
       autoridad: Autoridad;
+      /** Obligatorio con `sat`; con las demás autoridades da 400. */
+      tipo_plazo?: TipoPlazo | undefined;
       desde: FechaISO;
       dias: number;
       permitir_incompleto?: boolean | undefined;
@@ -107,6 +116,13 @@ export interface RutasApi {
   >;
   "/v1/tipo-cambio/fix/ultimo": Ruta<Ninguno, TipoCambioFix>;
   "/v1/udis": Ruta<{ fecha: FechaISO }, Udi>;
+  "/v1/constantes/uma": Ruta<{ fecha: FechaISO }, Uma>;
+  "/v1/constantes/uma/{anio}": Ruta<{ anio: number }, Uma>;
+  "/v1/constantes/salario-minimo/{anio}": Ruta<{ anio: number }, readonly SalarioMinimo[]>;
+  "/v1/isr/tarifa/{periodo}/{anio}": Ruta<
+    { periodo: TarifaIsr["periodo"]; anio: number },
+    TarifaIsr
+  >;
   "/v1/status": { parametros: Ninguno; respuesta: RespuestaSinMeta<readonly EstadoDataset[]> };
 }
 
@@ -212,8 +228,8 @@ export interface OpcionesConsulta {
   /**
    * `"api"`: solo la API, sin respaldo en el paquete. `"paquete"`: solo los datos del paquete, sin
    * red. Sin ella, los datos estables (estados, municipios, bancos y la validación de la CLABE)
-   * salen del paquete, y los que caducan (días hábiles e inhábiles, FIX, UDIS) de la API, con los
-   * del paquete de respaldo si la API no responde.
+   * salen del paquete, y los que caducan (días hábiles e inhábiles, FIX, UDIS, UMA, salario
+   * mínimo y tarifas de ISR) de la API, con los del paquete de respaldo si la API no responde.
    *
    * Los estables del paquete no traen advertencia de antigüedad: su `meta.as_of` es la fecha del
    * último cambio en la fuente, no de la última revisión (un catálogo que no cambió en años tiene
@@ -225,20 +241,29 @@ export interface OpcionesConsulta {
   signal?: SenalAborto | undefined;
 }
 
-/** Parámetros de `diasHabiles`, con los nombres del núcleo. */
+/** Parámetros de `diasHabiles`, con los nombres del núcleo (`consultar` usa los de la API). */
 export interface ConsultaDiasHabiles {
   desde: FechaISO;
   /** Días hábiles a sumar, de 1 a 3650. */
   dias: number;
-  /** Solo `lft` por ahora (la opción por omisión). */
+  /** `lft` (por omisión), `cnbv` o `sat`. */
   autoridad?: Autoridad | undefined;
-  /** Calcula fuera de la cobertura del calendario, contando solo fines de semana, con advertencia. */
+  /**
+   * Obligatorio con `sat`: `general` o `declaraciones_pagos`, en el que las vacaciones del SAT
+   * son hábiles (CFF art. 12). Con las demás autoridades da 400.
+   */
+  tipoPlazo?: TipoPlazo | undefined;
+  /**
+   * Calcula fuera de la cobertura del calendario con advertencia: con los días ya publicados si
+   * el plazo tiene respaldo (el SAT `general` después de sus vacaciones publicadas) y, más allá,
+   * contando solo fines de semana.
+   */
   permitirIncompleto?: boolean | undefined;
 }
 
 export interface ConsultaDiasInhabiles {
   anio: number;
-  /** Solo `lft` por ahora (la opción por omisión). */
+  /** `lft` (por omisión), `cnbv` o `sat`. */
   autoridad?: Autoridad | undefined;
 }
 
@@ -282,6 +307,21 @@ export interface Cliente {
   /** La publicación más reciente (del paquete, la última que trae, con su advertencia). */
   fixUltimo(opciones?: OpcionesConsulta): Promise<Respuesta<TipoCambioFix>>;
   udi(fecha: FechaISO, opciones?: OpcionesConsulta): Promise<Respuesta<Udi>>;
+  /** La UMA de un año: rige del 1 de febrero al 31 de enero siguiente. */
+  uma(anio: number, opciones?: OpcionesConsulta): Promise<Respuesta<Uma>>;
+  /** La UMA vigente en `fecha`: en enero, la del año anterior. */
+  umaVigente(fecha: FechaISO, opciones?: OpcionesConsulta): Promise<Respuesta<Uma>>;
+  /** El salario mínimo de un año, uno por zona (`general` y `zlfn`). */
+  salarioMinimo(
+    anio: number,
+    opciones?: OpcionesConsulta,
+  ): Promise<Respuesta<readonly SalarioMinimo[]>>;
+  /** La tarifa de ISR de un periodo (`mensual` o `anual`) y un año. */
+  tarifaIsr(
+    periodo: TarifaIsr["periodo"],
+    anio: number,
+    opciones?: OpcionesConsulta,
+  ): Promise<Respuesta<TarifaIsr>>;
   /** Frescura de cada dataset. Solo la API la tiene. */
   status(opciones?: OpcionesConsulta): Promise<RespuestaSinMeta<readonly EstadoDataset[]>>;
 }

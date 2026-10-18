@@ -13,6 +13,8 @@ import {
   type Respuesta,
   type RespuestaSinMeta,
 } from "../../src/cliente/index.js";
+import * as calendarios from "../../src/datos/calendarios.js";
+import * as constantes from "../../src/datos/constantes.js";
 import * as fix from "../../src/datos/fix.js";
 import * as datos from "../../src/datos/index.js";
 import * as udis from "../../src/datos/udis.js";
@@ -32,6 +34,7 @@ import {
   datos as respuestaDatos,
 } from "./ayudas.js";
 import { mover, probarClienteSinRed } from "./comun.js";
+import { probarCuradosSinRed } from "./curados.js";
 
 const CLABE = "002010077777777771";
 const SINALOA = { cve_ent: "25", nombre: "Sinaloa", abreviatura: "Sin.", cvegeo: "25" };
@@ -75,6 +78,10 @@ function relojFalso(): void {
 
 describe("sin red desde src", () => {
   probarClienteSinRed(async () => ({ cliente, datos, fix, udis, mexicoapi }));
+});
+
+describe("calendarios y constantes sin red desde src", () => {
+  probarCuradosSinRed(async () => ({ cliente, calendarios, constantes, mexicoapi }));
 });
 
 describe("consulta a la API", () => {
@@ -134,6 +141,24 @@ describe("consulta a la API", () => {
     const r = await conFetch(fetch).estados({ fuente: "api" });
     expect(r).toEqual({ data: [SINALOA], meta: META, origen: "api", advertencias: [] });
     esperarCongelado(r, "respuesta");
+  });
+
+  it("pasa las advertencias de primer nivel de la API (días inhábiles)", async () => {
+    const aviso =
+      "Los días de tipo vacaciones del SAT solo están completos hasta el 30 de noviembre.";
+    const { fetch } = fetchFalso(
+      json({ data: [], advertencias: [aviso], meta: META }),
+      json({ data: [], advertencias: [1, "otro"], meta: META }),
+      json({ data: [], advertencias: "no es lista", meta: META }),
+    );
+    const api = conFetch(fetch);
+    const r = await api.diasInhabiles({ autoridad: "sat", anio: 2026 });
+    expect(r.advertencias).toEqual([aviso]);
+    esperarCongelado(r, "respuesta");
+    expect((await api.diasInhabiles({ autoridad: "sat", anio: 2026 })).advertencias).toEqual([
+      "otro",
+    ]);
+    expect((await api.diasInhabiles({ autoridad: "sat", anio: 2026 })).advertencias).toEqual([]);
   });
 
   it("/v1/status responde sin meta", async () => {
@@ -357,7 +382,7 @@ describe("consulta a la API", () => {
       ruta: string,
       parametros?: Record<string, unknown>,
     ) => Promise<RespuestaSinMeta<unknown>>;
-    expect(await consultar("/v1/constantes/uma/{anio}", { anio: 2026 })).toEqual({
+    expect(await consultar("/v1/isr/subsidio/{anio}", { anio: 2026 })).toEqual({
       data: { valor: "117.31" },
       origen: "api",
       advertencias: [],
@@ -368,10 +393,7 @@ describe("consulta a la API", () => {
       origen: "api",
       advertencias: [],
     });
-    expect(llamadas.map((l) => l.url)).toEqual([
-      `${BASE}/v1/constantes/uma/2026`,
-      `${BASE}/v1/otra`,
-    ]);
+    expect(llamadas.map((l) => l.url)).toEqual([`${BASE}/v1/isr/subsidio/2026`, `${BASE}/v1/otra`]);
     await expect(
       crearCliente({ offline: true }).consultar("/v1/otra" as "/v1/status"),
     ).rejects.toThrow("El paquete no trae /v1/otra");
@@ -821,6 +843,23 @@ describe("caché", () => {
 
 describe("respuesta guardada si la API falla (stale-if-error)", () => {
   const CONTROL = "public, max-age=60, stale-if-error=600";
+
+  it("la respuesta guardada conserva sus advertencias después de la de su edad", async () => {
+    relojFalso();
+    const { fetch } = fetchFalso(
+      json({ data: [], advertencias: ["de la API"], meta: META }, 200, {
+        "Cache-Control": "max-age=60, stale-if-error=600",
+      }),
+      errorInterno(),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    await api.diasInhabiles({ autoridad: "sat", anio: 2026 });
+    vi.advanceTimersByTime(61_000);
+    const r = await api.diasInhabiles({ autoridad: "sat", anio: 2026 });
+    expect(r.advertencias).toHaveLength(2);
+    expect(r.advertencias[0]).toMatch(/^Respuesta guardada de la API/);
+    expect(r.advertencias[1]).toBe("de la API");
+  });
 
   it("al caducar, si la API no responde, usa la guardada dentro de stale-if-error", async () => {
     relojFalso();
