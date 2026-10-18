@@ -62,7 +62,7 @@ export function constantesHerramienta({ cliente }: OpcionesHerramientas): Herram
       type: "object",
       properties: {
         tipo: { type: "string", enum: ["uma", "salario_minimo", "isr"] },
-        anio: { type: "integer", minimum: 1, maximum: 9999, description: "Año de 4 cifras." },
+        anio: { type: "integer", minimum: 1000, maximum: 9999, description: "Año de 4 cifras." },
         fecha: { ...FECHA, description: "Solo con tipo uma: día en que se busca la vigente." },
         periodo: {
           type: "string",

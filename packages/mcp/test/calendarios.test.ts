@@ -71,6 +71,7 @@ describe("dias_inhabiles", () => {
       { anio: 2026 },
       { autoridad: "imss", anio: 2026 },
       { autoridad: "lft", anio: 0 },
+      { autoridad: "lft", anio: 999 },
       { autoridad: "lft", anio: 10000 },
       { autoridad: "lft", anio: "2026" },
     ]) {
