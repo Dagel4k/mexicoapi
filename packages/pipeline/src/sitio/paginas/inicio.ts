@@ -161,8 +161,7 @@ function datos(entrada: EntradaInicio): string {
     const api = ruta === null ? "Solo en descargas" : `<code>${escaparHtml(ruta)}</code>`;
     const fecha = escaparHtml(d.as_of);
     return `<tr>
-<th scope="row">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span></th>
-<td class="junto">${d.tipo === "curado" ? "Curado" : "Automático"}</td>
+<th scope="row">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span><span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
 <td class="junto"><time datetime="${fecha}">${fecha}</time></td>
 <td class="num">${formatearEntero(d.registros)}</td>
 <td class="fuentes">${fuentes(d.fuentes)}</td>
@@ -177,7 +176,7 @@ function datos(entrada: EntradaInicio): string {
 <table>
 <caption id="tabla-datos">${entrada.datasets.length} datasets, con su fecha, fuente y licencia</caption>
 <thead>
-<tr><th scope="col">Dataset</th><th scope="col">Tipo</th><th scope="col">Datos al</th><th scope="col" class="num">Registros</th><th scope="col">Fuente y licencia</th><th scope="col">API</th><th scope="col">Descargas</th></tr>
+<tr><th scope="col">Dataset</th><th scope="col">Datos al</th><th scope="col" class="num">Registros</th><th scope="col">Fuente y licencia</th><th scope="col">API</th><th scope="col">Descargas</th></tr>
 </thead>
 <tbody>
 ${filas.join("\n")}
