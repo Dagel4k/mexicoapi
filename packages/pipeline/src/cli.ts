@@ -10,6 +10,7 @@ import type { Cliente } from "./http.js";
 import { type Contexto, ejecutarDataset, type ResultadoCorrida } from "./marco.js";
 import { DATASETS } from "./registro.js";
 import { resumenMarkdown } from "./resumen.js";
+import { construirSitio } from "./sitio/construir.js";
 import { verificarDatos } from "./verificar.js";
 
 export interface Entorno {
@@ -29,6 +30,7 @@ const USO = `Uso:
   actualizar <id...> [--seco] [--fecha AAAA-MM-DD] [--resumen <ruta-sin-extension>] [--datos <ruta>]
   bancos-historico [--desde AAAA-MM] [--fecha AAAA-MM-DD] [--intervalo <segundos, entero >= 1, 30 por omisión>] [--datos <ruta>]
   verificar [--datos <ruta>]
+  construir --salida <ruta> [--datos <ruta>]
 Datasets: ${[...DATASETS.keys()].join(", ")}
 `;
 
@@ -36,6 +38,7 @@ const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   actualizar: ["seco", "fecha", "resumen", "datos"],
   "bancos-historico": ["desde", "fecha", "intervalo", "datos"],
   verificar: ["datos"],
+  construir: ["salida", "datos"],
 };
 
 function leer(argumentos: readonly string[]) {
@@ -49,6 +52,7 @@ function leer(argumentos: readonly string[]) {
       desde: { type: "string" },
       intervalo: { type: "string" },
       datos: { type: "string" },
+      salida: { type: "string" },
     },
   });
 }
@@ -249,6 +253,23 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
       for (const p of problemas) entorno.escribirError(`${p}\n`);
       if (problemas.length === 0) entorno.escribir("datos: sin problemas\n");
       return problemas.length === 0 ? 0 : 1;
+    }
+    case "construir": {
+      if (values.salida === undefined) {
+        entorno.escribirError(`Falta --salida.
+${USO}`);
+        return 1;
+      }
+      try {
+        const { archivos, bytes } = await construirSitio({ raizDatos, salida: values.salida });
+        entorno.escribir(`sitio: ${archivos} archivos, ${bytes} bytes en ${values.salida}
+`);
+        return 0;
+      } catch (error) {
+        entorno.escribirError(`construir: ${mensajeDe(error)}
+`);
+        return 1;
+      }
     }
     default:
       entorno.escribirError(`Comando desconocido o ausente.\n${USO}`);
