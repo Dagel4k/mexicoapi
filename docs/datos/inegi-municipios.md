@@ -1,9 +1,9 @@
 # Municipios (INEGI)
 
-Los 2,478 municipios y alcaldías con su clave geoestadística (CVEGEO), del Catálogo Único de Claves de Áreas Geoestadísticas del INEGI.
+Los municipios y alcaldías con su clave geoestadística (CVEGEO), del Catálogo Único de Claves de Áreas Geoestadísticas del INEGI.
 
 - Identificador: `inegi.municipios`
-- Registros: 2,478
+- Registros: uno por municipio o alcaldía; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `cvegeo`
 - Se actualiza: cada semana (lunes); si hay más de 0.5 % de altas o bajas, el cambio va a revisión humana
 - Datos en el repositorio: `data/inegi-municipios/`

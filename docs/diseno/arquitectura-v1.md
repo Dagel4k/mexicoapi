@@ -117,7 +117,8 @@ mexicoapi/
 │  ├─ inegi-estados/    # estados.json, manifest.json, raw/
 │  ├─ inegi-municipios/ # municipios.json, manifest.json, raw/
 │  ├─ bancos/           # bancos.json, manifest.json, raw/
-│  ├─ tipo-cambio/      # fix/2026.json, udis/2026.json, manifest.json
+│  ├─ tipo-cambio-fix/  # fix.json (toda la serie), manifest.json, raw/ (un crudo por año)
+│  ├─ udis/             # udis.json (toda la serie), manifest.json, raw/ (un crudo por año)
 │  └─ curado/           # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
 ├─ scripts/verify.sh
 ├─ .github/workflows/  # ci, datos, despliegue, publicación, seguridad, frescura
@@ -176,8 +177,8 @@ Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura s
 | `inegi.municipios` | `cvegeo` (5), `cve_ent`, `cve_mun` (3), `nombre`, `cve_cabecera` (`null` en las 16 alcaldías de la CDMX, cuya fuente envía "----") | `cvegeo` |
 | `bancos` | `codigo` (3, el de la CLABE), `codigo_spei` (4 o 5 dígitos, como lo publica el CEP; BANXICO es `2001`), `nombre_corto` (CEP), `razon_social` (PDF oficial; `null` si no aparece; un inactivo conserva la última conocida, o `null` si nunca apareció en el PDF), `sector` (PDF, con la misma regla), `tipo` (por prefijo del código SPEI: `40` banca múltiple, `37` banca de desarrollo, `90` otras entidades; Banxico aparte), `participacion` (`directa` si está activo y aparece en el PDF; `no_confirmada` si solo aparece en el CEP o si está inactivo, porque ya no participa), `activo`, `baja_detectada` (fecha de muestreo, si dejó de aparecer), `historial` (periodos observados `{codigo_spei, nombre_corto, desde, hasta}` como intervalos `[desde, hasta)`; `hasta: null` es el vigente) | `codigo` |
 | `plazas-clabe` | `codigo` (3), `plaza`, `estado` | `codigo` |
-| `tipo-cambio.fix` | `fecha_publicacion_dof`, `valor` (decimal como string), `fuente_dof` | `fecha_publicacion_dof` |
-| `udis` | `fecha`, `valor` (string, 6 decimales) | `fecha` |
+| `tipo-cambio.fix` | `fecha_publicacion`, `valor` (texto con 4 decimales) | `fecha_publicacion` |
+| `udis` | `fecha`, `valor` (texto con 6 decimales) | `fecha` |
 | `dias-inhabiles` | `fecha`, `autoridad` (`lft`, `cnbv`, `sat`), `motivo`, `fuente` (`url` del DOF, `fecha_publicacion`, `fragmento`) | `autoridad + fecha` |
 | `constantes.uma` | `anio`, `diaria`, `mensual`, `anual`, `vigencia_desde`, `fuente` | `anio` |
 | `constantes.salario-minimo` | `anio`, `zona` (`general`, `zlfn`), `diario`, `vigencia_desde`, `fuente` | `anio + zona` |
@@ -222,6 +223,8 @@ Cada fuente implementa una interfaz común, `Source<TRaw, TRecord>`:
 - `normalize()` convierte al esquema de `@mexicoapi/core`.
 - `validate()` revisa el esquema con Zod y luego los invariantes del dataset. Ejemplos: 32 estados, ≥ 2,400 municipios, códigos de banco únicos.
 - `diff()` compara contra el snapshot anterior y calcula altas, bajas y cambios.
+
+FIX y UDIS se guardan como un dataset por serie: toda la historia en un archivo de datos (la serie completa pesa menos de 300 KB) y la respuesta original de la fuente, un archivo por año, en `raw/`. No hay `fuente_dof` por registro: el SIDOF no da la nota del DOF de cada valor, así que la cita va en el manifiesto y quien necesite la nota exacta la busca por fecha en el DOF. Para el Worker, el build parte cada serie en archivos anuales (`v1/_internos/fix/AAAA.json` y `udis/AAAA.json`); cada uno trae el `tramo` que cubre (`desde`, `hasta`) y sus registros, y el meta interno trae la cobertura de la serie. El tramo distingue un día sin publicación de un dato que todavía no se carga.
 
 ### Umbrales de anomalía
 
@@ -290,14 +293,21 @@ Solo con `permitir_incompleto=true` calcula con lo conocido, y entonces responde
 
 ### Tipo de cambio FIX
 
-Hay dos modos, y los dos citan su regla:
+Hay dos modos, y la operación cita su regla:
 
 | Modo | Llamada | Qué responde |
 | --- | --- | --- |
 | Publicación | `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` | El valor publicado en el DOF ese día, o 404 si ese día no hubo publicación |
-| Operación (lo que pide el SAT) | `GET /v1/tipo-cambio/fix?operacion=AAAA-MM-DD` | El último FIX publicado en el DOF **antes** de esa fecha, más la fecha de esa publicación (CFF art. 20) |
+| Operación (lo que pide el SAT) | `GET /v1/tipo-cambio/fix?operacion=AAAA-MM-DD` | El último FIX publicado en el DOF **antes** de esa fecha, la fecha de esa publicación y la cita del CFF art. 20 |
+| Último | `GET /v1/tipo-cambio/fix/ultimo` | La publicación más reciente cargada |
 
-No se necesita el calendario bancario: basta la última publicación anterior.
+No se necesita el calendario bancario: basta la última publicación anterior. Las UDIS tienen un solo modo, `GET /v1/udis?fecha=AAAA-MM-DD`, con un valor por cada día del calendario.
+
+Las reglas de consulta viven en el núcleo, para que el SDK y el MCP den la misma respuesta que la API.
+
+**Certeza de la operación.** `operacion` solo responde cuando la respuesta es cierta. Si falta cargar la publicación de la víspera, el Worker no devuelve un valor anterior: responde `dato-no-disponible`. Los fines de semana no cuentan, porque no se espera publicación. El costo es que un cliente que pregunta temprano por mañana recibe 404 hasta la siguiente corrida.
+
+**Dos 404.** `no-encontrado` es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. `dato-no-disponible` puede cambiar: la fecha es posterior a lo cargado o falta la víspera. Ambos traen `fecha` y `cobertura`; un cliente que solo mira el estado HTTP no los distingue, el `type` sí.
 
 ### Validadores
 
@@ -344,8 +354,8 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 | `GET /v1/municipios` · `GET /v1/municipios/{cvegeo}` | Todos los municipios (unos 300 KB, también en las descargas) o uno | Estático |
 | `GET /v1/bancos` · `GET /v1/bancos/{codigo}` | Bancos y participantes SPEI | Estático |
 | `GET /v1/clabe/{clabe}` | `valido`, `formato_valido`, `digito_verificador_valido`, `errores[]` y `detalle` (`banco`, `plaza`, `cuenta`, `digito_control`). La CLABE de un banco inactivo tiene formato válido y lleva `banco.activo: false` | Worker (función pura) |
-| `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` · `?operacion=AAAA-MM-DD` · `/v1/tipo-cambio/fix/ultimo` | FIX por fecha de publicación o para una operación (sección 8.1) | Worker sobre un archivo anual estático |
-| `GET /v1/udis?fecha=AAAA-MM-DD` | Valor de la UDI | Worker sobre un archivo anual estático |
+| `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` · `?operacion=AAAA-MM-DD` · `/v1/tipo-cambio/fix/ultimo` | FIX por fecha de publicación o para una operación (sección 8.1) | Worker sobre archivos anuales estáticos |
+| `GET /v1/udis?fecha=AAAA-MM-DD` | Valor de la UDI | Worker sobre archivos anuales estáticos |
 | `GET /v1/dias-inhabiles?autoridad=lft&anio=2026` | Lista con citas | Worker (función pura) |
 | `GET /v1/dias-habiles?autoridad=lft&desde=AAAA-MM-DD&dias=15` | Fecha resultante, días inhábiles saltados con su cita, `advertencias[]`; 422 si el calendario está incompleto (sección 8.1) | Worker (función pura) |
 | `GET /v1/plazas-clabe` | Catálogo de referencia de plazas | Estático |
