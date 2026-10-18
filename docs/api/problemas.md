@@ -144,7 +144,7 @@ Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`
 
 ## dato-no-disponible
 
-Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. El problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado.
+Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie (salvo en el FIX con `publicado` un sábado o domingo justo después del último dato, sin días entre semana de por medio, que es [`no-encontrado`](#no-encontrado)) o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. El problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado.
 
 ```bash
 curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"

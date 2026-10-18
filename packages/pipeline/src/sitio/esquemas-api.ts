@@ -3,6 +3,10 @@ import { z } from "zod";
 const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const instante = z.iso.datetime();
 
+const asOf = fechaIso.describe(
+  "Fecha de la última corrida que cambió los datos (AAAA-MM-DD); no es la última fecha de la serie.",
+);
+
 export const esquemaFuenteMeta = z.object({
   name: z.string().describe("Nombre de la fuente."),
   url: z.string().describe("Dirección de la fuente."),
@@ -13,7 +17,7 @@ export const esquemaFuenteMeta = z.object({
 
 export const esquemaMeta = z.object({
   dataset: z.string().describe("Identificador del dataset."),
-  as_of: fechaIso.describe("Fecha de los datos (AAAA-MM-DD)."),
+  as_of: asOf,
   sources: z.array(esquemaFuenteMeta).describe("Fuentes y licencias de los datos."),
   docs: z.string().describe("Documentación del dataset."),
 });
@@ -125,7 +129,7 @@ export const esquemaResultadoClabe = z.object({
 
 export const esquemaEstadoDataset = z.object({
   dataset: z.string().describe("Identificador del dataset."),
-  as_of: fechaIso.describe("Fecha de los datos (AAAA-MM-DD)."),
+  as_of: asOf,
   records: z.number().int().describe("Número de registros."),
   data_sha256: z.string().describe("SHA-256 de los datos."),
   cobertura: z

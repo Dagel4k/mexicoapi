@@ -128,6 +128,14 @@ describe("documento OpenAPI", () => {
     ]);
   });
 
+  it("as_of se describe como la última corrida que cambió los datos, en Meta y en EstadoDataset", () => {
+    for (const nombre of ["Meta", "EstadoDataset"]) {
+      const descripcion = doc.components.schemas[nombre].properties.as_of.description as string;
+      expect(descripcion, nombre).toContain("última corrida que cambió los datos");
+      expect(descripcion, nombre).toContain("no es la última fecha de la serie");
+    }
+  });
+
   it("cada esquema de componentes es un JSON Schema 2020-12 válido", () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: false });
     for (const [nombre, esquema] of Object.entries(doc.components.schemas as Obj)) {

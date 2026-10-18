@@ -35,8 +35,9 @@ async function serieDe(entorno: Entorno, dataset: string, docs: string): Promise
 
 /**
  * `fecha` llevada a la cobertura. El año que se carga sale de aquí: una fecha fuera de la
- * serie la resuelve el núcleo (sin_dato antes, no_disponible después) sin pedir años que no
- * existen.
+ * serie la resuelve el núcleo sin pedir años que no existen. Antes de la serie es sin_dato;
+ * después, no_disponible, salvo un fin de semana del FIX justo después del último dato (sin
+ * días entre semana de por medio), que es sin_dato.
  */
 const acotar = (fecha: FechaISO, { desde, hasta }: CoberturaSerie): FechaISO =>
   fecha < desde ? desde : fecha > hasta ? hasta : fecha;
