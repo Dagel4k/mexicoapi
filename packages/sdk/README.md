@@ -268,7 +268,7 @@ Códigos de salida:
 | --- | --- |
 | 0 | Todo bien |
 | 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar |
-| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción mal formada |
+| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`--autoridad sat` sin `--tipo-plazo`) o uno mal formado (`--dias x`, `sepomex cp 8000`) |
 
 ## Nombres
 

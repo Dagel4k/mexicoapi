@@ -137,6 +137,12 @@ export function probarCli(correr: Correr, version: string): void {
       [["clabe", "002", "--tipo-plazo", "general"], /--tipo-plazo no aplica a "clabe"/],
       [["banco", "002", "--fecha", "2026-01-01"], /--fecha no aplica a "banco"/],
       [["isr", "mensual", "2026", "--fecha", "2026-01-01"], /--fecha no aplica a "isr"/],
+      [
+        [...DIAS, "--autoridad", "sat"],
+        /Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos\./,
+      ],
+      [["sepomex", "cp", "8000"], /El código postal debe tener 5 dígitos, como 01000; no "8000"/],
+      [["sepomex", "cp", "8"], /5 dígitos/],
     ];
     for (const [argv, mensaje] of casos) {
       const c = await correr(argv);
@@ -233,9 +239,6 @@ export function probarCli(correr: Correr, version: string): void {
       expect(fuera.codigo, dias).toBe(1);
       expect(fuera.salida, dias).toBe("");
     }
-    const sat = await correr([...DIAS, "--autoridad", "sat"]);
-    expect(sat.codigo).toBe(1);
-    expect(sat.errores).toContain("falta el parámetro tipo_plazo");
     const lejos = await correr(["dias-habiles", "--desde", "2101-01-04", "--dias", "5"]);
     expect(lejos.codigo).toBe(1);
     expect(lejos.salida).toBe("");
@@ -265,9 +268,9 @@ export function probarCli(correr: Correr, version: string): void {
     expect(r.data).toMatchObject({ resultado: "2026-07-22", autoridad: "sat" });
     expect(r.origen).toBe("paquete");
     const sinTipo = await correr(sat);
-    expect(sinTipo.codigo).toBe(1);
+    expect(sinTipo.codigo).toBe(2);
     expect(sinTipo.errores).toContain(
-      "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
+      "Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos.",
     );
     const raro = await correr([...sat, "--tipo-plazo", "anual"]);
     expect(raro.codigo).toBe(1);
@@ -453,7 +456,7 @@ export function probarCli(correr: Correr, version: string): void {
       "Corre `mexicoapi sepomex sync` (o `mexicoapi sepomex importar <archivo>`).",
     );
     const malo = await correr(["sepomex", "cp", "8"]);
-    expect(malo.codigo).toBe(1);
+    expect(malo.codigo).toBe(2);
     expect(malo.errores).toContain("5 dígitos");
   });
 
