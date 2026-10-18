@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { BASE_PROBLEMAS, leerPublico, pedir, pedirJson, SEGURIDAD, tipoDeMedio } from "./ayudas.js";
+import {
+  BASE_PROBLEMAS,
+  leerPublico,
+  pedir,
+  pedirCruda,
+  pedirJson,
+  SEGURIDAD,
+  tipoDeMedio,
+} from "./ayudas.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: los cuerpos JSON se inspeccionan de forma dinámica.
 type Obj = Record<string, any>;
@@ -157,6 +165,18 @@ describe("errores del Worker", () => {
       expect(respuesta.status).toBe(404);
       expect(tipoDeMedio(respuesta)).toBe("application/problem+json");
       expect(cuerpo).toMatchObject({ status: 404, detail: "No existe la ruta.", instance: ruta });
+    },
+  );
+
+  it.each(["/%76%31/_internos/meta.json", "//v1/_internos/meta.json"])(
+    "%s no llega al meta interno: termina en 404 del Worker",
+    async (ruta) => {
+      const respuesta = await pedirCruda(ruta);
+      expect(respuesta.status).toBe(404);
+      expect(tipoDeMedio(respuesta)).toBe("application/problem+json");
+      const cuerpo = (await respuesta.json()) as Obj;
+      expect(cuerpo).toMatchObject({ status: 404, detail: "No existe la ruta." });
+      expect(cuerpo).not.toHaveProperty("datasets");
     },
   );
 

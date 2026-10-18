@@ -22,6 +22,14 @@ export function pedir(ruta: string, init: RequestInit = {}): Promise<Response> {
   return fetch(new URL(ruta, inject("urlApi")), { redirect: "manual", ...init });
 }
 
+/**
+ * Pide `ruta` tal cual, pegada al origen: `//v1` no se toma como otro host y los `%` no se
+ * decodifican. Sigue las redirecciones.
+ */
+export function pedirCruda(ruta: string): Promise<Response> {
+  return fetch(`${new URL(inject("urlApi")).origin}${ruta}`, { redirect: "follow" });
+}
+
 export async function pedirJson(ruta: string): Promise<{ respuesta: Response; cuerpo: unknown }> {
   const respuesta = await pedir(ruta);
   return { respuesta, cuerpo: await respuesta.json() };
