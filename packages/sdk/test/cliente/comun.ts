@@ -67,8 +67,25 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     api = m.cliente.crearCliente({ offline: true });
   });
 
-  it("exporta exactamente crearCliente y MexicoApiError", () => {
-    expect(Object.keys(m.cliente).sort()).toEqual(["MexicoApiError", "crearCliente"]);
+  // Además de crearCliente y MexicoApiError, el catálogo de problemas de la API y las direcciones
+  // de su documentación, los del núcleo (el MCP los toma de aquí).
+  it("exporta exactamente crearCliente, MexicoApiError y el catálogo de problemas", () => {
+    expect(Object.keys(m.cliente).sort()).toEqual([
+      "MexicoApiError",
+      "PROBLEMAS",
+      "URL_DOCS",
+      "URL_PROBLEMAS",
+      "URL_REPOSITORIO",
+      "crearCliente",
+    ]);
+    expect(m.cliente.URL_PROBLEMAS).toBe(PROBLEMAS.slice(0, -1));
+    expect(m.cliente.URL_DOCS).toBe(DOCS_API.replace("/api/README.md#", ""));
+    expect(m.cliente.URL_REPOSITORIO).toBe("https://github.com/Dagel4k/mexicoapi");
+    expect(m.cliente.PROBLEMAS["no-encontrado"]).toEqual({
+      title: "Recurso no encontrado",
+      status: 404,
+    });
+    expect(Object.isFrozen(m.cliente.PROBLEMAS)).toBe(true);
   });
 
   it("responde estados, municipios y bancos con los datos y la meta del paquete", async () => {

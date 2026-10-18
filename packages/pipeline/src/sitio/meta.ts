@@ -1,9 +1,10 @@
 import type { CoberturaSerie, FechaISO, Manifiesto } from "@mexicoapi/core";
+import { URL_DOCS, URL_REPOSITORIO } from "@mexicoapi/core/problemas";
 
 /** El repositorio y sus archivos en `main`: `meta.docs` y las páginas del sitio enlazan aquí. */
-export const URL_REPO = "https://github.com/Dagel4k/mexicoapi";
+export const URL_REPO = URL_REPOSITORIO;
 export const URL_ARCHIVOS = `${URL_REPO}/blob/main`;
-export const URL_DOCS = `${URL_ARCHIVOS}/docs`;
+export { URL_DOCS };
 
 export interface FuenteMeta {
   name: string;

@@ -1,5 +1,5 @@
 // Consultas de las constantes curadas (UMA, salario mínimo, tarifas de ISR) con las reglas y los
-// textos de la API. Entra por `@mexicoapi/core/constantes` y no por el índice.
+// textos de la API. Entra por su subruta del núcleo (constantes) y no por el índice.
 import type { Uma } from "../datos/curados.js";
 import { esFechaIsoValida, type FechaISO } from "../fechas.js";
 

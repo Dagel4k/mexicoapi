@@ -1,6 +1,13 @@
 // Entrada `mexicoapi/cliente`: cliente HTTP de la API con errores tipados, reintentos, tiempo
 // límite, caché opcional y respaldo en los datos del paquete. Universal: usa solo fetch,
 // AbortController y temporizadores. Los datos y el núcleo se cargan al usarlos, aparte.
+export {
+  PROBLEMAS,
+  type TipoProblema,
+  URL_DOCS,
+  URL_PROBLEMAS,
+  URL_REPOSITORIO,
+} from "@mexicoapi/core/problemas";
 export { crearCliente } from "./cliente.js";
 export { type ContextoError, MexicoApiError, type Problema } from "./error.js";
 export type {

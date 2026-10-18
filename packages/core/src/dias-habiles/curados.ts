@@ -1,7 +1,7 @@
 // Reglas de los calendarios curados de la CNBV y el SAT: los tipos de plazo, la cobertura de
 // cada uno, los días que da una regla del núcleo (en el SAT, los del art. 12 del CFF), el
-// respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por
-// `@mexicoapi/core/curados` y no por el índice, para no pesar en quien solo valida.
+// respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por su subruta del
+// núcleo (curados) y no por el índice, para no pesar en quien solo valida.
 import {
   type AutoridadCurada,
   type CoberturaCurada,

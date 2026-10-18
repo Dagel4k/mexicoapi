@@ -36,8 +36,10 @@ const CONGELAR =
   "for (const h of Object.values(v)) congelar(h); Object.freeze(v); } return v; };";
 
 const USO = "uso: node scripts/datos.ts\n";
-// La misma página que da la API en `meta.docs` para los datos de cada carpeta de data/.
-const URL_DOCS_DATOS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos";
+// La misma página que da la API en `meta.docs` para los datos de cada carpeta de data/. Va
+// escrita aquí porque el script corre sin compilar y antes del núcleo; una prueba la compara con
+// URL_DOCS del núcleo.
+export const URL_DOCS_DATOS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos";
 
 export interface FuenteMeta {
   name: string;

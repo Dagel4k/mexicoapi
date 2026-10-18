@@ -2,7 +2,13 @@
 // (as_of, fuente, origen y advertencias), sus esquemas, el texto legible y cómo se traducen los
 // errores esperables del paquete y de la API.
 import { esFechaIsoValida } from "mexicoapi";
-import { type Cliente, type Meta, MexicoApiError } from "mexicoapi/cliente";
+import {
+  type Cliente,
+  type Meta,
+  MexicoApiError,
+  URL_DOCS,
+  URL_REPOSITORIO,
+} from "mexicoapi/cliente";
 import { compilarEsquema, type EsquemaJson, type Validador } from "./esquema.js";
 import {
   ErrorHerramienta,
@@ -55,12 +61,12 @@ export const RESPALDO_API =
 /** Documentación de los validadores, la fuente de las validaciones por algoritmo. */
 export const FUENTE_VALIDADORES: Fuente = {
   nombre: "MéxicoAPI, validadores de formato y dígito verificador",
-  url: "https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#validadores",
+  url: `${URL_REPOSITORIO}/tree/main/packages/sdk#validadores`,
 };
 
 const FUENTE_API: Fuente = {
   nombre: "API de MéxicoAPI",
-  url: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md",
+  url: `${URL_DOCS}/api/README.md`,
 };
 
 export const FECHA = { type: "string", format: "date" } as const;

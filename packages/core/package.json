@@ -18,6 +18,11 @@
       "@mexicoapi/source": "./src/constantes/consulta.ts",
       "types": "./dist/constantes/consulta.d.ts",
       "import": "./dist/constantes/consulta.js"
+    },
+    "./problemas": {
+      "@mexicoapi/source": "./src/rutas/problemas.ts",
+      "types": "./dist/rutas/problemas.d.ts",
+      "import": "./dist/rutas/problemas.js"
     }
   },
   "scripts": {

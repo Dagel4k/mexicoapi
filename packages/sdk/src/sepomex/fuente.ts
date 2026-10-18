@@ -1,4 +1,5 @@
 // De dónde sale el catálogo de códigos postales y qué se le dice a quien lo descarga.
+import { URL_REPOSITORIO } from "@mexicoapi/core/problemas";
 
 /** Página pública de Correos de México con el formulario de descarga. */
 export const URL_DESCARGA =
@@ -19,4 +20,4 @@ export const NOTA_MEXICOAPI =
 export const DESCARGA_MANUAL = `Descarga el archivo a mano desde ${URL_DESCARGA} (estado "Todos", formato TXT) y usa sepomex.importar(ruta).`;
 
 /** User-Agent de las peticiones a Correos de México: dice quién descarga. */
-export const USER_AGENT = "mexicoapi (+https://github.com/Dagel4k/mexicoapi)";
+export const USER_AGENT = `mexicoapi (+${URL_REPOSITORIO})`;

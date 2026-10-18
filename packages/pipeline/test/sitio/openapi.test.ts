@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { FUENTE_CFF_20 } from "@mexicoapi/core";
+import { PROBLEMAS } from "@mexicoapi/core/problemas";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import {
@@ -16,7 +17,7 @@ import {
   esquemaUma,
   sobre,
 } from "../../src/sitio/esquemas-api.js";
-import { documentoOpenApi, PROBLEMAS } from "../../src/sitio/openapi.js";
+import { documentoOpenApi } from "../../src/sitio/openapi.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: el documento se inspecciona de forma dinámica.
