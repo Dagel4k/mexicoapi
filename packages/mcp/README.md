@@ -109,7 +109,8 @@ El comando muestra el aviso de uso de Correos de México y guarda el catálogo e
 ## Privacidad
 
 - No hay telemetría.
-- Una CLABE, un RFC, una CURP o un NSS nunca salen de tu equipo: se validan ahí, también con `MEXICOAPI_BASE`.
+- El servidor no envía a ninguna API una CLABE, un RFC, una CURP o un NSS: los valida en tu equipo, también con `MEXICOAPI_BASE`.
+- Eso cubre solo al servidor. El host del asistente (la aplicación que lo corre) sí manda al proveedor del modelo los argumentos de cada herramienta y sus resultados, como el resto de la conversación. Si un dato no debe salir de tu equipo, no se lo des al asistente.
 - Con `MEXICOAPI_BASE`, el servidor solo habla con esa dirección y solo para las herramientas de datos que caducan. Sin ella no usa la red.
 - Los registros van a stderr y nunca traen los argumentos de una herramienta ni la dirección de `MEXICOAPI_BASE`.
 
