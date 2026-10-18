@@ -28,7 +28,7 @@ function rutasBuenas(): Record<string, Ruta> {
       tipo: "application/problem+json; charset=utf-8",
       cuerpo: { status: 404 },
     },
-    "/v1/status": { cuerpo: { data: [] } },
+    "/v1/status": { cuerpo: { data: [{ dataset: "bancos", status: "ok" }] } },
     "/v1/openapi.json": { cuerpo: { openapi: "3.1.0" } },
     "/descargas/SHA256SUMS": { tipo: "text/plain; charset=utf-8", cuerpo: "abc  bancos.json\n" },
   };
@@ -141,6 +141,7 @@ describe("probarHumo", () => {
       ["/v1/clabe/012180000000000015", { data: { valido: false } }, "no es válida"],
       [DIAS, { data: { resultado: "2026-11-16" } }, "no 2026-11-17"],
       ["/v1/status", { data: {} }, "no es una lista"],
+      ["/v1/status", { data: [] }, "no trae datasets"],
     ];
     for (const [ruta, cuerpo, texto] of malas) {
       const rutas = rutasBuenas();
