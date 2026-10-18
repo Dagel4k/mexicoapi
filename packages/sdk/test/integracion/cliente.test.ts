@@ -36,6 +36,7 @@ let fix: ModuloFix;
 let udis: ModuloUdis;
 let datos: ModuloDatos;
 let constantes: ModuloConstantes;
+let calendarios: ModuloCalendarios;
 let base: string;
 
 /** Un fetch que anota lo que pide y lo que responde el Worker. */
@@ -55,12 +56,13 @@ function anotado(): {
 }
 
 beforeAll(async () => {
-  [m, fix, udis, datos, constantes] = await Promise.all([
+  [m, fix, udis, datos, constantes, calendarios] = await Promise.all([
     importar<ModuloCliente>("cliente/index.js"),
     importar<ModuloFix>("datos/fix.js"),
     importar<ModuloUdis>("datos/udis.js"),
     importar<ModuloDatos>("datos/index.js"),
     importar<ModuloConstantes>("datos/constantes.js"),
+    importar<ModuloCalendarios>("datos/calendarios.js"),
   ]);
   base = inject("urlApi");
 });
@@ -231,9 +233,22 @@ function consultas(): Consulta[] {
   ];
 }
 
-/** Las que dan un problema, en la API y en el paquete. */
+/**
+ * Las que dan un problema, en la API y en el paquete. Las que dependen de hasta dónde llegan los
+ * calendarios y las constantes salen de los datos: una captura nueva no las vuelve 200.
+ */
 function problemas(): Consulta[] {
   const antes = mover(fix.cobertura.desde, -3);
+  const sat = calendarios.calendarioCurado("sat");
+  const satGeneral = sat.general.cobertura.hasta;
+  const satPagos = sat.plazos.get("declaraciones_pagos")?.cobertura.hasta as string;
+  const cnbv = calendarios.calendarioCurado("cnbv").general.cobertura.hasta;
+  const satFuera = Number(sat.amplia.hasta.slice(0, 4)) + 1;
+  const { anios } = constantes;
+  const ultimaUma = anios.uma.at(-1) as number;
+  const umaFutura = ultimaUma + 2;
+  const salarioFuturo = (anios.salarioMinimo.at(-1) as number) + 2;
+  const isrFutura = (anios.isr.anual.at(-1) as number) + 2;
   return [
     ["estado que no existe", (api, op) => api.estado("33", op)],
     ["municipios de un estado que no existe", (api, op) => api.municipios("33", op)],
@@ -292,30 +307,27 @@ function problemas(): Consulta[] {
     [
       "SAT general fuera de su cobertura",
       (api, op) =>
-        api.diasHabiles(
-          { autoridad: "sat", tipoPlazo: "general", desde: "2026-11-27", dias: 5 },
-          op,
-        ),
+        api.diasHabiles({ autoridad: "sat", tipoPlazo: "general", desde: satGeneral, dias: 5 }, op),
     ],
     [
       "SAT declaraciones_pagos fuera de su cobertura",
       (api, op) =>
         api.diasHabiles(
-          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-12-30", dias: 3 },
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: satPagos, dias: 3 },
           op,
         ),
     ],
     [
       "CNBV fuera de su cobertura",
-      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2026-12-30", dias: 3 }, op),
+      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: cnbv, dias: 3 }, op),
     ],
     [
       "CNBV antes de su cobertura",
       (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2024-12-20", dias: 3 }, op),
     ],
     [
-      "días inhábiles SAT 2027",
-      (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2027 }, op),
+      "días inhábiles SAT del año después de su cobertura",
+      (api, op) => api.diasInhabiles({ autoridad: "sat", anio: satFuera }, op),
     ],
     [
       "días inhábiles CNBV 2024",
@@ -323,15 +335,18 @@ function problemas(): Consulta[] {
     ],
     ["días inhábiles LFT 2101", (api, op) => api.diasInhabiles({ anio: 2101 }, op)],
     ["UMA de 2016", (api, op) => api.uma(2016, op)],
-    ["UMA de 2030", (api, op) => api.uma(2030, op)],
+    ["UMA que todavía no se carga", (api, op) => api.uma(umaFutura, op)],
     ["UMA vigente antes de la primera", (api, op) => api.umaVigente("2017-01-31", op)],
-    ["UMA vigente después de la última", (api, op) => api.umaVigente("2028-01-01", op)],
+    ["UMA vigente después de la última", (api, op) => api.umaVigente(`${ultimaUma + 1}-02-01`, op)],
     ["UMA vigente sin fecha", (api, op) => api.consultar("/v1/constantes/uma", {} as never, op)],
     ["UMA vigente con fecha inválida", (api, op) => api.umaVigente("2026-02-30", op)],
     ["salario mínimo de 2018", (api, op) => api.salarioMinimo(2018, op)],
-    ["salario mínimo de 2030", (api, op) => api.salarioMinimo(2030, op)],
+    ["salario mínimo que todavía no se carga", (api, op) => api.salarioMinimo(salarioFuturo, op)],
     ["tarifa mensual de ISR de 2025", (api, op) => api.tarifaIsr("mensual", 2025, op)],
-    ["tarifa anual de ISR de 2030", (api, op) => api.tarifaIsr("anual", 2030, op)],
+    [
+      "tarifa anual de ISR que todavía no se carga",
+      (api, op) => api.tarifaIsr("anual", isrFutura, op),
+    ],
     [
       "parámetro desconocido en una constante",
       (api, op) =>
