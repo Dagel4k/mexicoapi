@@ -37,8 +37,13 @@ Cada valor rige del 1 de febrero del año al 31 de enero del siguiente. En enero
 
 | Forma | Ruta |
 | --- | --- |
+| API | `GET /v1/constantes/uma?fecha=` y `GET /v1/constantes/uma/{anio}` |
+| Descarga | `/descargas/constantes-uma.json`, `.csv` y `.manifest.json` |
+| SQLite | tabla `uma` de `/descargas/mexicoapi.sqlite` |
 | Repositorio | `data/constantes-uma/uma.json` y `manifest.json` |
 | Transcripción con citas | `data/curado/constantes-uma.yaml` |
+
+Ver [API v1](../api/README.md#uma).
 
 ## Fuente y licencia
 

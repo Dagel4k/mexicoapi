@@ -50,7 +50,7 @@ Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá
 | Salario mínimo | `data/constantes-salario-minimo/` | CONASAMI, DOF | a mano, cada año | [salario mínimo](docs/datos/constantes-salario-minimo.md) |
 | Tarifas de ISR | `data/isr-tarifas/` | Anexo 8 de la RMF, DOF | a mano, cada año | [tarifas de ISR](docs/datos/isr-tarifas.md) |
 
-Además, la API calcula la validación de CLABE y los días hábiles con el calendario de la Ley Federal del Trabajo.
+Además, la API valida CLABE, calcula días hábiles con los calendarios de la Ley Federal del Trabajo, la CNBV y el SAT, y responde la UMA vigente en una fecha.
 
 Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los archivos fuente en `raw/` (los descargados tal cual y, en bancos, la compilación mensual del CEP). Los datos curados (días inhábiles, UMA, salario mínimo e ISR) no tienen `raw/`: se transcriben del DOF a `data/curado/`, un YAML por dataset con la cita literal de cada valor, y el comando `curar` genera su carpeta. Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
 
@@ -68,6 +68,7 @@ curl https://<base>/v1/clabe/002010077777777771
 - [API v1](docs/api/README.md) y [errores](docs/api/problemas.md)
 - [Diseño técnico v1](docs/diseno/arquitectura-v1.md)
 - [Bot de datos](docs/operacion/bot-de-datos.md)
+- [Datos curados](docs/operacion/datos-curados.md): cómo se transcriben del DOF los calendarios y las constantes
 
 ## Licencia
 

@@ -46,8 +46,13 @@ El Anexo 8 también trae tarifas de 7, 10 y 15 días, por día trabajado, para e
 
 | Forma | Ruta |
 | --- | --- |
+| API | `GET /v1/isr/tarifa/{periodo}/{anio}` |
+| Descarga | `/descargas/isr-tarifas.json`, `.csv` (un renglón por tramo) y `.manifest.json` |
+| SQLite | tabla `isr_tramos` de `/descargas/mexicoapi.sqlite`, un renglón por tramo |
 | Repositorio | `data/isr-tarifas/tarifas.json` y `manifest.json` |
 | Transcripción con citas | `data/curado/isr-tarifas.yaml` |
+
+Ver [API v1](../api/README.md#tarifas-de-isr).
 
 ## Fuente y licencia
 
