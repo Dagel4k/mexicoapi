@@ -102,10 +102,21 @@ function renglones(pagina: string, idTabla: string): string[] {
   return [...cuerpo.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => m[1] as string);
 }
 
+/** Quita etiquetas hasta que no quede ninguna: una sola pasada podría dejar otra armada. */
+function sinEtiquetas(texto: string): string {
+  let antes: string;
+  let despues = texto;
+  do {
+    antes = despues;
+    despues = antes.replace(/<[^>]*>/g, "");
+  } while (despues !== antes);
+  return despues;
+}
+
 /** El texto de cada bloque `pre > code`, ya sin etiquetas ni entidades. */
 const bloquesDeCodigo = (pagina: string): string[] =>
   [...pagina.matchAll(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g)].map((m) =>
-    desescapar((m[1] as string).replace(/<[^>]+>/g, "")),
+    desescapar(sinEtiquetas(m[1] as string)),
   );
 
 describe("página de inicio", () => {
