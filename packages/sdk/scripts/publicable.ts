@@ -1,7 +1,7 @@
 // Arma en otra carpeta el paquete `mexicoapi` tal como se publica: lo que lista `files` (dist,
-// README.md, CHANGELOG.md, LICENSE) y un package.json sin `devDependencies` ni `scripts`, que solo sirven en el
-// monorepo (el núcleo ya viaja en dist/nucleo). npm pack y npm publish se corren en esa carpeta:
-// así el .tgz y lo que npm registra de la versión salen del mismo manifiesto.
+// README.md, CHANGELOG.md, LICENSE) y un package.json sin `devDependencies` ni `scripts`, que solo
+// sirven en el monorepo (el núcleo ya viaja en dist/nucleo). npm pack y npm publish se corren en
+// esa carpeta: así el .tgz y lo que npm registra de la versión salen del mismo manifiesto.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 // packages/mcp/scripts/publicable.ts usa este mismo código para `mexicoapi-mcp`.
 //
