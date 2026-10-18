@@ -879,6 +879,41 @@ describe("tools/call", () => {
     expect(lenta.senales).toHaveLength(1);
   });
 
+  it("el tope solo cuenta las llamadas que pueden usar la red: 31 locales juntas responden", async () => {
+    const cliente = conectar();
+    await cliente.inicializar();
+    // Las 31 en un solo trozo de stdin: se atienden antes de que termine la primera.
+    const ids = Array.from({ length: 31 }, (_, i) => `local-${i}`);
+    const lineas = ids.map((id) =>
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: { name: "eco", arguments: { texto: id } },
+      }),
+    );
+    cliente.escribir(`${lineas.join("\n")}\n`);
+    const respuestas = [];
+    for (const _ of ids) respuestas.push(await cliente.recibir());
+    expect(respuestas.map((r) => r.id).sort()).toEqual([...ids].sort());
+    for (const r of respuestas) {
+      expect(r.result, String(r.id)).toMatchObject({ structuredContent: { texto: r.id } });
+    }
+  });
+
+  it("una llamada local responde aunque las de red estén en el tope", async () => {
+    const lenta = crearLenta();
+    const cliente = conectar({ herramientas: [lenta.herramienta, eco], maxLlamadasEnCurso: 1 });
+    await cliente.inicializar();
+    cliente.enviar({ jsonrpc: "2.0", id: "red", method: "tools/call", params: { name: "lenta" } });
+    expect(
+      (await cliente.pedir("tools/call", { name: "eco", arguments: { texto: "hola" } }, "local"))
+        .result,
+    ).toMatchObject({ structuredContent: { texto: "hola" } });
+    lenta.soltar();
+    expect((await cliente.recibir()).id).toBe("red");
+  });
+
   it.each([
     ["nulo", "el resultado debe ser un objeto"],
     ["sin_content", "content debe ser una lista"],
