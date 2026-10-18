@@ -405,7 +405,7 @@ Cada ruta del sitio y cada descarga tiene su propia regla en `_headers` (CSP, `n
 
 Cada parámetro se valida con una expresión regular estricta antes de tocar cualquier dato. Por ejemplo, `cvegeo` es `^\d{5}$` y `clabe` es `^\d{18}$`. Una entrada inválida devuelve un 400 problem+json.
 
-Un parámetro de query desconocido, repetido o vacío, o un segmento vacío (`?&`), también da 400. Un cliente que agrega `?_=` para romper el caché recibe 400. Una ruta con `%` da 404, y una ruta con `/` final redirige con 308 a la ruta sin él.
+Un parámetro de query desconocido, repetido o vacío, o un segmento vacío (`?&`), también da 400. Un cliente que agrega `?_=` para romper el caché recibe 400. Una ruta con `%` da 404, y dentro de `/v1` una ruta con `/` final redirige con 308 a la ruta sin él.
 
 ### Despliegue
 
