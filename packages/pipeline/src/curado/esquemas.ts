@@ -64,19 +64,68 @@ export const esquemaFuenteDof: z.ZodType<FuenteDof> = z.strictObject({
   fragmento: texto.describe("Texto oficial que respalda el valor, citado tal cual."),
 });
 
+/**
+ * Fecha AAAA-MM-DD del parámetro `fecha=DD/MM/AAAA` de una nota del DOF; `undefined` si la URL
+ * no es una nota con fecha y `null` si la trae con otra forma.
+ */
+export function fechaDeNotaDof(url: string): string | null | undefined {
+  if (!url.startsWith("https://dof.gob.mx/nota_detalle.php?")) return undefined;
+  const valor = new URL(url).searchParams.get("fecha");
+  if (valor === null) return undefined;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
+  return m === null ? null : `${m[3]}-${m[2]}-${m[1]}`;
+}
+
 /** Fuente tal como se escribe en el YAML: la publicación más su licencia. */
-export const esquemaFuenteCurada = z.strictObject({
-  nombre: texto,
-  url: urlOficial,
-  fecha_publicacion: fecha,
-  fragmento: texto,
-  licencia: texto,
-  licencia_url: z
-    .string(mensaje("debe ser una URL https"))
-    .refine(esUrlHttps, "debe ser una URL https"),
-});
+export const esquemaFuenteCurada = z
+  .strictObject({
+    nombre: texto,
+    url: urlOficial,
+    fecha_publicacion: fecha,
+    fragmento: texto,
+    licencia: texto,
+    licencia_url: z
+      .string(mensaje("debe ser una URL https"))
+      .refine(esUrlHttps, "debe ser una URL https"),
+  })
+  .superRefine((fuente, ctx) => {
+    if (!esUrlOficial(fuente.url) || !esFechaIsoValida(fuente.fecha_publicacion)) return;
+    const deUrl = fechaDeNotaDof(fuente.url);
+    if (deUrl === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["url"],
+        message: "la fecha de la URL debe tener la forma DD/MM/AAAA",
+      });
+    } else if (deUrl !== undefined && deUrl !== fuente.fecha_publicacion) {
+      const dof = `${deUrl.slice(8, 10)}/${deUrl.slice(5, 7)}/${deUrl.slice(0, 4)}`;
+      ctx.addIssue({
+        code: "custom",
+        path: ["fecha_publicacion"],
+        message: `no coincide con la fecha de la URL (${dof})`,
+      });
+    }
+  });
 
 export type FuenteCurada = z.infer<typeof esquemaFuenteCurada>;
+
+/**
+ * Cuota fija publicada que no empata a ±0.01 con el tramo anterior. Se declara en el YAML con el
+ * valor publicado, el recalculado y el motivo; `verificar` exige que haga falta y que se use.
+ */
+export const esquemaExcepcionCuotaFija = z.strictObject({
+  anio,
+  periodo: opcion(["mensual", "anual"]),
+  tramo: z
+    .number(mensaje("debe ser un tramo de 2 en adelante"))
+    .int("debe ser un tramo de 2 en adelante")
+    .min(2, "debe ser un tramo de 2 en adelante"),
+  publicada: monto,
+  calculada: monto,
+  motivo: texto,
+});
+
+export type ExcepcionCuotaFija = z.infer<typeof esquemaExcepcionCuotaFija>;
 
 const rango = z
   .strictObject({ desde: fecha, hasta: fecha })

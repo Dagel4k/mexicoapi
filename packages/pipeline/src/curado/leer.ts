@@ -4,13 +4,21 @@ import type { CoberturaCurada, FuenteDof } from "@mexicoapi/core";
 import { parseAllDocuments } from "yaml";
 import { z } from "zod";
 import { aNfc, ordenarPorClave } from "../canonico.js";
-import { esquemaCobertura, esquemaFuenteCurada, type FuenteCurada } from "./esquemas.js";
+import {
+  type ExcepcionCuotaFija,
+  esquemaCobertura,
+  esquemaExcepcionCuotaFija,
+  esquemaFuenteCurada,
+  type FuenteCurada,
+} from "./esquemas.js";
 import { type DefinicionCurado, DIRECTORIO_CURADO } from "./registro.js";
 
 export interface DocumentoCurado<T> {
   dataset: string;
   /** Solo en los calendarios de días; `null` en los demás. */
   cobertura: CoberturaCurada | null;
+  /** Solo en las tarifas de ISR; vacío en los demás. */
+  excepciones: ExcepcionCuotaFija[];
   /** Por clave, en el orden del YAML. */
   fuentes: ReadonlyMap<string, FuenteCurada>;
   /** Ordenados por clave, en NFC y con la fuente completa en lugar de su clave. */
@@ -84,8 +92,17 @@ function cargarYaml(texto: string): { valor: unknown; problemas: string[] } {
   return { valor: null, problemas: ["YAML: no se permiten anclas ni alias (&, *)"] };
 }
 
-function esquemaDocumento(def: DefinicionCurado<{ fuente: FuenteDof }>) {
-  const comun = {
+interface DocumentoYaml {
+  dataset: string;
+  fuentes: Record<string, FuenteCurada>;
+  registros: unknown[];
+  cobertura?: CoberturaCurada;
+  excepciones_cuota_fija?: ExcepcionCuotaFija[];
+}
+
+/** `cobertura` y `excepciones_cuota_fija` solo se aceptan en los datasets que las usan. */
+function esquemaDocumento(def: DefinicionCurado<{ fuente: FuenteDof }>): z.ZodType<DocumentoYaml> {
+  const forma: Record<string, z.ZodType> = {
     dataset: z.literal(def.id, `se esperaba ${def.id}`),
     fuentes: z
       .record(
@@ -95,9 +112,12 @@ function esquemaDocumento(def: DefinicionCurado<{ fuente: FuenteDof }>) {
       .refine((f) => Object.keys(f).length > 0, "debe declarar al menos una fuente"),
     registros: z.array(z.unknown()).min(1, "debe tener al menos un registro"),
   };
-  return def.conCobertura
-    ? z.strictObject({ ...comun, cobertura: esquemaCobertura })
-    : z.strictObject(comun);
+  if (def.conCobertura) forma.cobertura = esquemaCobertura;
+  if (def.conExcepciones) {
+    forma.excepciones_cuota_fija = z.array(esquemaExcepcionCuotaFija).optional();
+  }
+  // La forma se arma según el dataset; el tipo de salida es el de DocumentoYaml.
+  return z.strictObject(forma) as unknown as z.ZodType<DocumentoYaml>;
 }
 
 /** Fuentes que comparten URL deben describir la misma publicación (cambia solo el fragmento). */
@@ -170,7 +190,8 @@ export function interpretarCurado<T extends { fuente: FuenteDof }>(
     if (!usadas.has(clave)) problemas.push(`fuentes.${clave}: no la usa ningún registro`);
   }
 
-  const cobertura = "cobertura" in datos ? (datos.cobertura as CoberturaCurada) : null;
+  const cobertura = datos.cobertura ?? null;
+  const excepciones = datos.excepciones_cuota_fija ?? [];
   const ordenados = ordenarPorClave(registros, (r) => def.clave(r));
   if (todosValidos) {
     for (let i = 1; i < ordenados.length; i++) {
@@ -179,11 +200,12 @@ export function interpretarCurado<T extends { fuente: FuenteDof }>(
         problemas.push(`registros: clave duplicada: ${clave}`);
       }
     }
-    for (const f of def.invariantes(ordenados, cobertura)) problemas.push(`invariante: ${f}`);
+    for (const f of def.invariantes(ordenados, { cobertura, excepciones }))
+      problemas.push(`invariante: ${f}`);
   }
   if (problemas.length > 0) return { documento: null, problemas };
   return {
-    documento: { dataset: datos.dataset, cobertura, fuentes, registros: ordenados },
+    documento: { dataset: datos.dataset, cobertura, excepciones, fuentes, registros: ordenados },
     problemas: [],
   };
 }

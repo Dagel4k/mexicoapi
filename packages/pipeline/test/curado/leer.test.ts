@@ -11,7 +11,14 @@ import {
   curadoTarifasIsr,
   curadoUma,
 } from "../../src/curado/registro.js";
-import { YAML_CNBV, YAML_ISR, YAML_SALARIO, YAML_SAT, YAML_UMA } from "./ejemplos.js";
+import {
+  EXCEPCIONES_OFICIALES,
+  YAML_CNBV,
+  YAML_ISR,
+  YAML_SALARIO,
+  YAML_SAT,
+  YAML_UMA,
+} from "./ejemplos.js";
 
 /** Problemas de interpretar el YAML de la UMA tras aplicar `cambio`. */
 const problemasUma = (cambio: (yaml: string) => string): string[] =>
@@ -63,14 +70,20 @@ describe("interpretarCurado", () => {
     const isr = interpretarCurado(curadoTarifasIsr, YAML_ISR);
     expect(isr.problemas).toEqual([]);
     const tarifas = isr.documento?.registros as TarifaIsr[];
-    expect(tarifas.map((t) => t.periodo)).toEqual(["anual", "mensual"]);
-    expect(tarifas[0]?.tramos[0]).toEqual({
+    expect(tarifas.map((t) => `${t.anio} ${t.periodo}`)).toEqual([
+      "2025 anual",
+      "2026 anual",
+      "2026 mensual",
+    ]);
+    expect(tarifas[1]?.tramos[0]).toEqual({
       limite_inferior: "0.01",
       limite_superior: "10135.11",
       cuota_fija: "0.00",
       tasa_excedente: "1.92",
     });
-    expect(tarifas[1]?.tramos.at(-1)?.limite_superior).toBeNull();
+    expect(tarifas[2]?.tramos.at(-1)?.limite_superior).toBeNull();
+    expect(isr.documento?.excepciones).toEqual(EXCEPCIONES_OFICIALES);
+    expect(salario.documento?.excepciones).toEqual([]);
     const cnbv = interpretarCurado(curadoDiasCnbv, YAML_CNBV);
     expect(cnbv.problemas).toEqual([]);
     expect(cnbv.documento?.registros).toHaveLength(11);
@@ -210,6 +223,58 @@ describe("interpretarCurado", () => {
     expect(interpretarCurado(curadoDiasSat, soloVacaciones).problemas).toContain(
       "invariante: 2026-01-01: no hay cobertura para el tipo descanso",
     );
+  });
+
+  it("valida las excepciones de cuota fija y solo las acepta en las tarifas de ISR", () => {
+    const isr = (cambio: (yaml: string) => string) =>
+      interpretarCurado(curadoTarifasIsr, cambio(YAML_ISR)).problemas;
+    expect(isr((y) => y.replace("    tramo: 10\n", "    tramo: 1\n"))).toEqual([
+      "excepciones_cuota_fija.0.tramo: debe ser un tramo de 2 en adelante",
+    ]);
+    expect(isr((y) => y.replace('publicada: "392294.17"', "publicada: 392294.17"))).toEqual([
+      'excepciones_cuota_fija.0.publicada: debe ser un monto entre comillas con dos decimales, por ejemplo "117.31"',
+    ]);
+    expect(isr((y) => y.replace(/ {4}motivo: "El SAT[^\n]*\n/, ""))).toEqual([
+      "excepciones_cuota_fija.0.motivo: falta",
+    ]);
+    expect(isr((y) => y.replace(/excepciones_cuota_fija:\n(.*\n){6}/, ""))).toEqual([
+      "invariante: 2025 anual, tramo 10: cuota_fija es 392294.17, se esperaba 392294.19 ± 0.01",
+    ]);
+    expect(isr((y) => y.replace("    tramo: 10\n", "    tramo: 9\n"))).toContain(
+      "invariante: 2025 anual, tramo 9: la excepción dice publicada 392294.17 y calculada 392294.19; el YAML trae 271981.99 y se calcula 271981.99",
+    );
+    const conExcepciones = YAML_UMA.replace("registros:", "excepciones_cuota_fija: []\nregistros:");
+    expect(interpretarCurado(curadoUma, conExcepciones).problemas).toEqual([
+      '(raíz): llave no permitida: "excepciones_cuota_fija"',
+    ]);
+  });
+
+  it("rechaza merge keys, con y sin alias", () => {
+    expect(
+      problemasUma((y) => y.replace("  - anio: 2025\n", "  - <<: { anio: 2025 }\n")),
+    ).toContain('registros.1: llave no permitida: "<<"');
+    expect(
+      problemasUma((y) =>
+        y
+          .replace("registros:\n  - anio: 2026\n", "registros:\n  - &base\n    anio: 2026\n")
+          .replace("  - anio: 2025\n", "  - <<: *base\n    anio: 2025\n"),
+      ),
+    ).toEqual(["YAML: no se permiten anclas ni alias (&, *)"]);
+  });
+
+  it("cruza la fecha de una nota del DOF con fecha_publicacion", () => {
+    expect(
+      problemasUma((y) =>
+        y.replace("fecha_publicacion: 2026-01-09", "fecha_publicacion: 2026-01-10"),
+      ),
+    ).toEqual([
+      "fuentes.uma-2026.fecha_publicacion: no coincide con la fecha de la URL (09/01/2026)",
+    ]);
+    expect(problemasUma((y) => y.replace("fecha=09/01/2026", "fecha=2026-01-09"))).toEqual([
+      "fuentes.uma-2026.url: la fecha de la URL debe tener la forma DD/MM/AAAA",
+    ]);
+    // Sin fecha en la URL (o en el SIDOF) no hay nada que cruzar.
+    expect(problemasUma((y) => y.replace("&fecha=09/01/2026", ""))).toEqual([]);
   });
 
   it("valida las referencias a fuentes", () => {
