@@ -66,7 +66,7 @@ MéxicoAPI publica los datos de referencia de México que todo sistema necesita.
 | INEGI responde JSON sin token | `gaia.inegi.org.mx/wscatgeo/v2/mgee/` y `/mgem/25` | Fuente automática de estados y municipios |
 | Los códigos de municipio de SEPOMEX coinciden con INEGI | CP 80000: `c_estado=25`, `c_mnpio=006` = INEGI 25006 (Culiacán); 2,478 municipios en ambos | El SDK une CP con CVEGEO |
 | SIDOF da tipo de cambio sin token | `sidof.segob.gob.mx/dof/sidof/indicadores/158/13-10-2026/17-10-2026` | Fuente del FIX y de las UDIS sin token de Banxico |
-| El portal CEP de Banxico lista instituciones en JSON | `banxico.org.mx/cep/instituciones.do?fecha=…` con códigos de 5 dígitos (40012 BBVA; los 3 finales son el código de banco de la CLABE) | Se usa como respaldo; la fuente principal es el PDF oficial, y si ambos no coinciden se abre una alerta |
+| El portal CEP de Banxico lista instituciones en JSON | `banxico.org.mx/cep/instituciones.do?fecha=…` con códigos de 5 dígitos (40012 BBVA; los 3 finales son el código de banco de la CLABE) | Es la fuente de los códigos y de la membresía activa; el PDF oficial aporta la razón social, el sector y la participación directa. Una diferencia de membresía entre ambos abre un issue |
 
 ## 4. Arquitectura
 
@@ -120,7 +120,7 @@ mexicoapi/
 │  ├─ tipo-cambio/      # fix/2026.json, udis/2026.json, manifest.json
 │  └─ curado/           # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
 ├─ scripts/verify.sh
-├─ .github/workflows/  # ci, datos-*, despliegue, publicación, seguridad, frescura
+├─ .github/workflows/  # ci, datos, despliegue, publicación, seguridad, frescura
 ├─ README.md  LICENSE  DATA_LICENSE.md  SECURITY.md  CONTRIBUTING.md
 └─ docs/   # proyecto, investigación, especificaciones
 ```
@@ -432,7 +432,7 @@ El Worker solo ejecuta para las rutas calculadas, con un límite de 100,000 peti
   7. gitleaks.
 - **Workflows:**
   - `ci.yml` (cada PR);
-  - `datos-<dataset>.yml` (cron);
+  - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo);
   - `publicacion.yml` (changesets: npm con procedencia);
   - `seguridad.yml` (CodeQL, osv-scanner, Scorecard);

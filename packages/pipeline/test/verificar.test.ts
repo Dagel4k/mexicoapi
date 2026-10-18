@@ -134,6 +134,40 @@ describe("verificarDatos", () => {
     );
   });
 
+  it("valida fechas reales en el manifiesto y fetched_at como instante UTC", async () => {
+    const m = JSON.parse(await readFile(manifiesto(), "utf8"));
+    const con = async (cambio: (x: typeof m) => void): Promise<string> => {
+      const copia = structuredClone(m);
+      cambio(copia);
+      await writeFile(manifiesto(), `${JSON.stringify(copia, null, 2)}\n`);
+      return (await verificarDatos(raiz)).join("\n");
+    };
+    expect(
+      await con((x) => {
+        x.as_of = "2026-02-30";
+      }),
+    ).toContain("manifest.json inválido (as_of");
+    expect(
+      await con((x) => {
+        x.sources[0].published_at = "2026-13-01";
+      }),
+    ).toContain("manifest.json inválido (sources.0.published_at");
+    for (const malo of ["2026-10-17", "2026-10-17T12:00:00+00:00", "2026-10-17T12:00:00.5Z"]) {
+      expect(
+        await con((x) => {
+          x.fetched_at = malo;
+        }),
+      ).toContain("manifest.json inválido (fetched_at");
+    }
+    expect(
+      await con((x) => {
+        x.as_of = "2024-02-29";
+        x.sources[0].published_at = null;
+        x.fetched_at = "2026-10-17T12:00:00Z";
+      }),
+    ).toBe("");
+  });
+
   it("detecta textos fuera de NFC y manifiestos con llaves de más o no canónicos", async () => {
     await reescribirDatos((r) =>
       r.map((x, i) => (i === 0 ? { ...x, nombre: "Aguascalientes\u0301" } : x)),

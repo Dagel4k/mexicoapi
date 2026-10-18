@@ -7,6 +7,8 @@ const banxico = readFileSync(new URL("./fixtures/banxico-robots.txt", import.met
 
 describe("permitidoPorRobots", () => {
   it("con el robots.txt real de Banxico permite el CEP y niega /dyn", () => {
+    // El original llega con CRLF y el fixture lo conserva.
+    expect(banxico).toContain("\r\n");
     expect(permitidoPorRobots(banxico, AG, "/cep/instituciones.do?fecha=17-10-2026")).toBe(true);
     expect(permitidoPorRobots(banxico, AG, "/dyn/x")).toBe(false);
   });

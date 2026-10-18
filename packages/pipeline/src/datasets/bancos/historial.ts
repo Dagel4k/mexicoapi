@@ -91,8 +91,11 @@ export function historialesDesdeObservaciones(
   return resultado;
 }
 
+/** Por unidades de código: no depende del idioma ni empata textos distintos. */
+const porUnidades = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 const firma = (entradas: readonly EntradaCep[]): string =>
-  JSON.stringify([...entradas].sort((a, b) => (a[0] + a[1]).localeCompare(b[0] + b[1])));
+  JSON.stringify([...entradas].sort((a, b) => porUnidades(a[0], b[0]) || porUnidades(a[1], b[1])));
 
 /** Conserva la primera, la última y cada observación cuya lista cambia. */
 export function observacionesCompactas(observaciones: readonly Observacion[]): Observacion[] {
