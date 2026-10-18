@@ -24,6 +24,7 @@ export function respuestaVacia(status: number, extra?: HeadersInit): Response {
   return new Response(null, { status, headers: encabezados(extra) });
 }
 
+/** Sin `cache`, la respuesta no se guarda (`no-store`). */
 export function respuestaJson(
   cuerpo: unknown,
   opciones: { status?: number; cache?: string; encabezados?: HeadersInit } = {},
