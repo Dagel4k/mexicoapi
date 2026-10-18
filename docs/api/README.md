@@ -4,7 +4,7 @@ API de solo lectura con los datos de referencia de MéxicoAPI. Responde JSON en 
 
 ## URL base
 
-La API todavía no está desplegada. Se publicará primero en `workers.dev` y después en un dominio propio. Mientras tanto, los ejemplos usan `https://<base>` y las respuestas de este documento salen de una corrida local del Worker. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
+La API se publica primero en `workers.dev` y después en un dominio propio. Mientras no haya dominio propio, los ejemplos usan `https://<base>`; si lees esto en `/llms-full.txt`, la base es ese mismo origen. Las respuestas de ejemplo salen de una corrida local del Worker. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
 
 Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
@@ -863,7 +863,9 @@ Se omiten los demás encabezados. El valor del `ETag` cambia cuando cambian los 
 
 ## CORS
 
-Todas las respuestas de `/v1` y de `/descargas/` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
+Todas las respuestas de `/v1` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
+
+Los archivos estáticos de `/descargas/`, `/llms.txt` y `/llms-full.txt` también llevan `Access-Control-Allow-Origin: *`, pero solo aceptan `GET` y `HEAD`: otro método, `OPTIONS` incluido, da 405 sin cuerpo. Como no piden encabezados propios, un `fetch` simple desde el navegador no necesita `OPTIONS`.
 
 ## Parámetros y errores
 
