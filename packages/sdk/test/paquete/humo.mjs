@@ -1,5 +1,5 @@
 // Prueba de humo del paquete instalado desde su .tgz, en JavaScript sin Vitest para que corra igual
-// en Node 20, 22 y 24. Va en la carpeta del proyecto que instaló el paquete (importa `mexicoapi`
+// en cada Node que soporta el paquete (22.13 o posterior). Va en la carpeta del proyecto que instaló el paquete (importa `mexicoapi`
 // por su nombre) y se corre con `node humo.mjs`; termina con código distinto de 0 si algo falla.
 // No usa la red: los datos salen del paquete y SEPOMEX se importa de un archivo armado aquí.
 import { deepEqual, equal, ok, rejects, throws } from "node:assert/strict";
@@ -12,9 +12,6 @@ import { fileURLToPath } from "node:url";
 
 const AQUI = fileURLToPath(new URL(".", import.meta.url));
 const CLABE = "002010077777777771";
-const [mayor, menor] = process.versions.node.split(".").map(Number);
-// node:sqlite sin bandera llegó en 22.13 (y en 23.4).
-const conSqlite = mayor > 23 || (mayor === 23 && menor >= 4) || (mayor === 22 && menor >= 13);
 
 const paso = (texto) => process.stdout.write(`humo: ${texto}\n`);
 
@@ -27,18 +24,14 @@ const constantes = await import("mexicoapi/datos/constantes");
 const cliente = await import("mexicoapi/cliente");
 paso(`Node ${process.versions.node}: importa las entradas universales`);
 
-// require() de un módulo ESM, sin bandera desde Node 20.19 y 22.12: entra por la condición
-// `default` de exports. Antes, el paquete solo se carga con import.
-if (process.features.require_module === true) {
-  const require = createRequire(import.meta.url);
-  equal(require("mexicoapi").validarClabe(CLABE).valido, true);
-  equal(require("mexicoapi/datos").municipio("25006").nombre, "Culiacán");
-  equal(typeof require("mexicoapi/cliente").crearCliente, "function");
-  equal(typeof require("mexicoapi/sepomex").sepomex.cp, "function");
-  paso("carga con require()");
-} else {
-  paso("este Node no carga ESM con require(): solo import");
-}
+// require() de un módulo ESM, sin bandera desde Node 22.12: entra por la condición `default` de
+// exports.
+const require = createRequire(import.meta.url);
+equal(require("mexicoapi").validarClabe(CLABE).valido, true);
+equal(require("mexicoapi/datos").municipio("25006").nombre, "Culiacán");
+equal(typeof require("mexicoapi/cliente").crearCliente, "function");
+equal(typeof require("mexicoapi/sepomex").sepomex.cp, "function");
+paso("carga con require()");
 
 const clabe = mexicoapi.validarClabe(CLABE, { bancos: datos.catalogoClabe() });
 equal(clabe.valido, true);
@@ -125,17 +118,13 @@ try {
   const estado = await sepomex.resumen({ dir });
   equal(estado.codigos_postales, 33);
   deepEqual(estado.advertencias, []);
-  if (conSqlite) {
-    ok(estado.sqlite);
-    equal(estado.sin_sqlite, null);
-  } else {
-    equal(estado.sqlite, null);
-    ok(estado.sin_sqlite.includes("22.13"), estado.sin_sqlite);
-  }
+  // node:sqlite viene sin bandera desde Node 22.13, el piso del paquete.
+  ok(estado.sqlite);
+  equal(estado.sin_sqlite, null);
   const culiacan = await sepomex.cp("80000", { dir });
   equal(culiacan.municipio.cvegeo, "25006");
   equal(culiacan.asentamientos[0].nombre, "Culiacán Centro");
-  paso(`importa SEPOMEX de un archivo (${conSqlite ? "JSON y SQLite" : "solo JSON"})`);
+  paso("importa SEPOMEX de un archivo (JSON y SQLite)");
 } finally {
   await rm(temporal, { recursive: true, force: true });
 }
@@ -147,6 +136,8 @@ const binario = join(AQUI, "node_modules", ".bin", windows ? "mexicoapi.cmd" : "
 const clavePath = Object.keys(process.env).find((k) => k.toUpperCase() === "PATH") ?? "PATH";
 const opciones = {
   encoding: "utf8",
+  // Un binario colgado no deja la prueba esperando para siempre.
+  timeout: 60_000,
   env: {
     ...process.env,
     [clavePath]: `${dirname(process.execPath)}${delimiter}${process.env[clavePath] ?? ""}`,
