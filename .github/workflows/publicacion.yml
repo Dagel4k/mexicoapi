@@ -1,0 +1,213 @@
+name: Publicación
+
+# Publica en npm el paquete de la etiqueta de un Release de GitHub: mexicoapi@X.Y.Z (packages/sdk)
+# o mexicoapi-mcp@X.Y.Z (packages/mcp). Sin tokens: npm confía en este workflow (trusted
+# publishing, por OIDC) y agrega la procedencia. Pasos y requisitos en
+# docs/operacion/publicacion-npm.md.
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+# Una corrida por etiqueta; la segunda espera a la primera en vez de cancelarla.
+concurrency:
+  group: publicacion-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  # Revisa el Release y arma el paquete, sin permiso para publicar. Si el paquete todavía no existe
+  # en npm, termina en verde con un aviso: la primera versión se publica a mano.
+  preparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      estado: ${{ steps.npm.outputs.estado }}
+      nombre: ${{ steps.revisar.outputs.nombre }}
+      version: ${{ steps.revisar.outputs.version }}
+    steps:
+      # Todo el historial: hace falta origin/main para saber si el commit ya se integró.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      # Sin caché: lo que se publica no sale de algo que guardó otra corrida.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Revisar la etiqueta, el package.json y el CHANGELOG.md
+        id: revisar
+        env:
+          ETIQUETA: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          if [ "${PRERELEASE}" = "true" ]; then
+            echo "::error::El Release está marcado como pre-release y por ahora no se publican pre-versiones."
+            exit 1
+          fi
+          node packages/sdk/scripts/liberacion.ts revisar "${ETIQUETA}" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Revisar que el commit esté en main
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse HEAD)" != "${GITHUB_SHA}" ]; then
+            echo "::error::La etiqueta ya no apunta al commit del Release (${GITHUB_SHA})."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
+            echo "::error::El commit ${GITHUB_SHA} no está en main: solo se publica lo que ya se integró."
+            exit 1
+          fi
+
+      # El check que exige la protección de main (job verify de ci.yml), en este mismo commit.
+      - name: Revisar que CI pasó en el commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?check_name=verify&per_page=100" \
+            | node packages/sdk/scripts/liberacion.ts verify "${GITHUB_SHA}"
+
+      # estado=publicable si el paquete existe y la versión es mayor que todas las publicadas;
+      # estado=sin-paquete si npm responde 404. Falla si la versión ya está o npm no responde.
+      - name: Consultar npm
+        id: npm
+        env:
+          ETIQUETA: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          node packages/sdk/scripts/liberacion.ts npm "${ETIQUETA}" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Avisar que la primera versión se publica a mano
+        if: steps.npm.outputs.estado == 'sin-paquete'
+        env:
+          NOMBRE: ${{ steps.revisar.outputs.nombre }}
+          VERSION: ${{ steps.revisar.outputs.version }}
+        run: |
+          set -euo pipefail
+          guia="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/publicacion-npm.md"
+          echo "::notice::${NOMBRE} todavía no existe en npm y no se publicó nada: la primera versión se publica a mano. Ver ${guia}"
+          {
+            echo "## ${NOMBRE}@${VERSION}: no se publicó"
+            echo
+            echo "${NOMBRE} todavía no existe en npm. La primera versión se publica a mano y después se configura el publicador de confianza: [publicacion-npm.md](${guia})."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Instalar dependencias
+        if: steps.npm.outputs.estado == 'publicable'
+        run: pnpm install --frozen-lockfile
+
+      - name: Compilar
+        if: steps.npm.outputs.estado == 'publicable'
+        env:
+          NOMBRE: ${{ steps.revisar.outputs.nombre }}
+        run: pnpm --filter "${NOMBRE}..." build
+
+      # Como en ci.yml, en una carpeta aparte, sin devDependencies ni scripts. mexicoapi-mcp va con
+      # --publicar: se niega si mexicoapi@<versión de packages/sdk>, su piso, no está en npm.
+      - name: Armar el paquete
+        if: steps.npm.outputs.estado == 'publicable'
+        env:
+          NOMBRE: ${{ steps.revisar.outputs.nombre }}
+          VERSION: ${{ steps.revisar.outputs.version }}
+        run: |
+          set -euo pipefail
+          destino="${RUNNER_TEMP}/publicable"
+          if [ "${NOMBRE}" = "mexicoapi-mcp" ]; then
+            node packages/mcp/scripts/publicable.ts --publicar "${destino}"
+          else
+            node packages/sdk/scripts/publicable.ts "${destino}"
+          fi
+          cd "${destino}"
+          npm pack --dry-run 2>&1 | tee "${RUNNER_TEMP}/contenido.txt"
+          {
+            echo "## ${NOMBRE}@${VERSION}: listo para publicar"
+            echo
+            echo "~~~text"
+            cat "${RUNNER_TEMP}/contenido.txt"
+            echo "~~~"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.npm.outputs.estado == 'publicable'
+        with:
+          name: publicable
+          path: ${{ runner.temp }}/publicable
+          if-no-files-found: error
+          retention-days: 1
+
+  # Lo único que puede publicar: el Environment npm (solo etiquetas mexicoapi@* y mexicoapi-mcp@*)
+  # e id-token para el OIDC de npm. No hace checkout ni compila: publica la carpeta de preparar.
+  publicar:
+    needs: preparar
+    if: needs.preparar.outputs.estado == 'publicable'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/${{ needs.preparar.outputs.nombre }}/v/${{ needs.preparar.outputs.version }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # La de .nvmrc (aquí no hay checkout).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.21.0"
+
+      - name: Revisar la versión de npm
+        run: |
+          set -euo pipefail
+          actual="$(npm --version)"
+          minima="11.5.1"
+          if [ "$(printf '%s\n%s\n' "${minima}" "${actual}" | sort -V | head -n 1)" != "${minima}" ]; then
+            echo "::error::npm ${actual} no publica con trusted publishing: hace falta ${minima} o posterior."
+            exit 1
+          fi
+          echo "npm ${actual}"
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: publicable
+          path: ${{ runner.temp }}/publicable
+
+      - name: Publicar en npm con procedencia
+        id: publicar
+        env:
+          NOMBRE: ${{ needs.preparar.outputs.nombre }}
+          VERSION: ${{ needs.preparar.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/publicable"
+          paquete="$(node -p 'const m = require("./package.json"); m.name + "@" + m.version')"
+          if [ "${paquete}" != "${NOMBRE}@${VERSION}" ]; then
+            echo "::error::El artefacto es de ${paquete} y el Release, de ${NOMBRE}@${VERSION}."
+            exit 1
+          fi
+          npm publish --provenance --access public
+          {
+            echo "## ${NOMBRE}@${VERSION} publicado"
+            echo
+            echo "Con procedencia, desde este workflow: https://www.npmjs.com/package/${NOMBRE}/v/${VERSION}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # npm no deja saber antes si el paquete confía en este workflow: si no, npm publish falla.
+      - name: Explicar el fallo
+        if: failure() && steps.publicar.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          guia="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/publicacion-npm.md"
+          echo "::error::npm publish falló. Con E404, ENEEDAUTH o un error de OIDC, revisa el publicador de confianza del paquete en npmjs.com. Ver ${guia}"
+          {
+            echo "## npm publish falló"
+            echo
+            echo "Con E404, ENEEDAUTH o un error de OIDC, lo más probable es que el paquete no confíe en este workflow: revisa su publicador de confianza en npmjs.com (usuario, repositorio, publicacion.yml y el Environment npm) en [publicacion-npm.md](${guia})."
+          } >> "${GITHUB_STEP_SUMMARY}"

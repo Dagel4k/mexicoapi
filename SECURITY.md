@@ -29,3 +29,7 @@ El workflow `seguridad.yml` corre en cada pull request, en cada push a `main` y 
 - OpenSSF Scorecard evalúa las prácticas del repositorio (solo en `main` y en la corrida semanal) y publica el resultado.
 
 Los hallazgos de CodeQL, osv-scanner y Scorecard aparecen en la pestaña Security, sección Code scanning. Además, CI revisa los workflows con actionlint y busca secretos con gitleaks.
+
+## Paquetes de npm
+
+Después de su primera versión, que se publica a mano, `mexicoapi` y `mexicoapi-mcp` se publican solo desde el workflow `publicacion.yml`, sin tokens (trusted publishing de npm) y con procedencia: la página de cada versión en npmjs.com enlaza el commit y la corrida que la publicaron, y `npm audit signatures` la verifica en un proyecto que instala los paquetes.
