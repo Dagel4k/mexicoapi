@@ -31,7 +31,9 @@ describe("página de estado", () => {
     expect(marco).toMatch(/\shidden>$/);
     expect(etiquetaDe(html, "filas-estado")).toMatch(/^<tbody /);
     expect(html).toMatch(/<tbody id="filas-estado" data-nombres="[^"]+"><\/tbody>/);
-    expect(html).toContain('<p id="mensaje-estado" class="mensaje" aria-live="polite"></p>');
+    expect(html).toContain(
+      '<p id="mensaje-estado" class="mensaje" role="status" aria-live="polite"></p>',
+    );
     expect(html).toContain(
       '<button type="button" id="actualizar-estado" hidden>Actualizar</button>',
     );
