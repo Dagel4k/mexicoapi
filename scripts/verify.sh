@@ -28,7 +28,7 @@ pnpm datos:verificar
 paso "pruebas con cobertura (TZ=America/Mexico_City)"
 pnpm test:coverage
 
-# Solo los proyectos que usan fechas del sistema (Date o Intl); el núcleo calcula con enteros.
+# Todos los proyectos menos el núcleo, que calcula fechas con enteros; uno nuevo entra solo.
 paso "pruebas en otra zona horaria (TZ=UTC)"
 pnpm test:tz
 

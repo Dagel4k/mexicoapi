@@ -11,13 +11,14 @@ describe("fechaEnMexico", () => {
 });
 
 describe("zona horaria del proceso", () => {
-  // test:coverage corre la suite con TZ=America/Mexico_City y test:tz corre con TZ=UTC los
-  // proyectos que usan fechas del sistema, este incluido; esto confirma que en cada corrida la
-  // zona sí cambió.
-  it.runIf(process.env.TZ !== undefined)("coincide con TZ", () => {
+  // test:coverage corre la suite con TZ=America/Mexico_City y test:tz, con TZ=UTC, todos los
+  // proyectos menos el núcleo; esto confirma que en cada corrida la zona sí cambió. Los dos
+  // scripts repiten la zona en TZ_ESPERADA: si TZ se pierde en el camino (Git Bash la quita al
+  // lanzar programas de Windows), la prueba falla en vez de saltarse.
+  const zona = process.env.TZ_ESPERADA ?? process.env.TZ;
+  it.runIf(zona !== undefined)("coincide con TZ", () => {
     // Intl normaliza alias como Etc/UTC a UTC, así que se compara contra el nombre canónico.
-    const esperada = new Intl.DateTimeFormat("en", { timeZone: process.env.TZ }).resolvedOptions()
-      .timeZone;
+    const esperada = new Intl.DateTimeFormat("en", { timeZone: zona }).resolvedOptions().timeZone;
     expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(esperada);
   });
 });
