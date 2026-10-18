@@ -25,6 +25,10 @@ jobs:
   actualizar:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      codigo: ${{ steps.cli.outputs.codigo }}
+      # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
+      publicado: ${{ steps.publicar.outcome == 'success' && 'si' || 'no' }}
     steps:
       - name: Comprobar secretos del bot
         id: bot
@@ -112,7 +116,20 @@ jobs:
           node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${RESUMEN_DIR}/resumen" || codigo=$?
           echo "codigo=${codigo}" >> "${GITHUB_OUTPUT}"
 
+      # El job estado-kv lee este resumen. Si falta (la corrida falló antes de escribirlo), ese job
+      # falla con un aviso y la corrida de datos no cambia.
+      - name: Guardar el resumen para estado-kv
+        if: steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: resumen
+          path: ${{ runner.temp }}/resumen.json
+          if-no-files-found: warn
+          retention-days: 1
+
       - name: Publicar resultado
+        id: publicar
         if: steps.bot.outputs.tiene_bot == 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -288,27 +305,6 @@ jobs:
             gh pr merge "${url_pr}" --auto --rebase
           fi
 
-      # Deja el estado de cada dataset en KV para /v1/status. Un fallo aquí no cambia el resultado
-      # de la corrida de datos. Si la corrida falló antes del CLI no hay resumen y no se escribe nada.
-      - name: Escribir estado en KV
-        if: always() && steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != ''
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CODIGO: ${{ steps.cli.outputs.codigo }}
-          RESUMEN_DIR: ${{ runner.temp }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID}" ]; then
-            echo "::notice::Faltan los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID; no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
-            exit 0
-          fi
-          if ! node apps/api/scripts/cloudflare.ts estado --resumen "${RESUMEN_DIR}/resumen.json" --codigo "${CODIGO}"; then
-            echo "::warning::No se pudo escribir el estado en KV; /v1/status puede mostrar datos atrasados."
-            exit 1
-          fi
-
       - name: Reportar falla previa al CLI
         if: failure() && steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != '1'
         env:
@@ -337,3 +333,66 @@ jobs:
           else
             gh issue create --title "${titulo}" --body-file "${cuerpo}"
           fi
+
+  # Deja el estado de cada dataset en KV para /v1/status. Va en un job aparte, sin instalar
+  # dependencias ni tocar datos externos, para que el token de Cloudflare no conviva con esos
+  # pasos. Solo desde main (como el despliegue) y sin cambiar el resultado de la corrida de datos.
+  # Si la corrida falló antes del CLI no hay resumen y no se escribe nada.
+  estado-kv:
+    needs: actualizar
+    if: always() && github.ref == 'refs/heads/main' && needs.actualizar.outputs.codigo != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: produccion
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - name: Comprobar secretos de Cloudflare
+        id: cf
+        env:
+          TIENE_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          set -euo pipefail
+          echo "tiene_cf=${TIENE_CF}" >> "${GITHUB_OUTPUT}"
+          if [ "${TIENE_CF}" != "true" ]; then
+            echo "::notice::Faltan los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID; no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+          fi
+
+      # cloudflare.ts no tiene dependencias: basta su carpeta (el modo cono trae además los
+      # archivos de la raíz, como .nvmrc, y apps/api/package.json, que lo marca como módulo).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.cf.outputs.tiene_cf == 'true'
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: apps/api/scripts
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.cf.outputs.tiene_cf == 'true'
+        with:
+          node-version-file: .nvmrc
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.cf.outputs.tiene_cf == 'true'
+        with:
+          name: resumen
+          path: ${{ runner.temp }}/resumen
+
+      - name: Escribir estado en KV
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CODIGO: ${{ needs.actualizar.outputs.codigo }}
+          PUBLICADO: ${{ needs.actualizar.outputs.publicado }}
+          RESUMEN: ${{ runner.temp }}/resumen/resumen.json
+        run: |
+          set -euo pipefail
+          node apps/api/scripts/cloudflare.ts estado --resumen "${RESUMEN}" --codigo "${CODIGO}" --publicado "${PUBLICADO}"
+
+      - name: Avisar si no se escribió el estado
+        if: failure() && steps.cf.outputs.tiene_cf == 'true'
+        run: |
+          set -euo pipefail
+          echo "::warning::No se pudo escribir el estado en KV; /v1/status puede mostrar datos atrasados."
