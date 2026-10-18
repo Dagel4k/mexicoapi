@@ -1,7 +1,9 @@
 // Interoperabilidad: el binario compilado (`node dist/index.js`) con el cliente oficial de MCP
 // (@modelcontextprotocol/sdk, solo de desarrollo) por stdio real. El cliente negocia la versión,
 // lista las herramientas y llama cada una; con el outputSchema que publicó cada herramienta valida
-// structuredContent (Ajv con formatos) y rechaza la respuesta que no lo cumple.
+// structuredContent (Ajv con formatos) y rechaza la respuesta que no lo cumple. Lo que el cliente no
+// puede asociar a un pedido (una línea que no es JSON, un id desconocido) va a su onerror, que debe
+// quedar vacío.
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,7 +18,8 @@ import {
   McpError,
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { directorioTemporal, guardarCatalogo } from "../ayudas-sepomex.js";
 
 const RAIZ = new URL("../../", import.meta.url);
 const BINARIO = fileURLToPath(new URL("dist/index.js", RAIZ));
@@ -73,15 +76,25 @@ afterAll(() => {
   rmSync(CACHE_VACIA, { recursive: true, force: true });
 });
 
+/** Lo que los clientes de la prueba en curso recibieron en onerror. */
+let erroresCliente: Error[] = [];
+
+afterEach(() => {
+  const errores = erroresCliente;
+  erroresCliente = [];
+  expect(errores.map((e) => e.message)).toEqual([]);
+});
+
 /**
  * El transporte stdio del cliente oficial con el binario. El entorno es el mínimo que hereda el
- * transporte (sin MEXICOAPI_BASE) más la caché de SEPOMEX en un directorio vacío.
+ * transporte (sin MEXICOAPI_BASE) más `cache` como base de la caché de SEPOMEX (por omisión, un
+ * directorio vacío): el binario la busca en `<cache>/mexicoapi/sepomex`.
  */
-function transporteStdio(): StdioClientTransport {
+function transporteStdio(cache = CACHE_VACIA): StdioClientTransport {
   return new StdioClientTransport({
     command: process.execPath,
     args: [BINARIO],
-    env: { LOCALAPPDATA: CACHE_VACIA, XDG_CACHE_HOME: CACHE_VACIA },
+    env: { LOCALAPPDATA: cache, XDG_CACHE_HOME: cache },
     stderr: "pipe",
   });
 }
@@ -117,6 +130,7 @@ class TransporteAlterado implements Transport {
 
 async function conectar(transporte: Transport = transporteStdio()): Promise<Client> {
   const cliente = new Client({ name: "prueba-interoperabilidad", version: "1.0.0" });
+  cliente.onerror = (error) => erroresCliente.push(error);
   await cliente.connect(transporte);
   return cliente;
 }
@@ -186,6 +200,45 @@ describe("binario con el cliente oficial de MCP", () => {
       });
       expect(resultado.structuredContent, nombre).toHaveProperty("as_of");
     }
+    await cliente.close();
+  });
+
+  it("con un catálogo descargado, codigo_postal responde de la caché y cumple su outputSchema", async () => {
+    const temporal = await directorioTemporal();
+    try {
+      await guardarCatalogo(temporal.trabajo, join(temporal.trabajo, "mexicoapi", "sepomex"));
+      const cliente = await conectar(transporteStdio(temporal.trabajo));
+      await cliente.listTools();
+      const resultado = (await cliente.callTool({
+        name: "codigo_postal",
+        arguments: LLAMADAS.codigo_postal,
+      })) as CallToolResult;
+      expect(resultado.isError).toBeFalsy();
+      expect(resultado.structuredContent).toMatchObject({
+        datos: {
+          cp: "80000",
+          municipio: expect.objectContaining({ cvegeo: "25006" }),
+          asentamientos: [expect.objectContaining({ nombre: "Centro de Prueba" })],
+        },
+        // Importado de un archivo: Correos de México no dio la fecha de corte.
+        as_of: null,
+        descargado: expect.any(String),
+        aviso: expect.stringContaining("Correos de México"),
+        origen: "cache_local",
+      });
+      await cliente.close();
+    } finally {
+      await temporal.borrar();
+    }
+  });
+
+  it("onerror recoge lo que el cliente no puede asociar a un pedido", async () => {
+    // Comprueba que el afterEach vería un error: se inyecta una respuesta con un id que nadie pidió.
+    const transporte = new TransporteAlterado(transporteStdio(), (mensaje) => mensaje);
+    const cliente = await conectar(transporte);
+    transporte.onmessage?.({ jsonrpc: "2.0", id: 999_999, result: {} });
+    expect(erroresCliente).toHaveLength(1);
+    erroresCliente = [];
     await cliente.close();
   });
 
