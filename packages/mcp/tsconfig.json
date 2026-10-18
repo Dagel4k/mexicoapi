@@ -1,7 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    // El typecheck y las pruebas leen mexicoapi desde su src, sin compilarlo (el build usa dist).
+    "paths": {
+      "mexicoapi": ["../sdk/src/index.ts"],
+      "mexicoapi/datos": ["../sdk/src/datos/index.ts"],
+      "mexicoapi/datos/*": ["../sdk/src/datos/*.ts"],
+      "mexicoapi/cliente": ["../sdk/src/cliente/index.ts"],
+      "mexicoapi/sepomex": ["../sdk/src/sepomex/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }

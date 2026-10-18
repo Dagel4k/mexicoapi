@@ -206,6 +206,12 @@ importers:
 
   packages/core: {}
 
+  packages/mcp:
+    dependencies:
+      mexicoapi:
+        specifier: workspace:*
+        version: link:../sdk
+
   packages/pipeline:
     dependencies:
       '@mexicoapi/core':
