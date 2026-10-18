@@ -81,11 +81,10 @@ flowchart TD
   F --> P[pipeline: fetch → parse → normaliza → valida]
   P -->|anomalía| AL[Issue y PR sin auto-merge]
   P -->|ok| S[(data/: snapshot canónico + manifest)]
-  S --> B[build: shards JSON, descargas, OpenAPI]
+  S --> B[build: shards JSON, descargas, OpenAPI, sitio y llms.txt]
   P -->|cada corrida| KV[(Cloudflare KV: estado operativo)]
   B --> W[apps/api: Cloudflare Worker + assets estáticos]
   KV --> W
-  B --> D[apps/docs: sitio Astro]
   S --> SDK[packages/sdk: npm mexicoapi]
   SDK --> MCP[packages/mcp: servidor MCP stdio]
   SEPO[Correos de México] -.->|lo descarga cada usuario| SDK
@@ -94,7 +93,7 @@ flowchart TD
 Principios:
 
 1. **El snapshot es la fuente de verdad.** Todo lo publicado (API, descargas, paquetes, docs) se deriva de `data/`, versionado en git. El historial de git es el historial de cambios.
-2. **Sin base de datos.** No hay base de datos ni cron en Cloudflare. El Worker corre primero en `/v1` y `/v1/*`, valida cada parámetro, sirve los shards estáticos con `ASSETS.fetch`, calcula funciones puras y pone encabezados. Las descargas (`/descargas/*`) son assets directos y no pasan por el Worker. Lo único que guarda Cloudflare (en KV) es el estado operativo de las corridas, nunca los datos.
+2. **Sin base de datos.** No hay base de datos ni cron en Cloudflare. El Worker corre primero en `/v1` y `/v1/*`, valida cada parámetro, sirve los shards estáticos con `ASSETS.fetch`, calcula funciones puras y pone encabezados. Las descargas (`/descargas/*`) y las páginas del sitio son assets directos y no pasan por el Worker; fuera de `/v1`, lo que no es un asset lo responden los assets con `404.html`. Lo único que guarda Cloudflare (en KV) es el estado operativo de las corridas, nunca los datos.
 3. **Separar lo automático de lo curado.** Los datos automáticos los produce el pipeline. Los curados (días inhábiles, constantes) los escribe una persona en YAML, con cita obligatoria al DOF, y entran por PR revisado.
 4. **Falla a lo último bueno.** Si una fuente falla, se sirve el último snapshot válido marcado como desactualizado.
 5. **Núcleo puro.** Las reglas (CLABE, días hábiles, validación de formatos) viven en funciones puras sin I/O, probadas con TDD y compartidas por API, SDK y MCP. La aritmética de fechas del núcleo es de enteros (días desde una época, sin `Date`), así que sumar 3650 días hábiles cabe en el límite de CPU de un Worker.
@@ -111,8 +110,7 @@ mexicoapi/
 │  ├─ sdk/         # npm "mexicoapi": cliente HTTP + datos offline + CLI (sepomex sync)
 │  └─ mcp/         # npm "mexicoapi-mcp": servidor MCP stdio de solo lectura
 ├─ apps/
-│  ├─ api/         # Cloudflare Worker (wrangler) + assets estáticos generados
-│  └─ docs/        # Astro: docs por dataset, referencia OpenAPI, changelog, status, llms.txt
+│  └─ api/         # Cloudflare Worker (wrangler) + assets estáticos generados (API, descargas y sitio)
 ├─ data/
 │  ├─ inegi-estados/    # estados.json, manifest.json, raw/
 │  ├─ inegi-municipios/ # municipios.json, manifest.json, raw/
@@ -125,7 +123,7 @@ mexicoapi/
 ├─ scripts/verify.sh
 ├─ .github/workflows/  # ci, datos, despliegue, publicación, seguridad, frescura
 ├─ README.md  LICENSE  DATA_LICENSE.md  SECURITY.md  CONTRIBUTING.md
-└─ docs/   # proyecto, investigación, especificaciones
+└─ docs/   # referencia de la API, docs por dataset, diseño y operación
 ```
 
 `@mexicoapi/core` se empaqueta dentro del SDK y no se publica aparte en v1. Así hay dos paquetes públicos: `mexicoapi` y `mexicoapi-mcp`.
@@ -355,7 +353,7 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 
 - **Base:** `https://<dominio>/v1/`. Sin dominio propio, se usa `mexicoapi.<cuenta>.workers.dev`.
 - **Protocolo:** REST de solo lectura, JSON en UTF-8, versión en la ruta (`/v1`). Los cambios incompatibles van a `/v2`.
-- **Respuesta:** `{ "data": …, "meta": { dataset, as_of, sources: [{ name, url, license, license_url, citation }], docs } }`. `sources` es una lista porque un dataset puede tener varias fuentes (bancos tiene dos). `meta` no lleva el estado de frescura: eso vive en `/v1/status`, que responde `{ "data": [...] }` sin `meta`. `/` y `/v1` responden un índice.
+- **Respuesta:** `{ "data": …, "meta": { dataset, as_of, sources: [{ name, url, license, license_url, citation }], docs } }`. `sources` es una lista porque un dataset puede tener varias fuentes (bancos tiene dos). `meta` no lleva el estado de frescura: eso vive en `/v1/status`, que responde `{ "data": [...] }` sin `meta`. `/` es la página de inicio del sitio y `/v1` responde un índice en JSON.
 - **Errores:** `application/problem+json` (RFC 9457), con `type`, `title`, `status`, `detail` e `instance`. Nunca incluyen trazas. El `type` es la URI absoluta de la sección correspondiente de `docs/api/problemas.md` en GitHub (`https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#<tipo>`), estable sin dominio propio; si llega un dominio, los `type` se quedan como identificadores.
 - **Caché:**
   - Datos que cambian: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`. No lleva `s-maxage=86400`: un caché compartido de 24 h rompería la meta de frescura de 24 h.
@@ -386,10 +384,22 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 | `GET /v1/status` | Frescura y estado de cada dataset (build más KV) | Worker: lee KV con caché de 60 s |
 | `GET /v1/openapi.json` | Especificación OpenAPI 3.1 | Estático |
 | `GET /descargas/*` | JSON, CSV y `mexicoapi.sqlite` completos | Estático |
+| `GET /` · `/estado/` · `/llms.txt` · `/llms-full.txt` | El sitio (ver abajo) | Estático, sin Worker |
 
 Todas las rutas de la tabla están implementadas, salvo `plazas-clabe`, que espera su catálogo.
 
 `dias-habiles` acepta `dias` de 1 a 3650. Con `permitir_incompleto=true` calcula fuera de la cobertura del calendario con `advertencias` (secciones 8 y 8.1); si no, responde 422 `calendario-incompleto`. La cobertura de la LFT es de 2007-01-01 a 2100-12-31.
+
+### Sitio
+
+El sitio son páginas estáticas que genera el mismo build (`packages/pipeline/src/sitio/paginas/`), sin framework ni dependencias, a partir de los manifiestos:
+
+- `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. Mientras los paquetes no estén en npm, la constante `PUBLICADO_EN_NPM` hace que la página lo diga.
+- `/estado/`: la frescura de cada dataset automático; un módulo propio (`sitio.js`) consulta `/v1/status` desde el navegador.
+- `/llms.txt` (formato de llmstxt.org) y `/llms-full.txt`: la ruta de cada dataset con su `as_of`, y la referencia de la API, la de errores y las docs de cada dataset en un solo archivo, con los enlaces relativos cambiados por su URL en GitHub.
+- `404.html`: con `not_found_handling: "404-page"`, los assets la sirven en cualquier dirección fuera de `/v1` que no es un asset, sin invocar al Worker. Dentro de `/v1`, una ruta que no existe sigue siendo un 404 problem+json del Worker.
+
+Cada ruta del sitio tiene su regla en `_headers` (CSP, `nosniff`, `Referrer-Policy` y caché); el 404 no recibe reglas y lleva su CSP en `<meta>`. Todo texto que viene de los datos se escapa y solo una URL `https://` entra a un enlace.
 
 ### Validación de entradas
 
@@ -411,7 +421,7 @@ Rate limiting: el binding de Workers limita a 600 peticiones por minuto por IP (
 
 Assets estáticos ≤ 20,000 archivos en el plan gratis: los archivos por fecha se agrupan por año. Cada archivo pesa ≤ 25 MiB.
 
-El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`, así que cada consulta de la API cuenta contra el límite del Worker: 100,000 peticiones al día en el plan gratis y 10 millones al mes en el plan de 5 USD. Las descargas son assets directos y no cuentan. Se eligió así porque los assets sin extensión no permiten `/v1/estados/25` y `/v1/estados/25/municipios` a la vez (serían un archivo y una carpeta con el mismo nombre), y porque así cada parámetro se valida antes de tocar un archivo.
+El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`, así que cada consulta de la API cuenta contra el límite del Worker: 100,000 peticiones al día en el plan gratis y 10 millones al mes en el plan de 5 USD. Las descargas, las páginas del sitio y el 404 de fuera de `/v1` son assets directos y no cuentan. Se eligió así porque los assets sin extensión no permiten `/v1/estados/25` y `/v1/estados/25/municipios` a la vez (serían un archivo y una carpeta con el mismo nombre), y porque así cada parámetro se valida antes de tocar un archivo.
 
 ## 10. SDK (`mexicoapi` en npm)
 
@@ -491,12 +501,12 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   1. Biome (formato y lint);
   2. `tsc --noEmit`;
   3. Vitest con umbrales de cobertura, y las pruebas en varias zonas horarias;
-  4. build de paquetes y API (shards, descargas y OpenAPI);
+  4. build de paquetes y API (shards, descargas, OpenAPI y sitio);
   5. integración y contrato de la API en workerd;
   6. validación de todos los `data/*/manifest.json` y snapshots;
   7. gitleaks.
 
-  El build del sitio de docs se suma cuando exista el sitio.
+  El sitio es parte del build: el paso 4 lo genera y el 5 lo prueba en workerd (páginas, `llms.txt` y el 404 de los assets).
 - **Workflows:**
   - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26) y `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador). El check `verify`, el que exige la protección de `main`, pasa solo si los cuatro terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
@@ -505,7 +515,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - `seguridad.yml` (cada PR, cada push a `main`, cada semana y a mano): CodeQL y osv-scanner sobre `pnpm-lock.yaml`; OpenSSF Scorecard en los push a `main` y en la corrida semanal;
   - `publicacion.yml`, pendiente: correrá con la etiqueta `mexicoapi@<versión>` de una versión ya integrada, en el Environment `npm`, y publicará con procedencia la carpeta que arma `packages/sdk/scripts/publicable.ts`, sin changesets. Mientras tanto se publica a mano desde esa carpeta ([publicacion-npm.md](../operacion/publicacion-npm.md)).
 - **Ramas:** una por tarea, PR a `main` con CI verde. `main` siempre desplegable.
-- **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk`. Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
+- **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, `@modelcontextprotocol/sdk`. Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
 
 ## 14. Decisiones y pendientes
 
@@ -540,6 +550,8 @@ Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas
 | CSV | RFC 4180: UTF-8 sin BOM y `\r\n`. El build falla ante campos que empiezan con `=`, `+`, `-` o `@` en vez de alterarlos | Excel en Windows puede mostrar mal los acentos con doble clic; se documenta importar como UTF-8 |
 | Pruebas del Worker | Unidad en Node con `ASSETS` falso y contrato en workerd real con `unstable_startWorker`, dentro de `verify.sh` | Si wrangler cambia esa API inestable, se ajusta la prueba |
 | `/v1/municipios` | Se agrega la lista completa, que el diseño original no tenía | Ruta extra de 300 KB; también está en las descargas |
+| Sitio sin Astro | Páginas estáticas que genera el build (inicio, estado, 404 y `llms.txt`), sin dependencias; la referencia larga vive en Markdown en GitHub | Migrar a un generador reescribe cuatro páginas |
+| 404 fuera de `/v1` | Lo responden los assets con `404.html`, sin invocar al Worker ni gastar su cuota | Quien pide `/v2` recibe HTML y no problem+json |
 
 Pendientes:
 
@@ -561,6 +573,6 @@ Pendientes:
 6. **MCP stdio.**
 7. **Tipo de cambio y UDIS** desde SIDOF, con histórico.
 8. **Datos curados:** días inhábiles (LFT, CNBV 2025–2026, SAT 2026), UMA, salario mínimo e ISR, todo transcrito del DOF con su cita.
-9. **Sitio de documentación:** Astro, OpenAPI, status, llms.txt.
+9. **Sitio:** páginas estáticas generadas por el build (inicio, estado y 404), `llms.txt` y `llms-full.txt`.
 10. **Endurecimiento:** workflows de seguridad, procedencia de npm, Scorecard, revisión de seguridad.
 11. **Lanzamiento** (fase 3 del proyecto).

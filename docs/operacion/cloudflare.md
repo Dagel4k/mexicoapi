@@ -37,9 +37,9 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 Solo corre desde `main`, en el Environment `produccion`.
 
 1. Instala y compila el repositorio.
-2. `cloudflare.ts configurar` busca (o crea) el namespace de KV titulado `mexicoapi-estado`, genera la configuración del entorno y devuelve la URL de `workers.dev`.
+2. `cloudflare.ts configurar` busca (o crea) el namespace de KV titulado `mexicoapi-estado`, genera la configuración del entorno (con el bloque `assets` de `wrangler.jsonc` completo) y devuelve la URL de `workers.dev`.
 3. Despliega el Worker `mexicoapi-staging`.
-4. Corre `humo.ts` contra staging. Un Worker recién desplegado tarda en propagarse, así que hace hasta 5 intentos, con esperas de 10, 20, 30 y 60 segundos entre ellos.
+4. Corre `humo.ts` contra staging: las rutas principales de `/v1`, `SHA256SUMS`, la página de inicio, `/llms.txt` y `/v2`, que debe ser el 404 en HTML de los assets y no un 404 del Worker. Un Worker recién desplegado tarda en propagarse, así que hace hasta 5 intentos, con esperas de 10, 20, 30 y 60 segundos entre ellos.
 5. Repite lo mismo con el Worker `mexicoapi` (producción). Si staging falla, producción no se toca. El humo de producción corre solo si la versión llegó a subirse, aunque el paso de despliegue fallara después; si falló antes de subirla, producción no cambió, no hay humo ni reversión y la corrida queda en rojo.
 6. Si el humo de producción falla, corre `wrangler rollback --yes` y deja la corrida en rojo. En el primer despliegue no hay versión anterior: la reversión falla, producción se queda con ese commit y el resumen lo dice.
 7. Escribe un resumen con el commit, las URLs, los IDs de versión, si se revirtió y la salida del humo.
@@ -47,6 +47,18 @@ Solo corre desde `main`, en el Environment `produccion`.
 Staging y producción comparten el namespace de KV: el estado es del pipeline de datos, no del entorno. Los dos tienen límite de peticiones en lo que pasa por el Worker (`/v1`): 600 por minuto por IP (las IPv6 cuentan por /64) y por ubicación de Cloudflare. Pasado el límite responden 429; quien necesite más volumen debe usar las descargas completas, que se sirven como archivos estáticos y no pasan por ese límite.
 
 `apps/api/wrangler.jsonc` es la base de las dos configuraciones y se llama `mexicoapi-local`: un `wrangler deploy` a mano con ese archivo crea un Worker aparte, sin KV ni límite de peticiones, y no toca staging ni producción.
+
+### Sitio y 404
+
+El mismo despliegue publica el sitio que genera el build (`/`, `/estado/`, `/llms.txt`, `/llms-full.txt`, la hoja de estilo y `sitio.js`) como assets estáticos, con los encabezados de cada ruta en `public/_headers`. El Worker corre primero solo en `/v1` y `/v1/*` (`run_worker_first`); lo demás lo atienden los assets:
+
+- Una dirección fuera de `/v1` que no es un asset (`/wp-admin`, `/v2`, `/descargas/nada`) responde 404 con `404.html` (`not_found_handling: "404-page"` en `wrangler.jsonc`). Como `run_worker_first` es una lista de rutas, esa regla vale para cualquier cliente y no solo para navegadores.
+- Un método distinto de GET o HEAD fuera de `/v1` (un `POST /`) responde 405 desde los assets.
+- Dentro de `/v1`, una ruta que no existe sigue siendo un 404 problem+json del Worker.
+
+Nada de eso invoca al Worker: los rastreadores que prueban rutas al azar no gastan la cuota diaria ni el límite por IP. Si un despliegue pierde `not_found_handling`, esas direcciones vuelven a llegar al Worker y el humo falla en `/v2`.
+
+Un 404 bajo `/descargas/` recibe los encabezados de `/descargas/*`: su CSP bloquea la hoja de estilo, así que la página se ve sin estilo, y queda en caché una hora como el resto de las descargas.
 
 ### Frescura
 
@@ -83,7 +95,7 @@ Hazlo antes de la fecha de expiración, y de inmediato si sospechas que el token
 
 ## Límites del plan gratuito
 
-- 100,000 peticiones al día al Worker. Cada consulta a `/v1` cuenta; las descargas en `/descargas/*` se sirven como assets estáticos y no cuentan.
+- 100,000 peticiones al día al Worker. Cada consulta a `/v1` cuenta; las descargas en `/descargas/*`, las páginas del sitio y el 404 de cualquier dirección fuera de `/v1` se sirven como assets estáticos y no cuentan.
 - Las escrituras en KV son pocas (de 1 a 3 al día: una por dataset en cada corrida de datos), muy por debajo del límite diario del plan.
 - El límite de peticiones por IP es parte de la configuración del Worker y no tiene costo.
 

@@ -4,9 +4,9 @@ API de solo lectura con los datos de referencia de MéxicoAPI. Responde JSON en 
 
 ## URL base
 
-La API todavía no está desplegada. Se publicará primero en `workers.dev` y después en un dominio propio. Mientras tanto, los ejemplos usan `https://<base>` y las respuestas de este documento salen de una corrida local del Worker. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`.
+La API todavía no está desplegada. Se publicará primero en `workers.dev` y después en un dominio propio. Mientras tanto, los ejemplos usan `https://<base>` y las respuestas de este documento salen de una corrida local del Worker. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
 
-Un `/` al final de la ruta redirige (308) a la misma ruta sin él.
+Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
 ## Rutas
 
@@ -80,7 +80,9 @@ Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta
   "documentacion": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md",
   "openapi": "/v1/openapi.json",
   "status": "/v1/status",
-  "descargas": "/descargas/SHA256SUMS"
+  "descargas": "/descargas/SHA256SUMS",
+  "sitio": "/",
+  "llms": "/llms.txt"
 }
 ```
 
@@ -861,7 +863,7 @@ Se omiten los demás encabezados. El valor del `ETag` cambia cuando cambian los 
 
 ## CORS
 
-Todas las respuestas llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
+Todas las respuestas de `/v1` y de `/descargas/` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
 
 ## Parámetros y errores
 
@@ -926,6 +928,21 @@ Las listas de días inhábiles no dicen por sí solas hasta dónde están comple
 Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
 `mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis`, `dias_inhabiles` (CNBV y SAT), `coberturas_calendario` (la cobertura de cada autoridad y tipo de plazo, como `dias-inhabiles-coberturas`), `uma`, `salario_minimo`, `isr_tramos` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
+
+## Sitio
+
+Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que genera el build a partir de los mismos manifiestos:
+
+| Ruta | Qué es |
+| --- | --- |
+| `/` | Página de inicio: cómo empezar, la tabla de datasets con su fecha, fuente y licencia, y las descargas |
+| `/estado/` | Si cada dataset automático está al día; la página consulta `/v1/status` |
+| `/llms.txt` | Resumen de la API en el formato de [llmstxt.org](https://llmstxt.org/): la ruta de cada dataset con sus parámetros obligatorios, su `as_of` y su documentación |
+| `/llms-full.txt` | Esta referencia, la de errores y la documentación de cada dataset en un solo archivo de texto, con los enlaces absolutos |
+
+Las sirven los assets de Cloudflare sin pasar por el Worker, así que no cuentan en el límite de peticiones. Las páginas llevan su propia política de seguridad de contenido y cinco minutos de caché; `llms.txt` y `llms-full.txt` se sirven como `text/plain; charset=utf-8`, con `Access-Control-Allow-Origin: *` y una hora de caché. `/estado` redirige a `/estado/`.
+
+Una dirección que no existe fuera de `/v1` (`/v2`, `/descargas/nada`) responde 404 con una página HTML, no con problem+json. Dentro de `/v1`, una ruta que no existe sigue respondiendo [`no-encontrado`](problemas.md#no-encontrado).
 
 ## Privacidad
 

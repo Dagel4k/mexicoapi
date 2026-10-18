@@ -63,6 +63,8 @@ curl https://<base>/v1/estados/25
 curl https://<base>/v1/clabe/002010077777777771
 ```
 
+El mismo despliegue sirve el sitio, que genera el build con los datos: en `/` la página de inicio con los datasets, su fuente y las descargas; en `/estado/`, si cada dataset está al día; y en `/llms.txt`, un resumen de la API para herramientas que leen ese formato, con la documentación completa en `/llms-full.txt` ([detalles](docs/api/README.md#sitio)).
+
 ## Documentación
 
 - [API v1](docs/api/README.md) y [errores](docs/api/problemas.md)
