@@ -154,6 +154,8 @@ describe("constantes: ISR", () => {
       {},
       { tipo: "inpc", anio: 2026 },
       { tipo: "uma", anio: 26.5 },
+      { tipo: "uma", anio: 999 },
+      { tipo: "salario_minimo", anio: 10000 },
       { tipo: "uma", fecha: "2026-13-01" },
       { tipo: "isr", periodo: "semanal", anio: 2026 },
     ]) {
