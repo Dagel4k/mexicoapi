@@ -4,6 +4,7 @@
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
 // que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento).
 import { parseArgs } from "node:util";
+import type { ConsultaDiasHabiles } from "../cliente/index.js";
 import { type Autoridad, esFechaIsoValida, type TipoPlazo } from "../index.js";
 import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
@@ -177,12 +178,13 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   }
   const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
   const { cliente, conRed } = await crearClienteCli(e, opciones);
+  // Van tal cual: la regla de la API rechaza sat sin --tipo-plazo y --tipo-plazo con otra.
   const respuesta = await cliente.diasHabiles({
     desde,
     dias: Number(dias),
     autoridad: autoridad as Autoridad | undefined,
     tipoPlazo,
-  });
+  } as ConsultaDiasHabiles);
   if (opciones.json) json(e, respuesta);
   else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta, conRed));
   return 0;

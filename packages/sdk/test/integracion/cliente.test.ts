@@ -200,19 +200,21 @@ function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
         ),
     ],
     ["FIX sin fecha", (api, op) => api.consultar("/v1/tipo-cambio/fix", {} as never, op)],
+    // Los tipos no dejan escribir estas tres; la API y el paquete las rechazan igual.
     [
       "SAT sin tipo_plazo",
-      (api, op) => api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 }, op),
+      (api, op) => api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 } as never, op),
     ],
     [
       "LFT con tipo_plazo",
-      (api, op) => api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 }, op),
+      (api, op) =>
+        api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never, op),
     ],
     [
       "CNBV con tipo_plazo",
       (api, op) =>
         api.diasHabiles(
-          { autoridad: "cnbv", tipoPlazo: "general", desde: "2026-07-17", dias: 3 },
+          { autoridad: "cnbv", tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never,
           op,
         ),
     ],

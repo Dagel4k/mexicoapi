@@ -100,13 +100,14 @@ export interface RutasApi {
   "/v1/clabe/{clabe}": Ruta<{ clabe: string }, ResultadoClabe>;
   "/v1/dias-habiles": Ruta<
     {
-      autoridad: Autoridad;
-      /** Obligatorio con `sat`; con las demás autoridades da 400. */
-      tipo_plazo?: TipoPlazo | undefined;
       desde: FechaISO;
       dias: number;
       permitir_incompleto?: boolean | undefined;
-    },
+    } & (
+      | { autoridad: Exclude<Autoridad, "sat">; tipo_plazo?: undefined }
+      // Obligatorio con `sat`; con las demás autoridades da 400.
+      | { autoridad: "sat"; tipo_plazo: TipoPlazo }
+    ),
     ResultadoDiasHabiles
   >;
   "/v1/dias-inhabiles": Ruta<{ autoridad: Autoridad; anio: number }, readonly DiaInhabil[]>;
@@ -241,18 +242,10 @@ export interface OpcionesConsulta {
   signal?: SenalAborto | undefined;
 }
 
-/** Parámetros de `diasHabiles`, con los nombres del núcleo (`consultar` usa los de la API). */
-export interface ConsultaDiasHabiles {
+interface ConsultaDiasHabilesComun {
   desde: FechaISO;
   /** Días hábiles a sumar, de 1 a 3650. */
   dias: number;
-  /** `lft` (por omisión), `cnbv` o `sat`. */
-  autoridad?: Autoridad | undefined;
-  /**
-   * Obligatorio con `sat`: `general` o `declaraciones_pagos`, en el que las vacaciones del SAT
-   * son hábiles (CFF art. 12). Con las demás autoridades da 400.
-   */
-  tipoPlazo?: TipoPlazo | undefined;
   /**
    * Calcula fuera de la cobertura del calendario con advertencia: con los días ya publicados si
    * el plazo tiene respaldo (el SAT `general` después de sus vacaciones publicadas) y, más allá,
@@ -260,6 +253,27 @@ export interface ConsultaDiasHabiles {
    */
   permitirIncompleto?: boolean | undefined;
 }
+
+/**
+ * Parámetros de `diasHabiles`, con los nombres del núcleo (`consultar` usa los de la API). Con
+ * `sat`, `tipoPlazo` es obligatorio; con las demás autoridades no se acepta.
+ */
+export type ConsultaDiasHabiles = ConsultaDiasHabilesComun &
+  (
+    | {
+        /** `lft` (por omisión) o `cnbv`. */
+        autoridad?: Exclude<Autoridad, "sat"> | undefined;
+        tipoPlazo?: undefined;
+      }
+    | {
+        autoridad: "sat";
+        /**
+         * `general` o `declaraciones_pagos`, en el que las vacaciones del SAT son hábiles (CFF
+         * art. 12).
+         */
+        tipoPlazo: TipoPlazo;
+      }
+  );
 
 export interface ConsultaDiasInhabiles {
   anio: number;

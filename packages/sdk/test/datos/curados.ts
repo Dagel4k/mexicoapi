@@ -121,6 +121,18 @@ export function probarCalendarios(
     expect(() => c.inhabil(despues)).toThrow(mx.CalendarioIncompletoError);
   });
 
+  it("con el SAT exige el tipo de plazo, con el texto de la API", () => {
+    const texto = "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.";
+    // @ts-expect-error con el SAT el tipo de plazo es obligatorio
+    expect(() => m.calendario("sat")).toThrow(TypeError);
+    // @ts-expect-error con el SAT el tipo de plazo es obligatorio
+    expect(() => m.calendario("sat")).toThrow(texto);
+    expect(() => m.calendario("sat", undefined as unknown as TipoPlazo)).toThrow(texto);
+    expect(m.calendario("sat", "general")).toBe(m.calendarioCurado("sat").general.calendario);
+    // La CNBV solo tiene general: es el de omisión.
+    expect(m.calendario("cnbv")).toBe(m.calendario("cnbv", "general"));
+  });
+
   it("rechaza una autoridad o un plazo que no tiene", () => {
     expect(() => m.calendario("lft" as "cnbv")).toThrow(RangeError);
     expect(() => m.calendarioCurado("toString" as "cnbv")).toThrow(RangeError);
