@@ -28,10 +28,10 @@ export default defineConfig({
           statements: 95,
         },
         "packages/pipeline/src/**": {
-          lines: 85,
-          branches: 85,
-          functions: 85,
-          statements: 85,
+          lines: 95,
+          branches: 93,
+          functions: 95,
+          statements: 95,
         },
         "packages/sdk/src/**": {
           lines: 95,
