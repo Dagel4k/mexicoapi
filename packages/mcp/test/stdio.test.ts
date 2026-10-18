@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { PassThrough, Writable } from "node:stream";
+import { describe, expect, it, vi } from "vitest";
 import { ERROR_PARSEO, SOLICITUD_INVALIDA } from "../src/protocolo.js";
-import { MAX_BYTES_MENSAJE } from "../src/stdio.js";
-import { conectar, crearLenta } from "./ayudas.js";
+import { ejecutarStdio, MAX_BYTES_MENSAJE } from "../src/stdio.js";
+import { conectar, crearLenta, INFO } from "./ayudas.js";
 
 const PING = '{"jsonrpc":"2.0","id":"p","method":"ping"}';
 const OK_PING = { jsonrpc: "2.0", id: "p", result: {} };
@@ -132,6 +133,56 @@ describe("tope de tamaño por mensaje", () => {
     expect(await cliente.recibir()).toEqual(OK_PING);
     cliente.escribir(`${justo.replace('"x":"', '"x":"a')}\n`);
     expect((await cliente.recibir()).error).toMatchObject({ code: SOLICITUD_INVALIDA });
+  });
+});
+
+describe("contrapresión", () => {
+  it("deja de leer mientras la salida está llena y sigue con drain", async () => {
+    const entrada = new PassThrough();
+    const escritas: string[] = [];
+    const pendientes: Array<() => void> = [];
+    const salida = new Writable({
+      highWaterMark: 1,
+      write(trozo: Buffer, _codificacion, listo) {
+        escritas.push(trozo.toString("utf8"));
+        pendientes.push(listo);
+      },
+    });
+    ejecutarStdio({ entrada, salida, info: INFO, instrucciones: "x", herramientas: [] });
+    entrada.write(`${PING}\n`);
+    await vi.waitFor(() => expect(escritas).toHaveLength(1));
+    expect(entrada.isPaused()).toBe(true);
+    entrada.write(`${PING.replace('"p"', '"q"')}\n`);
+    await new Promise((r) => setImmediate(r));
+    expect(escritas).toHaveLength(1);
+    pendientes.shift()?.();
+    await vi.waitFor(() => expect(escritas).toHaveLength(2));
+    expect(JSON.parse(escritas[1] as string)).toEqual({ ...OK_PING, id: "q" });
+  });
+
+  it("no reanuda la lectura si la conexión se cerró mientras esperaba", async () => {
+    const entrada = new PassThrough();
+    const pendientes: Array<() => void> = [];
+    const salida = new Writable({
+      highWaterMark: 1,
+      write(_trozo, _codificacion, listo) {
+        pendientes.push(listo);
+      },
+    });
+    const conexion = ejecutarStdio({
+      entrada,
+      salida,
+      info: INFO,
+      instrucciones: "x",
+      herramientas: [],
+    });
+    entrada.write(`${PING}\n`);
+    await vi.waitFor(() => expect(pendientes).toHaveLength(1));
+    conexion.cerrar();
+    pendientes.shift()?.();
+    await new Promise((r) => setImmediate(r));
+    expect(entrada.destroyed).toBe(true);
+    expect(entrada.isPaused()).toBe(true);
   });
 });
 
