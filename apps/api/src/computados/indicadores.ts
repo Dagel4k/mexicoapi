@@ -87,6 +87,13 @@ async function tramoParaOperacion(
   return unir(shards);
 }
 
+/**
+ * `detail` de una fecha anterior a la serie: el dato existe en el DOF, pero la serie no lo
+ * trae, así que no se dice que no hubo publicación.
+ */
+const fueraDeLaSerie = ({ desde }: CoberturaSerie, queFalta: string): string =>
+  `La serie empieza el ${desde}; no incluye ${queFalta}.`;
+
 interface Textos {
   /** `detail` del 404 definitivo: no hubo dato ese día o la fecha es anterior a la serie. */
   sinDato: string;
@@ -125,7 +132,7 @@ async function fixDelDia(c: Contexto, fecha: FechaISO): Promise<Response> {
   return responder(c, fixPublicado(datos, tramo, cobertura, fecha), serie, fecha, {
     sinDato:
       fecha < cobertura.desde
-        ? `No hay FIX publicado el ${fecha}: la serie empieza el ${cobertura.desde}.`
+        ? fueraDeLaSerie(cobertura, `el ${fecha}`)
         : `No hubo publicación del FIX en el DOF el ${fecha}.`,
     noDisponible: `El FIX del ${fecha} todavía no está cargado; la última publicación cargada es del ${cobertura.hasta}.`,
   });
@@ -141,7 +148,8 @@ async function fixDeOperacion(c: Contexto, fecha: FechaISO): Promise<Response> {
     serie,
     fecha,
     {
-      sinDato: `No hay FIX publicado antes del ${fecha}: la serie empieza el ${cobertura.desde}.`,
+      // La cobertura empieza en una publicación: solo antes de ella no hay anterior.
+      sinDato: fueraDeLaSerie(cobertura, `la publicación que aplica a una operación del ${fecha}`),
       noDisponible: `Todavía no está cargado el FIX que aplica a una operación del ${fecha}; la última publicación cargada es del ${cobertura.hasta}.`,
     },
     (registro) => ({
@@ -202,7 +210,7 @@ export async function consultarUdi(c: Contexto): Promise<Response> {
   return responder(c, udiDeFecha(datos, tramo, cobertura, fecha), serie, fecha, {
     sinDato:
       fecha < cobertura.desde
-        ? `No hay valor de la UDI para el ${fecha}: la serie empieza el ${cobertura.desde}.`
+        ? fueraDeLaSerie(cobertura, `el ${fecha}`)
         : `No hay valor de la UDI para el ${fecha}.`,
     noDisponible: `El valor de la UDI del ${fecha} todavía no está cargado; el último cargado es del ${cobertura.hasta}.`,
   });

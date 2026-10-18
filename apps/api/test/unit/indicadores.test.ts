@@ -246,7 +246,7 @@ describe("GET /v1/tipo-cambio/fix?publicado=", () => {
       const { pedidas } = await sinDato(
         fixPublicado(fecha),
         "no-encontrado",
-        `No hay FIX publicado el ${fecha}: la serie empieza el 2020-01-02.`,
+        `La serie empieza el 2020-01-02; no incluye el ${fecha}.`,
         COBERTURA_FIX,
       );
       expect(pedidas).toEqual([RUTA_META, rutaFix("2020")]);
@@ -355,7 +355,7 @@ describe("GET /v1/tipo-cambio/fix?operacion=", () => {
       const { pedidas } = await sinDato(
         fixOperacion(fecha),
         "no-encontrado",
-        `No hay FIX publicado antes del ${fecha}: la serie empieza el 2020-01-02.`,
+        `La serie empieza el 2020-01-02; no incluye la publicación que aplica a una operación del ${fecha}.`,
         COBERTURA_FIX,
       );
       expect(pedidas).toEqual([RUTA_META, rutaFix("2020")]);
@@ -543,7 +543,7 @@ describe("GET /v1/udis", () => {
       const { pedidas } = await sinDato(
         udis(fecha),
         "no-encontrado",
-        `No hay valor de la UDI para el ${fecha}: la serie empieza el 2020-01-01.`,
+        `La serie empieza el 2020-01-01; no incluye el ${fecha}.`,
         COBERTURA_UDIS,
       );
       expect(pedidas).toEqual([RUTA_META, rutaUdis("2020")]);
