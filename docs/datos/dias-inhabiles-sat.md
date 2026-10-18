@@ -67,7 +67,7 @@ La lista de días por sí sola no dice hasta dónde está completa: en diciembre
 | API | `GET /v1/dias-habiles?autoridad=sat&tipo_plazo=` y `GET /v1/dias-inhabiles?autoridad=sat&anio=` |
 | Descarga | `/descargas/dias-inhabiles-sat.json`, `.csv` y `.manifest.json`; la cobertura, en `/descargas/dias-inhabiles-coberturas.json` y `.csv` |
 | SQLite | tablas `dias_inhabiles` y `coberturas_calendario` de `/descargas/mexicoapi.sqlite`, con `autoridad = 'sat'` |
-| Repositorio | `data/dias-inhabiles-sat/dias-inhabiles.json`, `manifest.json` y `calendario.json` (tipos de plazo con la cobertura de la API; los fines de semana los cita el artículo 12) |
+| Repositorio | `data/dias-inhabiles-sat/dias-inhabiles.json`, `manifest.json` y `calendario.json`. `calendario.json` trae los tipos de plazo con la cobertura de la API (`declaraciones_pagos` hasta 2100, por la regla del artículo 12, que también cita los fines de semana), mientras `dias-inhabiles.json` solo trae los días de 2026 |
 | Transcripción con citas | `data/curado/dias-inhabiles-sat.yaml` (solo las vacaciones) |
 
 Ver [API v1](../api/README.md#sat-y-tipo-de-plazo).

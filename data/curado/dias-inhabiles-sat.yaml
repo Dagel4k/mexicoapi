@@ -12,6 +12,10 @@
 # El segundo periodo general de vacaciones de 2026 no se ha publicado: la lista de vacaciones
 # está completa hasta el 30 de noviembre de 2026. Cuando se publique, se agregan sus días y se
 # extiende la cobertura.
+#
+# En la carpeta generada, `calendario.json` declara la cobertura de la API (declaraciones_pagos
+# hasta 2100, por la regla del art. 12), mientras `dias-inhabiles.json` solo trae los días de los
+# años que cubre este archivo (hoy 2026).
 dataset: dias-inhabiles.sat
 cobertura:
   vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }
