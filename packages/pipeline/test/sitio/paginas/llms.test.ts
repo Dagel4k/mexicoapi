@@ -148,7 +148,8 @@ describe("llms.txt", () => {
   it("dice que el paquete y el servidor MCP todavía no están en npm mientras no lo estén", () => {
     expect(PUBLICADO_EN_NPM).toBe(false);
     expect(texto).toContain("todavía no están publicados en npm");
-    expect(texto).not.toContain("npx -y mexicoapi-mcp");
+    expect(texto).not.toContain("npx");
+    expect(texto).not.toContain("npm install");
     const publicado = archivoLlms(DATASETS, true);
     expect(publicado).not.toContain("no están publicados");
     expect(publicado).toContain("`npm install mexicoapi`");

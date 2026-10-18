@@ -394,7 +394,7 @@ Todas las rutas de la tabla están implementadas, salvo `plazas-clabe`, que espe
 
 El sitio son páginas estáticas que genera el mismo build (`packages/pipeline/src/sitio/paginas/`), sin framework ni dependencias, a partir de los manifiestos:
 
-- `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. Mientras los paquetes no estén en npm, la constante `PUBLICADO_EN_NPM` hace que la página lo diga.
+- `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. Mientras los paquetes no estén en npm, la constante `PUBLICADO_EN_NPM` hace que la página y `llms.txt` solo lo avisen, sin comandos de instalación ni configuración que copiar.
 - `/estado/`: la frescura de cada dataset automático; un módulo propio (`sitio.js`) consulta `/v1/status` desde el navegador.
 - `/llms.txt` (formato de llmstxt.org) y `/llms-full.txt`: la ruta de cada dataset con su `as_of`, y la referencia de la API, la de errores y las docs de cada dataset en un solo archivo, con los enlaces relativos cambiados por su URL en GitHub.
 - `404.html`: con `not_found_handling: "404-page"`, los assets la sirven en cualquier dirección fuera de `/v1` que no es un asset, sin invocar al Worker. Dentro de `/v1`, una ruta que no existe sigue siendo un 404 problem+json del Worker.
