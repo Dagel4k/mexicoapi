@@ -21,15 +21,32 @@ export const PARAMETROS_INVALIDOS = -32602;
 export const ERROR_INTERNO = -32603;
 
 /** De la más reciente a la más vieja. */
-export const VERSIONES_SOPORTADAS = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
+export const VERSIONES_SOPORTADAS = [
+  "2025-11-25",
+  "2025-06-18",
+  "2025-03-26",
+  "2024-11-05",
+] as const;
 export type VersionProtocolo = (typeof VERSIONES_SOPORTADAS)[number];
 export const VERSION_RECIENTE: VersionProtocolo = VERSIONES_SOPORTADAS[0];
 
-/**
- * 2025-03-26 es la única versión soportada con lotes JSON-RPC (los debe aceptar); 2025-06-18 los
- * quitó. Tampoco tiene title, outputSchema ni structuredContent.
- */
-const VERSION_ANTERIOR: VersionProtocolo = "2025-03-26";
+/** Lo que cambia entre versiones, según el schema.ts de cada una. */
+interface Rasgos {
+  /** title en Tool e Implementation, outputSchema y structuredContent (desde 2025-06-18). */
+  readonly titulos: boolean;
+  /** ToolAnnotations (desde 2025-03-26). */
+  readonly anotaciones: boolean;
+  /** Lotes JSON-RPC: 2025-03-26 obliga a recibirlos y 2025-06-18 los quitó. */
+  readonly lotes: boolean;
+}
+
+const RASGOS: Readonly<Record<VersionProtocolo, Rasgos>> = {
+  "2025-11-25": { titulos: true, anotaciones: true, lotes: false },
+  "2025-06-18": { titulos: true, anotaciones: true, lotes: false },
+  "2025-03-26": { titulos: false, anotaciones: true, lotes: true },
+  "2024-11-05": { titulos: false, anotaciones: false, lotes: false },
+};
+
 export const MAX_MENSAJES_LOTE = 50;
 
 export const INSTRUCCIONES =
@@ -150,13 +167,11 @@ function publicar(h: Herramienta, version: VersionProtocolo): Record<string, unk
     outputSchema: h.outputSchema,
     annotations: h.annotations,
   });
-  if (version === VERSION_ANTERIOR) {
-    return {
-      name: h.name,
-      description: h.description,
-      inputSchema,
-      annotations: { title: h.title, ...annotations },
-    };
+  const rasgos = RASGOS[version];
+  if (!rasgos.titulos) {
+    // Sin title propio, el título va en annotations.title si la versión tiene anotaciones.
+    const base = { name: h.name, description: h.description, inputSchema };
+    return rasgos.anotaciones ? { ...base, annotations: { title: h.title, ...annotations } } : base;
   }
   return {
     name: h.name,
@@ -220,11 +235,14 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     }
   }
 
-  function formaResultado(resultado: ResultadoHerramienta): Record<string, unknown> {
+  function formaResultado(
+    resultado: ResultadoHerramienta,
+    sesion: VersionProtocolo,
+  ): Record<string, unknown> {
     const forma: Record<string, unknown> = {
       content: resultado.content.map((b) => ({ type: "text", text: b.text })),
     };
-    if (resultado.structuredContent !== undefined && version !== VERSION_ANTERIOR) {
+    if (resultado.structuredContent !== undefined && RASGOS[sesion].titulos) {
       forma.structuredContent = resultado.structuredContent;
     }
     if (resultado.isError === true) forma.isError = true;
@@ -249,10 +267,9 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     }
     // Si soporta la versión pedida responde con ella; si no, con la más reciente que soporta.
     const negociada = esVersionSoportada(p.protocolVersion) ? p.protocolVersion : VERSION_RECIENTE;
-    const serverInfo =
-      negociada === VERSION_ANTERIOR
-        ? { name: info.name, version: info.version }
-        : { name: info.name, title: info.title, version: info.version };
+    const serverInfo = RASGOS[negociada].titulos
+      ? { name: info.name, title: info.title, version: info.version }
+      : { name: info.name, version: info.version };
     const respuesta = exito(id, {
       protocolVersion: negociada,
       capabilities: { tools: { listChanged: false } },
@@ -284,6 +301,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     id: IdSolicitud,
     herramienta: HerramientaRegistrada,
     args: Record<string, unknown>,
+    sesion: VersionProtocolo,
   ): Promise<RespuestaJsonRpc | null> {
     const { definicion, validarSalida } = herramienta;
     const clave = claveId(id);
@@ -297,7 +315,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
         registrar(`la herramienta ${definicion.name} devolvió un resultado inválido: ${problema}`);
         return errorInterno(id);
       }
-      return exito(id, formaResultado(resultado));
+      return exito(id, formaResultado(resultado, sesion));
     } catch (error) {
       if (control.signal.aborted) return null;
       const clase = error instanceof Error ? error.name : typeof error;
@@ -311,6 +329,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
   function llamar(
     id: IdSolicitud,
     params: unknown,
+    sesion: VersionProtocolo,
   ): RespuestaJsonRpc | Promise<RespuestaJsonRpc | null> {
     if (!esObjeto(params) || typeof params.name !== "string") {
       return respuestaError(id, PARAMETROS_INVALIDOS, "tools/call necesita name (texto)");
@@ -332,13 +351,13 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     const errores = herramienta.validarEntrada(args);
     if (errores.length > 0) {
       const mensaje = `Argumentos inválidos para ${params.name}: ${errores.join("; ")}`;
-      return exito(id, formaResultado(resultadoError(mensaje)));
+      return exito(id, formaResultado(resultadoError(mensaje), sesion));
     }
     if (enCurso.size >= maxEnCurso) {
       const mensaje = "Hay demasiadas llamadas en curso; intenta de nuevo cuando terminen.";
-      return exito(id, formaResultado(resultadoError(mensaje)));
+      return exito(id, formaResultado(resultadoError(mensaje), sesion));
     }
-    return ejecutar(id, herramienta, args);
+    return ejecutar(id, herramienta, args, sesion);
   }
 
   function atenderNotificacion(metodo: string, params: unknown): void {
@@ -392,7 +411,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     if (version === null) {
       return invalida(id, "La sesión no está inicializada: envía initialize primero");
     }
-    return metodo === "tools/list" ? listar(id, params, version) : llamar(id, params);
+    return metodo === "tools/list" ? listar(id, params, version) : llamar(id, params, version);
   }
 
   /** Atiende un mensaje sin dejar escapar excepciones: lo inesperado es un error interno. */
@@ -419,7 +438,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
   }
 
   async function atenderLote(lote: unknown[]): Promise<string | null> {
-    if (version !== VERSION_ANTERIOR) {
+    if (version === null || !RASGOS[version].lotes) {
       return serializar(
         invalida(null, "No se admiten lotes JSON-RPC en esta versión del protocolo"),
       );
