@@ -1,4 +1,4 @@
-import { meta } from "mexicoapi/datos/constantes";
+import { anios, meta } from "mexicoapi/datos/constantes";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   apiOk,
@@ -61,13 +61,17 @@ describe("constantes: UMA", () => {
   });
 
   it("los años que no están dan el error de la API", async () => {
+    // Los años salen de los datos del paquete: la UMA del año siguiente no rompe la prueba.
+    const primero = anios.uma[0] as number;
+    const ultimo = anios.uma.at(-1) as number;
+    const cargados = `los años cargados van de ${primero} a ${ultimo}`;
     esError(
-      await llamar("constantes", { tipo: "uma", anio: 2016 }),
-      "No existe la UMA de 2016 en los datos; los años cargados van de 2017 a 2026.",
+      await llamar("constantes", { tipo: "uma", anio: primero - 1 }),
+      `No existe la UMA de ${primero - 1} en los datos; ${cargados}.`,
     );
     esError(
-      await llamar("constantes", { tipo: "uma", anio: 2030 }),
-      "Todavía no se carga la UMA de 2030; los años cargados van de 2017 a 2026.",
+      await llamar("constantes", { tipo: "uma", anio: ultimo + 2 }),
+      `Todavía no se carga la UMA de ${ultimo + 2}; ${cargados}.`,
     );
   });
 });
