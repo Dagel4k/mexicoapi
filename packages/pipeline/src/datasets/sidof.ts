@@ -11,6 +11,7 @@ import {
 import { z } from "zod";
 import { ErrorDatos } from "../errores.js";
 import { esquemaTipoCambioFix, esquemaUdi } from "../esquemas.js";
+import { anioDe } from "../fecha.js";
 import type {
   Construccion,
   CrudoCapturado,
@@ -57,7 +58,6 @@ export function urlSidof(tipo: TipoSidof, anio: number): string {
 }
 
 const archivoCrudo = (tipo: TipoSidof, anio: number): string => `raw/sidof-${tipo}-${anio}.json`;
-const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 const porTexto = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 interface PlanAnios {

@@ -11,3 +11,6 @@ const formato = new Intl.DateTimeFormat("en-CA", {
 export function fechaEnMexico(instante: Date): FechaISO {
   return formato.format(instante) as FechaISO;
 }
+
+/** Año de una fecha ISO, como número. */
+export const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));

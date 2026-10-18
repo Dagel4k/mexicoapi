@@ -9,7 +9,7 @@ import {
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
-import { type Meta, metaInterna, type ShardSerie, shardFix, shardUdis } from "../cargas.js";
+import { anioDe, type Meta, metaInterna, type ShardSerie, shardFix, shardUdis } from "../cargas.js";
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
@@ -32,8 +32,6 @@ async function serieDe(entorno: Entorno, dataset: string, docs: string): Promise
   }
   return { meta: { ...interno.meta, docs }, cobertura: interno.cobertura };
 }
-
-const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 
 /**
  * `fecha` llevada a la cobertura. El año que se carga sale de aquí: una fecha fuera de la
