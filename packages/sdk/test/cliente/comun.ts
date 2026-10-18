@@ -90,19 +90,19 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     expect((await api.banco("002")).data).toBe(m.datos.banco("002"));
   });
 
-  it("da no-encontrado con el texto de la API y sin el valor pedido", async () => {
+  it("da no-encontrado con el texto de la API y con la clave pedida, como la API", async () => {
     const estado = await problemaDe(m, api.estado("33"), "no-encontrado", 404);
-    expect(estado.detail).toBe("No existe el estado {cve_ent}.");
-    expect(estado.problema.instance).toBe("/v1/estados/{cve_ent}");
-    expect(estado.url).toBe("/v1/estados/{cve_ent}");
-    expect(estado.message).not.toContain("33");
+    expect(estado.detail).toBe("No existe el estado 33.");
+    expect(estado.problema.instance).toBe("/v1/estados/33");
+    expect(estado.url).toBe("/v1/estados/33");
+    expect(estado.message).toContain("33");
     const municipios = await problemaDe(m, api.municipios("33"), "no-encontrado", 404);
-    expect(municipios.detail).toBe("No existe el estado {cve_ent}.");
-    expect(municipios.problema.instance).toBe("/v1/estados/{cve_ent}/municipios");
+    expect(municipios.detail).toBe("No existe el estado 33.");
+    expect(municipios.problema.instance).toBe("/v1/estados/33/municipios");
     const municipio = await problemaDe(m, api.municipio("99999"), "no-encontrado", 404);
-    expect(municipio.detail).toBe("No existe el municipio {cvegeo}.");
+    expect(municipio.detail).toBe("No existe el municipio 99999.");
     const banco = await problemaDe(m, api.banco("999"), "no-encontrado", 404);
-    expect(banco.detail).toBe("No existe el banco {codigo}.");
+    expect(banco.detail).toBe("No existe el banco 999.");
   });
 
   it("revisa los valores de la ruta con las reglas de la API, sin tocar su texto", async () => {
