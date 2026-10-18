@@ -196,8 +196,10 @@ describe("herramientas en el binario compilado", () => {
       origen: "paquete",
     });
     const fix = await s.llamar("tipo_de_cambio_fix", { publicado: "2026-10-12" });
-    expect(fix.structuredContent).toMatchObject({
-      datos: { valor: "18.4163" },
+    expect(fix.structuredContent).toMatchObject({ datos: { valor: "18.4163" }, origen: "paquete" });
+    // La publicación más reciente del paquete puede no ser la última: lo advierte.
+    const ultimo = await s.llamar("tipo_de_cambio_fix", {});
+    expect(ultimo.structuredContent).toMatchObject({
       origen: "paquete",
       advertencias: [expect.stringContaining("no hay MEXICOAPI_BASE")],
     });

@@ -1,6 +1,5 @@
 import { meta } from "mexicoapi/datos/constantes";
 import { beforeAll, describe, expect, it } from "vitest";
-import { AVISO_SIN_API } from "../src/respuesta.js";
 import {
   apiOk,
   BASE,
@@ -31,7 +30,8 @@ describe("constantes: UMA", () => {
       fuente: { nombre: datos.fuente.nombre, url: datos.fuente.url },
       fuentes: [{ nombre: datos.fuente.nombre, url: datos.fuente.url }],
       origen: "paquete",
-      advertencias: [AVISO_SIN_API],
+      // Sin API las constantes no avisan: un año que el paquete no trae da error, no un dato viejo.
+      advertencias: [],
     });
     expect(datos.fuente.url).toContain("dof.gob.mx");
     expect(texto(r)).toMatch(

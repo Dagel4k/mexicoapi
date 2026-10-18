@@ -45,7 +45,7 @@ const DIA_INHABIL = {
 const lineaDia = (d: DiaInhabil): string =>
   `- ${d.fecha} ${enLinea(d.motivo)} (${enLinea(d.tipo)})`;
 
-export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
+export function diasInhabilesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
   return {
     name: "dias_inhabiles",
     title: "Días inhábiles",
@@ -79,15 +79,12 @@ export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramient
               ...dias.map(lineaDia),
             ];
       const fuentes = dias.map((d) => fuenteDe(d.fuente));
-      return resultado(lineas, dias, procedencia(r, { fuentes, sinApi: !conApi }));
+      return resultado(lineas, dias, procedencia(r, { fuentes }));
     },
   };
 }
 
-export function sumarDiasHabilesHerramienta({
-  cliente,
-  conApi,
-}: OpcionesHerramientas): Herramienta {
+export function sumarDiasHabilesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
   return {
     name: "sumar_dias_habiles",
     title: "Sumar días hábiles",
@@ -171,7 +168,7 @@ export function sumarDiasHabilesHerramienta({
           ...calculo.inhabiles_saltados.map(lineaDia),
         );
       }
-      const p = procedencia(r, { advertencias: calculo.advertencias, sinApi: !conApi });
+      const p = procedencia(r, { advertencias: calculo.advertencias });
       return resultado(lineas, calculo, p);
     },
   };
