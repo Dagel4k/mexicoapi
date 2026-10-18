@@ -355,7 +355,7 @@ describe("redirecciones", () => {
     expect(e).toBeInstanceOf(ErrorHttp);
     expect((e as ErrorHttp).message).toMatch(/host no permitido.*b\.example\.mx/i);
     expect((e as ErrorHttp).url).toBe(`${A}/x`);
-    expect(m.pedidas.some((u) => u.startsWith(B))).toBe(false);
+    expect(m.pedidas.some((u) => new URL(u).host === new URL(B).host)).toBe(false);
     // Tampoco con una lista de hosts que no lo incluye, ni se reintenta.
     const otra = await m.cliente
       .obtener(`${A}/x`, { hosts: [HOST_A, "c.example.mx"] })
