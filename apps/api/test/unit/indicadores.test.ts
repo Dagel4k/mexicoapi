@@ -556,6 +556,29 @@ describe("GET /v1/tipo-cambio/fix con los feriados bancarios de la CNBV", () => 
     );
   });
 
+  it("solo cuentan los días de descanso de la CNBV: un día de otro tipo no salta", async () => {
+    // Unas vacaciones administrativas no cierran los bancos: el DOF publica el FIX.
+    const vacaciones = {
+      ...CNBV,
+      dias: CNBV.dias.map((d) => (d.fecha === "2026-11-16" ? { ...d, tipo: "vacaciones" } : d)),
+    };
+    const { texto } = await sinDato(
+      fixOperacion("2026-11-17"),
+      "dato-no-disponible",
+      noDisponible("2026-11-17", "2026-11-13"),
+      COBERTURA_13,
+      { ...HASTA_13, cnbv: vacaciones },
+    );
+    expect(texto).not.toContain("18.3100");
+    await sinDato(
+      fixPublicado("2026-11-16"),
+      "dato-no-disponible",
+      "El FIX del 2026-11-16 todavía no está cargado; la última publicación cargada es del 2026-11-13.",
+      COBERTURA_13,
+      { ...HASTA_13, cnbv: vacaciones },
+    );
+  });
+
   it.each([
     ["no existe", { cnbv: null }],
     ["responde 503", { estados: { [RUTA_CNBV]: 503 } }],

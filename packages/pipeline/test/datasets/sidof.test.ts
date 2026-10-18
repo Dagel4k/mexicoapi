@@ -1,10 +1,17 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { diaDeLaSemana, sumarDias, type TipoCambioFix, type Udi } from "@mexicoapi/core";
+import {
+  type DiaInhabilCurado,
+  diaDeLaSemana,
+  sumarDias,
+  type TipoCambioFix,
+  type Udi,
+} from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ANIO_INICIAL,
+  descansosBancarios,
   interpretarSidof,
   tipoCambioFix,
   udis,
@@ -1129,6 +1136,45 @@ describe("revisar", () => {
       expect((await revisarFix(antes, cambiado)).motivos).toEqual([
         "cambió el valor de 2026-10-30: 18.4250 → 18.4251",
       ]);
+    });
+
+    it("solo cuentan los días de descanso dentro de la cobertura", () => {
+      const dia = (fecha: string, tipo: DiaInhabilCurado["tipo"]): DiaInhabilCurado => ({
+        fecha,
+        autoridad: "cnbv",
+        motivo: "Día de prueba",
+        tipo,
+        fuente: {
+          nombre: "n",
+          url: "https://dof.gob.mx/",
+          fecha_publicacion: fecha,
+          fragmento: "f",
+        },
+      });
+      const esDescanso = descansosBancarios(
+        { descanso: { desde: "2026-01-01", hasta: "2026-12-31" } },
+        [
+          dia("2026-11-02", "descanso"),
+          dia("2026-11-16", "vacaciones"),
+          dia("2027-01-01", "descanso"),
+        ],
+      );
+      expect(esDescanso("2026-11-02")).toBe(true);
+      // Unas vacaciones administrativas no cierran los bancos: el DOF publica el FIX.
+      expect(esDescanso("2026-11-16")).toBe(false);
+      expect(esDescanso("2026-11-17")).toBe(false);
+      expect(esDescanso("2027-01-01")).toBe(false);
+    });
+
+    it("un YAML de la CNBV con un día de otro tipo detiene la corrida", async () => {
+      const real = await readFile(YAML_CNBV, "utf8");
+      const linea = /(fecha: 2026-11-16, .*?tipo: )descanso/;
+      expect(real).toMatch(linea);
+      await calendarioCnbvEnDisco(real.replace(linea, "$1vacaciones"));
+      const antes = [fix("2026-11-13", "18.4250")];
+      const e = await revisarFix(antes, [...antes, fix("2026-11-16", "18.4300")]).catch((x) => x);
+      expect(e).toBeInstanceOf(ErrorDatos);
+      expect(e.message).toContain("2026-11-16: el tipo vacaciones no es de cnbv");
     });
   });
 });
