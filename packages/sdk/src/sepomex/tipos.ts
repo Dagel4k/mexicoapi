@@ -100,4 +100,6 @@ export interface EstadoSepomex {
   readonly json: string;
   /** Ruta del SQLite, o null si no se escribió (sin `node:sqlite` o con `sqlite: false`). */
   readonly sqlite: string | null;
+  /** Por qué no hay SQLite (Node sin `node:sqlite`, `sqlite: false`...); null si lo hay. */
+  readonly sin_sqlite: string | null;
 }

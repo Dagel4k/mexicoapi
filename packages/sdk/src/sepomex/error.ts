@@ -7,6 +7,7 @@
  * - `sin-datos`: todavía no hay catálogo guardado en el directorio.
  * - `cache-invalida`: el catálogo guardado está dañado.
  * - `ocupado`: otra sincronización está guardando en el mismo directorio.
+ * - `escritura`: no se pudo escribir la caché (disco lleno, sin permiso, SQLite que falla).
  */
 export type TipoErrorSepomex =
   | "bloqueado"
@@ -15,7 +16,8 @@ export type TipoErrorSepomex =
   | "archivo-invalido"
   | "sin-datos"
   | "cache-invalida"
-  | "ocupado";
+  | "ocupado"
+  | "escritura";
 
 export class SepomexError extends Error {
   override readonly name = "SepomexError";

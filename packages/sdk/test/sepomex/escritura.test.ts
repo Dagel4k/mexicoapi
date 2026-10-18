@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { estado, importar } from "../../src/sepomex/index.js";
+import { estado, importar, SepomexError } from "../../src/sepomex/index.js";
 import { lineasTxt, txt, zipOficial } from "./ayudas.js";
 
 const sqlite = vi.hoisted(() => ({ falla: false }));
@@ -43,9 +43,13 @@ it("si el SQLite falla, borra lo nuevo y deja la caché anterior", async () => {
   sqlite.falla = true;
   const nuevo = join(trabajo, "nuevo.txt");
   await writeFile(nuevo, txt(lineasTxt().map((l) => l.replace("Culiacán Centro", "Otro"))));
-  await expect(importar(nuevo, { dir, aviso: () => {} })).rejects.toThrow(
-    "database or disk is full",
+  const error = await importar(nuevo, { dir, aviso: () => {} }).catch((e: unknown) => e);
+  expect(error).toBeInstanceOf(SepomexError);
+  expect((error as SepomexError).tipo).toBe("escritura");
+  expect((error as SepomexError).message).toMatch(
+    /No se pudo guardar el catálogo en .*cache \(database or disk is full\)/,
   );
+  expect(((error as SepomexError).cause as Error).message).toBe("database or disk is full");
   expect((await readdir(dir)).sort()).toEqual(archivos);
   expect(await estado({ dir })).toEqual(antes);
 });

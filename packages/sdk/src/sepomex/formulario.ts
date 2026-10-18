@@ -48,7 +48,9 @@ function decodificarEntidades(texto: string): string {
   return texto.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entidad, cuerpo: string) => {
     if (cuerpo[0] === "#") {
       const hex = cuerpo[1] === "x" || cuerpo[1] === "X";
-      return String.fromCodePoint(Number.parseInt(cuerpo.slice(hex ? 2 : 1), hex ? 16 : 10));
+      const punto = Number.parseInt(cuerpo.slice(hex ? 2 : 1), hex ? 16 : 10);
+      // Fuera de Unicode no es un carácter: se deja la entidad como texto.
+      return punto <= 0x10ffff ? String.fromCodePoint(punto) : entidad;
     }
     return ENTIDADES[cuerpo.toLowerCase()] ?? entidad;
   });

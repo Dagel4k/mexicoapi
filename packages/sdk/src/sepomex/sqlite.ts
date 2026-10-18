@@ -5,12 +5,26 @@ import { COLUMNAS, type FilaSepomex } from "./txt.js";
 
 export type ModuloSqlite = typeof import("node:sqlite");
 
-/** node:sqlite, o null si este Node no lo trae. */
-export async function cargarSqlite(): Promise<ModuloSqlite | null> {
+/** Si esta versión de Node trae node:sqlite sin bandera (desde 22.13 y 23.4). */
+export function nodeConSqlite(version: string): boolean {
+  const [mayor = 0, menor = 0] = version.split(".").map(Number);
+  return mayor > 23 || (mayor === 23 && menor >= 4) || (mayor === 22 && menor >= 13);
+}
+
+/** node:sqlite, o por qué no se puede usar: entonces la caché queda solo en JSON. */
+export async function cargarSqlite(
+  version: string = process.versions.node,
+): Promise<{ modulo: ModuloSqlite } | { motivo: string }> {
+  if (!nodeConSqlite(version)) {
+    return {
+      motivo: `Node ${version} no trae node:sqlite sin bandera (llegó en 22.13): la caché queda solo en JSON.`,
+    };
+  }
   try {
-    return await import("node:sqlite");
-  } catch {
-    return null;
+    return { modulo: await import("node:sqlite") };
+  } catch (error) {
+    const mensaje = error instanceof Error ? error.message : String(error);
+    return { motivo: `No se pudo cargar node:sqlite (${mensaje}): la caché queda solo en JSON.` };
   }
 }
 

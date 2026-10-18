@@ -77,11 +77,25 @@ export interface MetaGuardada {
   json: string;
   /** Nombre del SQLite dentro del directorio, o null. */
   sqlite: string | null;
+  /** Por qué no hay SQLite; null si lo hay. */
+  sin_sqlite: string | null;
 }
 
-export type ResumenGuardado = Omit<MetaGuardada, "formato" | "json" | "sqlite">;
+export type ResumenGuardado = Omit<MetaGuardada, "formato" | "json" | "sqlite" | "sin_sqlite">;
 
 const codigoDe = (error: unknown): unknown => (error as { code?: unknown } | null)?.code;
+
+const mensajeDe = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/** Un fallo del sistema de archivos o de SQLite al guardar. */
+export function errorEscritura(dir: string, error: unknown): SepomexError {
+  if (error instanceof SepomexError) return error;
+  return new SepomexError(
+    "escritura",
+    `No se pudo guardar el catálogo en ${dir} (${mensajeDe(error)}).`,
+    { cause: error },
+  );
+}
 
 function cacheInvalida(dir: string, archivo: string, causa?: unknown): SepomexError {
   return new SepomexError(
@@ -107,15 +121,27 @@ function esMeta(v: unknown): v is MetaGuardada {
     m.advertencias.every(esTexto) &&
     esTexto(m.json) &&
     JSON_DATOS.test(m.json) &&
-    (m.sqlite === null || (esTexto(m.sqlite) && SQLITE_DATOS.test(m.sqlite)))
+    (m.sqlite === null || (esTexto(m.sqlite) && SQLITE_DATOS.test(m.sqlite))) &&
+    (m.sin_sqlite === null || esTexto(m.sin_sqlite))
   );
 }
 
-/** meta.json del directorio; null si no existe. Lanza `cache-invalida` si está dañado. */
+/** El último meta.json leído, con la marca de su archivo (ruta, mtime, tamaño e inodo). */
+let metaEnMemoria: { marca: string; meta: MetaGuardada } | undefined;
+
+/**
+ * meta.json del directorio; null si no existe. Lanza `cache-invalida` si está dañado. Si el
+ * archivo no cambió desde la última lectura (mismo mtime, tamaño e inodo), no se vuelve a leer.
+ */
 export async function leerMeta(dir: string): Promise<MetaGuardada | null> {
+  const ruta = join(dir, META);
+  let marca: string;
   let texto: string;
   try {
-    texto = await readFile(join(dir, META), "utf8");
+    const info = await stat(ruta);
+    marca = `${ruta}|${info.mtimeMs}|${info.size}|${info.ino}`;
+    if (metaEnMemoria?.marca === marca) return metaEnMemoria.meta;
+    texto = await readFile(ruta, "utf8");
   } catch (error) {
     if (codigoDe(error) === "ENOENT") return null;
     throw cacheInvalida(dir, META, error);
@@ -127,6 +153,7 @@ export async function leerMeta(dir: string): Promise<MetaGuardada | null> {
     throw cacheInvalida(dir, META, error);
   }
   if (!esMeta(meta)) throw cacheInvalida(dir, META);
+  metaEnMemoria = { marca, meta };
   return meta;
 }
 
@@ -176,18 +203,19 @@ async function escribirAtomico(ruta: string, contenido: string): Promise<void> {
   }
 }
 
+/** Escribe el SQLite si node:sqlite carga; si no, devuelve por qué no. */
 async function escribirSqliteAtomico(
   ruta: string,
   filas: readonly FilaSepomex[],
   resumen: ResumenGuardado,
-): Promise<boolean> {
-  const modulo = await cargarSqlite();
-  if (modulo === null) return false;
+): Promise<string | null> {
+  const carga = await cargarSqlite();
+  if ("motivo" in carga) return carga.motivo;
   const temporal = temporalDe(ruta);
   try {
-    escribirSqlite(modulo, temporal, filas, resumen);
+    escribirSqlite(carga.modulo, temporal, filas, resumen);
     await renombrar(temporal, ruta);
-    return true;
+    return null;
   } catch (error) {
     await borrarSiPuede(temporal);
     throw error;
@@ -311,9 +339,11 @@ async function tomarCandado(dir: string): Promise<() => Promise<void>> {
         if (actual?.datos.ficha === propio.ficha) await borrarSiPuede(ruta);
       };
     } catch (error) {
-      if (codigoDe(error) !== "EEXIST") throw error;
+      if (codigoDe(error) !== "EEXIST") throw errorEscritura(dir, error);
     }
-    const actual = await leerCandado(ruta);
+    const actual = await leerCandado(ruta).catch((error: unknown) => {
+      throw errorEscritura(dir, error);
+    });
     if (actual === null) continue;
     visto = actual.datos;
     if (!abandonado(actual)) break;
@@ -322,9 +352,16 @@ async function tomarCandado(dir: string): Promise<() => Promise<void>> {
   throw ocupado(dir, visto);
 }
 
-/** Corre `trabajo` con el candado de `dir` tomado (crea el directorio si falta). */
+/**
+ * Corre `trabajo` con el candado de `dir` tomado (crea el directorio si falta). Si no se puede
+ * crear el directorio o el candado, lanza SepomexError `escritura`.
+ */
 export async function conCandado<T>(dir: string, trabajo: () => Promise<T>): Promise<T> {
-  await mkdir(dir, { recursive: true });
+  try {
+    await mkdir(dir, { recursive: true });
+  } catch (error) {
+    throw errorEscritura(dir, error);
+  }
   const soltar = await tomarCandado(dir);
   try {
     return await trabajo();
@@ -355,14 +392,21 @@ export async function guardar(dir: string, g: Guardado): Promise<MetaGuardada> {
   try {
     const codigos = Object.fromEntries(g.catalogo.codigos.map((c) => [c.cp, c]));
     await escribirAtomico(join(dir, json), JSON.stringify({ formato: FORMATO, codigos }));
-    const conSqlite =
-      g.sqlite && (await escribirSqliteAtomico(join(dir, sqlite), g.filas, g.resumen));
-    meta = { formato: FORMATO, ...g.resumen, json, sqlite: conSqlite ? sqlite : null };
+    const sinSqlite = g.sqlite
+      ? await escribirSqliteAtomico(join(dir, sqlite), g.filas, g.resumen)
+      : "Se guardó sin SQLite porque se pidió con sqlite: false.";
+    meta = {
+      formato: FORMATO,
+      ...g.resumen,
+      json,
+      sqlite: sinSqlite === null ? sqlite : null,
+      sin_sqlite: sinSqlite,
+    };
     await escribirAtomico(join(dir, META), `${JSON.stringify(meta, null, 2)}\n`);
   } catch (error) {
     await borrarSiPuede(join(dir, json));
     await borrarSiPuede(join(dir, sqlite));
-    throw error;
+    throw errorEscritura(dir, error);
   }
   await limpiar(dir, anterior, meta);
   return meta;

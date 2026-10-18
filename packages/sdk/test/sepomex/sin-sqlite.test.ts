@@ -33,6 +33,9 @@ it("sin fetch usa el transporte de node:https y sin node:sqlite guarda solo el J
   expect(crearTransporte).toHaveBeenCalledWith({ esperaMs: 60_000 });
   expect(falso.llamadas).toHaveLength(2);
   expect(estado.sqlite).toBeNull();
+  expect(estado.sin_sqlite).toMatch(
+    /^No se pudo cargar node:sqlite \(.*\): la caché queda solo en JSON\.$/,
+  );
   expect((await readdir(dir)).sort()).toEqual(
     ["meta.json", estado.json.slice(dir.length + 1)].sort(),
   );
