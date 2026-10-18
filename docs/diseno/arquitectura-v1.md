@@ -437,8 +437,8 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - Sin red, los calendarios de la CNBV y el SAT responden con las reglas del Worker: `tipo_plazo` obligatorio con el SAT, el respaldo con los días publicados cuando `permitir_incompleto` sale de la cobertura de un plazo, los 422 con el mismo texto y las advertencias de primer nivel de `/v1/dias-inhabiles`. Las constantes dan los mismos 404 (antes del primer año, `no-encontrado`; después del último, `dato-no-disponible`). Una prueba de integración compara cada respuesta y cada problema del paquete con los del Worker.
   - `{ offline: true }` fuerza el modo sin red; `/v1/status` solo existe en la API.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
-  - `mexicoapi/sepomex` y la CLI requieren Node ≥ 22.13: la caché se guarda en JSON y, si `node:sqlite` está disponible, también en SQLite.
-  - Las pruebas cubren Node 20, 22 y 24, más un Worker real en workerd con `unstable_startWorker` (sección 13).
+  - `mexicoapi/sepomex` y la CLI piden Node (desde 20): la caché se guarda en JSON y, desde Node 22.13 (`node:sqlite`), también en SQLite.
+  - Las pruebas instalan el `.tgz` de `npm pack` en un proyecto nuevo: una prueba de humo sin Vitest corre en CI en Node 20, 22 y 24, y un Worker mínimo que importa las entradas universales corre en workerd con `unstable_startWorker`, sin `nodejs_compat` (sección 13).
 
 ## 11. Servidor MCP (`mexicoapi-mcp`)
 
@@ -496,7 +496,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
   El build del sitio de docs se suma cuando exista el sitio.
 - **Workflows:**
-  - `ci.yml` (cada PR);
+  - `ci.yml` (cada PR): `verify.sh` y el `.tgz` de `mexicoapi` instalado y probado en Node 20, 22 y 24;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);

@@ -12,7 +12,7 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 
 Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, y los mantiene al día de forma automática.
 
-> En desarrollo. Los primeros datos ya están en [`data/`](data/) y la API v1 está construida y documentada, pero todavía no está desplegada; el paquete de npm viene después. No hay versión publicada.
+> En desarrollo. Los primeros datos ya están en [`data/`](data/), la API v1 está construida y documentada pero todavía no está desplegada, y el paquete de npm está listo pero sin publicar. No hay versión publicada.
 
 ## Qué va a incluir
 
@@ -33,7 +33,7 @@ Cada respuesta indica de dónde salió el dato, su licencia y la fecha en que se
 | Días inhábiles (LFT, bancos y SAT) | DOF, LFT, CFF |
 | UMA, salario mínimo y tarifas de ISR | INEGI, CONASAMI, SAT |
 
-Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá un comando para descargarlos directamente de Correos de México en tu máquina y dejarlos listos para usar.
+Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete trae un comando (`mexicoapi sepomex sync`) que los descarga directamente de Correos de México en tu máquina y los deja listos para usar.
 
 ## Datos disponibles hoy
 
@@ -66,6 +66,7 @@ curl https://<base>/v1/clabe/002010077777777771
 ## Documentación
 
 - [API v1](docs/api/README.md) y [errores](docs/api/problemas.md)
+- [Paquete `mexicoapi`](packages/sdk/README.md): validadores, datos sin red, cliente, SEPOMEX y CLI
 - [Diseño técnico v1](docs/diseno/arquitectura-v1.md)
 - [Bot de datos](docs/operacion/bot-de-datos.md)
 - [Datos curados](docs/operacion/datos-curados.md): cómo se transcriben del DOF los calendarios y las constantes
