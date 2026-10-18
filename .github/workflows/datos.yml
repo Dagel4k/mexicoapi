@@ -49,6 +49,7 @@ jobs:
       tiene_bot: ${{ steps.bot.outputs.tiene_bot }}
       grupo: ${{ steps.grupo.outputs.grupo }}
       ids: ${{ steps.grupo.outputs.ids }}
+      carpetas: ${{ steps.grupo.outputs.carpetas }}
     steps:
       - name: Comprobar secretos del bot
         id: bot
@@ -80,16 +81,20 @@ jobs:
           else
             grupo="bancos" # cron diario 08:00 CDMX
           fi
+          # Los datasets del grupo y sus carpetas en data/: publicar solo acepta un parche dentro
+          # de esas carpetas. Una prueba del pipeline (test/workflows.test.ts) las compara con el
+          # registro de datasets.
           case "${grupo}" in
-            inegi) ids="inegi.estados inegi.municipios" ;;
-            bancos) ids="bancos" ;;
-            fix) ids="tipo-cambio.fix" ;;
-            udis) ids="udis" ;;
+            inegi) ids="inegi.estados inegi.municipios"; carpetas="inegi-estados inegi-municipios" ;;
+            bancos) ids="bancos"; carpetas="bancos" ;;
+            fix) ids="tipo-cambio.fix"; carpetas="tipo-cambio-fix" ;;
+            udis) ids="udis"; carpetas="udis" ;;
             *) echo "Grupo no válido: ${grupo}" >&2; exit 1 ;;
           esac
           {
             echo "grupo=${grupo}"
             echo "ids=${ids}"
+            echo "carpetas=${carpetas}"
           } >> "${GITHUB_OUTPUT}"
 
   generar:
@@ -210,38 +215,65 @@ jobs:
           path: ${{ runner.temp }}/corrida
 
       # El parche viene de generar, que procesó datos externos: se aplica solo si toca archivos
-      # comunes dentro de data/. Cualquier otra cosa detiene la corrida y el paso de fallas abre
-      # el issue. Con el código 1 no se publica nada, así que tampoco se aplica.
+      # comunes de las carpetas del grupo (las de preparar, que no corre código del repo ni de las
+      # fuentes). Cualquier otra cosa detiene la corrida y el paso de fallas abre el issue. Con el
+      # código 1 no se publica nada, así que tampoco se aplica.
       - name: Revisar y aplicar el parche
         if: needs.generar.outputs.cambios == 'si' && needs.generar.outputs.codigo != '1'
         env:
           PARCHE: ${{ runner.temp }}/corrida/datos.patch
+          CARPETAS: ${{ needs.preparar.outputs.carpetas }}
         run: |
           set -euo pipefail
+          export LC_ALL=C
           git config core.hooksPath /dev/null
+          if [ -z "${CARPETAS}" ]; then
+            echo "::error::Falta la lista de carpetas del grupo."
+            exit 1
+          fi
+          # Una ruta vale si está en una carpeta del grupo, solo lleva letras ASCII, dígitos y
+          # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
+          # vacío, es . o .., o empieza con .git (sin importar mayúsculas).
+          patron="^data/(${CARPETAS// /|})/[A-Za-z0-9._/-]+$"
+          ruta_valida() {
+            [[ "$1" =~ ${patron} ]] || return 1
+            case "/${1,,}/" in
+              */../* | */./* | *//* | */.git*) return 1 ;;
+            esac
+          }
+          # git con la salida de error en un archivo: si falla, cada línea sale escapada y con
+          # prefijo, para que nada del parche llegue crudo al log (una línea que empieza con ::
+          # sería un comando del runner).
+          errores_git="${RUNNER_TEMP}/errores-git"
+          git_o_falla() {
+            if ! git "$@" 2> "${errores_git}"; then
+              echo "::error::git $1 falló con el parche." >&2
+              while IFS= read -r linea || [ -n "${linea}" ]; do
+                printf 'git: %q\n' "${linea}" >&2
+              done < "${errores_git}"
+              exit 1
+            fi
+          }
           if [ ! -s "${PARCHE}" ]; then
             echo "::error::generar marcó cambios, pero el parche está vacío."
             exit 1
           fi
           mal=0
-          # Rutas, antes de aplicar. --numstat -z da "añadidas<TAB>borradas<TAB>ruta" por registro,
-          # sin comillas ni escapes. En un renombre o una copia solo trae la ruta nueva: esos se
-          # rechazan abajo con --summary (generar arma el parche con --no-renames).
+          # Rutas, antes de aplicar y antes de que otro comando de git las imprima. --numstat -z
+          # da "añadidas<TAB>borradas<TAB>ruta" por registro, sin comillas ni escapes. En un
+          # renombre o una copia solo trae la ruta nueva: esos se rechazan abajo con --summary
+          # (generar arma el parche con --no-renames).
           rutas="${RUNNER_TEMP}/rutas-parche"
-          git apply --numstat -z "${PARCHE}" > "${rutas}"
+          git_o_falla apply --numstat -z "${PARCHE}" > "${rutas}"
           n=0
           while IFS= read -r -d '' registro; do
             n=$((n + 1))
             ruta="${registro#*$'\t'}"
             ruta="${ruta#*$'\t'}"
-            case "${ruta}" in
-              data/?*) ;;
-              *) printf '::error::El parche toca una ruta fuera de data/: %q\n' "${ruta}"; mal=1; continue ;;
-            esac
-            case "/${ruta}/" in
-              */../* | */./* | *//* | */.git*)
-                printf '::error::Ruta no permitida en el parche: %q\n' "${ruta}"; mal=1 ;;
-            esac
+            if ! ruta_valida "${ruta}"; then
+              printf '::error::Ruta no permitida en el parche: %q\n' "${ruta}"
+              mal=1
+            fi
           done < "${rutas}"
           if [ "${n}" -eq 0 ]; then
             echo "::error::El parche no lista ninguna ruta."
@@ -249,7 +281,7 @@ jobs:
           fi
           # Ni renombres ni copias, ni enlaces simbólicos (120000) ni submódulos (160000).
           resumen_parche="${RUNNER_TEMP}/resumen-parche"
-          git apply --summary "${PARCHE}" > "${resumen_parche}"
+          git_o_falla apply --summary "${PARCHE}" > "${resumen_parche}"
           if grep -qE '^ (rename|copy) ' "${resumen_parche}"; then
             echo "::error::El parche renombra o copia archivos."
             mal=1
@@ -261,19 +293,19 @@ jobs:
           if [ "${mal}" -ne 0 ]; then
             exit 1
           fi
-          # nowarn: los avisos de espacios repiten líneas del parche en el log.
-          git apply --check --whitespace=nowarn "${PARCHE}"
-          git apply --index --whitespace=nowarn "${PARCHE}"
-          # Lo que quedó en el índice, otra vez: solo data/ y solo archivos comunes o borrados.
+          # nowarn: los avisos de espacios repiten líneas del parche.
+          git_o_falla apply --check --whitespace=nowarn "${PARCHE}"
+          git_o_falla apply --index --whitespace=nowarn "${PARCHE}"
+          # Lo que quedó en el índice, otra vez: mismas rutas y solo archivos comunes o borrados.
           indice="${RUNNER_TEMP}/indice-parche"
           git diff --cached --raw --no-renames -z > "${indice}"
           while IFS= read -r -d '' meta && IFS= read -r -d '' ruta; do
             modo="${meta#:* }"
             modo="${modo%% *}"
-            case "${ruta}" in
-              data/?*) ;;
-              *) printf '::error::Quedó una ruta fuera de data/: %q\n' "${ruta}"; mal=1 ;;
-            esac
+            if ! ruta_valida "${ruta}"; then
+              printf '::error::Quedó una ruta no permitida: %q\n' "${ruta}"
+              mal=1
+            fi
             case "${modo}" in
               100644 | 100755 | 000000) ;;
               *) printf '::error::Modo no permitido (%s) en %q\n' "${modo}" "${ruta}"; mal=1 ;;
