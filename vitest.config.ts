@@ -10,10 +10,15 @@ export default defineConfig({
         "packages/pipeline/src/**",
         "packages/sdk/src/**",
         "packages/sdk/scripts/**/*.ts",
+        "packages/mcp/src/**",
         "apps/api/src/**",
         "apps/api/scripts/**/*.ts",
       ],
-      exclude: ["packages/pipeline/src/bin.ts", "packages/sdk/src/cli/index.ts"],
+      exclude: [
+        "packages/pipeline/src/bin.ts",
+        "packages/sdk/src/cli/index.ts",
+        "packages/mcp/src/index.ts",
+      ],
       thresholds: {
         "packages/core/src/**": {
           lines: 95,
@@ -38,6 +43,12 @@ export default defineConfig({
           branches: 90,
           functions: 90,
           statements: 90,
+        },
+        "packages/mcp/src/**": {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
         },
         "apps/api/src/**": {
           lines: 95,

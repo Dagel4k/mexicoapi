@@ -33,6 +33,9 @@ pnpm --filter @mexicoapi/api test:integracion
 echo "verify: cliente contra el Worker"
 pnpm --filter mexicoapi test:integracion
 
+echo "verify: integración del servidor MCP"
+pnpm --filter mexicoapi-mcp test:integracion
+
 echo "verify: datos"
 pnpm datos:verificar
 
