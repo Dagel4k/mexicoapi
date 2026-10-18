@@ -2,7 +2,7 @@
 const OPCIONES_GLOBALES = `Opciones:
   --json                 imprime el resultado completo como JSON (los errores, por stderr)
   --depurar              muestra el detalle técnico de un error
-  --base <url>           origen de la API (municipio, banco y dias-habiles)
+  --base <url>           origen de la API (todo salvo los validadores y sepomex)
   -h, --help             muestra esta ayuda
   -v, --version          muestra la versión`;
 
@@ -15,20 +15,24 @@ Comandos:
   rfc <valor>            valida un RFC
   curp <valor>           valida una CURP
   nss <valor>            valida un número de seguridad social
-  dias-habiles           suma días hábiles a una fecha
+  dias-habiles           suma días hábiles a una fecha (LFT, CNBV o SAT)
   municipio <valor>      busca un municipio por clave (cvegeo) o por nombre
   banco <codigo>         consulta un banco por los 3 dígitos de la CLABE
+  uma <anio>             UMA de un año (o la vigente en una fecha con --fecha)
+  salario-minimo <anio>  salario mínimo de un año, por zona
+  isr <periodo> <anio>   tarifa de ISR mensual o anual de un año
   sepomex <subcomando>   catálogo de códigos postales en este equipo
 
 ${OPCIONES_GLOBALES}
 
 Sin red todo sale de los datos que trae el paquete. Con --base <url> (o la variable
-MEXICOAPI_BASE) municipio, banco y dias-habiles consultan primero la API.
+MEXICOAPI_BASE) municipio, banco, dias-habiles, uma, salario-minimo e isr consultan
+primero la API y, si no responde, usan el paquete y lo avisan.
 
 Códigos de salida:
   0   todo bien
-  1   dato o resultado inválido (una CLABE con mal dígito, un banco que no existe) o
-      error al ejecutar
+  1   dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no
+      existe) o error al ejecutar
   2   uso incorrecto: comando desconocido, falta un argumento u opción con un valor
       mal formado (--dias x, --desde 2026-13-01)
 
@@ -53,18 +57,52 @@ const COMANDOS: Readonly<Record<string, string>> = {
   rfc: validador("rfc", "un RFC de persona física, moral o genérico", "XAXX010101000"),
   curp: validador("curp", "una CURP", "HEGG560427MVZRRL04"),
   nss: validador("nss", "un número de seguridad social del IMSS", "12345678903"),
-  "dias-habiles": `Uso: mexicoapi dias-habiles --desde AAAA-MM-DD --dias N [--autoridad lft] [--json]
+  "dias-habiles": `Uso: mexicoapi dias-habiles --desde AAAA-MM-DD --dias N [--autoridad lft|cnbv|sat]
+                             [--tipo-plazo general|declaraciones_pagos] [--json]
 
-Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad. Por ahora
-solo existe la LFT (Ley Federal del Trabajo), que es la opción por omisión.
+Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad: la LFT (Ley
+Federal del Trabajo, por omisión), la CNBV o el SAT. Con el SAT, --tipo-plazo es obligatorio:
+en declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12). Fuera de la cobertura
+del calendario sale con 1.
 
 Opciones:
-  --desde AAAA-MM-DD  fecha de partida
-  --dias N            días hábiles a sumar
-  --autoridad lft     calendario a usar
+  --desde AAAA-MM-DD   fecha de partida
+  --dias N             días hábiles a sumar
+  --autoridad <a>      lft, cnbv o sat
+  --tipo-plazo <t>     general o declaraciones_pagos (solo con sat)
 ${BASE}
 
-Ejemplo: mexicoapi dias-habiles --desde 2026-03-16 --dias 5`,
+Ejemplos:
+  mexicoapi dias-habiles --desde 2026-03-16 --dias 5
+  mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-17 --dias 3`,
+  uma: `Uso: mexicoapi uma <anio> [--json]
+       mexicoapi uma --fecha AAAA-MM-DD [--json]
+
+La UMA (unidad de medida y actualización) de un año, o la vigente en una fecha: cada una rige
+del 1 de febrero al 31 de enero siguiente. Sale con 1 si el año no está en los datos.
+
+Opciones:
+  --fecha AAAA-MM-DD   la UMA vigente ese día
+${BASE}
+
+Ejemplo: mexicoapi uma 2026`,
+  "salario-minimo": `Uso: mexicoapi salario-minimo <anio> [--json]
+
+El salario mínimo de un año, en pesos diarios, para la zona general y la Zona Libre de la
+Frontera Norte. Sale con 1 si el año no está en los datos.
+
+Opciones:
+${BASE}
+
+Ejemplo: mexicoapi salario-minimo 2026`,
+  isr: `Uso: mexicoapi isr <mensual|anual> <anio> [--json]
+
+La tarifa de ISR de un año, con sus tramos. Sale con 1 si esa tarifa no está en los datos.
+
+Opciones:
+${BASE}
+
+Ejemplo: mexicoapi isr mensual 2026`,
   municipio: `Uso: mexicoapi municipio <cvegeo|texto> [--json]
 
 Con una clave de 5 dígitos (25006) muestra ese municipio. Con otro texto busca por nombre sin

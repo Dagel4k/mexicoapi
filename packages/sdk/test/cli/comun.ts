@@ -16,7 +16,19 @@ export type Correr = (
   env?: Record<string, string | undefined>,
 ) => Promise<Corrida>;
 
-const COMANDOS = ["clabe", "rfc", "curp", "nss", "dias-habiles", "municipio", "banco", "sepomex"];
+const COMANDOS = [
+  "clabe",
+  "rfc",
+  "curp",
+  "nss",
+  "dias-habiles",
+  "municipio",
+  "banco",
+  "uma",
+  "salario-minimo",
+  "isr",
+  "sepomex",
+];
 const json = (c: Corrida): unknown => JSON.parse(c.salida);
 const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
 
@@ -74,6 +86,20 @@ export function probarCli(correr: Correr, version: string): void {
       [["sepomex", "estado", "x"], /no recibe argumentos/],
       [["sepomex", "importar"], /Falta la ruta/],
       [["sepomex", "cp"], /Falta el código postal/],
+      [["uma"], /Falta el año \(o --fecha AAAA-MM-DD\) en "uma"/],
+      [["uma", "2026", "2027"], /Sobran argumentos en "uma": 2027/],
+      [["uma", "2026", "--fecha", "2026-01-15"], /"uma" con --fecha no recibe argumentos: 2026/],
+      [["uma", "--fecha", "ayer"], /--fecha debe ser una fecha válida/],
+      [["uma", "--fecha"], /fecha/],
+      [["salario-minimo"], /Falta el año en "salario-minimo"/],
+      [["salario-minimo", "2026", "x"], /Sobran argumentos/],
+      [["isr"], /Falta el periodo \(mensual o anual\) en "isr"/],
+      [["isr", "mensual"], /Falta el año en "isr"/],
+      [["isr", "mensual", "2026", "x"], /Sobran argumentos en "isr": x/],
+      [[...DIAS, "--tipo-plazo"], /tipo-plazo/],
+      [["clabe", "002", "--tipo-plazo", "general"], /--tipo-plazo no aplica a "clabe"/],
+      [["banco", "002", "--fecha", "2026-01-01"], /--fecha no aplica a "banco"/],
+      [["isr", "mensual", "2026", "--fecha", "2026-01-01"], /--fecha no aplica a "isr"/],
     ];
     for (const [argv, mensaje] of casos) {
       const c = await correr(argv);
@@ -177,6 +203,113 @@ export function probarCli(correr: Correr, version: string): void {
     expect(lejos.codigo).toBe(1);
     expect(lejos.salida).toBe("");
     expect(lejos.errores).toMatch(/^mexicoapi: /);
+  });
+
+  it("dias-habiles con la CNBV y el SAT, con su tipo de plazo", async () => {
+    const cnbv = await correr([
+      "dias-habiles",
+      "--autoridad",
+      "cnbv",
+      "--desde",
+      "2026-12-23",
+      "--dias",
+      "3",
+    ]);
+    expect(cnbv.codigo).toBe(0);
+    expect(cnbv.salida).toContain("2026-12-23 + 3 días hábiles (cnbv): 2026-12-29");
+    expect(cnbv.salida).toContain("2026-12-25  25 de diciembre");
+    const sat = ["dias-habiles", "--autoridad", "sat", "--desde", "2026-07-17", "--dias", "3"];
+    const general = await correr([...sat, "--tipo-plazo", "general"]);
+    expect(general.codigo).toBe(0);
+    expect(general.salida).toContain("2026-07-17 + 3 días hábiles (sat, general): 2026-08-05");
+    const pagos = await correr([...sat, "--tipo-plazo", "declaraciones_pagos", "--json"]);
+    expect(pagos.codigo).toBe(0);
+    const r = json(pagos) as { origen: string; data: { resultado: string; autoridad: string } };
+    expect(r.data).toMatchObject({ resultado: "2026-07-22", autoridad: "sat" });
+    expect(r.origen).toBe("paquete");
+    const sinTipo = await correr(sat);
+    expect(sinTipo.codigo).toBe(1);
+    expect(sinTipo.errores).toContain(
+      "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
+    );
+    const raro = await correr([...sat, "--tipo-plazo", "anual"]);
+    expect(raro.codigo).toBe(1);
+    expect(raro.errores).toContain("general o declaraciones_pagos");
+    const sobra = await correr([...DIAS, "--tipo-plazo", "general"]);
+    expect(sobra.codigo).toBe(1);
+    expect(sobra.errores).toContain("solo se acepta con autoridad=sat");
+  });
+
+  it("uma por año y por fecha, en texto y en JSON", async () => {
+    const c = await correr(["uma", "2026"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain("UMA 2026 (del 2026-02-01 al 2027-01-31)");
+    expect(c.salida).toContain("Diaria: 117.31");
+    expect(c.salida).toContain("Fuente: INEGI");
+    expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    const vigente = await correr(["uma", "--fecha", "2026-01-15"]);
+    expect(vigente.codigo).toBe(0);
+    expect(vigente.salida).toContain("UMA vigente el 2026-01-15: UMA 2025");
+    const enJson = json(await correr(["uma", "2026", "--json"])) as {
+      data: { anio: number; diaria: string };
+      meta: { dataset: string };
+    };
+    expect(enJson.data).toMatchObject({ anio: 2026, diaria: "117.31" });
+    expect(enJson.meta.dataset).toBe("constantes.uma");
+  });
+
+  it("uma, salario-minimo e isr con un año que no está o mal escrito salen con 1", async () => {
+    for (const argv of [
+      ["uma", "2016"],
+      ["uma", "2090"],
+      ["uma", "x"],
+      ["uma", "26"],
+      ["uma", "--fecha", "2000-06-01"],
+      ["salario-minimo", "2090"],
+      ["salario-minimo", "2026.0"],
+      ["isr", "semanal", "2026"],
+      ["isr", "mensual", "2025"],
+    ]) {
+      const c = await correr(argv);
+      expect(c.codigo, argv.join(" ")).toBe(1);
+      expect(c.salida, argv.join(" ")).toBe("");
+      expect(c.errores, argv.join(" ")).toMatch(/^mexicoapi: (404|400) /);
+    }
+    const enJson = await correr(["uma", "2016", "--json"]);
+    expect(JSON.parse(enJson.errores)).toMatchObject({
+      error: { status: 404, tipo: "no-encontrado" },
+    });
+  });
+
+  it("salario-minimo e isr en texto y en JSON", async () => {
+    const salario = await correr(["salario-minimo", "2026"]);
+    expect(salario.codigo).toBe(0);
+    expect(salario.salida).toContain("Salario mínimo 2026, en pesos diarios:");
+    expect(salario.salida).toContain("general: 315.04");
+    expect(salario.salida).toContain("Zona Libre de la Frontera Norte: 440.87");
+    const zonas = json(await correr(["salario-minimo", "2026", "--json"])) as { data: unknown[] };
+    expect(zonas.data).toHaveLength(2);
+    const isr = await correr(["isr", "mensual", "2026"]);
+    expect(isr.codigo).toBe(0);
+    expect(isr.salida).toContain("Tarifa mensual de ISR 2026, en pesos:");
+    expect(isr.salida).toContain("844.59");
+    expect(isr.salida).toContain("En adelante");
+    expect(isr.salida).toContain("Fuente: Anexo 8");
+    const tarifa = json(await correr(["isr", "anual", "2025", "--json"])) as {
+      data: { periodo: string; anio: number; tramos: unknown[] };
+    };
+    expect(tarifa.data).toMatchObject({ periodo: "anual", anio: 2025 });
+    expect(tarifa.data.tramos.length).toBeGreaterThan(5);
+  });
+
+  it("con una API que no responde, las constantes caen al paquete y lo avisan", async () => {
+    const c = await correr(["salario-minimo", "2026", "--base", "http://127.0.0.1:1"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain("315.04");
+    expect(c.salida).toContain("Origen: datos del paquete (la API no respondió)");
+    const isr = await correr(["isr", "mensual", "2026"], { MEXICOAPI_BASE: "http://127.0.0.1:1" });
+    expect(isr.codigo).toBe(0);
+    expect(isr.salida).toContain("la API no respondió");
   });
 
   it("municipio por cvegeo, por texto y sin resultados", async () => {

@@ -5,6 +5,10 @@ import type {
   Municipio,
   ResultadoDiasHabiles,
   ResultadoValidacion,
+  SalarioMinimo,
+  TarifaIsr,
+  TipoPlazo,
+  Uma,
 } from "../index.js";
 import type { EstadoSepomex } from "../sepomex/index.js";
 
@@ -56,15 +60,67 @@ export function pieTexto(
   return [`\n${origen}`, ...r.advertencias.map((a) => `Aviso: ${a}`)].join("\n");
 }
 
-export function diasHabilesTexto(r: { data: ResultadoDiasHabiles }): string {
+export function diasHabilesTexto(
+  r: { data: ResultadoDiasHabiles },
+  tipoPlazo?: TipoPlazo | undefined,
+): string {
   const { desde, dias, autoridad, resultado, inhabiles_saltados, advertencias } = r.data;
-  const lineas = [`${desde} + ${dias} días hábiles (${autoridad}): ${resultado}`];
+  const calendario = tipoPlazo === undefined ? autoridad : `${autoridad}, ${tipoPlazo}`;
+  const lineas = [`${desde} + ${dias} días hábiles (${calendario}): ${resultado}`];
   if (inhabiles_saltados.length > 0) {
     lineas.push("Inhábiles saltados:");
     for (const d of inhabiles_saltados) lineas.push(`  ${d.fecha}  ${d.motivo}`);
   }
   for (const a of advertencias) lineas.push(`Aviso: ${a}`);
   return lineas.join("\n");
+}
+
+const fuenteTexto = (f: { nombre: string; fecha_publicacion: string }): string =>
+  `Fuente: ${f.nombre} (DOF ${f.fecha_publicacion})`;
+
+export function umaTexto(u: Uma, fecha?: string | undefined): string {
+  const hasta = `${u.anio + 1}-01-31`;
+  return [
+    `${fecha === undefined ? "" : `UMA vigente el ${fecha}: `}UMA ${u.anio} (del ${u.vigencia_desde} al ${hasta})`,
+    `  Diaria: ${u.diaria}`,
+    `  Mensual: ${u.mensual}`,
+    `  Anual: ${u.anual}`,
+    fuenteTexto(u.fuente),
+  ].join("\n");
+}
+
+const ZONAS: Readonly<Record<SalarioMinimo["zona"], string>> = {
+  general: "general",
+  zlfn: "Zona Libre de la Frontera Norte",
+};
+
+export function salarioMinimoTexto(anio: string, zonas: readonly SalarioMinimo[]): string {
+  const lineas = [`Salario mínimo ${anio}, en pesos diarios:`];
+  for (const s of zonas) {
+    lineas.push(`  ${ZONAS[s.zona]}: ${s.diario} (desde el ${s.vigencia_desde})`);
+  }
+  const fuente = zonas[0]?.fuente;
+  if (fuente !== undefined) lineas.push(fuenteTexto(fuente));
+  return lineas.join("\n");
+}
+
+export function tarifaIsrTexto(t: TarifaIsr): string {
+  const filas = [
+    ["Límite inferior", "Límite superior", "Cuota fija", "% sobre excedente"],
+    ...t.tramos.map((tramo) => [
+      tramo.limite_inferior,
+      tramo.limite_superior ?? "En adelante",
+      tramo.cuota_fija,
+      tramo.tasa_excedente,
+    ]),
+  ];
+  const anchos = filas[0]?.map((_, i) => Math.max(...filas.map((f) => (f[i] as string).length)));
+  const lineas = filas.map((fila) =>
+    `  ${fila.map((celda, i) => celda.padStart(anchos?.[i] ?? 0)).join("  ")}`.trimEnd(),
+  );
+  return [`Tarifa ${t.periodo} de ISR ${t.anio}, en pesos:`, ...lineas, fuenteTexto(t.fuente)].join(
+    "\n",
+  );
 }
 
 export function municipioTexto(m: Municipio, estado: string | undefined): string {
