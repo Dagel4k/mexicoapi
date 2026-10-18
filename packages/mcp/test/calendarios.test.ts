@@ -30,7 +30,7 @@ const siguiente = (fecha: string): string =>
 
 /** El aviso fijo de toda respuesta lft, el mismo que da la API. */
 const AVISO_LFT =
-  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
 
 let llamar: Llamador;
 

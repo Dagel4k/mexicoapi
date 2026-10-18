@@ -23,11 +23,12 @@ export const FUENTE_LFT_715: Fuente = Object.freeze({
 
 /**
  * El calendario de la LFT aplica del art. 715 solo los sábados y domingos y los días de descanso
- * obligatorio del art. 74: no tiene los días en que las autoridades laborales suspenden labores,
- * que publica cada tribunal o centro de conciliación. Lo dice en cada cálculo y en cada lista.
+ * obligatorio del art. 74: no tiene los festivos del calendario oficial ni los días en que las
+ * autoridades laborales suspenden labores, que publica cada tribunal o centro de conciliación. Lo
+ * dice en cada cálculo y en cada lista.
  */
 export const AVISO_LFT_715 =
-  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
 
 export const COBERTURA_LFT: { readonly desde: FechaISO; readonly hasta: FechaISO } = Object.freeze({
   desde: "2007-01-01",

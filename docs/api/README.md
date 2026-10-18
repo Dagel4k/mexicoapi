@@ -227,7 +227,7 @@ Suma días hábiles a una fecha según el calendario de una autoridad: `lft`, `c
     "resultado": "2026-12-23",
     "inhabiles_saltados": [],
     "advertencias": [
-      "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación."
+      "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación."
     ]
   }
 }
@@ -249,11 +249,11 @@ Cada autoridad tiene su calendario de días inhábiles, además de los sábados 
 
 | `autoridad` | Días inhábiles | Años que cubre |
 | --- | --- | --- |
-| `lft` | Los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año. No incluye los días en que las autoridades laborales suspenden labores (art. 715) | 2007 a 2100 |
+| `lft` | Los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año. No incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715) | 2007 a 2100 |
 | `cnbv` | Calendario bancario: los días en que las entidades financieras cierran, según las disposiciones que la CNBV publica en el DOF cada año ([detalle](../datos/dias-inhabiles-cnbv.md)) | 2025 y 2026 |
 | `sat` | Los del artículo 12 del Código Fiscal de la Federación, calculados por regla, y los periodos de vacaciones de la regla 2.1.6 de la RMF ([detalle](../datos/dias-inhabiles-sat.md)) | Del art. 12, 2026 a 2100; las vacaciones, hasta donde están publicadas (ver abajo) |
 
-Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. El artículo 715 también excluye los días en que las autoridades laborales suspenden labores (la Semana Santa, sus vacaciones y otras suspensiones), pero cada tribunal y centro de conciliación publica los suyos y este calendario no los tiene. Por eso cada respuesta con `lft` trae esa advertencia, y el resultado puede ser anterior al vencimiento real de un plazo procesal: del martes 31 de marzo de 2026, 3 días hábiles dan el viernes 3 de abril, que es Viernes Santo. Para nómina (días de descanso obligatorio, art. 75) la lista del artículo 74 sí es la que aplica.
+Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. El artículo 715 también excluye los festivos que señale el calendario oficial y los días en que las autoridades laborales suspenden labores (la Semana Santa, sus vacaciones y otras suspensiones); cada tribunal y centro de conciliación publica los suyos y este calendario no los tiene. Por eso cada respuesta con `lft` trae esa advertencia, y el resultado puede ser anterior al vencimiento real de un plazo procesal: del martes 31 de marzo de 2026, 3 días hábiles dan el viernes 3 de abril, que es Viernes Santo. Para nómina (días de descanso obligatorio, art. 75) la lista del artículo 74 sí es la que aplica.
 
 `inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
 
@@ -518,7 +518,7 @@ Un año que la cobertura del calendario no alcanza da 422 `calendario-incompleto
 
 ### Advertencias de la lista
 
-`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo o de lo que no incluye. Es `[]` cuando la lista está completa, como en `cnbv`. Con `lft` siempre trae el aviso de que la lista no tiene las suspensiones de labores del artículo 715; con `sat`, en 2030 y cada seis años, el de la [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo).
+`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo o de lo que no incluye. Es `[]` cuando la lista está completa, como en `cnbv`. Con `lft` siempre trae el aviso de que la lista no tiene los festivos ni las suspensiones de labores del artículo 715; con `sat`, en 2030 y cada seis años, el de la [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo).
 
 El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha publicado, y la lista de vacaciones solo está completa hasta el 30 de noviembre. La lista de 2026 se responde igual, con los 23 días publicados, y la advertencia dice qué puede faltar:
 

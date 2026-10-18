@@ -26,7 +26,7 @@ const CLABE_VALIDA = "002010077777777771";
 
 /** El aviso fijo de toda respuesta lft, el mismo que da la API. */
 export const AVISO_LFT =
-  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
 
 /** Fecha ISO `dias` después (o antes) de `fecha`. */
 export const mover = (fecha: FechaISO, dias: number): FechaISO =>

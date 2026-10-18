@@ -61,7 +61,7 @@ Una dirección inválida (con credenciales, query o fragmento) hace que el servi
 | `tipo_de_cambio_fix` | FIX publicado un día, el que aplica a una operación o el más reciente | Con `MEXICOAPI_BASE` |
 | `udis` | Valor de la UDI de un día | Con `MEXICOAPI_BASE` |
 | `dias_inhabiles` | Días inhábiles de un año según la LFT, la CNBV o el SAT | Con `MEXICOAPI_BASE` |
-| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF | Con `MEXICOAPI_BASE` |
+| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, los festivos y las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF | Con `MEXICOAPI_BASE` |
 | `constantes` | UMA, salario mínimo y tarifas de ISR | Con `MEXICOAPI_BASE` |
 | `codigo_postal` | Estado, municipio y asentamientos de un código postal | No (lee la caché local) |
 
