@@ -2,7 +2,7 @@
 // hacia dist, con los tipos que se publican.
 import {
   type Calendario,
-  CalendarioIncompletoError,
+  type CalendarioIncompletoError,
   type CoberturaSerie,
   type Consulta,
   calendarioLft,
@@ -49,8 +49,13 @@ const fix: Consulta<TipoCambioFix> = fixParaOperacion([], cobertura, cobertura, 
 const udi: Consulta<Udi> = udiDeFecha([], cobertura, cobertura, "2026-10-15");
 const valorFix: string | null = fix.tipo === "encontrado" ? fix.registro.valor : null;
 
+// Por tipo y name, como dice el README: instanceof falla con dos copias del paquete, y un
+// MexicoApiError trae el mismo tipo con otra forma.
 function esIncompleto(error: unknown): string | null {
-  return error instanceof CalendarioIncompletoError ? error.cobertura.hasta : null;
+  if (typeof error !== "object" || error === null) return null;
+  const e = error as Partial<CalendarioIncompletoError>;
+  const delNucleo = e.tipo === "calendario-incompleto" && e.name === "CalendarioIncompletoError";
+  return delNucleo && e.cobertura !== undefined ? e.cobertura.hasta : null;
 }
 
 const catalogo: ReadonlyMap<string, BancoCatalogo> = catalogoClabe();
