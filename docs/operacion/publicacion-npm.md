@@ -21,7 +21,7 @@ Hoy (0.1.0) el paquete tiene 145 archivos: unos 180 kB comprimido y 900 kB sin c
 Igual que `mexicoapi`, y con el mismo código: `packages/mcp/scripts/publicable.ts` usa el de `packages/sdk`. La diferencia es la dependencia `mexicoapi`, que en el monorepo es `workspace:*` y se publica como `^<versión de packages/sdk>` (hoy `^0.1.0`). Los datos nuevos salen como versiones *patch* de `mexicoapi` y así llegan a las instalaciones nuevas del servidor sin publicarlo otra vez.
 
 1. `pnpm --filter "mexicoapi-mcp..." build` compila el núcleo, `mexicoapi` y el servidor.
-2. `node packages/mcp/scripts/publicable.ts <destino>` arma en `<destino>` (nuevo o vacío, fuera de `packages/mcp`) `dist`, `README.md`, `LICENSE` y el `package.json` sin `devDependencies` (el cliente oficial de MCP que usan las pruebas) ni `scripts`, con `mexicoapi` en `^` y la versión que lee de `packages/sdk/package.json`. Falla si queda un rango `workspace:` o un paquete `@mexicoapi/`, o si falta un archivo que declara `bin`.
+2. `node packages/mcp/scripts/publicable.ts <destino>` arma en `<destino>` (nuevo o vacío, fuera de `packages/mcp`) `dist`, `README.md`, `LICENSE` y el `package.json` sin `devDependencies` (el cliente oficial de MCP que usan las pruebas) ni `scripts`, con `mexicoapi` en `^` y la versión que lee de `packages/sdk/package.json`. Falla si queda un rango `workspace:` o un paquete `@mexicoapi/`, o si falta un archivo que declara `bin`. Con `--publicar` (`node packages/mcp/scripts/publicable.ts --publicar <destino>`) revisa además con `npm view` que `mexicoapi@<versión de packages/sdk>` ya esté en npm, y si no está (o npm no responde) se niega sin escribir nada: así ningún servidor sale con un piso que todavía no existe.
 3. `npm pack` y `npm publish` se corren dentro de `<destino>`.
 
 Un `npm pack` o `npm publish` en `packages/mcp` también falla a propósito.
@@ -61,11 +61,11 @@ El publicador de confianza de npm (trusted publishing) solo se configura en un p
 Con `mexicoapi@0.1.0` ya en npm, y con los mismos pasos:
 
 1. Desde `main` al día y con `./scripts/verify.sh` en verde, revisa la versión en `packages/mcp/package.json` (`0.1.0`).
-2. Compila y arma el paquete fuera del repositorio:
+2. Compila y arma el paquete fuera del repositorio. `--publicar` se niega si `mexicoapi@0.1.0` (la versión de `packages/sdk`) todavía no está en npm:
 
    ```bash
    pnpm --filter "mexicoapi-mcp..." build
-   node packages/mcp/scripts/publicable.ts ../mexicoapi-mcp-publicable
+   node packages/mcp/scripts/publicable.ts --publicar ../mexicoapi-mcp-publicable
    cd ../mexicoapi-mcp-publicable
    ```
 

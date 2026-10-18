@@ -5,7 +5,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { manifiestoPublicable } from "../../../sdk/scripts/publicable.ts";
-import { principal, rangoMexicoapi } from "../../scripts/publicable.ts";
+import {
+  principal,
+  publicadaEnNpm,
+  type RespuestaNpm,
+  rangoMexicoapi,
+} from "../../scripts/publicable.ts";
 
 const SCRIPT = fileURLToPath(new URL("../../scripts/publicable.ts", import.meta.url));
 const MCP = fileURLToPath(new URL("../../", import.meta.url));
@@ -83,6 +88,91 @@ describe("rangoMexicoapi", () => {
   ])("rechaza un manifiesto que no es el de mexicoapi con versión exacta (%j)", async (sdk) => {
     await repoFalso(sdk);
     await expect(rangoMexicoapi(join(dir, "sdk"))).rejects.toThrow(/mexicoapi con una versión/);
+  });
+});
+
+/** Lo que responde `npm view` (probado a mano con npm 11). */
+const NPM_PUBLICADA: RespuestaNpm = { status: 0, stdout: '"1.2.3"\n', stderr: "" };
+const NPM_404: RespuestaNpm = {
+  status: 1,
+  stdout: '{ "error": { "code": "E404" } }\n',
+  stderr:
+    "npm error code E404\nnpm error 404 Not Found - GET https://registry.npmjs.org/mexicoapi\n",
+};
+const NPM_SIN_RED: RespuestaNpm = {
+  status: 1,
+  stdout: "",
+  stderr: "npm error code ENOTFOUND\nnpm error network request failed\n",
+};
+
+describe("publicadaEnNpm", () => {
+  it("es true solo si npm responde esa versión", () => {
+    expect(publicadaEnNpm(NPM_PUBLICADA, "1.2.3")).toBe(true);
+    expect(publicadaEnNpm(NPM_PUBLICADA, "1.2.4")).toBe(false);
+    expect(publicadaEnNpm({ status: 0, stdout: "\n", stderr: "" }, "1.2.3")).toBe(false);
+  });
+
+  it("es false con un 404, del paquete o de la versión", () => {
+    expect(publicadaEnNpm(NPM_404, "1.2.3")).toBe(false);
+  });
+
+  it("lanza si npm falló por otra cosa, para no confundirlo con un 404", () => {
+    expect(() => publicadaEnNpm(NPM_SIN_RED, "1.2.3")).toThrow(
+      /no se pudo consultar npm: npm error code ENOTFOUND/,
+    );
+    expect(() => publicadaEnNpm({ status: null, stdout: "", stderr: "" }, "1.2.3")).toThrow(
+      /no se pudo consultar npm/,
+    );
+  });
+});
+
+describe("principal con --publicar", () => {
+  it("arma el paquete si mexicoapi@<versión del sdk> ya está en npm", async () => {
+    await repoFalso();
+    const c = consola();
+    const pedidos: string[] = [];
+    const consultarNpm = (spec: string): RespuestaNpm => {
+      pedidos.push(spec);
+      return NPM_PUBLICADA;
+    };
+    const destino = join(dir, "publicable");
+    expect(await principal(["--publicar", destino], { ...c.opciones, consultarNpm })).toBe(0);
+    expect(pedidos).toEqual(["mexicoapi@1.2.3"]);
+    expect(c.errores).toEqual([]);
+    expect((await leerJson(join(destino, "package.json"))).dependencies).toEqual({
+      mexicoapi: "^1.2.3",
+    });
+  });
+
+  it("se niega sin escribir nada si esa versión no está en npm", async () => {
+    await repoFalso();
+    const c = consola();
+    const opciones = { ...c.opciones, consultarNpm: () => NPM_404 };
+    expect(await principal([join(dir, "publicable"), "--publicar"], opciones)).toBe(1);
+    expect(c.errores.join("")).toMatch(
+      /^publicable: mexicoapi@1\.2\.3 todavía no está en npm: publícalo antes que mexicoapi-mcp/,
+    );
+    await expect(readdir(join(dir, "publicable"))).rejects.toThrow();
+  });
+
+  it("se niega si no pudo consultar npm", async () => {
+    await repoFalso();
+    const c = consola();
+    const opciones = { ...c.opciones, consultarNpm: () => NPM_SIN_RED };
+    expect(await principal(["--publicar", join(dir, "publicable")], opciones)).toBe(1);
+    expect(c.errores.join("")).toMatch(/^publicable: no se pudo consultar npm/);
+    await expect(readdir(join(dir, "publicable"))).rejects.toThrow();
+  });
+
+  it("sin --publicar no consulta npm, y sin destino solo muestra el uso", async () => {
+    await repoFalso();
+    const c = consola();
+    const consultarNpm = (): RespuestaNpm => {
+      throw new Error("no debía consultar npm");
+    };
+    expect(await principal([join(dir, "publicable")], { ...c.opciones, consultarNpm })).toBe(0);
+    expect(await principal(["--publicar"], { ...c.opciones, consultarNpm })).toBe(2);
+    expect(c.errores.join("")).toMatch(/uso: node scripts\/publicable\.ts/);
   });
 });
 
