@@ -1,5 +1,5 @@
 // Días inhábiles y suma de días hábiles de la LFT, la CNBV y el SAT: datos que caducan (los
-// calendarios crecen con cada publicación en el DOF). Se piden a la API si hay MEXICOAPI_BASE.
+// calendarios crecen con cada publicación en el DOF). Se piden a la API, salvo sin red.
 import {
   AUTORIDADES,
   type Autoridad,

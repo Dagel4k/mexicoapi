@@ -43,13 +43,15 @@ beforeAll(() => {
 
 /**
  * Lanza un proceso de Node y le habla por stdin/stdout reales, una línea JSON por mensaje. Sin
- * MEXICOAPI_BASE (salvo que `env` la traiga) y con la caché de SEPOMEX en un directorio vacío.
+ * MEXICOAPI_BASE y sin red (MEXICOAPI_SIN_RED=1: sin base usaría la API pública), salvo que `env`
+ * traiga una base, y con la caché de SEPOMEX en un directorio vacío.
  */
 function lanzar(archivo: string, env: Record<string, string> = {}) {
   const entorno: Record<string, string | undefined> = {
     ...process.env,
     LOCALAPPDATA: CACHE_VACIA,
     XDG_CACHE_HOME: CACHE_VACIA,
+    MEXICOAPI_SIN_RED: env.MEXICOAPI_BASE === undefined ? "1" : "",
     ...env,
   };
   if (env.MEXICOAPI_BASE === undefined) delete entorno.MEXICOAPI_BASE;
@@ -201,7 +203,7 @@ describe("herramientas en el binario compilado", () => {
     const ultimo = await s.llamar("tipo_de_cambio_fix", {});
     expect(ultimo.structuredContent).toMatchObject({
       origen: "paquete",
-      advertencias: [expect.stringContaining("no hay MEXICOAPI_BASE")],
+      advertencias: [expect.stringContaining("MEXICOAPI_SIN_RED=1")],
     });
     const inhabil = await s.llamar("sumar_dias_habiles", {
       autoridad: "sat",

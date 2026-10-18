@@ -4,7 +4,7 @@ Servidor MCP (Model Context Protocol) con datos de referencia oficiales de Méxi
 
 - Corre en tu equipo y habla con el cliente por stdio.
 - Es de solo lectura: ninguna herramienta escribe, borra ni hace peticiones arbitrarias.
-- Funciona sin red. Los datos salen del paquete [`mexicoapi`](https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#readme) y cada resultado trae su fuente oficial, su fecha de corte y su origen.
+- Los datos que caducan (FIX, UDIS, calendarios y constantes) se piden a la API pública de MéxicoAPI y, si no responde, salen del paquete [`mexicoapi`](https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#readme); los demás salen siempre del paquete. Con `MEXICOAPI_SIN_RED=1` funciona sin red. Cada resultado trae su fuente oficial, su fecha de corte y su origen.
 
 ## Requisitos
 
@@ -27,11 +27,12 @@ En la configuración de servidores MCP de tu cliente:
 
 Cada cliente guarda este bloque en su propio archivo; revisa su documentación para saber cuál. En Windows, si el cliente no encuentra `npx`, usa `"command": "cmd"` y `"args": ["/c", "npx", "-y", "mexicoapi-mcp"]`.
 
-### MEXICOAPI_BASE (opcional)
+### La API: MEXICOAPI_BASE y MEXICOAPI_SIN_RED (opcionales)
 
-Sin `MEXICOAPI_BASE`, el servidor responde todo con los datos del paquete `mexicoapi` y no usa la red. Con ella, las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo e ISR) consultan la API de MéxicoAPI en esa dirección y, si no responde, usan el paquete y lo advierten.
+Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo e ISR) consultan la API pública de MéxicoAPI, https://mexicoapi.dagel4k.workers.dev, y si no responde usan los datos del paquete `mexicoapi` y lo advierten. Las demás nunca usan la red.
 
-La API todavía no tiene dirección pública, así que por ahora solo sirve con un despliegue propio:
+- `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a la de pruebas (https://mexicoapi-staging.dagel4k.workers.dev) o a un despliegue propio.
+- `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`.
 
 ```json
 {
@@ -39,7 +40,7 @@ La API todavía no tiene dirección pública, así que por ahora solo sirve con 
     "mexicoapi": {
       "command": "npx",
       "args": ["-y", "mexicoapi-mcp"],
-      "env": { "MEXICOAPI_BASE": "https://<tu-despliegue>" }
+      "env": { "MEXICOAPI_BASE": "https://mexicoapi.dagel4k.workers.dev" }
     }
   }
 }
@@ -58,14 +59,14 @@ Una dirección inválida (con credenciales, query o fragmento) hace que el servi
 | `validar_rfc` | Valida el formato y la homoclave de un RFC | No |
 | `validar_curp` | Valida el formato y el dígito verificador de una CURP | No |
 | `validar_nss` | Valida un NSS del IMSS | No |
-| `tipo_de_cambio_fix` | FIX publicado un día, el que aplica a una operación o el más reciente | Con `MEXICOAPI_BASE` |
-| `udis` | Valor de la UDI de un día | Con `MEXICOAPI_BASE` |
-| `dias_inhabiles` | Días inhábiles de un año según la LFT, la CNBV o el SAT | Con `MEXICOAPI_BASE` |
-| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, los festivos y las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF | Con `MEXICOAPI_BASE` |
-| `constantes` | UMA, salario mínimo y tarifas de ISR | Con `MEXICOAPI_BASE` |
+| `tipo_de_cambio_fix` | FIX publicado un día, el que aplica a una operación o el más reciente | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
+| `udis` | Valor de la UDI de un día | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
+| `dias_inhabiles` | Días inhábiles de un año según la LFT, la CNBV o el SAT | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
+| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, los festivos y las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
+| `constantes` | UMA, salario mínimo y tarifas de ISR | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
 | `codigo_postal` | Estado, municipio y asentamientos de un código postal | No (lee la caché local) |
 
-Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. `openWorldHint` es `true` solo en las que usan la red, es decir, en las de datos que caducan cuando hay `MEXICOAPI_BASE`. Los validadores revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan.
+Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. `openWorldHint` es `true` solo en las que usan la red, es decir, en las de datos que caducan, salvo con `MEXICOAPI_SIN_RED=1`. Los validadores revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan.
 
 ## Qué trae cada resultado
 
@@ -85,10 +86,10 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 - `datos`: el valor pedido, con su propia fecha (la del valor).
 - `as_of`: la fecha de corte del dataset, la de la última actualización que lo cambió. No es la fecha del valor. Es `null` en RFC, CURP y NSS (son algoritmos, no datos publicados) y en `codigo_postal` cuando Correos de México no dio la fecha; ahí `descargado` dice cuándo se descargó el catálogo.
 - `fuente` y `fuentes`: la publicación oficial con su URL, para citarla. `fuente` es la primera de `fuentes`.
-- `origen`: `api` si respondió la API de `MEXICOAPI_BASE`, `paquete` si salió de los datos y las reglas del paquete `mexicoapi`, o `cache_local` en `codigo_postal`.
+- `origen`: `api` si respondió la API (la pública o la de `MEXICOAPI_BASE`), `paquete` si salió de los datos y las reglas del paquete `mexicoapi`, o `cache_local` en `codigo_postal`.
 - `advertencias`: lo que hay que decirle a quien pregunta, por ejemplo que la API falló o que un calendario puede estar incompleto.
 
-Sin `MEXICOAPI_BASE`, el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
+Sin red (`MEXICOAPI_SIN_RED=1`), el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
 
 Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó.
 
@@ -109,9 +110,9 @@ El comando muestra el aviso de uso de Correos de México y guarda el catálogo e
 ## Privacidad
 
 - No hay telemetría.
-- El servidor no envía a ninguna API una CLABE, un RFC, una CURP o un NSS: los valida en tu equipo, también con `MEXICOAPI_BASE`.
+- El servidor no envía a ninguna API una CLABE, un RFC, una CURP o un NSS: los valida en tu equipo, también cuando consulta la API.
 - Eso cubre solo al servidor. El host del asistente (la aplicación que lo corre) sí manda al proveedor del modelo los argumentos de cada herramienta y sus resultados, como el resto de la conversación. Si un dato no debe salir de tu equipo, no se lo des al asistente.
-- Con `MEXICOAPI_BASE`, el servidor solo habla con esa dirección y solo para las herramientas de datos que caducan. Sin ella no usa la red.
+- El servidor solo habla con la API pública de MéxicoAPI, o con la dirección de `MEXICOAPI_BASE`, y solo para las herramientas de datos que caducan. Con `MEXICOAPI_SIN_RED=1` no usa la red.
 - Los registros van a stderr y nunca traen los argumentos de una herramienta ni la dirección de `MEXICOAPI_BASE`.
 
 ## Protocolo

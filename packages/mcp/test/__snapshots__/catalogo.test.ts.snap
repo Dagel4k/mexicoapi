@@ -1294,7 +1294,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete. Sin API advierte en la publicación más reciente y en fechas a 7 días o menos del último dato del paquete.",
+    "description": "Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red. Sin red advierte en la publicación más reciente y en fechas a 7 días o menos del último dato del paquete.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1439,7 +1439,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Valor de la UDI (pesos por unidad de inversión) de un día, como se publica en el DOF. Hay un valor para cada día del calendario, fines de semana incluidos. Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete. Sin API advierte en fechas a 7 días o menos del último valor del paquete.",
+    "description": "Valor de la UDI (pesos por unidad de inversión) de un día, como se publica en el DOF. Hay un valor para cada día del calendario, fines de semana incluidos. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red. Sin red advierte en fechas a 7 días o menos del último valor del paquete.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1554,7 +1554,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Días inhábiles de un año según una autoridad: lft, cnbv o sat. No lista los sábados y domingos por serlo, pero sí un día publicado que cae en fin de semana. Cada día trae su motivo, su tipo (descanso, o vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles) y su fuente. Si la lista de un año puede estar incompleta, lo advierte; con lft advierte siempre que no incluye los festivos ni las suspensiones de labores del artículo 715. Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete.",
+    "description": "Días inhábiles de un año según una autoridad: lft, cnbv o sat. No lista los sábados y domingos por serlo, pero sí un día publicado que cae en fin de semana. Cada día trae su motivo, su tipo (descanso, o vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles) y su fuente. Si la lista de un año puede estar incompleta, lo advierte; con lft advierte siempre que no incluye los festivos ni las suspensiones de labores del artículo 715. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1710,7 +1710,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Calcula la fecha que resulta de sumar días hábiles a la fecha desde según el calendario de una autoridad (lft, cnbv o sat), contando desde el día hábil siguiente. En un plazo que corre desde una notificación, desde es el día en que surte efectos, no el día en que se hizo. Con sat, tipo_plazo es obligatorio: en declaraciones_pagos las vacaciones del SAT cuentan como hábiles (CFF, artículo 12) y en general no; con lft o cnbv no se acepta. Devuelve la fecha resultante y los días inhábiles saltados con su fuente. Las advertencias dicen lo que el cálculo no descuenta: con lft, los festivos y las suspensiones de labores del artículo 715; con declaraciones_pagos, la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario. Si el calendario no cubre el periodo responde con error; con permitir_incompleto: true calcula de todos modos y lo advierte. Es una calculadora, no asesoría legal. Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete.",
+    "description": "Calcula la fecha que resulta de sumar días hábiles a la fecha desde según el calendario de una autoridad (lft, cnbv o sat), contando desde el día hábil siguiente. En un plazo que corre desde una notificación, desde es el día en que surte efectos, no el día en que se hizo. Con sat, tipo_plazo es obligatorio: en declaraciones_pagos las vacaciones del SAT cuentan como hábiles (CFF, artículo 12) y en general no; con lft o cnbv no se acepta. Devuelve la fecha resultante y los días inhábiles saltados con su fuente. Las advertencias dicen lo que el cálculo no descuenta: con lft, los festivos y las suspensiones de labores del artículo 715; con declaraciones_pagos, la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario. Si el calendario no cubre el periodo responde con error; con permitir_incompleto: true calcula de todos modos y lo advierte. Es una calculadora, no asesoría legal. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1918,7 +1918,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "UMA, salario mínimo y tarifas de ISR publicados en el DOF, cada uno con la publicación que lo respalda. tipo uma con anio (la UMA de ese año) o con fecha (la vigente ese día: cada UMA rige del 1 de febrero al 31 de enero siguiente); tipo salario_minimo con anio (zona general y Zona Libre de la Frontera Norte); tipo isr con periodo (mensual o anual) y anio. Los montos son texto con dos decimales. Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete.",
+    "description": "UMA, salario mínimo y tarifas de ISR publicados en el DOF, cada uno con la publicación que lo respalda. tipo uma con anio (la UMA de ese año) o con fecha (la vigente ese día: cada UMA rige del 1 de febrero al 31 de enero siguiente); tipo salario_minimo con anio (zona general y Zona Libre de la Frontera Norte); tipo isr con periodo (mensual o anual) y anio. Los montos son texto con dos decimales. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {

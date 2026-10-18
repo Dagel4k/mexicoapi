@@ -21,7 +21,7 @@ import {
 /** Con qué responden las herramientas. */
 export interface OpcionesHerramientas {
   cliente: Cliente;
-  /** true si el cliente consulta la API (MEXICOAPI_BASE); false si solo usa el paquete. */
+  /** true si el cliente consulta una API; false con MEXICOAPI_SIN_RED=1 (solo el paquete). */
   conApi: boolean;
   /** Directorio de la caché de SEPOMEX; por omisión, el de `mexicoapi/sepomex`. */
   dirSepomex?: string | undefined;
@@ -48,15 +48,15 @@ export interface Procedencia {
 }
 
 /**
- * Advertencia, sin MEXICOAPI_BASE, de una respuesta del paquete que puede no estar al día: el FIX
- * más reciente o una fecha cerca del final de su serie (ver indicadores.ts).
+ * Advertencia, sin red (MEXICOAPI_SIN_RED=1), de una respuesta del paquete que puede no estar al
+ * día: el FIX más reciente o una fecha cerca del final de su serie (ver indicadores.ts).
  */
 export const AVISO_SIN_API =
-  "Respuesta con los datos del paquete mexicoapi, sin consultar la API (no hay MEXICOAPI_BASE): pueden faltar publicaciones recientes.";
+  "Respuesta con los datos del paquete mexicoapi, sin consultar la API (MEXICOAPI_SIN_RED=1): pueden faltar publicaciones recientes.";
 
 /** Cierre de la descripción de las herramientas de datos que caducan. */
 export const RESPALDO_API =
-  "Consulta la API de MéxicoAPI si está configurada y, si no responde, usa los datos del paquete y lo advierte. Sin API configurada responde con los datos del paquete.";
+  "Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red.";
 
 /** Documentación de los validadores, la fuente de las validaciones por algoritmo. */
 export const FUENTE_VALIDADORES: Fuente = {
