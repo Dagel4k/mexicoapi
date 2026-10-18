@@ -87,14 +87,15 @@ afterEach(() => {
 
 /**
  * El transporte stdio del cliente oficial con el binario. El entorno es el mínimo que hereda el
- * transporte (sin MEXICOAPI_BASE) más `cache` como base de la caché de SEPOMEX (por omisión, un
- * directorio vacío): el binario la busca en `<cache>/mexicoapi/sepomex`.
+ * transporte (sin MEXICOAPI_BASE) más MEXICOAPI_SIN_RED=1, para no usar la API pública, y `cache`
+ * como base de la caché de SEPOMEX (por omisión, un directorio vacío): el binario la busca en
+ * `<cache>/mexicoapi/sepomex`.
  */
 function transporteStdio(cache = CACHE_VACIA): StdioClientTransport {
   return new StdioClientTransport({
     command: process.execPath,
     args: [BINARIO],
-    env: { LOCALAPPDATA: cache, XDG_CACHE_HOME: cache },
+    env: { LOCALAPPDATA: cache, XDG_CACHE_HOME: cache, MEXICOAPI_SIN_RED: "1" },
     stderr: "pipe",
   });
 }

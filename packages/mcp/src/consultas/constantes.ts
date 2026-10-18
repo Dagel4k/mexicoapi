@@ -1,5 +1,5 @@
 // UMA, salario mínimo y tarifas de ISR publicados en el DOF: datos que caducan (cada año trae
-// valores nuevos). Se piden a la API si hay MEXICOAPI_BASE.
+// valores nuevos). Se piden a la API, salvo sin red.
 import type { SalarioMinimo, TarifaIsr, Uma } from "mexicoapi";
 import type { Respuesta } from "mexicoapi/cliente";
 import { compilarEsquema } from "../esquema.js";

@@ -2,8 +2,9 @@
 // para que corra igual en cada Node que soporta el paquete. Va en la carpeta del proyecto que
 // instaló mexicoapi y mexicoapi-mcp y se corre con `node humo.mjs`: lanza el binario instalado
 // (node_modules/.bin/mexicoapi-mcp), le habla por stdio (initialize, tools/list y tres tools/call)
-// y termina con código distinto de 0 si algo falla. No usa la red: sin MEXICOAPI_BASE, el servidor
-// responde con los datos del paquete mexicoapi, y la caché de SEPOMEX es un directorio vacío.
+// y termina con código distinto de 0 si algo falla. No usa la red: con MEXICOAPI_SIN_RED=1 el
+// servidor responde con los datos del paquete mexicoapi, y la caché de SEPOMEX es un directorio
+// vacío.
 // También sirve después de publicar, con el mexicoapi más reciente que cumpla el rango.
 import { deepEqual, equal, match, ok } from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -66,7 +67,12 @@ let errores = "";
 
 // Caché de SEPOMEX vacía: nunca la del equipo, que puede tener un catálogo descargado.
 const cacheVacia = await mkdtemp(join(tmpdir(), "mexicoapi-mcp-humo-"));
-const entorno = { ...process.env, LOCALAPPDATA: cacheVacia, XDG_CACHE_HOME: cacheVacia };
+const entorno = {
+  ...process.env,
+  LOCALAPPDATA: cacheVacia,
+  XDG_CACHE_HOME: cacheVacia,
+  MEXICOAPI_SIN_RED: "1",
+};
 delete entorno.MEXICOAPI_BASE;
 // En Windows el binario de node_modules/.bin es un .cmd: solo se lanza con shell.
 const hijo = spawn(join("node_modules", ".bin", "mexicoapi-mcp"), [], {

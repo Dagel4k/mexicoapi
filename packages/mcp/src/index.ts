@@ -21,10 +21,7 @@ try {
 
 if (configuracion !== undefined) {
   // Nunca se registra la base: podría traer un token en la ruta.
-  const modo = configuracion.conApi
-    ? "consulta la API de MEXICOAPI_BASE"
-    : "datos del paquete, sin red";
-  process.stderr.write(`${paquete.name}: ${modo}\n`);
+  process.stderr.write(`${paquete.name}: ${configuracion.descripcion}\n`);
   await arrancar({
     info: { name: paquete.name, title: "MéxicoAPI", version: paquete.version },
     instrucciones: INSTRUCCIONES,

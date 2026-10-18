@@ -1,6 +1,7 @@
-// Tipo de cambio FIX y UDIS: datos que caducan. Se piden a la API si hay MEXICOAPI_BASE; si no
-// responde, salen del paquete con la advertencia del cliente. Sin base salen del paquete, y se
-// advierte solo cuando la respuesta puede no estar al día (ver cercaDelFinal).
+// Tipo de cambio FIX y UDIS: datos que caducan. Se piden a la API (la pública o la de
+// MEXICOAPI_BASE); si no responde, salen del paquete con la advertencia del cliente. Sin red
+// (MEXICOAPI_SIN_RED=1) salen del paquete, y se advierte solo cuando la respuesta puede no estar
+// al día (ver cercaDelFinal).
 import { type CoberturaSerie, revisarFix } from "mexicoapi";
 import { DIAS_DATOS_RECIENTES, type Respuesta } from "mexicoapi/cliente";
 import { compilarEsquema } from "../esquema.js";
@@ -78,7 +79,7 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
   return {
     name: "tipo_de_cambio_fix",
     title: "Tipo de cambio FIX",
-    description: `Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. ${RESPALDO_API} Sin API advierte en la publicación más reciente y en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último dato del paquete.`,
+    description: `Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. ${RESPALDO_API} Sin red advierte en la publicación más reciente y en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último dato del paquete.`,
     inputSchema: {
       type: "object",
       properties: {
@@ -130,7 +131,7 @@ export function udisHerramienta({ cliente, conApi }: OpcionesHerramientas): Herr
   return {
     name: "udis",
     title: "Valor de la UDI",
-    description: `Valor de la UDI (pesos por unidad de inversión) de un día, como se publica en el DOF. Hay un valor para cada día del calendario, fines de semana incluidos. ${RESPALDO_API} Sin API advierte en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último valor del paquete.`,
+    description: `Valor de la UDI (pesos por unidad de inversión) de un día, como se publica en el DOF. Hay un valor para cada día del calendario, fines de semana incluidos. ${RESPALDO_API} Sin red advierte en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último valor del paquete.`,
     inputSchema: {
       type: "object",
       properties: {

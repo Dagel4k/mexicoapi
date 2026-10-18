@@ -6,7 +6,7 @@ import { herramientasSinRed } from "./ayudas-herramientas.js";
 import { COLONIAS_FIXTURE } from "./ayudas-sepomex.js";
 
 const herramientas = herramientasSinRed();
-/** Las mismas, como si hubiera MEXICOAPI_BASE: las de datos que caducan pueden usar la red. */
+/** Las mismas con una API (la pública o MEXICOAPI_BASE): las de datos que caducan usan la red. */
 const conApi = herramientasSinRed({ conApi: true });
 
 /** Lo que se publica de cada herramienta en tools/list. */
@@ -43,7 +43,7 @@ describe("catálogo de herramientas", () => {
     expect([...crearRegistro(herramientas).keys()]).toEqual(NOMBRES);
   });
 
-  it("todas son de solo lectura e idempotentes; sin MEXICOAPI_BASE ninguna usa la red", () => {
+  it("todas son de solo lectura e idempotentes; sin red (MEXICOAPI_SIN_RED=1) ninguna usa la red", () => {
     for (const h of herramientas) {
       expect(h.annotations, h.name).toEqual({
         readOnlyHint: true,
@@ -54,7 +54,7 @@ describe("catálogo de herramientas", () => {
     }
   });
 
-  it("con MEXICOAPI_BASE, solo las de datos que caducan pueden usar la red", () => {
+  it("con una API, solo las de datos que caducan pueden usar la red", () => {
     for (const h of conApi) {
       expect(h.annotations, h.name).toEqual({
         readOnlyHint: true,
