@@ -10,9 +10,9 @@ import {
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
+import { type CalendarioCurado, feriadosBancarios } from "@mexicoapi/core/curados";
 import {
   anioDe,
-  type CalendarioCurado,
   calendarioCurado,
   type Meta,
   metaInterna,
@@ -138,12 +138,11 @@ const AVISO_SIN_CNBV =
   "mexicoapi: aviso: el calendario de la CNBV no cargó; el FIX solo salta fines de semana";
 
 /**
- * Los días de descanso de la CNBV, dentro de su cobertura, como días sin publicación del FIX:
- * el DOF no lo publica en los feriados bancarios. Si el calendario no carga, undefined y un
- * aviso: la consulta sigue solo con los fines de semana, que da menos respuestas pero ninguna
- * vieja, en vez de un 500. La falla no se recuerda.
+ * Los feriados bancarios del núcleo con el calendario de la CNBV: el DOF no publica el FIX esos
+ * días. Si el calendario no carga, undefined y un aviso: la consulta sigue solo con los fines de
+ * semana, que da menos respuestas pero ninguna vieja, en vez de un 500. La falla no se recuerda.
  */
-async function feriadosBancarios(entorno: Entorno): Promise<OpcionesFix["sinPublicacion"]> {
+async function feriadosDeLaCnbv(entorno: Entorno): Promise<OpcionesFix["sinPublicacion"]> {
   let cnbv: CalendarioCurado;
   try {
     cnbv = await calendarioCurado(entorno, "cnbv");
@@ -151,13 +150,7 @@ async function feriadosBancarios(entorno: Entorno): Promise<OpcionesFix["sinPubl
     console.warn(AVISO_SIN_CNBV);
     return undefined;
   }
-  // Fuera de su cobertura el calendario lanza; ahí solo cuentan los fines de semana. Solo un día
-  // de descanso cierra los bancos: unas vacaciones administrativas no detienen el FIX.
-  const { cobertura, calendario } = cnbv.general;
-  return (fecha) =>
-    fecha >= cobertura.desde &&
-    fecha <= cobertura.hasta &&
-    calendario.inhabil(fecha)?.tipo === "descanso";
+  return feriadosBancarios(cnbv);
 }
 
 /**
@@ -171,7 +164,7 @@ async function conFeriados(
 ): Promise<Consulta<TipoCambioFix>> {
   const consulta = consultar();
   if (consulta.tipo !== "no_disponible") return consulta;
-  const sinPublicacion = await feriadosBancarios(entorno);
+  const sinPublicacion = await feriadosDeLaCnbv(entorno);
   return sinPublicacion === undefined ? consulta : consultar({ sinPublicacion });
 }
 
