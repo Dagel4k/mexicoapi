@@ -42,6 +42,8 @@ Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá
 | Estados | `data/inegi-estados/` | INEGI | semanal | [estados](docs/datos/inegi-estados.md) |
 | Municipios | `data/inegi-municipios/` | INEGI | semanal | [municipios](docs/datos/inegi-municipios.md) |
 | Bancos, con historial | `data/bancos/` | Banxico | diario | [bancos](docs/datos/bancos.md) |
+| Tipo de cambio FIX | `data/tipo-cambio-fix/` | DOF (Banxico) | diario | [FIX](docs/datos/tipo-cambio-fix.md) |
+| UDIS | `data/udis/` | DOF (Banxico) | diario | [UDIS](docs/datos/udis.md) |
 
 Además, la API calcula la validación de CLABE y los días hábiles con el calendario de la Ley Federal del Trabajo.
 

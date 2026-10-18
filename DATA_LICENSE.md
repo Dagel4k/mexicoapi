@@ -43,3 +43,11 @@ Un mismo código puede aparecer con nombres distintos a lo largo del tiempo (cam
 - `638` fue AKALA y luego NU MEXICO bajo el código SPEI `90638`, y hoy es NUBANK con el código SPEI `40638`.
 
 Para decodificar una CLABE antigua conviene revisar el historial de ese código y no solo su nombre actual.
+
+## Diario Oficial de la Federación: tipo de cambio FIX y UDIS
+
+- Datasets: `data/tipo-cambio-fix/` y `data/udis/`.
+- Publica: Diario Oficial de la Federación (DOF), consultado en su Sistema de Información (SIDOF). El Banco de México determina estos valores.
+- Términos: publicación oficial en el DOF; el Banco de México determina estos valores y autoriza su reproducción citando la fuente. Ver https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html.
+- Cita: "Banco de México. Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana" y "Banco de México. Valor de la unidad de inversión". Ambas, "Diario Oficial de la Federación, consultado en el SIDOF: https://sidof.segob.gob.mx/".
+- Qué hace MéxicoAPI: guarda los valores como texto con sus decimales (4 en el FIX, 6 en las UDIS), los ordena por fecha y conserva la respuesta de la fuente sin cambios en `raw/`, un archivo por año. En el FIX, `fecha_publicacion` es el día de publicación en el DOF. La API aplica la regla del artículo 20 del Código Fiscal de la Federación para decir qué FIX corresponde a una operación; los archivos de datos no la aplican.
