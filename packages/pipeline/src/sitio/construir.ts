@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type {
   Banco,
@@ -47,6 +47,12 @@ import { paginaEstado } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
 import { FAVICON } from "./paginas/favicon.js";
 import { paginaInicio } from "./paginas/inicio.js";
+import {
+  archivoLlms,
+  archivoLlmsCompleto,
+  type DocumentoMarkdown,
+  ordenLlmsCompleto,
+} from "./paginas/llms.js";
 import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
 import { ROBOTS } from "./paginas/robots.js";
 import { partirPorAnio } from "./series.js";
@@ -200,6 +206,20 @@ const json = (valor: unknown): string => JSON.stringify(valor);
  * `dist/sitio` (build): las dos quedan a dos niveles de la raíz del paquete.
  */
 const CLIENTE = new URL("../../src/sitio/cliente/sitio.js", import.meta.url);
+
+/** La raíz del repositorio, para las docs de `llms-full.txt`; vale desde `src` y desde `dist`. */
+const REPO = new URL("../../../../", import.meta.url);
+
+/** Los Markdown que junta `llms-full.txt`, en su orden y con su ruta desde la raíz. */
+async function docsCompletas(): Promise<DocumentoMarkdown[]> {
+  const deDatos = (await readdir(new URL("docs/datos/", REPO))).filter((n) => n.endsWith(".md"));
+  return Promise.all(
+    ordenLlmsCompleto(deDatos).map(async (ruta) => ({
+      ruta,
+      texto: await readFile(new URL(ruta, REPO), "utf8"),
+    })),
+  );
+}
 
 /** Orden por unidades de código UTF-16, igual que el resto de los datos. */
 const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -398,26 +418,23 @@ export async function construirSitio(opciones: {
   for (const [nombre, contenido] of descargas) archivos.set(`descargas/${nombre}`, contenido);
   archivos.set("_headers", archivoEncabezados([...descargas.keys()].sort(porNombre)));
 
-  archivos.set(
-    "index.html",
-    paginaInicio({
-      datasets: [...cargados, ...curados].map((c) => ({
-        id: c.manifiesto.dataset,
-        directorio: c.directorio,
-        as_of: c.manifiesto.as_of,
-        registros: c.manifiesto.records,
-        fuentes: c.manifiesto.sources,
-        docs: c.meta.docs,
-      })),
-      descargas,
-    }),
-  );
+  const datasets = [...cargados, ...curados].map((c) => ({
+    id: c.manifiesto.dataset,
+    directorio: c.directorio,
+    as_of: c.manifiesto.as_of,
+    registros: c.manifiesto.records,
+    fuentes: c.manifiesto.sources,
+    docs: c.meta.docs,
+  }));
+  archivos.set("index.html", paginaInicio({ datasets, descargas }));
   archivos.set("estado/index.html", paginaEstado());
   archivos.set("sitio.js", await readFile(CLIENTE));
   archivos.set("404.html", paginaNoEncontrada());
   archivos.set("estilo.css", ESTILO);
   archivos.set("favicon.svg", FAVICON);
   archivos.set("robots.txt", ROBOTS);
+  archivos.set("llms.txt", archivoLlms(datasets));
+  archivos.set("llms-full.txt", archivoLlmsCompleto(await docsCompletas()));
 
   await escribirDirectorioAtomico(opciones.salida, archivos);
 
