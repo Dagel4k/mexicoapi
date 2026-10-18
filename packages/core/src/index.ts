@@ -20,6 +20,12 @@ export type { ArchivoCrudo, FuenteManifiesto, Manifiesto } from "./datos/manifie
 export type { Calendario, FuenteFinDeSemana } from "./dias-habiles/calendario.js";
 export { calendarioLft, crearCalendario } from "./dias-habiles/calendario.js";
 export {
+  COBERTURA_CFF,
+  diasDescansoCff,
+  FUENTE_CFF_12,
+  VIGENCIA_CFF,
+} from "./dias-habiles/cff.js";
+export {
   COBERTURA_LFT,
   diasDescansoLft,
   FUENTE_LFT_74,
