@@ -106,6 +106,44 @@ describe("lo que no existe", () => {
     },
   );
 
+  // Ninguna regla de _headers alcanza un 404: su CSP va en meta y la hoja de estilo carga, también
+  // bajo /descargas/, y no hereda la caché ni el CORS de las descargas.
+  it.each(["/descargas/nada.csv", "/descargas/", "/wp-admin"])(
+    "%s: el 404 no recibe encabezados de _headers",
+    async (ruta) => {
+      const respuesta = await pedir(ruta);
+      expect(respuesta.status).toBe(404);
+      expect(respuesta.headers.get("content-security-policy")).toBeNull();
+      expect(respuesta.headers.get("access-control-allow-origin")).toBeNull();
+      expect(respuesta.headers.get("x-content-type-options")).toBeNull();
+      expect(respuesta.headers.get("cache-control") ?? "").not.toContain("stale-while-revalidate");
+      const html = await respuesta.text();
+      expect(html).toContain('<meta http-equiv="Content-Security-Policy"');
+    },
+  );
+
+  it("cada descarga de SHA256SUMS conserva sus encabezados de seguridad, CORS y caché", async () => {
+    const sumas = (await leerPublico("descargas/SHA256SUMS")).toString("utf8");
+    const archivos = [
+      "SHA256SUMS",
+      ...sumas
+        .trimEnd()
+        .split("\n")
+        .map((l) => l.slice(66)),
+    ];
+    expect(archivos.length).toBeGreaterThan(30);
+    for (const archivo of archivos) {
+      const respuesta = await pedir(`/descargas/${archivo}`, { method: "HEAD" });
+      expect(respuesta.status, archivo).toBe(200);
+      expect(Object.fromEntries(respuesta.headers), archivo).toMatchObject({
+        "access-control-allow-origin": "*",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'",
+        "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
+      });
+    }
+  });
+
   it("/v1/nada sigue siendo el 404 problem+json del Worker", async () => {
     const { respuesta, cuerpo } = await pedirJson("/v1/nada");
     expect(respuesta.status).toBe(404);

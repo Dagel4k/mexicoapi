@@ -752,7 +752,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(reglas.length).toBeLessThanOrEqual(100);
     for (const linea of texto.split("\n")) expect(linea.length).toBeLessThanOrEqual(2000);
     const rutas = descargas.map((n) => `/descargas/${n}`);
-    expect(reglas.map((r) => r.ruta)).toEqual([...rutas, "/descargas/*", ...RUTAS_SITIO]);
+    expect(reglas.map((r) => r.ruta)).toEqual([...rutas, ...RUTAS_SITIO]);
     // Ninguna ruta recibe el mismo encabezado de dos reglas (Cloudflare los juntaría con coma).
     for (const ruta of [...rutas, ...RUTAS_SITIO]) {
       for (const [nombre, valores] of encabezadosDe(reglas, ruta)) {
@@ -765,8 +765,16 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(texto).toContain("/descargas/bancos.csv\n  Content-Type: text/csv; charset=utf-8");
     expect(texto).toContain("/descargas/mexicoapi.sqlite\n  Content-Type: application/vnd.sqlite3");
     expect(texto).toContain("/descargas/SHA256SUMS\n  Content-Type: text/plain; charset=utf-8");
-    expect(texto).toContain("/descargas/*\n  Access-Control-Allow-Origin: *");
-    expect(texto).toContain("  Cache-Control: public, max-age=3600, stale-while-revalidate=86400");
+    // Cada descarga lleva en su regla los encabezados de seguridad, CORS y caché.
+    for (const ruta of rutas) {
+      expect(Object.fromEntries(encabezadosDe(reglas, ruta)), ruta).toMatchObject({
+        "access-control-allow-origin": ["*"],
+        "x-content-type-options": ["nosniff"],
+        "content-security-policy": ["default-src 'none'"],
+        "cache-control": ["public, max-age=3600, stale-while-revalidate=86400"],
+      });
+    }
+    expect(encabezadosDe(reglas, "/descargas/nada.csv").size).toBe(0);
     expect(texto).toContain(`\n/\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
   });
 

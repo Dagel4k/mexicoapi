@@ -399,7 +399,7 @@ El sitio son páginas estáticas que genera el mismo build (`packages/pipeline/s
 - `/llms.txt` (formato de llmstxt.org) y `/llms-full.txt`: la ruta de cada dataset con su `as_of`, y la referencia de la API, la de errores y las docs de cada dataset en un solo archivo, con los enlaces relativos cambiados por su URL en GitHub.
 - `404.html`: con `not_found_handling: "404-page"`, los assets la sirven en cualquier dirección fuera de `/v1` que no es un asset, sin invocar al Worker. Dentro de `/v1`, una ruta que no existe sigue siendo un 404 problem+json del Worker.
 
-Cada ruta del sitio tiene su regla en `_headers` (CSP, `nosniff`, `Referrer-Policy` y caché); el 404 no recibe reglas y lleva su CSP en `<meta>`. Todo texto que viene de los datos se escapa y solo una URL `https://` entra a un enlace.
+Cada ruta del sitio y cada descarga tiene su propia regla en `_headers` (CSP, `nosniff` y caché; `Referrer-Policy` en el sitio, CORS en las descargas), sin comodines: ningún 404 recibe reglas, tampoco bajo `/descargas/`, y lleva su CSP en `<meta>`. Todo texto que viene de los datos se escapa y solo una URL `https://` entra a un enlace.
 
 ### Validación de entradas
 
