@@ -50,7 +50,7 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/limpiar.ts && tsc -p tsconfig.build.json",
     "prepack": "node scripts/publicable.ts",
     "test:integracion": "vitest run --config vitest.integracion.config.ts",
     "test:paquete": "vitest run --config vitest.paquete.config.ts"
