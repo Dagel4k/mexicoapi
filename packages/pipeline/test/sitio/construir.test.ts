@@ -785,6 +785,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     const ids = [...DATASETS.keys(), ...CURADOS.map((c) => c.id)];
     for (const id of ids) expect(inicio, id).toContain(`<span class="id">${id}</span>`);
     expect(inicio.match(/<span class="id">/g)).toHaveLength(ids.length);
+    // Los de DATASETS los actualiza el bot; los de CURADOS, una persona.
+    expect(inicio.match(/<td class="junto">Automático<\/td>/g)).toHaveLength(DATASETS.size);
+    expect(inicio.match(/<td class="junto">Curado<\/td>/g)).toHaveLength(CURADOS.length);
     expect(inicio).toContain('<time datetime="2026-10-17">2026-10-17</time>');
     expect(inicio).toContain("Fuente de inegi.estados");
     // Cada descarga aparece en la lista, enlazada.
