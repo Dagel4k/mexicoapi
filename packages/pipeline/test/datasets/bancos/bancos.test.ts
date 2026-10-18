@@ -253,6 +253,47 @@ describe("construir", () => {
     });
   });
 
+  const renombrarEnCep = (cambios: Record<string, string>) => {
+    cep = new TextEncoder().encode(
+      JSON.stringify({
+        instituciones: interpretarCep(cep).map((e) => [e[0], cambios[e[0]] ?? e[1]]),
+      }),
+    );
+  };
+
+  it("un renombre del CEP antes que el PDF empareja con el nombre anterior", async () => {
+    const base = (await construir(null)).registros;
+    renombrarEnCep({ "40012": "BBVA" });
+    const { registros, avisos } = await construir(base, ctx("2026-10-18"));
+    expect(avisos).toEqual([]);
+    expect(por(registros, "012")).toMatchObject({
+      nombre_corto: "BBVA",
+      razon_social:
+        "BBVA México, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA México",
+      sector: "BANCA MÚLTIPLE",
+      participacion: "directa",
+    });
+    const d = diferenciar(base, registros, (b) => b.codigo);
+    expect(d.cambios).toHaveLength(1);
+    expect(bancos.revisar(d, base)).toEqual({ requiereRevision: false, motivos: [] });
+  });
+
+  it("no empareja por el nombre anterior si hoy es el nombre de otro código", async () => {
+    const base = (await construir(null)).registros;
+    // 012 cambia de nombre y 014 toma el nombre que tenía 012.
+    renombrarEnCep({ "40012": "BBVA", "40014": "BBVA MEXICO" });
+    const { registros } = await construir(base, ctx("2026-10-18"));
+    expect(por(registros, "014")).toMatchObject({
+      nombre_corto: "BBVA MEXICO",
+      participacion: "directa",
+    });
+    expect(por(registros, "012")).toMatchObject({
+      nombre_corto: "BBVA",
+      razon_social: null,
+      participacion: "no_confirmada",
+    });
+  });
+
   it("avisa de una fila del PDF sin entrada en el CEP", async () => {
     cep = new TextEncoder().encode(
       JSON.stringify({ instituciones: interpretarCep(cep).filter((e) => e[0] !== "40012") }),

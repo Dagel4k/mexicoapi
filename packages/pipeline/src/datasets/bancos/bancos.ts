@@ -227,6 +227,20 @@ export function crearBancos(
         hoy.set(codigo, entrada);
       }
 
+      const nombresHoy = new Set([...hoy.values()].map((e) => normalizarNombre(e[1])));
+      /**
+       * Fila del PDF de un código: primero por su nombre de hoy y, si el CEP lo renombró antes
+       * que el PDF, por su nombre anterior, siempre que no sea hoy el nombre de otro código.
+       */
+      const filaDe = (entrada: EntradaCep, previo: Banco | undefined) => {
+        const clave = normalizarNombre(entrada[1]);
+        const fila = filas.get(clave);
+        if (fila !== undefined || previo === undefined) return { clave, fila };
+        const anterior = normalizarNombre(previo.nombre_corto);
+        if (nombresHoy.has(anterior)) return { clave, fila };
+        return { clave: anterior, fila: filas.get(anterior) };
+      };
+
       const usadas = new Set<string>();
       const registros: Banco[] = [];
       for (const codigo of new Set([...previos.keys(), ...hoy.keys()])) {
@@ -242,8 +256,7 @@ export function crearBancos(
         if (historial.length === 0) continue;
         let complemento: Complemento;
         if (entrada !== null) {
-          const clave = normalizarNombre(entrada[1]);
-          const fila = filas.get(clave);
+          const { clave, fila } = filaDe(entrada, previo);
           if (fila !== undefined) usadas.add(clave);
           complemento =
             fila === undefined
