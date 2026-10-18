@@ -20,13 +20,13 @@ También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`. E
 
 | Entrada | Qué trae | Dónde corre |
 | --- | --- | --- |
-| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie | Universal |
+| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `enLinea` | Universal |
 | `mexicoapi/datos` | Estados, municipios y bancos | Universal |
 | `mexicoapi/datos/fix` | Serie del tipo de cambio FIX | Universal |
 | `mexicoapi/datos/udis` | Serie de las UDIS | Universal |
 | `mexicoapi/datos/calendarios` | Calendarios de días inhábiles de la CNBV y el SAT | Universal |
 | `mexicoapi/datos/constantes` | UMA, salario mínimo y tarifas de ISR | Universal |
-| `mexicoapi/cliente` | Cliente de la API con respaldo en los datos del paquete | Universal |
+| `mexicoapi/cliente` | Cliente de la API con respaldo en los datos del paquete; el catálogo de problemas de la API (`PROBLEMAS`), `URL_API`, `URL_DOCS`, `URL_PROBLEMAS`, `URL_REPOSITORIO` y `DIAS_DATOS_RECIENTES` | Universal |
 | `mexicoapi/sepomex` | Catálogo de códigos postales descargado en tu equipo | Node |
 | `mexicoapi` (binario) | CLI | Node |
 
