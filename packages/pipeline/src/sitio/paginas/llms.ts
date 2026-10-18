@@ -11,7 +11,6 @@ import { describir } from "./catalogo.js";
 /** Lo que `llms.txt` dice de cada dataset; sale de su manifiesto, como en la página de inicio. */
 export interface DatasetLlms {
   id: string;
-  directorio: string;
   as_of: string;
   docs: string;
 }
