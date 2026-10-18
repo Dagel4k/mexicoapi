@@ -4,7 +4,8 @@
     "types": ["node"],
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "allowJs": true
   },
   "include": [".", "../../vitest.integracion.config.ts"]
 }

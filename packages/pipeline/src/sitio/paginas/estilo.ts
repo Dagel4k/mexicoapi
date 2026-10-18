@@ -109,6 +109,32 @@ pre code { font-size: 1em; }
   border-radius: 0 6px 6px 0;
   padding: 0.5rem 0.875rem;
 }
+.acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin: 0 0 1rem; }
+.mensaje { margin: 0; }
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--texto);
+  background: var(--superficie);
+  border: 1px solid var(--tenue);
+  border-radius: 6px;
+  padding: 0.375rem 1rem;
+  cursor: pointer;
+}
+button:hover { background: var(--fondo); }
+.estado { font-weight: 600; white-space: nowrap; }
+.estado::before {
+  content: "";
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+}
+.estado-ok::before { background: var(--acento); }
+.estado-stale::before { background: var(--aviso-borde); border-radius: 1px; }
+.estado-unknown::before { border: 2px solid var(--tenue); }
+.detalle { display: block; color: var(--tenue); font-size: 0.875rem; }
 /* relative: el texto .oculto de las celdas no se sale del contenedor que se desplaza */
 .tabla {
   position: relative;

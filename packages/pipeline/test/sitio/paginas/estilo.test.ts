@@ -79,5 +79,22 @@ describe("estilo.css", () => {
       expect(c("--foco", fondo), `--foco sobre ${fondo}`).toBeGreaterThanOrEqual(3);
     }
     expect(c("--aviso-borde", "--aviso")).toBeGreaterThanOrEqual(3);
+    // Los marcadores de estado y el borde del botón son gráficos: 3:1 contra el fondo (1.4.11).
+    for (const grafico of ["--acento", "--aviso-borde", "--tenue"]) {
+      for (const fondo of ["--fondo", "--superficie"]) {
+        expect(c(grafico, fondo), `${grafico} sobre ${fondo}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  // El estado se dice con texto; el marcador cambia de color y también de forma.
+  it("cada estado tiene su marcador, distinto en color y en forma", () => {
+    expect(ESTILO).toMatch(/\.estado::before \{[^}]*content: "";[^}]*border-radius: 50%;/);
+    expect(ESTILO).toMatch(/\.estado-ok::before \{ background: var\(--acento\); \}/);
+    expect(ESTILO).toMatch(
+      /\.estado-stale::before \{ background: var\(--aviso-borde\); border-radius: 1px; \}/,
+    );
+    expect(ESTILO).toMatch(/\.estado-unknown::before \{ border: 2px solid var\(--tenue\); \}/);
+    expect(ESTILO).toMatch(/\nbutton \{[^}]*font: inherit;[^}]*border: 1px solid var\(--tenue\);/);
   });
 });
