@@ -52,6 +52,7 @@ export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
   let descartando = false;
   let finDeEntrada = false;
   let cerrado = false;
+  let esperandoDrenado = false;
   let avisarFin!: () => void;
   const terminado = new Promise<void>((resolver) => {
     avisarFin = resolver;
@@ -59,7 +60,14 @@ export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
 
   function escribir(texto: string | null): void {
     if (texto === null || cerrado || salida.writableEnded || salida.destroyed) return;
-    salida.write(`${texto}\n`);
+    if (salida.write(`${texto}\n`) || esperandoDrenado) return;
+    // La salida está llena: no se leen más pedidos hasta que el cliente lea lo ya escrito.
+    esperandoDrenado = true;
+    entrada.pause();
+    salida.once("drain", () => {
+      esperandoDrenado = false;
+      if (!cerrado) entrada.resume();
+    });
   }
 
   function rechazarGrande(): void {
