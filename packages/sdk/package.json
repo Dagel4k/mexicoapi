@@ -96,7 +96,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && tsc -p tsconfig.build-node.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
+    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json --emitDeclarationOnly && tsc -p tsconfig.build.json --declaration false --removeComments && tsc -p tsconfig.build-node.json --emitDeclarationOnly && tsc -p tsconfig.build-node.json --declaration false --removeComments && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
     "prepack": "node scripts/publicable.ts",
     "test:paquete": "vitest run --config vitest.paquete.config.ts",
     "test:integracion": "vitest run --config vitest.integracion.config.ts"
