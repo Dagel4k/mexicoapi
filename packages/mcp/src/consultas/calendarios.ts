@@ -1,8 +1,17 @@
 // Días inhábiles y suma de días hábiles de la LFT, la CNBV y el SAT: datos que caducan (los
 // calendarios crecen con cada publicación en el DOF). Se piden a la API si hay MEXICOAPI_BASE.
-import type { DiaInhabil, ResultadoDiasHabiles } from "mexicoapi";
+import {
+  AUTORIDADES,
+  type Autoridad,
+  type DiaInhabil,
+  NOMBRE_AUTORIDAD,
+  type ResultadoDiasHabiles,
+  revisarTipoPlazo,
+  TIPOS_PLAZO,
+  type TipoPlazo,
+} from "mexicoapi";
 import { compilarEsquema } from "../esquema.js";
-import { type Herramienta, resultadoError } from "../herramientas.js";
+import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
   consultar,
@@ -15,22 +24,15 @@ import {
   procedencia,
   RESPALDO_API,
   resultado,
+  resultadoProblema,
 } from "../respuesta.js";
-
-type Autoridad = "lft" | "cnbv" | "sat";
 
 const AUTORIDAD = {
   type: "string",
-  enum: ["lft", "cnbv", "sat"],
+  enum: [...AUTORIDADES],
   description:
     "lft: sábados, domingos y días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, sin los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715); cnbv: calendario bancario, los días en que cierran las entidades financieras (no el de la CNBV como autoridad); sat: Código Fiscal de la Federación, artículo 12, por regla, y vacaciones del SAT.",
 } as const;
-
-const NOMBRE: Readonly<Record<Autoridad, string>> = {
-  lft: "la LFT",
-  cnbv: "la CNBV",
-  sat: "el SAT",
-};
 
 const DIA_INHABIL = {
   type: "object",
@@ -87,7 +89,7 @@ export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramient
         revisarDias,
       );
       const dias = r.data;
-      const de = `de ${anio} según ${NOMBRE[autoridad]}`;
+      const de = `de ${anio} según ${NOMBRE_AUTORIDAD[autoridad]}`;
       const lineas =
         dias.length === 0
           ? [`Ningún día inhábil ${de}, sin contar sábados y domingos.`]
@@ -126,7 +128,7 @@ export function sumarDiasHabilesHerramienta({
         },
         tipo_plazo: {
           type: "string",
-          enum: ["general", "declaraciones_pagos"],
+          enum: [...TIPOS_PLAZO],
           description: "Solo con autoridad sat, y ahí obligatorio.",
         },
         permitir_incompleto: {
@@ -145,21 +147,15 @@ export function sumarDiasHabilesHerramienta({
         autoridad: Autoridad;
         desde: string;
         dias: number;
-        tipo_plazo?: "general" | "declaraciones_pagos";
+        tipo_plazo?: TipoPlazo;
         permitir_incompleto?: boolean;
       };
-      // Las mismas reglas y textos que la API, sin ir a pedirlo.
-      if (autoridad === "sat" && tipo_plazo === undefined) {
-        return resultadoError(
-          "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
-        );
-      }
-      if (autoridad !== "sat" && tipo_plazo !== undefined) {
-        return resultadoError("El parámetro tipo_plazo solo se acepta con autoridad=sat.");
-      }
+      // La regla de la API, de mexicoapi: se revisa aquí sin ir a pedirlo.
+      const combinacion = revisarTipoPlazo(autoridad, tipo_plazo);
+      if (combinacion !== null) return resultadoProblema(combinacion);
       const consulta =
         autoridad === "sat"
-          ? { autoridad, tipoPlazo: tipo_plazo as "general" | "declaraciones_pagos", desde, dias }
+          ? { autoridad, tipoPlazo: tipo_plazo as TipoPlazo, desde, dias }
           : { autoridad, desde, dias };
       const r = await consultar(
         signal,
@@ -171,7 +167,7 @@ export function sumarDiasHabilesHerramienta({
       const plazo = tipo_plazo === undefined ? "" : ` (tipo_plazo ${tipo_plazo})`;
       const unidad = calculo.dias === 1 ? "día hábil" : "días hábiles";
       const lineas = [
-        `${calculo.desde} + ${calculo.dias} ${unidad} según ${NOMBRE[autoridad]}${plazo}: ${calculo.resultado}.`,
+        `${calculo.desde} + ${calculo.dias} ${unidad} según ${NOMBRE_AUTORIDAD[autoridad]}${plazo}: ${calculo.resultado}.`,
       ];
       if (calculo.inhabiles_saltados.length === 0) {
         lineas.push("No hubo días inhábiles de por medio, salvo sábados y domingos.");

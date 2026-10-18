@@ -1,7 +1,7 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
 // (as_of, fuente, origen y advertencias), sus esquemas, el texto legible y cómo se traducen los
 // errores esperables del paquete y de la API.
-import { esFechaIsoValida } from "mexicoapi";
+import { enLinea, esFechaIsoValida } from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -156,10 +156,30 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
   };
 }
 
-/** Quita los saltos y controles de un texto de los datos: cada dato queda en su línea. */
-export function enLinea(texto: string): string {
-  return texto.replace(/[\p{Cc}\p{Zl}\p{Zp}]+/gu, " ").trim();
+/**
+ * Quita los saltos y controles de un texto de los datos: cada dato queda en su línea. Es el de
+ * mexicoapi, el mismo que usa su CLI.
+ */
+export { enLinea };
+
+/** Un tipo de problema de la API como `no-encontrado`; otra forma no se copia al texto. */
+const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
+
+/**
+ * El texto de un error de herramienta con el tipo de problema de la API al inicio
+ * (`[dato-no-disponible] …`): así el modelo distingue sin leer el español un dato que todavía no
+ * se publica (vuelve a intentar después) de uno que no existe. Sin tipo, solo el detalle.
+ */
+export function textoDeProblema(tipo: string | undefined, detalle: string): string {
+  const texto = enLinea(detalle);
+  return tipo !== undefined && TIPO_PROBLEMA.test(tipo) ? `[${tipo}] ${texto}` : texto;
 }
+
+/** El resultado de error de una regla de la API que el servidor revisa sin pedirla. */
+export const resultadoProblema = (problema: {
+  tipo: string;
+  detalle: string;
+}): ResultadoHerramienta => resultadoError(textoDeProblema(problema.tipo, problema.detalle));
 
 /** Las fuentes sin repetir, en su orden. */
 export function unicas(fuentes: readonly Fuente[]): Fuente[] {
@@ -277,7 +297,9 @@ export async function consultar<T extends { origen: Origen; data: unknown }>(
   } catch (error) {
     if (signal.aborted) throw error;
     if (error instanceof MexicoApiError) {
-      throw new ErrorHerramienta(enLinea(error.detail) || enLinea(error.message));
+      throw new ErrorHerramienta(
+        textoDeProblema(error.tipo, enLinea(error.detail) || enLinea(error.message)),
+      );
     }
     throw error;
   }

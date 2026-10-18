@@ -67,11 +67,11 @@ describe("constantes: UMA", () => {
     const cargados = `los años cargados van de ${primero} a ${ultimo}`;
     esError(
       await llamar("constantes", { tipo: "uma", anio: primero - 1 }),
-      `No existe la UMA de ${primero - 1} en los datos; ${cargados}.`,
+      `[no-encontrado] No existe la UMA de ${primero - 1} en los datos; ${cargados}.`,
     );
     esError(
       await llamar("constantes", { tipo: "uma", anio: ultimo + 2 }),
-      `Todavía no se carga la UMA de ${ultimo + 2}; ${cargados}.`,
+      `[dato-no-disponible] Todavía no se carga la UMA de ${ultimo + 2}; ${cargados}.`,
     );
   });
 });
@@ -149,7 +149,7 @@ describe("constantes: ISR", () => {
     );
     esError(
       await llamar("constantes", { tipo: "isr", periodo: "mensual", anio: 2025 }),
-      /^No existe la tarifa mensual de ISR de 2025/,
+      /^\[no-encontrado\] No existe la tarifa mensual de ISR de 2025/,
     );
   });
 

@@ -136,7 +136,10 @@ describe("municipio", () => {
   });
 
   it("un cvegeo que no existe es error de la herramienta; uno mal formado, de argumentos", async () => {
-    esError(await llamar("municipio", { cvegeo: "99999" }), "No existe el municipio 99999.");
+    esError(
+      await llamar("municipio", { cvegeo: "99999" }),
+      "[no-encontrado] No existe el municipio 99999.",
+    );
     for (const cvegeo of ["2500", "25006a", ""]) {
       esError(await llamar("municipio", { cvegeo }), /^Argumentos inválidos para municipio: /);
     }

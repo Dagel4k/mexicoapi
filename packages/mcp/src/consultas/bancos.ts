@@ -1,7 +1,7 @@
 // Bancos y CLABE con el catálogo de bancos que trae el paquete: datos estables, sin red. La CLABE
 // nunca sale del equipo.
-import type { Banco } from "mexicoapi";
-import { type Herramienta, resultadoError } from "../herramientas.js";
+import { type Banco, normalizarClabe } from "mexicoapi";
+import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
   consultar,
@@ -73,9 +73,6 @@ interface DetalleClabe {
   banco: { codigo: string; nombre_corto: string; activo: boolean } | null;
 }
 
-/** Los separadores que el validador quita: espacios, tabuladores, saltos y guiones. */
-const SEPARADORES = /[\p{Zs}\t\n\r\v\f-]/gu;
-
 export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
   return {
     name: "validar_clabe",
@@ -98,12 +95,9 @@ export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herr
     outputSchema: esquemaSalida(esquemaValidacion(DETALLE_CLABE), { origenes: ["paquete"] }),
     annotations: anotaciones(false),
     async ejecutar(args, { signal }) {
-      const clabe = (args.clabe as string).replace(SEPARADORES, "");
-      if (!/^[0-9]{18}$/.test(clabe)) {
-        return resultadoError(
-          "La CLABE debe tener 18 dígitos (sin letras); se aceptan espacios y guiones entre ellos.",
-        );
-      }
+      // Sin los separadores que quita el validador; si no quedan 18 dígitos, el cliente responde
+      // con la regla de la API (parametro-invalido) sin repetir la CLABE.
+      const clabe = normalizarClabe(args.clabe as string);
       const r = await consultar(signal, () => cliente.clabe(clabe, { fuente: "paquete", signal }));
       const v = r.data;
       const detalle = v.detalle as DetalleClabe | null;
