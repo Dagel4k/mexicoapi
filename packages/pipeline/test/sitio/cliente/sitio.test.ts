@@ -194,7 +194,8 @@ describe("filasDeEstado", () => {
     expect(horas(-2 * HORA)).toBe("hace menos de 1 h");
   });
 
-  it("no depende de la zona horaria del equipo", () => {
+  // El formateador se crea al cargar el módulo: por eso se vuelve a cargar con cada zona.
+  it("no depende de la zona horaria del equipo, ni al cargarse ni al formatear", async () => {
     const cuerpo = {
       data: [
         fila({ last_success: "2026-10-18T05:59:00.000Z" }),
@@ -207,11 +208,14 @@ describe("filasDeEstado", () => {
     try {
       for (const zona of ["UTC", "Asia/Tokyo", "America/Los_Angeles", "Pacific/Kiritimati"]) {
         process.env.TZ = zona;
-        resultados.push(JSON.stringify(filasDeEstado(cuerpo, AHORA)));
+        vi.resetModules();
+        const modulo = await import("../../../src/sitio/cliente/sitio.js");
+        resultados.push(JSON.stringify(modulo.filasDeEstado(cuerpo, AHORA)));
       }
     } finally {
       if (original === undefined) delete process.env.TZ;
       else process.env.TZ = original;
+      vi.resetModules();
     }
     expect(new Set(resultados).size).toBe(1);
     const filas = JSON.parse(resultados[0] as string) as { ultimoExito: string; hace: string }[];
