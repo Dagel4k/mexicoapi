@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:tz": "TZ=America/Mexico_City vitest run && TZ=UTC vitest run",
     "build": "pnpm -r build",
+    "datos:verificar": "pnpm --filter @mexicoapi/pipeline verificar",
     "verify": "./scripts/verify.sh"
   },
   "devDependencies": {

@@ -24,6 +24,9 @@ pnpm test:tz
 echo "verify: build"
 pnpm -r build
 
+echo "verify: datos"
+pnpm datos:verificar
+
 echo "verify: gitleaks"
 if command -v gitleaks >/dev/null 2>&1; then
   gitleaks git . --no-banner --redact

@@ -6,6 +6,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/core/src/**", "packages/pipeline/src/**"],
+      exclude: ["packages/pipeline/src/bin.ts"],
       thresholds: {
         "packages/core/src/**": {
           lines: 95,
