@@ -51,8 +51,8 @@ const urlOficial = z.string(mensaje(MENSAJE_URL_OFICIAL)).refine(esUrlOficial, M
 const anio = z
   .number(mensaje("debe ser un año entero"))
   .int("debe ser un año entero")
-  .min(1900, "debe ser un año entre 1900 y 2100")
-  .max(2100, "debe ser un año entre 1900 y 2100");
+  .min(1900, "debe ser un año de 1900 a 2100")
+  .max(2100, "debe ser un año de 1900 a 2100");
 
 const opcion = <const T extends readonly [string, ...string[]]>(valores: T) =>
   z.enum(valores, mensaje(`debe ser ${valores.map((v) => `"${v}"`).join(" o ")}`));
