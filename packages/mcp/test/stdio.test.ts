@@ -58,7 +58,6 @@ describe("lectura por líneas", () => {
     );
     expect(await cliente.recibir()).toEqual({
       jsonrpc: "2.0",
-      id: null,
       error: { code: ERROR_PARSEO, message: "El mensaje no es UTF-8 válido" },
     });
     await cliente.sinRespuesta();
@@ -96,7 +95,6 @@ describe("tope de tamaño por mensaje", () => {
     cliente.escribir(`\n${PING}\n`);
     expect(await cliente.recibir()).toEqual({
       jsonrpc: "2.0",
-      id: null,
       error: { code: SOLICITUD_INVALIDA, message: "El mensaje pasa de 64 bytes" },
     });
     expect(await cliente.recibir()).toEqual(OK_PING);

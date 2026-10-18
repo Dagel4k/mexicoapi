@@ -38,13 +38,19 @@ interface Rasgos {
   readonly anotaciones: boolean;
   /** Lotes JSON-RPC: 2025-03-26 obliga a recibirlos y 2025-06-18 los quitó. */
   readonly lotes: boolean;
+  /**
+   * Un error cuyo id no se pudo leer lleva `id: null`, como pide JSON-RPC 2.0. Desde 2025-06-18 se
+   * omite: 2025-11-25 tipa el id del error como opcional y no nulo, y los clientes de esas
+   * versiones descartan un mensaje con id null.
+   */
+  readonly idNulo: boolean;
 }
 
 const RASGOS: Readonly<Record<VersionProtocolo, Rasgos>> = {
-  "2025-11-25": { titulos: true, anotaciones: true, lotes: false },
-  "2025-06-18": { titulos: true, anotaciones: true, lotes: false },
-  "2025-03-26": { titulos: false, anotaciones: true, lotes: true },
-  "2024-11-05": { titulos: false, anotaciones: false, lotes: false },
+  "2025-11-25": { titulos: true, anotaciones: true, lotes: false, idNulo: false },
+  "2025-06-18": { titulos: true, anotaciones: true, lotes: false, idNulo: false },
+  "2025-03-26": { titulos: false, anotaciones: true, lotes: true, idNulo: true },
+  "2024-11-05": { titulos: false, anotaciones: false, lotes: false, idNulo: true },
 };
 
 export const MAX_MENSAJES_LOTE = 50;
@@ -89,6 +95,8 @@ export interface Servidor {
    * Nunca rechaza.
    */
   atender(linea: string): Promise<string | null>;
+  /** Error sin id (de transporte: tamaño, UTF-8) serializado según la versión de la sesión. */
+  errorSinId(codigo: number, mensaje: string): string;
   /** Aborta las llamadas en curso; sus respuestas ya no se envían. */
   cancelarTodo(): void;
 }
@@ -428,12 +436,19 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     }
   }
 
+  /** Antes de negociar se usa la forma de la versión más reciente: sin id. */
+  function sinIdNulo(respuesta: RespuestaJsonRpc): object {
+    if (respuesta.id !== null || (version !== null && RASGOS[version].idNulo)) return respuesta;
+    const { id: _, ...resto } = respuesta;
+    return resto;
+  }
+
   function serializar(respuesta: RespuestaJsonRpc): string {
     try {
-      return JSON.stringify(respuesta);
+      return JSON.stringify(sinIdNulo(respuesta));
     } catch {
       registrar("no se pudo serializar una respuesta");
-      return JSON.stringify(errorInterno(respuesta.id));
+      return JSON.stringify(sinIdNulo(errorInterno(respuesta.id)));
     }
   }
 
@@ -468,6 +483,9 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
       }
       if (Array.isArray(mensaje)) return atenderLote(mensaje);
       return atenderSeguro(mensaje).then((r) => (r === null ? null : serializar(r)));
+    },
+    errorSinId(codigo, mensaje) {
+      return serializar(respuestaError(null, codigo, mensaje));
     },
     cancelarTodo() {
       for (const control of enCurso.values()) control.abort();
