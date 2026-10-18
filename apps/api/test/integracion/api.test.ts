@@ -31,16 +31,21 @@ function esperarSeguridad(respuesta: Response, contexto: string): void {
 }
 
 describe("datos reales del build", () => {
-  it("/ y /v1 devuelven el índice", async () => {
-    const raiz = await datos("/");
-    expect(raiz).toMatchObject({
+  it("/v1 devuelve el índice", async () => {
+    expect(await datos("/v1")).toMatchObject({
       nombre: "MéxicoAPI",
       version: "v1",
       openapi: "/v1/openapi.json",
       status: "/v1/status",
       descargas: "/descargas/SHA256SUMS",
     });
-    expect(await datos("/v1")).toEqual(raiz);
+  });
+
+  it("/ es la página de inicio del build", async () => {
+    const respuesta = await pedir("/");
+    expect(respuesta.status).toBe(200);
+    expect(tipoDeMedio(respuesta)).toBe("text/html");
+    expect(await respuesta.text()).toContain("<h1>MéxicoAPI</h1>");
   });
 
   it("/v1/estados devuelve los 32 estados con su meta", async () => {
@@ -454,7 +459,7 @@ describe("HEAD", () => {
 
 describe("encabezados de seguridad", () => {
   it.each([
-    ["GET", "/", 200],
+    ["GET", "/v1", 200],
     ["GET", "/v1/estados/25", 200],
     ["GET", "/v1/clabe/002010077777777771", 200],
     ["GET", "/v1/status", 200],

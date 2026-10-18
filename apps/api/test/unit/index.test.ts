@@ -23,17 +23,22 @@ async function pedir(ruta: string, init?: RequestInit, extra: Partial<Entorno> =
 }
 
 describe("índice", () => {
-  for (const ruta of ["/", "/v1"]) {
-    it(`${ruta} describe la API`, async () => {
-      const { respuesta, assets } = await pedir(ruta);
-      expect(respuesta.status).toBe(200);
-      expect(respuesta.headers.get("content-type")).toBe("application/json; charset=utf-8");
-      expect(respuesta.headers.get("cache-control")).toBe(CACHE_DATOS);
-      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
-      expect(await respuesta.json()).toEqual(INDICE);
-      expect(assets.pedidas).toEqual([]);
-    });
-  }
+  it("/v1 describe la API", async () => {
+    const { respuesta, assets } = await pedir("/v1");
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.headers.get("content-type")).toBe("application/json; charset=utf-8");
+    expect(respuesta.headers.get("cache-control")).toBe(CACHE_DATOS);
+    expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+    expect(await respuesta.json()).toEqual(INDICE);
+    expect(assets.pedidas).toEqual([]);
+  });
+
+  // La raíz es la página de inicio del sitio: la sirven los assets sin pasar por el Worker.
+  it("/ no es una ruta del Worker", async () => {
+    const { respuesta } = await pedir("/");
+    expect(respuesta.status).toBe(404);
+    expect(((await respuesta.json()) as { type: string }).type).toMatch(/#no-encontrado$/);
+  });
 
   it("HEAD da los mismos encabezados sin cuerpo", async () => {
     const get = (await pedir("/v1")).respuesta;
@@ -221,7 +226,7 @@ describe("query", () => {
       ["/v1/estados?x=1&x=2", "x"],
       ["/v1/estados?x=", "x"],
       ["/v1/estados/25?_=123", "_"],
-      ["/?a", "a"],
+      ["/v1?a", "a"],
     ] as const) {
       const { respuesta, assets } = await pedir(ruta);
       expect(respuesta.status, ruta).toBe(400);

@@ -12,7 +12,7 @@ Un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
 | Ruta | Qué devuelve |
 | --- | --- |
-| `GET /` y `GET /v1` | Índice con los enlaces principales |
+| `GET /v1` | Índice con los enlaces principales |
 | `GET /v1/estados` | Los 32 estados |
 | `GET /v1/estados/{cve_ent}` | Un estado |
 | `GET /v1/estados/{cve_ent}/municipios` | Municipios de un estado |
@@ -71,7 +71,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 
 Una respuesta puede ganar campos nuevos dentro de `/v1`: los esquemas del documento OpenAPI son abiertos y no prohíben campos adicionales, así que tu cliente debe ignorar los que no conozca. Quitar o cambiar un campo sí es un cambio incompatible e iría a `/v2`.
 
-Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta`, y `/` y `/v1` responden un objeto de índice:
+Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta`, y `/v1` responde un objeto de índice:
 
 ```json
 {

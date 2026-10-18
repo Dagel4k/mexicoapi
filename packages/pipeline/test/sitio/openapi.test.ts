@@ -162,7 +162,6 @@ describe("documento OpenAPI", () => {
 
   it("documenta exactamente las rutas y operationId esperados", () => {
     const esperado = [
-      ["/", "indice"],
       ["/v1", "indiceV1"],
       ["/v1/estados", "listarEstados"],
       ["/v1/estados/{cve_ent}", "obtenerEstado"],
@@ -237,7 +236,7 @@ describe("documento OpenAPI", () => {
       expect(codigos(ruta), ruta).toEqual(["200", "304", "400", "404", "405", "429", "500"]);
     }
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
-    for (const ruta of ["/", "/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
+    for (const ruta of ["/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
       expect(codigos(ruta), ruta).toEqual(["200", "400", "405", "429", "500"]);
     }
     for (const ruta of ["/v1/estados", "/v1/municipios", "/v1/bancos", "/v1/openapi.json"]) {

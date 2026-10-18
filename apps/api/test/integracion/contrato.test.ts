@@ -148,10 +148,6 @@ const anioDe = (fecha: string): string => fecha.slice(0, 4);
 
 /** Peticiones por operación; cada estado practicable que declara una operación tiene al menos una. */
 const CASOS: Caso[] = [
-  { ruta: "/", estado: 200 },
-  { ruta: "/?formato=csv", estado: 400 },
-  { ruta: "/?&", estado: 400 },
-
   { ruta: "/v1", estado: 200 },
   { ruta: "/v1?version=2", estado: 400 },
 

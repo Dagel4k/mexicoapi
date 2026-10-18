@@ -287,14 +287,6 @@ function operaciones(): Operacion[] {
   const indice = respuestaDatosPlano("Datos de la API.", ref("Indice"));
   return [
     {
-      ruta: "/",
-      operationId: "indice",
-      summary: "Índice de la API",
-      tag: "General",
-      ok: indice,
-      errores: [],
-    },
-    {
       ruta: "/v1",
       operationId: "indiceV1",
       summary: "Índice de la versión 1",
