@@ -2,6 +2,8 @@
 // contenido, forma mínima del cuerpo y los encabezados de seguridad. Lo usa el flujo de despliegue
 // tras cada publicación y las pruebas de integración contra el Worker local.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface ResultadoHumo {
   ok: boolean;
@@ -96,7 +98,11 @@ const COMPROBACIONES: readonly Comprobacion[] = [
     ruta: "/v1/status",
     estado: 200,
     tipo: "json",
-    validar: (cuerpo) => (Array.isArray(dataDe(cuerpo)) ? undefined : "data no es una lista"),
+    validar(cuerpo) {
+      const data = dataDe(cuerpo);
+      if (!Array.isArray(data)) return "data no es una lista";
+      return data.length > 0 ? undefined : "data no trae datasets";
+    },
   },
   { ruta: "/v1/openapi.json", estado: 200, tipo: "json" },
   { ruta: "/descargas/SHA256SUMS", estado: 200, tipo: "texto" },
@@ -215,8 +221,16 @@ export async function principal(
   return ok ? 0 : 1;
 }
 
-if (import.meta.main) {
+// import.meta.main existe desde Node 24.2; antes el script saldría con 0 sin probar nada.
+const esPrincipal = (import.meta as { main?: boolean }).main;
+if (esPrincipal === true) {
   process.exitCode = await principal(process.argv.slice(2), (texto) => {
     process.stdout.write(texto);
   });
+} else if (
+  esPrincipal === undefined &&
+  resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)
+) {
+  process.stderr.write(`humo.ts pide Node 24.2 o posterior (hay ${process.version}).\n`);
+  process.exitCode = 1;
 }
