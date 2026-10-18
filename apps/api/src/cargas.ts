@@ -1,18 +1,20 @@
 import {
   type AutoridadCurada,
-  type Calendario,
   type CoberturaSerie,
-  crearCalendario,
-  type DiaInhabil,
   esFechaIsoValida,
   type FechaISO,
   type FuenteDof,
   type TipoCambioFix,
   type TipoDiaCurado,
-  type TipoPlazo,
   type Udi,
   type Uma,
 } from "@mexicoapi/core";
+import {
+  type CalendarioCurado,
+  crearCalendarioCurado,
+  type DatosCalendarioCurado,
+  type PlazoCalendario,
+} from "@mexicoapi/core/curados";
 import type { Entorno } from "./entorno.js";
 import { descartar, pedirAsset } from "./estaticos.js";
 
@@ -275,72 +277,20 @@ function aFuenteDof(v: unknown): FuenteDof | undefined {
   return Object.freeze({ nombre, url, fecha_publicacion, fragmento });
 }
 
-export interface PlazoCurado {
-  readonly cobertura: CoberturaSerie;
-  /** Tipos de día que no son inhábiles en este plazo. */
-  readonly excluirTipos: readonly TipoDiaCurado[];
-  readonly calendario: Calendario;
-  /**
-   * Solo si la cobertura del plazo es más corta que la amplia: el mismo plazo con la cobertura
-   * amplia y todos los días publicados en ella. Con `permitir_incompleto` calcula con lo
-   * conocido fuera de la cobertura del plazo en vez de descontar solo fines de semana.
-   */
-  readonly respaldo?: Calendario;
-}
-
-/** El calendario de una autoridad como lo escribe el build, ya revisado. */
-export interface CalendarioCurado {
-  readonly autoridad: AutoridadCurada;
-  readonly plazos: ReadonlyMap<TipoPlazo, PlazoCurado>;
-  /** Cuenta todos los tipos de día: en su cobertura la lista está completa. */
-  readonly general: PlazoCurado;
-  /** La cobertura del plazo que contiene a las de los demás. */
-  readonly amplia: CoberturaSerie;
-  /** Todos los días del shard, en orden. */
-  readonly dias: readonly DiaInhabil[];
-}
-
-const TIPOS_PLAZO: ReadonlySet<string> = new Set(["general", "declaraciones_pagos"]);
 const TIPOS_DIA: ReadonlySet<unknown> = new Set(["descanso", "vacaciones"]);
 
-const contiene = (a: CoberturaSerie, b: CoberturaSerie): boolean =>
-  a.desde <= b.desde && b.hasta <= a.hasta;
-const dentro = (fecha: FechaISO, { desde, hasta }: CoberturaSerie): boolean =>
-  fecha >= desde && fecha <= hasta;
+type DiaCurado = DatosCalendarioCurado["dias"][number];
 
-function aDiaCurado(v: unknown): DiaInhabil | undefined {
+function aDiaCurado(v: unknown): DiaCurado | undefined {
   if (!esObjeto(v) || !esFecha(v.fecha) || typeof v.motivo !== "string" || !TIPOS_DIA.has(v.tipo)) {
     return undefined;
   }
   const fuente = aFuenteDof(v.fuente);
   if (fuente === undefined) return undefined;
-  return Object.freeze({ fecha: v.fecha, motivo: v.motivo, tipo: v.tipo as TipoDiaCurado, fuente });
+  return { fecha: v.fecha, motivo: v.motivo, tipo: v.tipo as TipoDiaCurado, fuente };
 }
 
-/**
- * Una fuente por año de la cobertura amplia y ninguna más: cada fin de semana cita la publicación
- * de su año (las disposiciones de la CNBV son anuales).
- */
-function aFuentesFinDeSemana(
-  v: unknown,
-  amplia: CoberturaSerie,
-): ReadonlyMap<number, FuenteDof> | undefined {
-  if (!esObjeto(v)) return undefined;
-  const primero = anioDe(amplia.desde);
-  const anios = anioDe(amplia.hasta) - primero + 1;
-  if (Object.keys(v).length !== anios) return undefined;
-  const fuentes = new Map<number, FuenteDof>();
-  for (let anio = primero; anio < primero + anios; anio++) {
-    const fuente = aFuenteDof(v[String(anio)]);
-    if (fuente === undefined) return undefined;
-    fuentes.set(anio, fuente);
-  }
-  return fuentes;
-}
-
-type PlazoLeido = Omit<PlazoCurado, "calendario">;
-
-function aPlazo(v: unknown): PlazoLeido | undefined {
+function aPlazo(v: unknown): PlazoCalendario | undefined {
   if (
     !esObjeto(v) ||
     !esRango(v.cobertura) ||
@@ -350,17 +300,28 @@ function aPlazo(v: unknown): PlazoLeido | undefined {
     return undefined;
   }
   const { desde, hasta } = v.cobertura;
-  return {
-    cobertura: Object.freeze({ desde, hasta }),
-    excluirTipos: Object.freeze([...(v.excluir_tipos as TipoDiaCurado[])]),
-  };
+  return { cobertura: { desde, hasta }, excluir_tipos: v.excluir_tipos as TipoDiaCurado[] };
+}
+
+/** Cada valor de `v` con `leer`, o undefined si alguno no tiene la forma. Conserva las llaves. */
+function cadaValor<T>(
+  v: Objeto,
+  leer: (valor: unknown) => T | undefined,
+): Record<string, T> | undefined {
+  const leidos: [string, T][] = [];
+  for (const [llave, valor] of Object.entries(v)) {
+    const leido = leer(valor);
+    if (leido === undefined) return undefined;
+    leidos.push([llave, leido]);
+  }
+  // fromEntries define cada llave, también `__proto__`, que así llega al núcleo y la rechaza.
+  return Object.fromEntries(leidos);
 }
 
 /**
- * Revisa el calendario de una autoridad y arma un `Calendario` por tipo de plazo con los días
- * de su cobertura. `general` cuenta todos los tipos de día y un plazo contiene las coberturas de
- * los demás; cada año de esa cobertura cita sus fines de semana y los días van en orden estricto
- * y dentro de ella. Lo que no cumple falla en vez de llegar a un plazo legal.
+ * Revisa la forma del JSON del calendario de una autoridad y lo arma con el núcleo, que exige sus
+ * reglas (los plazos y su cobertura, las fuentes de los fines de semana de cada año, los días en
+ * orden y dentro de la cobertura). Lo que no cumple falla en vez de llegar a un plazo legal.
  */
 function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): CalendarioCurado {
   const nombre = `calendarios/${autoridad}`;
@@ -368,63 +329,22 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
     !esObjeto(valor) ||
     valor.autoridad !== autoridad ||
     !esObjeto(valor.plazos) ||
+    !esObjeto(valor.fuentes_fin_de_semana) ||
     !Array.isArray(valor.dias)
   ) {
-    throw new Error(`El shard ${nombre} no tiene autoridad, plazos y días.`);
+    throw new Error(`El shard ${nombre} no tiene autoridad, plazos, fuentes y días.`);
   }
-  const leidos = new Map<TipoPlazo, PlazoLeido>();
-  for (const [tipo, v] of Object.entries(valor.plazos)) {
-    const plazo = TIPOS_PLAZO.has(tipo) ? aPlazo(v) : undefined;
-    if (plazo === undefined) throw new Error(`El shard ${nombre} tiene un plazo inesperado.`);
-    leidos.set(tipo as TipoPlazo, plazo);
+  const plazos = cadaValor(valor.plazos, aPlazo);
+  const fuentes = cadaValor(valor.fuentes_fin_de_semana, aFuenteDof);
+  const dias = (valor.dias as unknown[]).map(aDiaCurado);
+  if (plazos === undefined || fuentes === undefined || dias.includes(undefined)) {
+    throw new Error(`El shard ${nombre} tiene un plazo, una fuente o un día con forma inesperada.`);
   }
-  const general = leidos.get("general");
-  if (general === undefined || general.excluirTipos.length > 0) {
-    throw new Error(`El shard ${nombre} no tiene un plazo general que cuente todos los días.`);
-  }
-  const coberturas = [...leidos.values()].map((p) => p.cobertura);
-  const amplia = coberturas.find((c) => coberturas.every((otra) => contiene(c, otra)));
-  if (amplia === undefined) {
-    throw new Error(`Ningún plazo del shard ${nombre} contiene a los demás.`);
-  }
-  const fuentes = aFuentesFinDeSemana(valor.fuentes_fin_de_semana, amplia);
-  if (fuentes === undefined) {
-    throw new Error(`El shard ${nombre} no cita los fines de semana de cada año de su cobertura.`);
-  }
-  const dias: DiaInhabil[] = [];
-  let anterior = "";
-  for (const v of valor.dias as unknown[]) {
-    const dia = aDiaCurado(v);
-    if (dia === undefined || dia.fecha <= anterior || !dentro(dia.fecha, amplia)) {
-      throw new Error(`El shard ${nombre} tiene un día inesperado, repetido o fuera de orden.`);
-    }
-    anterior = dia.fecha;
-    dias.push(dia);
-  }
-  const plazos = new Map<TipoPlazo, PlazoCurado>();
-  const armar = (cobertura: CoberturaSerie, excluirTipos: readonly TipoDiaCurado[]) =>
-    crearCalendario({
-      autoridad,
-      cobertura,
-      dias: dias.filter((d) => dentro(d.fecha, cobertura)),
-      // La cobertura de cada plazo cae en la amplia: todos sus años tienen fuente.
-      fuenteFinDeSemana: (anio) => fuentes.get(anio) as FuenteDof,
-      excluirTipos,
-    });
-  for (const [tipo, { cobertura, excluirTipos }] of leidos) {
-    const calendario = armar(cobertura, excluirTipos);
-    const completo = contiene(cobertura, amplia);
-    const plazo = completo
-      ? { cobertura, excluirTipos, calendario }
-      : { cobertura, excluirTipos, calendario, respaldo: armar(amplia, excluirTipos) };
-    plazos.set(tipo, Object.freeze(plazo));
-  }
-  return Object.freeze({
+  return crearCalendarioCurado({
     autoridad,
-    plazos: new MapaCongelado(plazos),
-    general: plazos.get("general") as PlazoCurado,
-    amplia,
-    dias: Object.freeze(dias),
+    plazos,
+    fuentes_fin_de_semana: fuentes,
+    dias: dias as DiaCurado[],
   });
 }
 
