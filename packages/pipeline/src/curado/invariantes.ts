@@ -10,9 +10,9 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { enesimoDiaDeSemana, esFechaIsoValida } from "@mexicoapi/core";
+import { PLAZOS, revisarPlazos } from "@mexicoapi/core/curados";
 import { aCentavos, conMiles, deCentavos, dividirRedondeando } from "./decimal.js";
 import type { ExcepcionCuotaFija } from "./esquemas.js";
-import { PLAZOS, revisarPlazos } from "./plazos.js";
 
 /**
  * Diferencia aceptada, en centavos, entre la cuota fija publicada y la que resulta de encadenar

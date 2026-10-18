@@ -10,9 +10,9 @@ import {
   type TipoCambioFix,
   type Udi,
 } from "@mexicoapi/core";
+import { PLAZOS, type PlazoCalendario, revisarPlazos } from "@mexicoapi/core/curados";
 import { z } from "zod";
 import { leerCurado } from "../curado/leer.js";
-import { PLAZOS, type PlazoCalendario, revisarPlazos } from "../curado/plazos.js";
 import { curadoDiasCnbv, DIRECTORIO_CURADO } from "../curado/registro.js";
 import { ErrorDatos } from "../errores.js";
 import { esquemaTipoCambioFix, esquemaUdi } from "../esquemas.js";

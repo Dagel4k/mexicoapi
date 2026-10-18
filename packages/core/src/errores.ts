@@ -38,6 +38,13 @@ export class SerieIncompletaError extends Error {
   }
 }
 
+/** Cómo se nombra el calendario de cada autoridad en los textos: "El calendario del SAT". */
+export const DEL_CALENDARIO: Readonly<Record<Autoridad, string>> = Object.freeze({
+  lft: "de la LFT",
+  cnbv: "de la CNBV",
+  sat: "del SAT",
+});
+
 /** Se consultó una fecha que el calendario de la autoridad no cubre. */
 export class CalendarioIncompletoError extends Error {
   /** Código fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
@@ -45,11 +52,17 @@ export class CalendarioIncompletoError extends Error {
   readonly autoridad: Autoridad;
   readonly fecha: FechaISO;
   readonly cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO };
+  /**
+   * El texto para quien consulta, el mismo `detail` de la API. Por omisión dice qué fecha falta y
+   * qué cubre el calendario; las consultas de los calendarios curados explican además por qué.
+   */
+  readonly detalle: string;
 
   constructor(
     autoridad: Autoridad,
     fecha: FechaISO,
     cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO },
+    detalle?: string,
   ) {
     super(
       `Calendario incompleto: el calendario de ${autoridad} no cubre ${fecha}; ` +
@@ -59,5 +72,8 @@ export class CalendarioIncompletoError extends Error {
     this.autoridad = autoridad;
     this.fecha = fecha;
     this.cobertura = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
+    this.detalle =
+      detalle ??
+      `El calendario ${DEL_CALENDARIO[autoridad]} no cubre ${fecha}; cubre del ${cobertura.desde} al ${cobertura.hasta}.`;
   }
 }
