@@ -13,6 +13,7 @@ import type {
 } from "../marco.js";
 
 const BASE = "https://gaia.inegi.org.mx/wscatgeo/v2/";
+const HOSTS = [new URL(BASE).host];
 const CLAVES_ESTADO = Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MINIMO_MUNICIPIOS = 2400;
 const UMBRAL_REVISION = 0.005;
@@ -77,6 +78,7 @@ const repetidos = (valores: readonly string[]): string[] => [
 
 export const estadosInegi: DefinicionDataset<Estado> = {
   id: "inegi.estados",
+  hosts: HOSTS,
   directorio: "inegi-estados",
   archivo: "estados.json",
   esquema: esquemaEstado,
@@ -122,6 +124,7 @@ export const estadosInegi: DefinicionDataset<Estado> = {
 
 export const municipiosInegi: DefinicionDataset<Municipio> = {
   id: "inegi.municipios",
+  hosts: HOSTS,
   directorio: "inegi-municipios",
   archivo: "municipios.json",
   esquema: esquemaMunicipio,

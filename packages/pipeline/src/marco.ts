@@ -43,6 +43,11 @@ export interface Revision {
 
 export interface DefinicionDataset<T extends object> {
   id: string;
+  /**
+   * Hosts a los que el dataset puede pedir, también en las redirecciones: el cliente que recibe
+   * en `ctx` rechaza cualquier otro y todo lo que no sea https.
+   */
+  hosts: readonly string[];
   directorio: string;
   archivo: string;
   esquema: z.ZodType<T>;
@@ -81,6 +86,11 @@ export interface OpcionesCorrida<T> {
 }
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
+
+/** El mismo cliente, pero cada pedido solo puede ir a `hosts`. */
+export function restringirCliente(cliente: Cliente, hosts: readonly string[]): Cliente {
+  return { obtener: (url, opciones = {}) => cliente.obtener(url, { ...opciones, hosts }) };
+}
 
 function primerProblema(error: z.ZodError): string {
   const p = error.issues[0];
@@ -134,9 +144,13 @@ function validarCrudos(def: { id: string }, fuentes: readonly FuenteCapturada[])
 
 export async function ejecutarDataset<T extends object>(
   def: DefinicionDataset<T>,
-  ctx: Contexto,
+  ctxCorrida: Contexto,
   opciones: OpcionesCorrida<T> = {},
 ): Promise<{ resultado: ResultadoCorrida; diferencias: Diferencias<T> }> {
+  const ctx: Contexto = {
+    ...ctxCorrida,
+    cliente: restringirCliente(ctxCorrida.cliente, def.hosts),
+  };
   const fuentes = await def.capturar(ctx);
   validarCrudos(def, fuentes);
 
