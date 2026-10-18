@@ -226,7 +226,9 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     expect(cnbv.advertencias).toEqual([]);
     expect(cnbv.meta.docs).toBe(`${DOCS_API}dias-inhabiles`);
     const sat = await api.diasInhabiles({ autoridad: "sat", anio: 2026 });
-    expect(sat.data).toEqual(m.calendarios.calendarioCurado("sat").dias);
+    expect(sat.data).toEqual(
+      m.calendarios.calendarioCurado("sat").dias.filter((d) => d.fecha.startsWith("2026-")),
+    );
     const { general, amplia } = m.calendarios.calendarioCurado("sat");
     // Mientras falte el segundo periodo de vacaciones de 2026, la lista lo advierte.
     expect(sat.advertencias).toEqual(
@@ -238,15 +240,17 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     );
     const lft = await api.diasInhabiles({ anio: 2026 });
     expect(lft.advertencias).toEqual([]);
+    // El año después de la cobertura amplia sale de los datos: cargar el SAT 2027 no lo vuelve 200.
+    const fuera = Number(amplia.hasta.slice(0, 4)) + 1;
     const sinAnio = await problemaDe(
-      api.diasInhabiles({ autoridad: "sat", anio: 2027 }),
+      api.diasInhabiles({ autoridad: "sat", anio: fuera }),
       "calendario-incompleto",
       422,
     );
-    expect(sinAnio.detail).toBe(`El calendario del SAT no cubre el año 2027; ${cubre(amplia)}.`);
-    expect(sinAnio.problema.fecha).toBe(
-      amplia.hasta < "2027-01-01" ? "2027-01-01" : siguiente(amplia.hasta),
+    expect(sinAnio.detail).toBe(
+      `El calendario del SAT no cubre el año ${fuera}; ${cubre(amplia)}.`,
     );
+    expect(sinAnio.problema.fecha).toBe(`${fuera}-01-01`);
     const lftLejos = await problemaDe(
       api.diasInhabiles({ anio: 2200 }),
       "calendario-incompleto",
