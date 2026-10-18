@@ -41,7 +41,7 @@ body:
     id: ruta
     attributes:
       label: Ruta, función o archivo
-      description: La dirección que consultaste, la función del paquete o el archivo descargado.
+      description: La URL que consultaste, la función del paquete o el archivo descargado.
       placeholder: /v1/constantes/uma/2026
     validations:
       required: false
@@ -61,7 +61,7 @@ body:
     id: fuente
     attributes:
       label: Enlace a la fuente oficial
-      description: Dirección de la publicación donde aparece el valor correcto.
+      description: Enlace a la publicación donde aparece el valor correcto.
       placeholder: https://dof.gob.mx/nota_detalle.php?codigo=...
     validations:
       required: true

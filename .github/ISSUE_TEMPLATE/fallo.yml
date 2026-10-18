@@ -24,8 +24,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Versión o dirección
-      description: La versión del paquete o del servidor, o la dirección que falló.
+      label: Versión o URL
+      description: La versión del paquete o del servidor, o la URL que falló.
     validations:
       required: true
   - type: textarea
