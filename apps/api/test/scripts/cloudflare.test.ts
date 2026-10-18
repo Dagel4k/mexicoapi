@@ -442,7 +442,7 @@ describe("leerJsonc", () => {
   it("lee el wrangler.jsonc real", async () => {
     const real = leerJsonc(await readFile(join(RAIZ_API, "wrangler.jsonc"), "utf8"));
     expect(real).toMatchObject({
-      name: "mexicoapi",
+      name: "mexicoapi-local",
       main: "src/index.ts",
       assets: { directory: "./public", binding: "ASSETS" },
     });
@@ -451,7 +451,7 @@ describe("leerJsonc", () => {
 
 const BASE_WRANGLER = {
   $schema: "./node_modules/wrangler/config-schema.json",
-  name: "mexicoapi",
+  name: "mexicoapi-local",
   main: "src/index.ts",
   compatibility_date: "2026-10-01",
   assets: { directory: "./public", binding: "ASSETS", run_worker_first: ["/v1", "/v1/*"] },

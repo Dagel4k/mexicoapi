@@ -1,6 +1,8 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "mexicoapi",
+  // Nombre solo para uso local: el despliegue genera wrangler.<entorno>.json con el nombre, el KV
+  // y el límite de cada entorno, así que un `wrangler deploy` con este archivo no toca producción.
+  "name": "mexicoapi-local",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
