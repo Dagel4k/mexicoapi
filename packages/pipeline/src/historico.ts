@@ -6,10 +6,21 @@ import type { Cliente } from "./http.js";
 
 const DIAS_POR_MES = 5;
 
+/** Una respuesta que no es JSON (HTML, bytes inválidos) es un bloqueo, no un día sin datos. */
+function esJson(bytes: Uint8Array): boolean {
+  try {
+    JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Una observación del CEP por mes, desde `desde` (AAAA-MM) hasta el mes de `hasta`.
  * Prueba los días 1 a 5 y se queda con el primero cuyo JSON trae instituciones;
- * un mes sin ninguno se salta (quien llama detecta el hueco). Un fallo de red aborta.
+ * un mes sin ninguno se salta (quien llama detecta el hueco). Un fallo de red aborta, y
+ * una respuesta que no es JSON se toma por bloqueo y detiene la captura.
  */
 export async function capturarHistoricoCep(
   cliente: Cliente,
@@ -33,7 +44,14 @@ export async function capturarHistoricoCep(
     for (let dia = 1; dia <= DIAS_POR_MES && !encontrada; dia++) {
       const fecha = `${prefijo}-${String(dia).padStart(2, "0")}`;
       if (fecha > hasta) break;
-      const respuesta = await cliente.obtener(urlCep(fecha));
+      const url = urlCep(fecha);
+      const respuesta = await cliente.obtener(url);
+      if (!esJson(respuesta.cuerpo)) {
+        throw new ErrorDatos(
+          `Banxico respondió algo que no es JSON en ${url}: posible bloqueo; se detuvo la captura`,
+          "bancos",
+        );
+      }
       try {
         observaciones.push({ fecha, entradas: interpretarCep(respuesta.cuerpo) });
         encontrada = true;

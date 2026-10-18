@@ -17,6 +17,10 @@ export const leerFixture = async (ruta: string): Promise<Uint8Array> =>
 export interface Salida {
   salida: string[];
   errores: string[];
+  /** URL pedidas al fetch falso, sin robots.txt. */
+  pedidas: string[];
+  /** Intervalos con que se pidió un cliente. */
+  intervalos: number[];
 }
 
 export interface Opciones {
@@ -46,9 +50,12 @@ export async function crearEntorno(
     const n = String(i).padStart(2, "0");
     municipios.set(n, await leerFixture(`inegi/mgem-${n}.json`));
   }
+  const pedidas: string[] = [];
+  const intervalos: number[] = [];
   const fetchFalso: typeof fetch = async (entrada) => {
     const url = String(entrada);
     if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
+    pedidas.push(url);
     for (const [parte, estado] of Object.entries(opciones.estados ?? {})) {
       if (url.includes(parte)) return new Response("", { status: estado });
     }
@@ -66,12 +73,17 @@ export async function crearEntorno(
   const salida: string[] = [];
   const errores: string[] = [];
   return {
-    cliente: crearCliente({ fetch: fetchFalso, esperar: async () => {}, intervaloMinimoMs: 0 }),
+    crearCliente: (ms) => {
+      intervalos.push(ms);
+      return crearCliente({ fetch: fetchFalso, esperar: async () => {}, intervaloMinimoMs: 0 });
+    },
     raizDatos,
     ahora: () => opciones.ahora ?? new Date("2026-10-17T18:00:00Z"),
     escribir: (t) => void salida.push(t),
     escribirError: (t) => void errores.push(t),
     salida,
     errores,
+    pedidas,
+    intervalos,
   };
 }

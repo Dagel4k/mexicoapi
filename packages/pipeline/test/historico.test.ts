@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { urlCep } from "../src/datasets/bancos/cep.js";
+import { ErrorDatos } from "../src/errores.js";
 import { capturarHistoricoCep } from "../src/historico.js";
 import { type Cliente, ErrorHttp } from "../src/http.js";
 import { leerFixture } from "./ayudas.js";
@@ -111,5 +112,32 @@ describe("capturarHistoricoCep", () => {
       },
     };
     await expect(capturarHistoricoCep(cliente, "2026-01", "2026-01-02")).rejects.toThrow("boom");
+  });
+
+  it("una respuesta que no es JSON detiene la captura sin pedir más", async () => {
+    const cep = await leerFixture("bancos/cep-2012-01-03.json");
+    const pedidas: string[] = [];
+    const html = texto("<html><body>Acceso restringido</body></html>");
+    const error = await capturarHistoricoCep(
+      clienteFalso((f) => (f.startsWith("2026-03") ? html : cep), pedidas),
+      "2026-01",
+      "2026-06-30",
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ErrorDatos);
+    expect((error as Error).message).toContain("posible bloqueo");
+    expect((error as Error).message).toContain(urlCep("2026-03-01"));
+    expect(pedidas).toEqual([urlCep("2026-01-01"), urlCep("2026-02-01"), urlCep("2026-03-01")]);
+  });
+
+  it("bytes inválidos y cuerpo vacío también cuentan como bloqueo", async () => {
+    for (const cuerpo of [new Uint8Array([0xff, 0xfe, 0x00]), new Uint8Array()]) {
+      await expect(
+        capturarHistoricoCep(
+          clienteFalso(() => cuerpo, []),
+          "2026-01",
+          "2026-01-31",
+        ),
+      ).rejects.toBeInstanceOf(ErrorDatos);
+    }
   });
 });

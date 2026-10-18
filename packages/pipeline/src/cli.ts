@@ -13,7 +13,7 @@ import { resumenMarkdown } from "./resumen.js";
 import { verificarDatos } from "./verificar.js";
 
 export interface Entorno {
-  cliente: Cliente;
+  crearCliente: (intervaloMinimoMs: number) => Cliente;
   raizDatos: string;
   ahora: () => Date;
   escribir: (texto: string) => void;
@@ -27,14 +27,14 @@ interface ErrorDataset {
 
 const USO = `Uso:
   actualizar <id...> [--seco] [--fecha AAAA-MM-DD] [--resumen <ruta-sin-extension>] [--datos <ruta>]
-  bancos-historico [--desde AAAA-MM] [--fecha AAAA-MM-DD] [--datos <ruta>]
+  bancos-historico [--desde AAAA-MM] [--fecha AAAA-MM-DD] [--intervalo <segundos, entero >= 1, 30 por omisión>] [--datos <ruta>]
   verificar [--datos <ruta>]
 Datasets: ${[...DATASETS.keys()].join(", ")}
 `;
 
 const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   actualizar: ["seco", "fecha", "resumen", "datos"],
-  "bancos-historico": ["desde", "fecha", "datos"],
+  "bancos-historico": ["desde", "fecha", "intervalo", "datos"],
   verificar: ["datos"],
 };
 
@@ -47,6 +47,7 @@ function leer(argumentos: readonly string[]) {
       fecha: { type: "string" },
       resumen: { type: "string" },
       desde: { type: "string" },
+      intervalo: { type: "string" },
       datos: { type: "string" },
     },
   });
@@ -105,7 +106,7 @@ async function actualizar(
     entorno.escribirError(`Fecha inválida: ${valores.fecha}\n`);
     return 1;
   }
-  const ctx: Contexto = { cliente: entorno.cliente, fecha, raizDatos };
+  const ctx: Contexto = { cliente: entorno.crearCliente(1000), fecha, raizDatos };
   const resultados: ResultadoCorrida[] = [];
   const detalles = new Map<string, Diferencias<unknown>>();
   const errores: ErrorDataset[] = [];
@@ -149,7 +150,11 @@ async function actualizar(
 }
 
 async function bancosHistorico(
-  valores: { desde?: string | undefined; fecha?: string | undefined },
+  valores: {
+    desde?: string | undefined;
+    fecha?: string | undefined;
+    intervalo?: string | undefined;
+  },
   entorno: Entorno,
   raizDatos: string,
 ): Promise<number> {
@@ -178,15 +183,24 @@ async function bancosHistorico(
     entorno.escribirError(`--desde (${desde}) es posterior al mes de ${fecha}\n`);
     return 1;
   }
+  const intervalo = valores.intervalo ?? "30";
+  if (!/^\d+$/.test(intervalo) || Number(intervalo) < 1) {
+    entorno.escribirError(`--intervalo inválido: ${intervalo} (entero >= 1)\n${USO}`);
+    return 1;
+  }
+  const segundos = Number(intervalo);
+  const meses = mesesEntre(desde, fecha.slice(0, 7));
+  entorno.escribir(
+    `bancos: ${meses.length} meses, un pedido cada ${segundos} s; duración estimada: ${Math.ceil((meses.length * segundos) / 60)} min\n`,
+  );
+  const cliente = entorno.crearCliente(segundos * 1000);
   try {
-    const historico = await capturarHistoricoCep(entorno.cliente, desde, fecha, entorno.escribir);
-    const omitidos = mesesEntre(desde, fecha.slice(0, 7)).filter(
-      (mes) => !historico.some((o) => o.fecha.startsWith(mes)),
-    );
+    const historico = await capturarHistoricoCep(cliente, desde, fecha, entorno.escribir);
+    const omitidos = meses.filter((mes) => !historico.some((o) => o.fecha.startsWith(mes)));
     for (const mes of omitidos) {
       entorno.escribirError(`bancos: sin datos del CEP en ${mes}; el historial queda con hueco\n`);
     }
-    const ctx: Contexto = { cliente: entorno.cliente, fecha, raizDatos };
+    const ctx: Contexto = { cliente, fecha, raizDatos };
     const { resultado } = await ejecutarDataset(crearBancos({ historico }), ctx, {
       anteriorInicial: registrosDesdeHistorico(historico),
     });
