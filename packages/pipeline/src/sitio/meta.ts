@@ -26,8 +26,18 @@ export interface DatasetInterno {
   cobertura?: CoberturaSerie;
 }
 
+/** Un dataset curado: lo actualiza una persona y no un bot, así que no tiene frescura. */
+export interface DatasetCurado {
+  meta: Meta;
+  records: number;
+  data_sha256: string;
+}
+
 export interface MetaInterna {
+  /** Los automáticos; `/v1/status` lista solo estos. */
   datasets: Record<string, DatasetInterno>;
+  /** La meta de los curados para sus respuestas, aparte para no aparecer en `/v1/status`. */
+  curados: Record<string, DatasetCurado>;
 }
 
 /** Horas que un dataset puede pasar sin actualizarse antes de considerarse rancio. */

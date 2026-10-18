@@ -9,7 +9,13 @@ import {
   esquemaTipoCambioFix,
   esquemaUdi,
 } from "../../src/esquemas.js";
-import { esquemaFixOperacion, sobre } from "../../src/sitio/esquemas-api.js";
+import {
+  esquemaFixOperacion,
+  esquemaSalarioMinimo,
+  esquemaTarifaIsr,
+  esquemaUma,
+  sobre,
+} from "../../src/sitio/esquemas-api.js";
 import { documentoOpenApi, PROBLEMAS } from "../../src/sitio/openapi.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
 
@@ -150,6 +156,7 @@ describe("documento OpenAPI", () => {
     expect(doc.info.license).toEqual({ name: "MIT", identifier: "MIT" });
     expect(doc.info.description).toContain("meta.sources");
     expect(doc.info.description).toContain("tipo de cambio FIX y UDIS");
+    expect(doc.info.description).toContain("UMA, salario mínimo y tarifas de ISR");
     expect(doc.servers).toEqual([{ url: "/" }]);
   });
 
@@ -170,6 +177,10 @@ describe("documento OpenAPI", () => {
       ["/v1/tipo-cambio/fix", "consultarFix"],
       ["/v1/tipo-cambio/fix/ultimo", "ultimoFix"],
       ["/v1/udis", "consultarUdi"],
+      ["/v1/constantes/uma", "consultarUma"],
+      ["/v1/constantes/uma/{anio}", "obtenerUma"],
+      ["/v1/constantes/salario-minimo/{anio}", "obtenerSalarioMinimo"],
+      ["/v1/isr/tarifa/{periodo}/{anio}", "obtenerTarifaIsr"],
       ["/v1/status", "estadoDatasets"],
       ["/v1/openapi.json", "openapi"],
     ];
@@ -215,8 +226,15 @@ describe("documento OpenAPI", () => {
     expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "400", "405", "429", "500"]);
     expect(codigos("/v1/dias-habiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
     expect(codigos("/v1/dias-inhabiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
-    for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis"]) {
+    for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis", "/v1/constantes/uma"]) {
       expect(codigos(ruta), ruta).toEqual(["200", "400", "404", "405", "429", "500"]);
+    }
+    for (const ruta of [
+      "/v1/constantes/uma/{anio}",
+      "/v1/constantes/salario-minimo/{anio}",
+      "/v1/isr/tarifa/{periodo}/{anio}",
+    ]) {
+      expect(codigos(ruta), ruta).toEqual(["200", "304", "400", "404", "405", "429", "500"]);
     }
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
     for (const ruta of ["/", "/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
@@ -239,6 +257,7 @@ describe("documento OpenAPI", () => {
       cvegeo: "^\\d{5}$",
       codigo: "^\\d{3}$",
       clabe: "^\\d{18}$",
+      anio: "^\\d{4}$",
     };
     let vistos = 0;
     for (const { op } of operaciones) {
@@ -246,10 +265,16 @@ describe("documento OpenAPI", () => {
         if (p.in !== "path") continue;
         vistos += 1;
         expect(p.required).toBe(true);
-        expect(p.schema.pattern).toBe(patrones[p.name]);
+        expect(p.example, p.name).toBeTruthy();
+        // El periodo de la tarifa es una de dos palabras: se declara como enum.
+        if (p.name === "periodo") {
+          expect(p.schema).toEqual({ type: "string", enum: ["mensual", "anual"] });
+          continue;
+        }
+        expect(p.schema.pattern, p.name).toBe(patrones[p.name]);
       }
     }
-    expect(vistos).toBe(5);
+    expect(vistos).toBe(9);
   });
 
   it("describe los parámetros de consulta", () => {
@@ -266,8 +291,17 @@ describe("documento OpenAPI", () => {
       "desde",
       "dias",
       "permitir_incompleto",
+      "tipo_plazo",
     ]);
-    expect(habiles.autoridad.schema.enum).toEqual(["lft"]);
+    expect(habiles.autoridad.schema.enum).toEqual(["lft", "cnbv", "sat"]);
+    // Obligatorio solo con sat: el documento no puede marcarlo como required.
+    expect(habiles.tipo_plazo).toMatchObject({
+      in: "query",
+      required: false,
+      schema: { type: "string", enum: ["general", "declaraciones_pagos"] },
+    });
+    expect(habiles.tipo_plazo.description).toContain("autoridad=sat");
+    expect(habiles.tipo_plazo.description).toContain("vacaciones");
     expect(habiles.dias.schema.pattern).toBe("^[1-9]\\d{0,3}$");
     expect(habiles.dias.required).toBe(true);
     expect(habiles.permitir_incompleto.required).toBeFalsy();
@@ -275,6 +309,8 @@ describe("documento OpenAPI", () => {
     const inhabiles = params("/v1/dias-inhabiles");
     expect(inhabiles.anio.schema.pattern).toBe("^\\d{4}$");
     expect(inhabiles.autoridad.required).toBe(true);
+    expect(inhabiles.autoridad.schema.enum).toEqual(["lft", "cnbv", "sat"]);
+    expect(Object.keys(inhabiles).sort()).toEqual(["anio", "autoridad"]);
     const fecha = { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
     expect(habiles.desde.schema).toEqual(fecha);
     // Se pide exactamente uno de los dos: ninguno es obligatorio por sí solo.
@@ -290,6 +326,84 @@ describe("documento OpenAPI", () => {
     expect(Object.keys(udis)).toEqual(["fecha"]);
     expect(udis.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
     expect(params("/v1/tipo-cambio/fix/ultimo")).toEqual({});
+    const uma = params("/v1/constantes/uma");
+    expect(Object.keys(uma)).toEqual(["fecha"]);
+    expect(uma.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
+  });
+
+  it("sumarDiasHabiles explica tipo_plazo: obligatorio con sat y no aceptado con las demás", () => {
+    const op = operaciones.find((o) => o.ruta === "/v1/dias-habiles")?.op as Obj;
+    expect(op.description).toContain("tipo_plazo");
+    expect(op.description).toContain("parametro-faltante");
+    expect(op.description).toContain("lft o cnbv");
+  });
+
+  it("consultarUma dice que en enero rige la UMA del año anterior", () => {
+    const op = operaciones.find((o) => o.ruta === "/v1/constantes/uma")?.op as Obj;
+    expect(op.description).toContain("1 de febrero");
+    expect(op.description).toContain("año anterior");
+    expect(op.responses["404"]).toEqual({ $ref: "#/components/responses/SinDato" });
+  });
+
+  it("las constantes van en la etiqueta Constantes y responden su esquema", () => {
+    const constantes = operaciones
+      .filter((o) => o.op.tags.includes("Constantes"))
+      .map((o) => o.op.operationId);
+    expect(constantes).toEqual([
+      "consultarUma",
+      "obtenerUma",
+      "obtenerSalarioMinimo",
+      "obtenerTarifaIsr",
+    ]);
+    expect(doc.tags.map((t: Obj) => t.name)).toContain("Constantes");
+    expect(esquema200("/v1/constantes/uma").properties.data).toEqual({
+      $ref: "#/components/schemas/Uma",
+    });
+    expect(esquema200("/v1/constantes/uma/{anio}").properties.data).toEqual({
+      $ref: "#/components/schemas/Uma",
+    });
+    expect(esquema200("/v1/constantes/salario-minimo/{anio}").properties.data).toEqual({
+      type: "array",
+      items: { $ref: "#/components/schemas/SalarioMinimo" },
+    });
+    expect(esquema200("/v1/isr/tarifa/{periodo}/{anio}").properties.data).toEqual({
+      $ref: "#/components/schemas/TarifaIsr",
+    });
+  });
+
+  it("Uma, SalarioMinimo y TarifaIsr citan su fuente con FuenteDof, con montos de dos decimales", () => {
+    const { Uma, SalarioMinimo, TarifaIsr, TramoIsr, FuenteDof } = doc.components.schemas;
+    for (const [nombre, esquema] of Object.entries({ Uma, SalarioMinimo, TarifaIsr })) {
+      expect((esquema as Obj).properties.fuente.$ref, nombre).toBe(
+        "#/components/schemas/FuenteDof",
+      );
+    }
+    expect([...FuenteDof.required].sort()).toEqual([
+      "fecha_publicacion",
+      "fragmento",
+      "nombre",
+      "url",
+    ]);
+    expect(TarifaIsr.properties.tramos.items).toEqual({ $ref: "#/components/schemas/TramoIsr" });
+    const monto = "^(0|[1-9]\\d*)\\.\\d{2}$";
+    for (const campo of ["diaria", "mensual", "anual"]) {
+      expect(Uma.properties[campo].pattern, campo).toBe(monto);
+    }
+    expect(SalarioMinimo.properties.diario.pattern).toBe(monto);
+    expect(SalarioMinimo.properties.zona.enum).toEqual(["general", "zlfn"]);
+    expect(TarifaIsr.properties.periodo.enum).toEqual(["mensual", "anual"]);
+    expect(Uma.properties.anio.type).toBe("integer");
+    expect(TramoIsr.properties.limite_inferior.pattern).toBe(monto);
+    expect(TramoIsr.properties.limite_superior.anyOf).toEqual([
+      { type: "string", pattern: monto },
+      { type: "null" },
+    ]);
+    expect([...TramoIsr.required].sort()).toEqual([
+      "cuota_fija",
+      "limite_inferior",
+      "limite_superior",
+      "tasa_excedente",
+    ]);
   });
 
   it("consultarFix dice que se indica exactamente uno de publicado u operacion", () => {
@@ -376,6 +490,7 @@ describe("documento OpenAPI", () => {
         "EstadoDataset",
         "FixOperacion",
         "Fuente",
+        "FuenteDof",
         "FuenteMeta",
         "Indice",
         "Meta",
@@ -384,8 +499,12 @@ describe("documento OpenAPI", () => {
         "Problema",
         "ResultadoClabe",
         "ResultadoDiasHabiles",
+        "SalarioMinimo",
+        "TarifaIsr",
         "TipoCambioFix",
+        "TramoIsr",
         "Udi",
+        "Uma",
       ].sort(),
     );
     for (const esquema of Object.values(doc.components.schemas as Obj)) {
@@ -403,6 +522,12 @@ describe("documento OpenAPI", () => {
         ["Banco", "bancos/bancos.json"],
         ["TipoCambioFix", "tipo-cambio-fix/fix.json"],
         ["Udi", "udis/udis.json"],
+        ["Uma", "constantes-uma/uma.json"],
+        ["SalarioMinimo", "constantes-salario-minimo/salario-minimo.json"],
+        ["TarifaIsr", "isr-tarifas/tarifas.json"],
+        // Un día del calendario de la CNBV o del SAT es un DiaInhabil sin `autoridad`.
+        ["DiaInhabil", "dias-inhabiles-sat/dias-inhabiles.json"],
+        ["DiaInhabil", "dias-inhabiles-cnbv/dias-inhabiles.json"],
       ];
       for (const [nombre, archivo] of casos) {
         const registros = (await leerJson(
@@ -442,6 +567,22 @@ describe("documento OpenAPI", () => {
       expect(sobre(esquemaMunicipio).safeParse({ data: municipio, meta }).success).toBe(true);
       expect(sobre(esquemaBanco).safeParse({ data: banco, meta }).success).toBe(true);
       expect(sobre(esquemaEstado).safeParse({ data: {}, meta }).success).toBe(false);
+
+      const real = async (archivo: string) =>
+        (await leerJson(new URL(`../../../../data/${archivo}`, import.meta.url))) as Obj[];
+      const [uma] = await real("constantes-uma/uma.json");
+      const salario = await real("constantes-salario-minimo/salario-minimo.json");
+      const tarifas = await real("isr-tarifas/tarifas.json");
+      expect(sobre(esquemaUma).safeParse({ data: uma, meta }).success).toBe(true);
+      expect(sobre(esquemaSalarioMinimo.array()).safeParse({ data: salario, meta }).success).toBe(
+        true,
+      );
+      for (const t of tarifas) {
+        expect(sobre(esquemaTarifaIsr).safeParse({ data: t, meta }).success).toBe(true);
+      }
+      expect(sobre(esquemaUma).safeParse({ data: { ...uma, diaria: "117.3" }, meta }).success).toBe(
+        false,
+      );
     },
     PRUEBA_LENTA,
   );
@@ -564,6 +705,9 @@ describe("documento OpenAPI", () => {
       "/v1/municipios/{cvegeo}",
       "/v1/bancos",
       "/v1/bancos/{codigo}",
+      "/v1/constantes/uma/{anio}",
+      "/v1/constantes/salario-minimo/{anio}",
+      "/v1/isr/tarifa/{periodo}/{anio}",
       "/v1/openapi.json",
     ];
     const conEtag = operaciones

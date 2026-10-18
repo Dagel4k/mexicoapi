@@ -1,4 +1,6 @@
+import type { FuenteDof, SalarioMinimo, TarifaIsr, TramoIsr, Uma } from "@mexicoapi/core";
 import { z } from "zod";
+import { MONTO } from "../curado/decimal.js";
 
 const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const instante = z.iso.datetime();
@@ -77,6 +79,63 @@ export const esquemaFixOperacion = z.object({
     .regex(/^\d+\.\d{4}$/)
     .describe("Pesos por dólar, con 4 decimales, como lo publica el DOF."),
   fundamento: esquemaFuente.describe("Regla que fija qué publicación aplica (CFF art. 20)."),
+});
+
+const monto = (descripcion: string) =>
+  z
+    .string()
+    .regex(MONTO)
+    .describe(`${descripcion} Texto con dos decimales, como lo publica el DOF.`);
+const anio = (descripcion: string) => z.number().int().min(1900).max(2100).describe(descripcion);
+
+export const esquemaFuenteDof: z.ZodType<FuenteDof> = z.object({
+  nombre: z.string().min(1).describe("Nombre de la publicación."),
+  url: z
+    .string()
+    .describe("Dirección de la publicación en el DOF o de la ley en diputados.gob.mx."),
+  fecha_publicacion: fechaIso.describe("Fecha de publicación en el DOF (AAAA-MM-DD)."),
+  fragmento: z.string().min(1).describe("Texto oficial que respalda el valor, citado tal cual."),
+});
+
+export const esquemaUma: z.ZodType<Uma> = z.object({
+  anio: anio("Año de la UMA."),
+  diaria: monto("Valor diario en pesos."),
+  mensual: monto("Valor mensual en pesos (diaria × 30.4)."),
+  anual: monto("Valor anual en pesos (mensual × 12)."),
+  vigencia_desde: fechaIso.describe(
+    "Primer día de vigencia, el 1 de febrero; rige hasta el 31 de enero del año siguiente.",
+  ),
+  fuente: esquemaFuenteDof.describe("Publicación del INEGI en el DOF."),
+});
+
+export const esquemaSalarioMinimo: z.ZodType<SalarioMinimo> = z.object({
+  anio: anio("Año del salario mínimo."),
+  zona: z
+    .enum(["general", "zlfn"])
+    .describe("Zona: general o Zona Libre de la Frontera Norte (zlfn)."),
+  diario: monto("Salario mínimo diario en pesos."),
+  vigencia_desde: fechaIso.describe("Primer día de vigencia, el 1 de enero."),
+  fuente: esquemaFuenteDof.describe("Resolución de la CONASAMI publicada en el DOF."),
+});
+
+export const esquemaTramoIsr: z.ZodType<TramoIsr> = z.object({
+  limite_inferior: monto("Límite inferior en pesos."),
+  limite_superior: z
+    .string()
+    .regex(MONTO)
+    .nullable()
+    .describe('Límite superior en pesos; null en el último tramo ("En adelante").'),
+  cuota_fija: monto("Cuota fija en pesos."),
+  tasa_excedente: monto("Porcentaje que se aplica sobre el excedente del límite inferior."),
+});
+
+export const esquemaTarifaIsr: z.ZodType<TarifaIsr> = z.object({
+  anio: anio("Año de la tarifa."),
+  periodo: z.enum(["mensual", "anual"]).describe("Periodo de la tarifa."),
+  tramos: z.array(esquemaTramoIsr).min(1).describe("Tramos, del menor al mayor."),
+  fuente: esquemaFuenteDof.describe(
+    "Anexo 8 de la Resolución Miscelánea Fiscal publicado en el DOF.",
+  ),
 });
 
 const codigoError = z.enum([

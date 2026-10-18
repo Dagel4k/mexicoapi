@@ -1,6 +1,6 @@
 // Aritmética exacta en centavos con BigInt: los montos curados nunca pasan por `number`.
 
-const MONTO = /^(0|[1-9]\d*)\.\d{2}$/;
+export const MONTO = /^(0|[1-9]\d*)\.\d{2}$/;
 
 /** Monto no negativo con exactamente dos decimales y sin ceros a la izquierda ("117.31"). */
 export function esMonto(texto: string): boolean {
