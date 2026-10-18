@@ -1,6 +1,7 @@
 import {
   type Autoridad,
   type AutoridadCurada,
+  AVISO_LFT_715,
   CalendarioIncompletoError,
   calendarioLft,
   diasDescansoLft,
@@ -27,20 +28,23 @@ import type { Contexto } from "../rutas.js";
 const DOCS_HABILES = `${URL_DOCS}/api/README.md#dias-habiles`;
 const DOCS_INHABILES = `${URL_DOCS}/api/README.md#dias-inhabiles`;
 
-/** Los días de la LFT salen del núcleo, no de un dataset del build; su meta es fija. */
+/**
+ * Los días de la LFT salen del núcleo, no de un dataset del build; su meta es fija y dice qué se
+ * aplica de cada artículo.
+ */
 function metaLft(docs: string): Meta {
   return congelar({
     dataset: "dias-inhabiles.lft",
     as_of: VIGENCIA_LFT,
     sources: [
       {
-        name: "Ley Federal del Trabajo, artículos 74 y 715",
+        name: "Ley Federal del Trabajo, artículos 74 (descanso obligatorio) y 715 (sábados y domingos)",
         url: FUENTE_LFT_74.url,
         license:
           "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
         license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
         citation:
-          "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
+          "Ley Federal del Trabajo: del artículo 74, los días de descanso obligatorio; del artículo 715, solo los sábados y domingos. Texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
       },
     ],
     docs,
@@ -192,7 +196,8 @@ export function diasInhabiles(c: Contexto): Response | Promise<Response> {
   if (autoridad !== "lft") return inhabilesCurados(c, autoridad, anio);
   return conCalendario(c, () => {
     exigirAnio(autoridad, anio, CALENDARIO.cobertura);
-    // La LFT se calcula por regla: la lista del año siempre está completa.
-    return respuestaInhabiles(diasDescansoLft(anio), [], META_DIAS_INHABILES);
+    // La LFT se calcula por regla: la lista del año siempre está completa, pero no tiene las
+    // suspensiones de labores de las autoridades laborales (art. 715).
+    return respuestaInhabiles(diasDescansoLft(anio), [AVISO_LFT_715], META_DIAS_INHABILES);
   });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AVISO_LFT_715,
   COBERTURA_LFT,
   diasDescansoLft,
   FUENTE_LFT_74,
@@ -96,6 +97,12 @@ describe("fuentes y cobertura", () => {
     expect(FUENTE_LFT_715.nombre).toBe("Ley Federal del Trabajo, artículo 715");
     expect(FUENTE_LFT_715.fragmento).toContain("con excepción de los sábados y domingos");
     expect(FUENTE_LFT_715.url).toBe(FUENTE_LFT_74.url);
+  });
+
+  it("el aviso dice qué se descuenta y qué no del art. 715", () => {
+    expect(AVISO_LFT_715).toBe(
+      "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.",
+    );
   });
 
   it("la vigencia es la fecha de la última reforma de la LFT en el DOF", () => {

@@ -33,7 +33,7 @@ import {
   rechazo,
   datos as respuestaDatos,
 } from "./ayudas.js";
-import { mover, probarClienteSinRed } from "./comun.js";
+import { AVISO_LFT, mover, probarClienteSinRed } from "./comun.js";
 import { probarCuradosSinRed } from "./curados.js";
 
 const CLABE = "002010077777777771";
@@ -1224,7 +1224,8 @@ describe("advertencia de antigüedad", () => {
     vi.setSystemTime(new Date("2099-01-01T00:00:00Z"));
     const api = crearCliente({ offline: true });
     expect((await api.bancos()).advertencias).toEqual([]);
-    expect((await api.diasInhabiles({ anio: 2026 })).advertencias).toEqual([]);
+    // Solo el aviso fijo de la LFT (art. 715), no el de antigüedad.
+    expect((await api.diasInhabiles({ anio: 2026 })).advertencias).toEqual([AVISO_LFT]);
   });
 });
 

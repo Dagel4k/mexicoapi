@@ -21,6 +21,14 @@ export const FUENTE_LFT_715: Fuente = Object.freeze({
     "Artículo 715.- Son días hábiles todos los del año con excepción de los sábados y domingos, los de descanso obligatorio, los festivos que señale el calendario oficial y aquéllos en que las autoridades laborales señaladas en el artículo anterior suspendan sus labores.",
 });
 
+/**
+ * El calendario de la LFT aplica del art. 715 solo los sábados y domingos y los días de descanso
+ * obligatorio del art. 74: no tiene los días en que las autoridades laborales suspenden labores,
+ * que publica cada tribunal o centro de conciliación. Lo dice en cada cálculo y en cada lista.
+ */
+export const AVISO_LFT_715 =
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+
 export const COBERTURA_LFT: { readonly desde: FechaISO; readonly hasta: FechaISO } = Object.freeze({
   desde: "2007-01-01",
   hasta: "2100-12-31",

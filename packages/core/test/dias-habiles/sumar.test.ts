@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calendarioLft, crearCalendario } from "../../src/dias-habiles/calendario.js";
+import { AVISO_LFT_715 } from "../../src/dias-habiles/lft.js";
 import { sumarDiasHabiles } from "../../src/dias-habiles/sumar.js";
 import type { DiaInhabil, Fuente } from "../../src/dias-habiles/tipos.js";
 import { CalendarioIncompletoError, FechaFueraDeRangoError } from "../../src/errores.js";
@@ -20,7 +21,7 @@ describe("sumarDiasHabiles", () => {
     expect(r.desde).toBe("2026-01-30");
     expect(r.dias).toBe(1);
     expect(r.inhabiles_saltados.map((d) => d.fecha)).toEqual(["2026-02-02"]);
-    expect(r.advertencias).toEqual([]);
+    expect(r.advertencias).toEqual([AVISO_LFT_715]);
   });
 
   it("suma 5 días hábiles desde un viernes", () => {
@@ -95,6 +96,51 @@ describe("sumarDiasHabiles", () => {
     expect(r2.advertencias).toEqual([
       "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
       "Calendario incompleto: SAT 2028; solo se descontaron fines de semana.",
+    ]);
+  });
+
+  it("agrega al final los avisos del calendario, con desde y el resultado", () => {
+    const pedidos: string[][] = [];
+    const conAvisos = crearCalendario({
+      autoridad: "sat",
+      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+      dias: [],
+      fuenteFinDeSemana: { nombre: "SAT", url: "https://example.com/sat" },
+      avisos: (desde, resultado) => {
+        pedidos.push([desde, resultado]);
+        return [`Aviso de ${desde} a ${resultado}.`];
+      },
+    });
+    const r = sumarDiasHabiles({
+      calendario: conAvisos,
+      desde: "2026-12-30",
+      dias: 5,
+      permitirIncompleto: true,
+    });
+    expect(pedidos).toEqual([["2026-12-30", "2027-01-06"]]);
+    expect(r.advertencias).toEqual([
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
+      "Aviso de 2026-12-30 a 2027-01-06.",
+    ]);
+  });
+
+  it("con permitirIncompleto, la advertencia de cada año dice qué puede faltar si el calendario lo sabe", () => {
+    const bancario = crearCalendario({
+      autoridad: "cnbv",
+      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+      dias: [],
+      fuenteFinDeSemana: { nombre: "CNBV", url: "https://example.com/cnbv" },
+      faltaFuera: "Pueden faltar días de cierre bancario, como el 1 de enero.",
+    });
+    const r = sumarDiasHabiles({
+      calendario: bancario,
+      desde: "2026-12-30",
+      dias: 400,
+      permitirIncompleto: true,
+    });
+    expect(r.advertencias).toEqual([
+      "Calendario incompleto: CNBV 2027; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero.",
+      "Calendario incompleto: CNBV 2028; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero.",
     ]);
   });
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { diaDeLaSemana, sumarDias } from "@mexicoapi/core";
+import { AVISO_LFT_715, diaDeLaSemana, sumarDias } from "@mexicoapi/core";
 import { describe, expect, inject, it } from "vitest";
 import { probarHumo } from "../../scripts/humo.ts";
 import {
@@ -120,13 +120,23 @@ describe("datos reales del build", () => {
     expect(data.resultado).toBe("2026-02-03");
     expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toEqual(["2026-02-02"]);
     expect(meta.dataset).toBe("dias-inhabiles.lft");
+    // Nuevo: toda respuesta lft avisa que no tiene las suspensiones de labores (art. 715).
+    expect(data.advertencias).toEqual([AVISO_LFT_715]);
+  });
+
+  it("/v1/dias-habiles lft no descuenta el Viernes Santo y lo advierte", async () => {
+    const { data } = await datos("/v1/dias-habiles?autoridad=lft&desde=2026-03-31&dias=3");
+    expect(data.resultado).toBe("2026-04-03");
+    expect(data.advertencias).toEqual([AVISO_LFT_715]);
   });
 
   it("/v1/dias-inhabiles lista los días de descanso del año", async () => {
-    const { data } = await datos("/v1/dias-inhabiles?autoridad=lft&anio=2026");
-    const fechas = data.map((d: Obj) => d.fecha);
+    const cuerpo = await datos("/v1/dias-inhabiles?autoridad=lft&anio=2026");
+    const fechas = cuerpo.data.map((d: Obj) => d.fecha);
     expect(fechas).toEqual(expect.arrayContaining(["2026-01-01", "2026-09-16", "2026-12-25"]));
     expect(fechas.every((f: string) => f.startsWith("2026-"))).toBe(true);
+    // Nuevo: la lista de la LFT lleva el mismo aviso fijo.
+    expect(cuerpo.advertencias).toEqual([AVISO_LFT_715]);
   });
 
   it("/v1/status: los datasets del meta interno; sin binding de KV, todos en unknown", async () => {

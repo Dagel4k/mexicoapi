@@ -9,7 +9,7 @@ import type { Modulo } from "../comun.js";
 import { esperarCongelado } from "../datos/comun.js";
 import type { ModuloCalendarios, ModuloConstantes } from "../datos/curados.js";
 import { PROBLEMAS, rechazo } from "./ayudas.js";
-import type { ModuloCliente } from "./comun.js";
+import { AVISO_LFT, type ModuloCliente } from "./comun.js";
 
 export interface ModulosCurados {
   cliente: ModuloCliente;
@@ -239,7 +239,8 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
         : [],
     );
     const lft = await api.diasInhabiles({ anio: 2026 });
-    expect(lft.advertencias).toEqual([]);
+    // La lista de la LFT está completa, con el aviso fijo de lo que no incluye (art. 715).
+    expect(lft.advertencias).toEqual([AVISO_LFT]);
     // El año después de la cobertura amplia sale de los datos: cargar el SAT 2027 no lo vuelve 200.
     const fuera = Number(amplia.hasta.slice(0, 4)) + 1;
     const sinAnio = await problemaDe(

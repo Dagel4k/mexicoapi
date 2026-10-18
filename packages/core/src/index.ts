@@ -26,6 +26,7 @@ export {
   VIGENCIA_CFF,
 } from "./dias-habiles/cff.js";
 export {
+  AVISO_LFT_715,
   COBERTURA_LFT,
   diasDescansoLft,
   FUENTE_LFT_74,
