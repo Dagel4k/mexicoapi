@@ -11,7 +11,13 @@ const estados: Estado[] = [
   { cve_ent: "09", nombre: "Ciudad de México", abreviatura: "CDMX", cvegeo: "09" },
 ];
 const municipios: Municipio[] = [
-  { cvegeo: "01001", cve_ent: "01", cve_mun: "001", nombre: "Aguascalientes", cve_cabecera: "0001" },
+  {
+    cvegeo: "01001",
+    cve_ent: "01",
+    cve_mun: "001",
+    nombre: "Aguascalientes",
+    cve_cabecera: "0001",
+  },
   { cvegeo: "09002", cve_ent: "09", cve_mun: "002", nombre: "Azcapotzalco", cve_cabecera: null },
 ];
 const bancos: Banco[] = [
@@ -25,7 +31,9 @@ const bancos: Banco[] = [
     participacion: "directa",
     activo: true,
     baja_detectada: null,
-    historial: [{ codigo_spei: "40002", nombre_corto: "BANAMEX", desde: "2010-01-01", hasta: null }],
+    historial: [
+      { codigo_spei: "40002", nombre_corto: "BANAMEX", desde: "2010-01-01", hasta: null },
+    ],
   },
   {
     codigo: "099",
@@ -44,7 +52,13 @@ const bancos: Banco[] = [
   },
 ];
 const datasets = [
-  { dataset: "bancos", as_of: "2026-10-17", records: 2, data_sha256: "a".repeat(64), manifest: '{"x":1}' },
+  {
+    dataset: "bancos",
+    as_of: "2026-10-17",
+    records: 2,
+    data_sha256: "a".repeat(64),
+    manifest: '{"x":1}',
+  },
 ];
 
 let dir: string;
@@ -63,10 +77,15 @@ async function abrir(): Promise<DatabaseSync> {
 describe("construirSqlite", () => {
   it("genera un archivo SQLite con los conteos esperados", async () => {
     const db = await abrir();
-    const n = (t: string) => (db.prepare(`SELECT count(*) AS n FROM ${t}`).get() as { n: number }).n;
-    expect([n("estados"), n("municipios"), n("bancos"), n("bancos_historial"), n("datasets")]).toEqual(
-      [2, 2, 2, 3, 1],
-    );
+    const n = (t: string) =>
+      (db.prepare(`SELECT count(*) AS n FROM ${t}`).get() as { n: number }).n;
+    expect([
+      n("estados"),
+      n("municipios"),
+      n("bancos"),
+      n("bancos_historial"),
+      n("datasets"),
+    ]).toEqual([2, 2, 2, 3, 1]);
     db.close();
   });
 
@@ -75,7 +94,9 @@ describe("construirSqlite", () => {
     expect(db.prepare("SELECT cve_cabecera FROM municipios WHERE cvegeo = '09002'").get()).toEqual({
       cve_cabecera: null,
     });
-    expect(db.prepare("SELECT codigo, activo, razon_social FROM bancos ORDER BY codigo").all()).toEqual([
+    expect(
+      db.prepare("SELECT codigo, activo, razon_social FROM bancos ORDER BY codigo").all(),
+    ).toEqual([
       { codigo: "002", activo: 1, razon_social: "Banco Nacional de México" },
       { codigo: "099", activo: 0, razon_social: null },
     ]);
@@ -99,7 +120,9 @@ describe("construirSqlite", () => {
     await expect(
       construirSqlite({
         estados,
-        municipios: [{ ...municipios[0]!, cve_ent: "30" }],
+        municipios: [
+          { cvegeo: "30001", cve_ent: "30", cve_mun: "001", nombre: "X", cve_cabecera: null },
+        ],
         bancos,
         datasets,
       }),
