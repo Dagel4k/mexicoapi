@@ -10,8 +10,10 @@
     ".",
     "../test/scripts",
     "../test/paquete",
+    "../test/integracion",
     "../vitest.config.ts",
-    "../vitest.paquete.config.ts"
+    "../vitest.paquete.config.ts",
+    "../vitest.integracion.config.ts"
   ],
-  "exclude": ["../test/paquete/consumidor"]
+  "exclude": ["../test/paquete/consumidor", "../test/paquete/consumidor-dom"]
 }

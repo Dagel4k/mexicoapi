@@ -15,7 +15,8 @@ export default defineProject({
   test: {
     name: "sdk",
     include: ["test/**/*.test.ts"],
-    // Las de test/paquete revisan dist: corren después del build con vitest.paquete.config.ts.
-    exclude: ["test/paquete/**"],
+    // Las de test/paquete revisan dist y las de test/integracion lo prueban contra el Worker:
+    // corren después del build, con vitest.paquete.config.ts y vitest.integracion.config.ts.
+    exclude: ["test/paquete/**", "test/integracion/**"],
   },
 });

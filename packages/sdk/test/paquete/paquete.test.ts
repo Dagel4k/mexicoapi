@@ -13,6 +13,7 @@ import {
   LIMITE_GZIP_PRINCIPAL,
   medirEntrada,
 } from "../../scripts/revisar.ts";
+import { type ModuloCliente, probarClienteSinRed } from "../cliente/comun.ts";
 import { type Modulo, probarModulo } from "../comun.ts";
 import {
   type ModuloDatos,
@@ -26,6 +27,7 @@ import {
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 const DIST = join(RAIZ, "dist");
 const CONSUMIDOR = fileURLToPath(new URL("./consumidor/", import.meta.url));
+const CONSUMIDOR_DOM = fileURLToPath(new URL("./consumidor-dom/", import.meta.url));
 const manifiesto = JSON.parse(await readFile(join(RAIZ, "package.json"), "utf8")) as {
   exports: Record<string, { types: string; import: string } | string>;
 };
@@ -56,6 +58,16 @@ describe("mexicoapi desde dist", () => {
   probarModulo(() => importar<Modulo>("index.js"));
 });
 
+describe("mexicoapi/cliente sin red desde dist", () => {
+  probarClienteSinRed(async () => ({
+    cliente: await importar<ModuloCliente>("cliente/index.js"),
+    datos: await importar<ModuloDatos>("datos/index.js"),
+    fix: await importar<ModuloFix>("datos/fix.js"),
+    udis: await importar<ModuloUdis>("datos/udis.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
+});
+
 describe("mexicoapi/datos desde dist", () => {
   probarDatos(async () => ({
     datos: await importar<ModuloDatos>("datos/index.js"),
@@ -84,9 +96,45 @@ describe("dist", () => {
     expect(medida.gzip).toBeLessThanOrEqual(LIMITE_GZIP_PRINCIPAL);
   });
 
-  it("revisa como universales la entrada principal y las de datos", () => {
+  it(`el cliente pesa ${LIMITE_GZIP_PRINCIPAL} bytes o menos con gzip, sin lo que carga al usar el paquete`, async () => {
+    const medida = await medirEntrada(join(DIST, "cliente", "index.js"), { dinamicos: false });
+    expect(medida.archivos.length).toBeGreaterThan(1);
+    expect(medida.gzip).toBeLessThanOrEqual(LIMITE_GZIP_PRINCIPAL);
+  });
+
+  it("el cliente carga su respuesta del paquete, el núcleo y los datos solo al usarlos", async () => {
+    const entrada = join(DIST, "cliente", "index.js");
+    const enDist = (archivos: string[]) =>
+      archivos.map((a) => relative(DIST, a).split(sep).join("/"));
+    const alImportar = enDist((await grafoDeModulos(entrada, { dinamicos: false })).archivos);
+    const todo = enDist((await grafoDeModulos(entrada)).archivos);
+    expect(alImportar.every((a) => a.startsWith("cliente/"))).toBe(true);
+    expect(alImportar).not.toContain("cliente/paquete.js");
+    const despues = todo.filter((a) => !alImportar.includes(a));
+    expect(despues).toEqual(
+      expect.arrayContaining([
+        "cliente/paquete.js",
+        "nucleo/index.js",
+        "datos/estados.js",
+        "datos/municipios.js",
+        "datos/bancos.js",
+        "datos/fix.js",
+        "datos/udis.js",
+        "datos/generados/inegi-municipios.js",
+      ]),
+    );
+    for (const archivo of despues) {
+      expect(archivo).toMatch(/^(cliente\/paquete\.js|nucleo\/|datos\/)/);
+    }
+    // Ni la entrada de datos completa: cada dataset se carga por separado.
+    expect(despues).not.toContain("datos/index.js");
+    expect(despues).not.toContain("datos/meta.js");
+  });
+
+  it("revisa como universales la entrada principal, el cliente y las de datos", () => {
     expect(entradasUniversales(manifiesto.exports).map((e) => e.ruta)).toEqual([
       ".",
+      "./cliente",
       "./datos",
       "./datos/fix",
       "./datos/udis",
@@ -149,6 +197,12 @@ describe("dist", () => {
     expect(r.stdout + r.stderr).toBe("");
     expect(r.status).toBe(0);
   });
+
+  it("el cliente acepta el fetch y el AbortSignal de un proyecto con los tipos del DOM", () => {
+    const r = spawnSync(process.execPath, [TSC, "-p", CONSUMIDOR_DOM], { encoding: "utf8" });
+    expect(r.stdout + r.stderr).toBe("");
+    expect(r.status).toBe(0);
+  });
 });
 
 describe("npm pack", () => {
@@ -165,6 +219,9 @@ describe("npm pack", () => {
         "package.json",
         "dist/index.js",
         "dist/index.d.ts",
+        "dist/cliente/index.js",
+        "dist/cliente/index.d.ts",
+        "dist/cliente/paquete.js",
         "dist/nucleo/index.js",
         "dist/nucleo/index.d.ts",
         "dist/datos/index.js",

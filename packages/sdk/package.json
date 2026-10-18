@@ -35,6 +35,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./cliente": {
+      "types": "./dist/cliente/index.d.ts",
+      "import": "./dist/cliente/index.js"
+    },
     "./datos": {
       "types": "./dist/datos/index.d.ts",
       "import": "./dist/datos/index.js"
@@ -60,7 +64,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
-    "test:paquete": "vitest run --config vitest.paquete.config.ts"
+    "test:paquete": "vitest run --config vitest.paquete.config.ts",
+    "test:integracion": "vitest run --config vitest.integracion.config.ts"
   },
   "dependencies": {},
   "devDependencies": {

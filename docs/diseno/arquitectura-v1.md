@@ -414,19 +414,22 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
 - **Sin dependencias en tiempo de ejecución.** ESM, tree-shakeable y con tipos incluidos.
 - **Entradas:**
-  - `mexicoapi`: cliente HTTP más validadores.
+  - `mexicoapi`: validadores y reglas del núcleo, sin red.
+  - `mexicoapi/cliente`: cliente HTTP de la API. Va aparte porque con el núcleo no cabe en 15 KB gzip.
   - `mexicoapi/datos`: datos offline de los datasets estables (estados, municipios, bancos, constantes, días inhábiles) incluidos en el paquete.
   - `mexicoapi/sepomex`: descarga local (sección 7).
   - `mexicoapi/cli`: binario `mexicoapi`.
-- **Cliente:**
-  - `fetch` nativo, timeout configurable y reintentos solo en métodos idempotentes;
-  - errores tipados (`MexicoApiError` con el problem+json);
-  - caché opcional en memoria.
+- **Cliente** (`crearCliente({ base, timeoutMs, reintentos, fetch, cache, offline })`):
+  - `fetch` nativo; el timeout es por intento y cubre la lectura del cuerpo;
+  - todas las rutas son GET: se reintentan los fallos de red, los 5xx y los 429, con espera exponencial y variación al azar, y un `Retry-After` de hasta 60 s se respeta; un intento que agota el tiempo no se repite;
+  - errores tipados (`MexicoApiError` con el problem+json); ni el mensaje ni la URL del error traen los valores de la ruta (una CLABE aparece como `{clabe}`);
+  - caché opcional en memoria con TTL (sin pasar del `max-age` de la API), límite de entradas y revalidación con `ETag`;
+  - el núcleo, las respuestas del paquete y cada dataset se cargan con un import dinámico al usarlos.
 - **Versionado:** semver para la API del SDK. Los datos incluidos se actualizan con versiones *patch* semanales automáticas (changesets) cuando hay cambios.
-- **Tamaño:** núcleo y cliente ≤ 15 KB gzip. Los datos van en entradas separadas para no inflar a quien no los usa.
-- **Datos que caducan** (FIX, UDIS, días inhábiles, constantes): por defecto se consultan en la API. Si no hay red, se usan los datos del paquete y la respuesta lo dice con `origen: "paquete"`, su `as_of` y una advertencia si tienen más de 7 días.
-  - Los datos estables (estados, municipios, bancos, plazas) se leen del paquete sin red.
-  - `{ offline: true }` fuerza el modo sin red.
+- **Tamaño:** la entrada `mexicoapi` (núcleo) ≤ 15 KB gzip, y el cliente ≤ 15 KB gzip sin lo que carga al responder desde el paquete. Los datos van en entradas separadas para no inflar a quien no los usa.
+- **Datos que caducan** (FIX, UDIS, días hábiles e inhábiles, constantes): por defecto se consultan en la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), se usan los datos del paquete y la respuesta lo dice con `origen: "paquete"`, su `as_of` y advertencias: la del fallo y, en las series, otra si el último dato del paquete tiene más de 7 días. Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
+  - Los datos estables (estados, municipios, bancos, plazas) y la validación de la CLABE se leen del paquete sin red; con `fuente: "api"` se piden a la API.
+  - `{ offline: true }` fuerza el modo sin red; `/v1/status` solo existe en la API.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
   - `mexicoapi/sepomex` y la CLI requieren Node ≥ 22.13: la caché se guarda en JSON y, si `node:sqlite` está disponible, también en SQLite.
   - Las pruebas cubren Node 20, 22 y 24, más un Worker real en workerd con `unstable_startWorker` (sección 13).

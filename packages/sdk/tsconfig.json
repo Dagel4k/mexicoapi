@@ -4,5 +4,5 @@
     "types": ["node"]
   },
   "include": ["src", "test"],
-  "exclude": ["test/scripts", "test/paquete"]
+  "exclude": ["test/scripts", "test/paquete", "test/integracion"]
 }
