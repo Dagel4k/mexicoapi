@@ -51,6 +51,10 @@
       "types": "./dist/datos/udis.d.ts",
       "import": "./dist/datos/udis.js"
     },
+    "./sepomex": {
+      "types": "./dist/sepomex/index.d.ts",
+      "import": "./dist/sepomex/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -63,7 +67,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
+    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && tsc -p tsconfig.build-node.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
     "test:paquete": "vitest run --config vitest.paquete.config.ts",
     "test:integracion": "vitest run --config vitest.integracion.config.ts"
   },

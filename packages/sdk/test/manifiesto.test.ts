@@ -65,13 +65,14 @@ describe("package.json de mexicoapi", () => {
     }
   });
 
-  it("publica la entrada principal, el cliente y los datos, con el FIX y las UDIS aparte", () => {
+  it("publica la entrada principal, el cliente, los datos (con el FIX y las UDIS aparte) y SEPOMEX", () => {
     expect(Object.keys(manifiesto.exports)).toEqual([
       ".",
       "./cliente",
       "./datos",
       "./datos/fix",
       "./datos/udis",
+      "./sepomex",
       "./package.json",
     ]);
   });
