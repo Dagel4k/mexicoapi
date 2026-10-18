@@ -11,6 +11,12 @@ const URL_PDF = "https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38
 
 export const HOY = "2026-10-17";
 
+/**
+ * Límite de las pruebas que actualizan o construyen con todos los fixtures (incluido el PDF de
+ * participantes) o con los datos reales: con cobertura y la máquina cargada pasan de los 5 s.
+ */
+export const PRUEBA_LENTA = 30_000;
+
 export const leerFixture = async (ruta: string): Promise<Uint8Array> =>
   new Uint8Array(await readFile(join(raizFixtures, ruta)));
 
