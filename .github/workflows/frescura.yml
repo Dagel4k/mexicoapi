@@ -1,0 +1,148 @@
+name: Frescura
+
+on:
+  schedule:
+    - cron: "0 19 * * *" # diario 13:00 CDMX
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frescura
+  cancel-in-progress: false
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Revisar frescura de los datos
+        env:
+          API_URL: ${{ vars.API_URL }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_URL}" ]; then
+            echo "::notice::Falta la variable de repositorio API_URL; no se revisa la frescura. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+            exit 0
+          fi
+
+          url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          estado="${RUNNER_TEMP}/status.json"
+          resumen="${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+          # Número del issue abierto con el título exacto, o vacío. Si la búsqueda falla,
+          # devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
+          buscar_abierto() {
+            local titulo="$1"
+            gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
+              --json number,title \
+              | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty'
+          }
+
+          # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él.
+          # Sin sustituir la búsqueda por `|| true`: si falla, no se crea nada para no duplicar.
+          abrir_o_comentar() {
+            local titulo="$1" cuerpo="$2" numero
+            numero="$(buscar_abierto "${titulo}")" || return 1
+            if [ -n "${numero}" ]; then
+              gh issue comment "${numero}" --body-file "${cuerpo}"
+            else
+              gh issue create --title "${titulo}" --body-file "${cuerpo}"
+            fi
+          }
+
+          # Comenta y cierra el issue abierto con ese título, si existe.
+          cerrar_si_abierto() {
+            local titulo="$1" cuerpo="$2" numero
+            numero="$(buscar_abierto "${titulo}")" || return 1
+            if [ -n "${numero}" ]; then
+              gh issue comment "${numero}" --body-file "${cuerpo}"
+              gh issue close "${numero}"
+            fi
+          }
+
+          base="${API_URL%/}"
+          if ! curl -fsS --max-time 20 "${base}/v1/status" -o "${estado}" \
+            || ! jq -e '.data | type == "array"' "${estado}" > /dev/null; then
+            cuerpo="${RUNNER_TEMP}/issue-api.md"
+            {
+              echo "No hubo una respuesta válida de \`${base}/v1/status\`."
+              echo
+              echo "Corrida: ${url_corrida}"
+            } > "${cuerpo}"
+            abrir_o_comentar "API sin respuesta" "${cuerpo}"
+            echo "::error::La API no respondió con un estado válido."
+            exit 1
+          fi
+
+          cuerpo="${RUNNER_TEMP}/cierre-api.md"
+          {
+            echo "La API volvió a responder en \`/v1/status\`."
+            echo
+            echo "Corrida: ${url_corrida}"
+          } > "${cuerpo}"
+          cerrar_si_abierto "API sin respuesta" "${cuerpo}" \
+            || echo "::warning::No se pudo revisar si hay un issue de API sin respuesta."
+
+          {
+            echo "## Frescura de los datos"
+            echo
+            echo "| Dataset | Estado | Datos al | Horas |"
+            echo "| --- | --- | --- | --- |"
+            jq -r '.data[] | "| \(.dataset) | \(.status) | \(.as_of // "-") | \(.frescura_horas // "-") |"' "${estado}"
+          } >> "${resumen}"
+
+          if jq -e 'any(.data[]; .status == "unknown")' "${estado}" > /dev/null; then
+            echo "::notice::Hay datasets en estado unknown: la API aún no tiene estado operativo (KV sin configurar). No se abre ningún issue por ellos."
+            echo >> "${resumen}"
+            echo "Los datasets en estado unknown no se consideran desactualizados." >> "${resumen}"
+          fi
+
+          fallos=0
+          # Un dataset por línea: nombre, estado, as_of, last_success, frescura_horas.
+          while IFS=$'\t' read -r dataset status as_of ultimo horas <&3; do
+            if ! [[ "${dataset}" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "::warning::Nombre de dataset no válido, se omite: ${dataset}"
+              continue
+            fi
+            titulo="Datos desactualizados: ${dataset}"
+            case "${status}" in
+              ok)
+                cuerpo="${RUNNER_TEMP}/cierre-${dataset}.md"
+                {
+                  echo "\`${dataset}\` volvió a estar al día (datos al ${as_of})."
+                  echo
+                  echo "Corrida: ${url_corrida}"
+                } > "${cuerpo}"
+                cerrar_si_abierto "${titulo}" "${cuerpo}" \
+                  || { echo "::warning::No se pudo revisar el issue de ${dataset}."; fallos=$((fallos + 1)); }
+                ;;
+              unknown)
+                ;;
+              *)
+                cuerpo="${RUNNER_TEMP}/issue-${dataset}.md"
+                {
+                  echo "\`${dataset}\` está desactualizado (estado: \`${status}\`)."
+                  echo
+                  echo "- Datos al: ${as_of}"
+                  echo "- Último éxito: ${ultimo}"
+                  echo "- Horas sin actualizar: ${horas}"
+                  echo
+                  echo "Corrida: ${url_corrida}"
+                } > "${cuerpo}"
+                abrir_o_comentar "${titulo}" "${cuerpo}" \
+                  || { echo "::warning::No se pudo abrir el issue de ${dataset}."; fallos=$((fallos + 1)); }
+                ;;
+            esac
+          done 3< <(jq -r '.data[] | [.dataset, .status, (.as_of // "desconocido"), (.last_success // "nunca"), (.frescura_horas // "desconocido")] | map(tostring) | @tsv' "${estado}")
+
+          if [ "${fallos}" -gt 0 ]; then
+            echo "::error::No se pudo gestionar el issue de ${fallos} dataset(s)."
+            exit 1
+          fi
