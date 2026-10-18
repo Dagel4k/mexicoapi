@@ -22,10 +22,24 @@ const quitarFila = vi.hoisted(() => ({ nombre: null as string | null }));
 vi.mock("../../../src/datasets/bancos/participantes-pdf.js", async (importOriginal) => {
   const o =
     await importOriginal<typeof import("../../../src/datasets/bancos/participantes-pdf.js")>();
+  const { createHash } = await import("node:crypto");
+  // Interpretar el PDF tarda segundos: se hace una vez por contenido y cada llamada recibe su copia.
+  const leidos = new Map<string, ReturnType<typeof o.interpretarParticipantesPdf>>();
+  const interpretar = async (bytes: Uint8Array) => {
+    const clave = createHash("sha256").update(bytes).digest("hex");
+    let leido = leidos.get(clave);
+    if (leido === undefined) {
+      leido = o.interpretarParticipantesPdf(bytes);
+      leidos.set(clave, leido);
+      // Un error no se guarda: la siguiente llamada lo vuelve a intentar.
+      leido.catch(() => leidos.delete(clave));
+    }
+    return structuredClone(await leido);
+  };
   return {
     ...o,
     interpretarParticipantesPdf: async (bytes: Uint8Array) => {
-      const original = await o.interpretarParticipantesPdf(bytes);
+      const original = await interpretar(bytes);
       const r =
         quitarFila.nombre === null
           ? original
