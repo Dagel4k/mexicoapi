@@ -104,6 +104,42 @@ describe("fixPublicado", () => {
     expect(consultar("2026-01-02")).toEqual(encontrado(ENE_02));
   });
 
+  describe("después de hasta, solo con fin de semana de por medio", () => {
+    it.each([
+      ["sábado con hasta en viernes", "2026-10-17"],
+      ["domingo con hasta en viernes", "2026-10-18"],
+    ])("%s: sin_dato, porque no se espera publicación", (_caso, fecha) => {
+      expect(fixPublicado([JUE, VIE], TRAMO_VIERNES, HASTA_VIERNES, fecha)).toEqual(SIN_DATO);
+    });
+
+    it.each([
+      ["el lunes siguiente", HASTA_VIERNES, "2026-10-19"],
+      ["un sábado con un día entre semana sin cargar", HASTA_LUNES, "2026-10-24"],
+      ["el sábado de la semana siguiente", HASTA_VIERNES, "2026-10-24"],
+    ])("%s: no_disponible", (_caso, cobertura, fecha) => {
+      const tramo = cobertura === HASTA_VIERNES ? TRAMO_VIERNES : TRAMO_LUNES;
+      expect(
+        fixPublicado(
+          OCTUBRE.filter((r) => r.fecha_publicacion <= cobertura.hasta),
+          tramo,
+          cobertura,
+          fecha,
+        ),
+      ).toEqual(NO_DISPONIBLE);
+    });
+
+    it("no hace falta que el tramo llegue a la fecha", () => {
+      expect(
+        fixPublicado(
+          [],
+          rango("2026-01-01", "2026-01-02"),
+          rango("2020-01-02", "2026-01-02"),
+          "2026-01-04",
+        ),
+      ).toEqual(SIN_DATO);
+    });
+  });
+
   it("un tramo sin registros que cubre la fecha da sin_dato", () => {
     expect(fixPublicado([], rango("2026-10-17", "2026-10-18"), HASTA_LUNES, "2026-10-17")).toEqual(
       SIN_DATO,
@@ -563,17 +599,19 @@ describe("propiedades", () => {
         const fecha = fechaDe(desplazamiento);
 
         // Referencia lineal con la serie completa.
+        const hueco: number[] = [];
+        for (let d = fin + 1; d < desplazamiento; d++) hueco.push(BASE + d);
         const exacto = serie.find((r) => r.fecha_publicacion === fecha);
         const publicado =
           fecha < cobertura.desde
             ? SIN_DATO
             : fecha > cobertura.hasta
-              ? NO_DISPONIBLE
+              ? [...hueco, BASE + desplazamiento].every(esFinDeSemana)
+                ? SIN_DATO
+                : NO_DISPONIBLE
               : exacto
                 ? encontrado(exacto)
                 : SIN_DATO;
-        const hueco: number[] = [];
-        for (let d = fin + 1; d < desplazamiento; d++) hueco.push(BASE + d);
         const anterior = serie.filter((r) => r.fecha_publicacion < fecha).at(-1);
         const operacion =
           fecha <= cobertura.desde

@@ -253,7 +253,20 @@ describe("GET /v1/tipo-cambio/fix?publicado=", () => {
     },
   );
 
-  it.each(["2026-10-17", "2026-10-19", "2027-01-04", "9999-12-31"])(
+  it.each(["2026-10-17", "2026-10-18"])(
+    "%s, fin de semana justo después del último dato (viernes): 404 no-encontrado definitivo",
+    async (fecha) => {
+      const { texto } = await sinDato(
+        fixPublicado(fecha),
+        "no-encontrado",
+        `No hubo publicación del FIX en el DOF el ${fecha}.`,
+        COBERTURA_FIX,
+      );
+      expect(texto).not.toContain("18.4250");
+    },
+  );
+
+  it.each(["2026-10-19", "2026-10-24", "2027-01-04", "9999-12-31"])(
     "%s, después del último dato: 404 dato-no-disponible sin cargar años fuera de la cobertura",
     async (fecha) => {
       const { texto, pedidas } = await sinDato(
