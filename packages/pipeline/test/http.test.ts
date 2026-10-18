@@ -159,6 +159,22 @@ describe("crearCliente", () => {
     expect((await m.cliente.obtener(`${A}/x`)).estado).toBe(200);
   });
 
+  it("si robots.txt da 429 tras los reintentos lanza y no lo cachea como permitido", async () => {
+    const m = montar({
+      [`${A}/robots.txt`]: [res(429), res(429), res(429), res(429), ROBOTS_ABIERTO],
+      [`${A}/x`]: [res(200)],
+      [`${A}/privado/y`]: [res(200)],
+    });
+    const e = await m.cliente.obtener(`${A}/x`).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ErrorHttp);
+    expect((e as ErrorHttp).estado).toBe(429);
+    expect(m.pedidas).not.toContain(`${A}/x`);
+    // Se vuelve a pedir robots.txt y su regla se respeta.
+    const negado = await m.cliente.obtener(`${A}/privado/y`).catch((x: unknown) => x);
+    expect((negado as ErrorHttp).message).toMatch(/robots/);
+    expect(m.pedidas.filter((u) => u.endsWith("robots.txt"))).toHaveLength(5);
+  });
+
   it("reintenta un timeout y un error de red", async () => {
     const timeout = new DOMException("tiempo", "TimeoutError");
     const m = montar({
