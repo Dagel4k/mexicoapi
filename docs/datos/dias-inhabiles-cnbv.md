@@ -1,6 +1,6 @@
 # Días inhábiles de la CNBV
 
-Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores (bancos, casas de bolsa y demás entidades que enumeran las disposiciones) deben cerrar sus puertas y suspender operaciones. Sirve para contar plazos con el calendario bancario.
+Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores (bancos, casas de bolsa y demás entidades que enumeran las disposiciones) deben cerrar sus puertas y suspender operaciones. Sirve para contar plazos con el calendario bancario. La API también lo usa para saber si ya puede responder el [FIX de una operación](../api/README.md#publicado-y-operación) después de un feriado bancario.
 
 - Identificador: `dias-inhabiles.cnbv`
 - Clave: `fecha`
