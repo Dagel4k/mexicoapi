@@ -427,6 +427,28 @@ describe("invariantes", () => {
     for (const m of malos) expect(bancos.invariantes([m]).length).toBeGreaterThan(0);
   });
 
+  it("los periodos del historial no se traslapan", async () => {
+    const b = por((await construir(null)).registros, "012");
+    const traslapado: Banco = {
+      ...b,
+      historial: [
+        { codigo_spei: "40012", nombre_corto: "A", desde: "2020-01-01", hasta: "2023-01-01" },
+        { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: "2021-01-01", hasta: null },
+      ],
+    };
+    expect(bancos.invariantes([traslapado])).toEqual([
+      "012: periodo traslapado con el anterior desde 2021-01-01",
+    ]);
+    const contiguo: Banco = {
+      ...b,
+      historial: [
+        { codigo_spei: "40012", nombre_corto: "A", desde: "2020-01-01", hasta: "2021-01-01" },
+        { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: "2021-01-01", hasta: null },
+      ],
+    };
+    expect(bancos.invariantes([contiguo])).toEqual([]);
+  });
+
   it("un registro inactivo tiene participacion no_confirmada", async () => {
     const b = por((await construir(null)).registros, "012");
     const periodo = b.historial[0] as Banco["historial"][number];
