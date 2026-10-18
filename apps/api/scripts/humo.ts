@@ -124,7 +124,7 @@ const COMPROBACIONES: readonly Comprobacion[] = [
   {
     // Un año anterior a los datos: el Worker lo distingue de uno futuro con el índice de años de
     // las constantes, así que confirma que ese índice se carga.
-    ruta: "/v1/constantes/uma/2016",
+    ruta: "/v1/constantes/uma/2015",
     estado: 404,
     tipo: "problema",
     validar(cuerpo) {
