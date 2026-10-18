@@ -160,7 +160,8 @@ jobs:
           set -euo pipefail
           mkdir -p "${CORRIDA}"
           git add -A -- data/
-          git diff --cached --binary --no-renames --no-textconv --no-ext-diff --full-index -- data/             > "${CORRIDA}/datos.patch"
+          git diff --cached --binary --no-renames --no-textconv --no-ext-diff --full-index -- data/ \
+            > "${CORRIDA}/datos.patch"
           if [ -s "${CORRIDA}/datos.patch" ]; then
             echo "cambios=si" >> "${GITHUB_OUTPUT}"
             git diff --cached --stat -- data/
@@ -183,14 +184,15 @@ jobs:
           overwrite: true
 
   # Corre si hay algo que publicar o que reportar: cambios en data/, un código distinto de 0 o
-  # una falla de generar antes del CLI (código vacío). Sin cambios y con código 0 no hace falta
-  # el token.
+  # una falla de generar, antes o después del CLI. Sin cambios, con código 0 y generar en verde no
+  # hace falta el token.
   publicar:
     needs: [preparar, generar]
     if: >-
       !cancelled() && github.ref == 'refs/heads/main'
       && needs.preparar.result == 'success' && needs.preparar.outputs.tiene_bot == 'true'
-      && (needs.generar.outputs.cambios == 'si' || needs.generar.outputs.codigo != '0')
+      && (needs.generar.result != 'success' || needs.generar.outputs.cambios == 'si'
+        || needs.generar.outputs.codigo != '0')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: datos
@@ -208,8 +210,10 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # Con generar en rojo no se baja nada: un artefacto de un intento anterior de la corrida no
+      # debe tomarse por el de este. Solo se reporta la falla.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        if: needs.generar.outputs.codigo != ''
+        if: needs.generar.result == 'success'
         with:
           name: resumen
           path: ${{ runner.temp }}/corrida
@@ -219,7 +223,9 @@ jobs:
       # fuentes). Cualquier otra cosa detiene la corrida y el paso de fallas abre el issue. Con el
       # código 1 no se publica nada, así que tampoco se aplica.
       - name: Revisar y aplicar el parche
-        if: needs.generar.outputs.cambios == 'si' && needs.generar.outputs.codigo != '1'
+        if: >-
+          needs.generar.result == 'success' && needs.generar.outputs.cambios == 'si'
+          && needs.generar.outputs.codigo != '1'
         env:
           PARCHE: ${{ runner.temp }}/corrida/datos.patch
           CARPETAS: ${{ needs.preparar.outputs.carpetas }}
@@ -327,7 +333,7 @@ jobs:
 
       - name: Publicar resultado
         id: publicar
-        if: needs.generar.outputs.codigo != ''
+        if: needs.generar.result == 'success'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
@@ -520,12 +526,12 @@ jobs:
             gh pr merge "${url_pr}" --auto --rebase
           fi
 
-      # Una falla de generar antes del CLI (instalación o compilación), del parche o de la
-      # publicación. Con el código 1 el paso de publicar ya abrió el issue.
+      # Una falla de generar (antes o después del CLI), del parche o de la publicación. Con el
+      # código 1 el paso de publicar ya abrió el issue con los motivos.
       - name: Reportar falla
         if: >-
           !cancelled() && steps.app.outputs.token != ''
-          && (needs.generar.outputs.codigo == ''
+          && (needs.generar.result != 'success'
             || (failure() && !(needs.generar.outputs.codigo == '1' && steps.publicar.outcome == 'failure')))
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -537,7 +543,7 @@ jobs:
           titulo="Falla en datos: ${GRUPO}"
           cuerpo="${RUNNER_TEMP}/issue-falla-previa.md"
           {
-            echo "La corrida de datos de \`${GRUPO}\` falló (instalación, compilación, parche de \`data/\` o publicación)."
+            echo "La corrida de datos de \`${GRUPO}\` falló (instalación, compilación, armado o revisión del parche de \`data/\`, o publicación)."
             echo
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo}"
@@ -549,8 +555,7 @@ jobs:
           else
             gh issue create --title "${titulo}" --body-file "${cuerpo}"
           fi
-          # Si generar falló antes del CLI, la corrida queda en rojo por generar; aquí no se
-          # agrega otra falla.
+          # Si generar falló, la corrida ya queda en rojo por generar; aquí no se agrega otra falla.
 
   # Deja el estado de cada dataset en KV para /v1/status. Va en un job aparte, sin instalar
   # dependencias ni tocar datos externos, para que el token de Cloudflare no conviva con esos
@@ -604,7 +609,7 @@ jobs:
         if: steps.cf.outputs.tiene_cf == 'true'
         env:
           # El token propio de KV (solo Workers KV Storage: Edit); mientras no exista, el de
-          # despliegue.
+          # despliegue. Cuando exista, hay que quitar el respaldo (ver docs/operacion/cloudflare.md).
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_KV_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CODIGO: ${{ needs.generar.outputs.codigo }}
