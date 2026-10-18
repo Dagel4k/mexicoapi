@@ -37,7 +37,7 @@ describe("tipo_de_cambio_fix sin API", () => {
     const t = texto(r);
     expect(t).toContain("FIX publicado en el DOF el 2026-10-12: 18.4163 pesos por dólar.");
     expect(t).toContain(`Advertencia: ${AVISO_SIN_API}`);
-    expect(t).toContain(`as_of: ${fix.meta.as_of}`);
+    expect(t).toContain(`as_of (corte de los datos): ${fix.meta.as_of}`);
   });
 
   it("con operacion aplica el CFF, artículo 20, y cita el fundamento", async () => {

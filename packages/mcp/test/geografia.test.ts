@@ -48,7 +48,7 @@ describe("buscar_municipio", () => {
     expect(texto(r)).toContain("1 municipio coincide con la búsqueda:");
     expect(texto(r)).toContain("- 25006 Culiacán, Sinaloa");
     expect(texto(r)).toContain(`Fuente: ${INEGI.nombre} (${INEGI.url})`);
-    expect(texto(r)).toContain(`as_of: ${meta.municipios.as_of}`);
+    expect(texto(r)).toContain(`as_of (corte de los datos): ${meta.municipios.as_of}`);
     expect(texto(r)).toContain("Origen: datos del paquete mexicoapi");
     expect(urls).toEqual([]);
   });
