@@ -44,6 +44,14 @@ describe("leerFormulario", () => {
     ]);
   });
 
+  it("deja como texto una entidad numérica fuera de Unicode", () => {
+    const f = leerFormulario(
+      pagina({ ocultos: { __VIEWSTATE: "a&#x110000;b&#99999999;c&#x10FFFF;" } }),
+      URL_PAGINA,
+    );
+    expect(f.ocultos[0]).toEqual(["__VIEWSTATE", "a&#x110000;b&#99999999;c\u{10FFFF}"]);
+  });
+
   it("lee atributos con comillas simples o sin comillas", () => {
     const html = pagina({
       sin: "__VIEWSTATE",

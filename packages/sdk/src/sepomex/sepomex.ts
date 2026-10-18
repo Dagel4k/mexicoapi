@@ -1,7 +1,8 @@
 // Descarga, importación y consulta del catálogo de códigos postales de SEPOMEX en el equipo del
 // usuario. MéxicoAPI no lo redistribuye: sus términos lo prohíben.
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import { open, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
   cargarCodigos,
@@ -260,7 +261,55 @@ function estadoDe(dir: string, meta: MetaGuardada): EstadoSepomex {
     sha256: meta.sha256,
     json: join(dir, meta.json),
     sqlite: meta.sqlite === null ? null : join(dir, meta.sqlite),
+    sin_sqlite: meta.sin_sqlite,
   });
+}
+
+/**
+ * Lee un archivo regular de hasta `LIMITE_TXT` bytes. Rechaza carpetas, FIFOs y dispositivos
+ * (se abre sin bloquear y se revisa otra vez) y deja de leer al pasar del límite aunque el archivo
+ * crezca después de revisarlo.
+ */
+async function leerArchivoAcotado(ruta: string): Promise<Uint8Array> {
+  const noEsArchivo = () => archivoInvalido(`${ruta} no es un archivo.`);
+  const noSePudo = (error: unknown) =>
+    error instanceof SepomexError
+      ? error
+      : archivoInvalido(`No se pudo leer ${ruta}: ${mensajeDe(error)}`, error);
+  let archivo: Awaited<ReturnType<typeof open>>;
+  try {
+    const info = await stat(ruta);
+    if (!info.isFile()) throw noEsArchivo();
+    if (info.size > LIMITE_TXT) {
+      throw archivoInvalido(
+        `El archivo pesa ${tamanoLegible(info.size)} y el límite es ${tamanoLegible(LIMITE_TXT)}.`,
+      );
+    }
+    // O_NONBLOCK no existe en Windows; en los demás evita quedarse esperando en un FIFO.
+    archivo = await open(ruta, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+  } catch (error) {
+    throw noSePudo(error);
+  }
+  try {
+    if (!(await archivo.stat()).isFile()) throw noEsArchivo();
+    const trozos: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const bufer = new Uint8Array(1_048_576);
+      const { bytesRead } = await archivo.read(bufer, 0, bufer.length, null);
+      if (bytesRead === 0) break;
+      total += bytesRead;
+      if (total > LIMITE_TXT) {
+        throw archivoInvalido(`El archivo pasa de ${tamanoLegible(LIMITE_TXT)}.`);
+      }
+      trozos.push(bufer.subarray(0, bytesRead));
+    }
+    return new Uint8Array(Buffer.concat(trozos, total));
+  } catch (error) {
+    throw noSePudo(error);
+  } finally {
+    await archivo.close();
+  }
 }
 
 async function guardarCatalogo(
@@ -308,7 +357,11 @@ async function guardarCatalogo(
  * falla lanza SepomexError y la caché anterior queda igual; si el sitio bloquea la descarga
  * automática (`bloqueado`), no se intenta evadir: el mensaje dice cómo usar `importar`. Mientras
  * trabaja tiene el candado `sync.lock` del directorio: otra sincronización o importación en el
- * mismo directorio falla de inmediato con `ocupado`, sin pedir nada a Correos de México.
+ * mismo directorio falla de inmediato con `ocupado`, sin pedir nada a Correos de México. Un fallo
+ * al escribir la caché (disco lleno, sin permiso) es `escritura`.
+ *
+ * Memoria: leer, unir y guardar el catálogo completo (unas 160 mil filas) usa por un momento unos
+ * 340 MB; tarda alrededor de 1.5 s además de la descarga.
  */
 export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> {
   const dir = directorioDe(opciones);
@@ -322,7 +375,8 @@ export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> 
 
 /**
  * Importa el ZIP o el TXT que se descargó a mano de la página de Correos de México (estado
- * "Todos", formato TXT), con las mismas revisiones y el mismo candado que `sync`.
+ * "Todos", formato TXT), con las mismas revisiones, el mismo candado y la misma memoria que
+ * `sync`. Solo acepta un archivo regular de hasta 60 MB.
  */
 export async function importar(
   ruta: string,
@@ -331,19 +385,7 @@ export async function importar(
   const dir = directorioDe(opciones);
   return conCandado(dir, async () => {
     (opciones.aviso ?? escribirAviso)(textoAviso(dir));
-    let bytes: Uint8Array;
-    try {
-      const { size } = await stat(ruta);
-      if (size > LIMITE_TXT) {
-        throw archivoInvalido(
-          `El archivo pesa ${tamanoLegible(size)} y el límite es ${tamanoLegible(LIMITE_TXT)}.`,
-        );
-      }
-      bytes = new Uint8Array(await readFile(ruta));
-    } catch (error) {
-      if (error instanceof SepomexError) throw error;
-      throw archivoInvalido(`No se pudo leer ${ruta}: ${mensajeDe(error)}`, error);
-    }
+    const bytes = await leerArchivoAcotado(ruta);
     return guardarCatalogo(bytes, dir, "archivo", null, opciones.sqlite ?? true);
   });
 }
@@ -370,6 +412,9 @@ const SIN_ASENTAMIENTOS: readonly Asentamiento[] = Object.freeze([]);
  * Un código postal del catálogo guardado (5 dígitos, como texto: `"01000"`), con su entidad, su
  * municipio y sus asentamientos; null si no existe. Lanza TypeError si no son 5 dígitos y
  * SepomexError `sin-datos` si todavía no hay catálogo.
+ *
+ * La primera consulta lee el JSON del catálogo (unos 17 MB en disco, ~150 ms) y lo deja en
+ * memoria del proceso; las siguientes solo revisan si meta.json cambió (un `stat`).
  */
 export async function cp(
   codigo: string,
