@@ -230,8 +230,10 @@ describe("página de inicio", () => {
     );
   });
 
-  it("trae el ejemplo del paquete y la configuración del servidor MCP", () => {
-    const codigo = bloquesDeCodigo(html);
+  it("ya publicados, trae el ejemplo del paquete y la configuración del servidor MCP", () => {
+    const codigo = bloquesDeCodigo(
+      paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, true),
+    );
     expect(codigo).toContain("npm install mexicoapi");
     const ejemplo = [
       'import { validarClabe } from "mexicoapi";',
@@ -247,13 +249,27 @@ describe("página de inicio", () => {
     });
   });
 
-  it("avisa que el paquete y el servidor MCP se publicarán en npm mientras no lo estén", () => {
+  // Un comando copiable de un paquete que no existe en npm falla, o instala el de otra persona.
+  it("mientras no estén en npm, solo avisa, sin comandos de instalación ni configuración", () => {
     expect(PUBLICADO_EN_NPM).toBe(false);
     expect(html.match(/se publicará en npm/g)).toHaveLength(2);
+    const codigo = bloquesDeCodigo(html).join("\n");
+    for (const texto of ["npm install", "npx", "mexicoapi-mcp", "mcpServers", 'from "mexicoapi"']) {
+      expect(codigo, texto).not.toContain(texto);
+    }
+    expect(html).not.toContain("npm install");
+    expect(html).not.toContain("npx -y");
+    expect(html).toContain(
+      `<p class="aviso"><strong>Pendiente:</strong> el paquete se publicará en npm; mientras tanto, usa la API. Lo que trae está en su <a href="${URL_ARCHIVOS}/packages/sdk/README.md">README</a>.</p>`,
+    );
+    expect(html).toContain(
+      '<p class="aviso"><strong>Pendiente:</strong> el servidor se publicará en npm; mientras tanto, usa la API.</p>',
+    );
     const publicado = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, true);
     expect(publicado).not.toContain("se publicará en npm");
     expect(publicado).not.toContain('class="aviso"');
     expect(publicado).toContain("npm install mexicoapi");
+    expect(publicado).toContain("mexicoapi-mcp");
   });
 
   it("enlaza la referencia y el pie a archivos que existen en el repositorio", async () => {

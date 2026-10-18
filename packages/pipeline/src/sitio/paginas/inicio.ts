@@ -54,11 +54,8 @@ const ORIGEN = "<span data-origen>https://&lt;base&gt;</span>";
 const codigo = (texto: string): string =>
   `<pre tabindex="0"><code>${escaparHtml(texto)}</code></pre>`;
 
-function aviso(que: string, publicado: boolean): string {
-  return publicado
-    ? ""
-    : `<p class="aviso"><strong>Pendiente:</strong> ${que} se publicará en npm; mientras tanto, usa la API.</p>\n`;
-}
+const pendiente = (que: string, extra = ""): string =>
+  `<p class="aviso"><strong>Pendiente:</strong> ${que} se publicará en npm; mientras tanto, usa la API.${extra}</p>`;
 
 const EJEMPLO_CLABE = `import { validarClabe } from "mexicoapi";
 
@@ -74,6 +71,23 @@ const CONFIGURACION_MCP = `{
   }
 }`;
 
+/**
+ * Un comando copiable de un paquete que todavía no está en npm falla, o instala el de alguien que
+ * tomó el nombre: mientras no se publique, el bloque solo avisa.
+ */
+const paquete = (publicado: boolean): string =>
+  publicado
+    ? `${codigo("npm install mexicoapi")}\n${codigo(EJEMPLO_CLABE)}`
+    : pendiente(
+        "el paquete",
+        ` Lo que trae está en su <a href="${URL_ARCHIVOS}/packages/sdk/README.md">README</a>.`,
+      );
+
+const servidor = (publicado: boolean): string =>
+  publicado
+    ? `<p>Agrégalo a la configuración de tu cliente:</p>\n${codigo(CONFIGURACION_MCP)}`
+    : pendiente("el servidor");
+
 function empieza(publicado: boolean): string {
   return `<section id="empieza" aria-labelledby="titulo-empieza">
 <h2 id="titulo-empieza">Empieza</h2>
@@ -87,13 +101,12 @@ function empieza(publicado: boolean): string {
 <div class="bloque">
 <h3>Paquete de npm</h3>
 <p>Validadores, reglas y los mismos datos para JavaScript y TypeScript, sin dependencias y sin red.</p>
-${aviso("el paquete", publicado)}${codigo("npm install mexicoapi")}
-${codigo(EJEMPLO_CLABE)}
+${paquete(publicado)}
 </div>
 <div class="bloque">
 <h3>Servidor MCP</h3>
-<p>Los mismos datos y validadores como herramientas de un servidor MCP por stdio. Agrégalo a la configuración de tu cliente:</p>
-${aviso("el servidor", publicado)}${codigo(CONFIGURACION_MCP)}
+<p>Los mismos datos y validadores como herramientas de un servidor MCP por stdio.</p>
+${servidor(publicado)}
 </div>
 </div>
 </section>`;
