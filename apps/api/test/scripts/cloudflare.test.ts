@@ -9,6 +9,7 @@ import {
   configuracionDespliegue,
   type EntornoCli,
   ErrorCloudflare,
+  ErrorEstados,
   escribirEstados,
   leerJsonc,
   principal,
@@ -77,6 +78,17 @@ const sobre = (result: unknown, result_info?: unknown) =>
 
 const fallo = (status: number, ...errors: Array<{ code: number; message: string }>) =>
   json({ success: false, errors, messages: [], result: null }, status);
+
+/** Respuesta cuyo cuerpo se corta al leerlo. */
+const cortada = (status: number) =>
+  new Response(
+    new ReadableStream({
+      start(control) {
+        control.error(new Error("conexión cortada"));
+      },
+    }),
+    { status },
+  );
 
 const pagina = (page: number, total_pages: number, items: Array<{ id: string; title: string }>) =>
   sobre(items, { page, per_page: 100, count: items.length, total_count: 150, total_pages });
@@ -177,14 +189,44 @@ describe("resolverNamespace", () => {
     expect(peticiones.map(ruta)).toEqual([LISTA_1, "POST /storage/kv/namespaces"]);
   });
 
-  it("sin result_info pide la siguiente página si la actual viene llena", async () => {
+  it("sin result_info y con una página llena falla claro en vez de adivinar", async () => {
     const llena = Array.from({ length: 100 }, (_, i) => ({ id: `id${i}`, title: `ns${i}` }));
+    const { fetch, peticiones } = fetchFalso(sobre(llena));
+    const error = await rechazo(resolverNamespace(cliente(fetch)));
+    expect(error.message).toMatch(/result_info/);
+    expect(peticiones.map(ruta)).toEqual([LISTA_1]);
+  });
+
+  it("recorre hasta 50 páginas", async () => {
+    const paginas = Array.from({ length: 49 }, (_, i) => pagina(i + 1, 50, []));
     const { fetch, peticiones } = fetchFalso(
-      sobre(llena),
-      sobre([{ id: "elegido", title: TITULO_KV }]),
+      ...paginas,
+      pagina(50, 50, [{ id: "al-final", title: TITULO_KV }]),
     );
-    expect(await resolverNamespace(cliente(fetch))).toBe("elegido");
-    expect(peticiones.map(ruta)).toEqual([LISTA_1, LISTA_2]);
+    expect(await resolverNamespace(cliente(fetch))).toBe("al-final");
+    expect(peticiones).toHaveLength(50);
+  });
+
+  it("con más de 50 páginas falla claro sin recorrerlas", async () => {
+    const { fetch, peticiones } = fetchFalso(pagina(1, 51, []));
+    const error = await rechazo(resolverNamespace(cliente(fetch)));
+    expect(error.message).toMatch(/51 páginas/);
+    expect(peticiones).toHaveLength(1);
+  });
+
+  it("si al volver a listar tras un POST fallido también falla, conserva el error del POST", async () => {
+    const { fetch } = fetchFalso(
+      pagina(1, 1, []),
+      fallo(403, { code: 10000, message: "Authentication error" }),
+      fallo(500, { code: 10001, message: "interno" }),
+    );
+    const error = await rechazo(resolverNamespace(cliente(fetch)));
+    expect(error.estado).toBe(403);
+    expect(error.errores).toEqual([{ code: 10000, message: "Authentication error" }]);
+    expect(error.message).toContain("403");
+    expect(error.message).toContain("10000");
+    expect(error.message).toContain("500");
+    expect(error.message).toContain("10001");
   });
 
   it("manda Authorization: Bearer <token> y un límite de tiempo en cada petición", async () => {
@@ -283,6 +325,46 @@ describe("errores de Cloudflare", () => {
     expect(error.message).toContain("fetch failed");
     expect(error.message).toContain("ENOTFOUND");
     expect(error.message).not.toContain(TOKEN);
+  });
+
+  it("tapa la cuenta codificada cuando el transporte repite la URL", async () => {
+    const cuenta = 'ab/cd"ef';
+    const falso = (async (entrada: string | URL | Request) => {
+      throw new TypeError(`Failed to parse URL from ${String(entrada)}`);
+    }) as typeof fetch;
+    const error = await rechazo(subdominio({ cuenta, token: TOKEN, fetch: falso }));
+    expect(error.message).toContain("Failed to parse URL");
+    expect(error.message).toContain("/accounts/***/workers/subdomain");
+    expect(error.message).not.toContain(encodeURIComponent(cuenta));
+    expect(error.message).not.toContain(cuenta);
+  });
+
+  it("con el fetch real, una URL que no se puede armar no muestra la cuenta codificada", async () => {
+    const cuenta = "ab/cd";
+    const error = await rechazo(
+      subdominio({ cuenta, token: TOKEN, base: "http://base invalida/client/v4" }),
+    );
+    expect(error.estado).toBe(0);
+    expect(error.message).not.toContain("ab%2Fcd");
+    expect(error.message).not.toContain(cuenta);
+    expect(error.message).not.toContain(TOKEN);
+  });
+
+  it("tapa también la forma codificada del token", async () => {
+    const token = "falso/".repeat(4);
+    const falso = (async () => {
+      throw new Error(`eco ${encodeURIComponent(token)} y ${token}`);
+    }) as unknown as typeof fetch;
+    const error = await rechazo(subdominio({ cuenta: CUENTA, token, fetch: falso }));
+    expect(error.message).toBe("no se pudo leer el subdominio de workers.dev: eco *** y ***");
+  });
+
+  it("un cuerpo que se corta al leerlo es error, no respuesta sin JSON", async () => {
+    const { fetch } = fetchFalso(cortada(200));
+    const error = await rechazo(subdominio(cliente(fetch)));
+    expect(error.estado).toBe(200);
+    expect(error.message).toMatch(/no se pudo leer la respuesta/);
+    expect(error.message).toContain("conexión cortada");
   });
 
   it("una falla de red que no es Error también se reporta", async () => {
@@ -636,24 +718,88 @@ describe("escribirEstados", () => {
     expect(peticiones).toEqual([]);
   });
 
-  it("una falla al leer el valor previo detiene la escritura", async () => {
-    const resumen = { resultados: [{ dataset: "bancos", estado: "sin_cambios" }], errores: [] };
-    const { fetch, peticiones } = fetchFalso(fallo(500, { code: 10001, message: "interno" }));
-    const error = await rechazo(escribirEstados(cliente(fetch), KV, resumen, 0, AHORA));
-    expect(error.estado).toBe(500);
-    expect(error.message).toContain("estado:bancos");
+  /** Rechazo de escribirEstados: un ErrorEstados con lo escrito y lo que falló. */
+  async function fallaEstados(promesa: Promise<unknown>): Promise<ErrorEstados> {
+    const error = await promesa.then(
+      () => {
+        throw new Error("se esperaba un rechazo");
+      },
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(ErrorEstados);
+    return error as ErrorEstados;
+  }
+
+  const TRES = {
+    resultados: [
+      { dataset: "inegi.estados", estado: "sin_cambios" },
+      { dataset: "inegi.municipios", estado: "sin_cambios" },
+      { dataset: "bancos", estado: "actualizado" },
+    ],
+    errores: [],
+  };
+
+  it("una falla al leer el valor previo no escribe ese dataset y sigue con los demás", async () => {
+    const { fetch, peticiones } = fetchFalso(
+      sinClave(),
+      ok(),
+      fallo(500, { code: 10001, message: "interno" }),
+      sinClave(),
+      ok(),
+    );
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, AHORA));
+    expect(error.escritos).toEqual(["inegi.estados", "bancos"]);
+    expect(error.fallas.map((f) => f.dataset)).toEqual(["inegi.municipios"]);
+    expect(error.fallas[0]?.mensaje).toContain("500");
+    expect(error.message).toContain("inegi.estados, bancos");
+    expect(error.message).toContain("inegi.municipios");
+    expect(peticiones.map(ruta)).toEqual([
+      `GET ${valor("estado:inegi.estados")}`,
+      `PUT ${valor("estado:inegi.estados")}`,
+      `GET ${valor("estado:inegi.municipios")}`,
+      `GET ${valor("estado:bancos")}`,
+      `PUT ${valor("estado:bancos")}`,
+    ]);
+  });
+
+  it("un valor previo cuyo cuerpo se corta es falla, no vacío: no pisa last_success", async () => {
+    const resumen = {
+      resultados: [{ dataset: "bancos", estado: "requiere_revision" }],
+      errores: [],
+    };
+    const { fetch, peticiones } = fetchFalso(cortada(200));
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 3, AHORA));
+    expect(error.escritos).toEqual([]);
+    expect(error.fallas[0]?.mensaje).toMatch(/no se pudo leer la respuesta/);
+    expect(error.message).toMatch(/escritos: ninguno/);
     expect(peticiones.map((p) => p.metodo)).toEqual(["GET"]);
   });
 
-  it("una falla al escribir es ErrorCloudflare", async () => {
-    const resumen = { resultados: [{ dataset: "bancos", estado: "sin_cambios" }], errores: [] };
+  it("una falla al escribir se reporta sin el token y sigue con los demás", async () => {
     const { fetch } = fetchFalso(
       sinClave(),
-      fallo(403, { code: 10000, message: "Authentication error" }),
+      fallo(403, { code: 10000, message: `Authentication error ${TOKEN}` }),
+      sinClave(),
+      ok(),
+      sinClave(),
+      new TypeError("fetch failed"),
     );
-    const error = await rechazo(escribirEstados(cliente(fetch), KV, resumen, 0, AHORA));
-    expect(error.estado).toBe(403);
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, AHORA));
+    expect(error.escritos).toEqual(["inegi.municipios"]);
+    expect(error.fallas.map((f) => f.dataset)).toEqual(["inegi.estados", "bancos"]);
+    expect(error.fallas[0]?.mensaje).toContain("403");
+    expect(error.fallas[1]?.mensaje).toContain("fetch failed");
     expect(error.message).not.toContain(TOKEN);
+  });
+
+  it("una falla que no es ErrorCloudflare también se junta", async () => {
+    const resumen = { resultados: [{ dataset: "bancos", estado: "sin_cambios" }], errores: [] };
+    // Una fecha inválida hace fallar toISOString después de leer el valor previo.
+    const ahora = new Date(Number.NaN);
+    const { fetch } = fetchFalso(sinClave());
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 0, ahora));
+    expect(error.fallas[0]?.dataset).toBe("bancos");
+    expect(error.fallas[0]?.mensaje).toMatch(/Invalid time value/);
   });
 });
 
@@ -727,6 +873,24 @@ describe("CLI", () => {
     },
   );
 
+  it.each([
+    ["con comillas", `"${CUENTA}"`],
+    ["con barra", "ab/cd"],
+    ["corta", CUENTA.slice(1)],
+    ["larga", `${CUENTA}0`],
+    ["en mayúsculas", CUENTA.toUpperCase()],
+    ["con letras fuera de hex", `${CUENTA.slice(1)}g`],
+  ])("una cuenta %s sale con 2 sin mostrarla ni codificarla", async (_, cuenta) => {
+    const { fetch, peticiones } = fetchFalso();
+    const c = cli({ ...VARIABLES, CLOUDFLARE_ACCOUNT_ID: cuenta }, fetch);
+    expect(await principal(configurar(), c.entorno)).toBe(2);
+    expect(c.errores.join("")).toContain("CLOUDFLARE_ACCOUNT_ID");
+    expect(c.errores.join("")).toMatch(/32 caracteres hexadecimales/);
+    expect(c.todo()).not.toContain(cuenta);
+    expect(c.todo()).not.toContain(encodeURIComponent(cuenta));
+    expect(peticiones).toEqual([]);
+  });
+
   it("recorta espacios y saltos de línea al borde del token", async () => {
     const { fetch, peticiones } = fetchFalso(
       pagina(1, 1, [{ id: KV, title: TITULO_KV }]),
@@ -798,6 +962,16 @@ describe("CLI", () => {
     expect(c.errores.join("")).toMatch(/misma carpeta/);
   });
 
+  it("configurar no deja que la salida pise wrangler.jsonc", async () => {
+    const original = await readFile(join(raiz, "wrangler.jsonc"), "utf8");
+    const { fetch, peticiones } = fetchFalso();
+    const c = cli(VARIABLES, fetch);
+    expect(await principal(configurar("staging", join(raiz, "wrangler.jsonc")), c.entorno)).toBe(1);
+    expect(c.errores.join("")).toMatch(/no puede ser wrangler\.jsonc/);
+    expect(await readFile(join(raiz, "wrangler.jsonc"), "utf8")).toBe(original);
+    expect(peticiones).toEqual([]);
+  });
+
   it("configurar rechaza un entorno desconocido", async () => {
     const c = cli(VARIABLES, fetchFalso().fetch);
     expect(await principal(configurar("pruebas"), c.entorno)).toBe(1);
@@ -837,6 +1011,37 @@ describe("CLI", () => {
       last_success: "2026-10-16T06:00:00Z",
       last_result: "error",
     });
+  });
+
+  it("estado con una escritura fallida intenta todas, sale con 1 y dice cuáles", async () => {
+    const rutaResumen = join(raiz, "resumen.json");
+    await writeFile(
+      rutaResumen,
+      JSON.stringify({
+        resultados: [
+          { dataset: "bancos", estado: "actualizado" },
+          { dataset: "inegi.estados", estado: "sin_cambios" },
+        ],
+        errores: [],
+      }),
+    );
+    const { fetch, peticiones } = fetchFalso(
+      pagina(1, 1, [{ id: KV, title: TITULO_KV }]),
+      sinClave(),
+      fallo(500, { code: 10001, message: "interno" }),
+      sinClave(),
+      ok(),
+    );
+    const c = cli(VARIABLES, fetch);
+    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "0"], c.entorno)).toBe(
+      1,
+    );
+    expect(peticiones).toHaveLength(5);
+    const errores = c.errores.join("");
+    expect(errores).toContain("escritos: inegi.estados");
+    expect(errores).toContain("fallaron: bancos");
+    expect(c.todo()).not.toContain(TOKEN);
+    expect(c.todo()).not.toContain(CUENTA);
   });
 
   it("estado con un resumen vacío lo dice", async () => {
