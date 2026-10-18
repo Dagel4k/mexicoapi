@@ -112,7 +112,17 @@ describe("construirSqlite", () => {
 
   it("usa tablas STRICT", async () => {
     const db = await abrir();
-    expect(() => db.exec("INSERT INTO estados VALUES (1, 2, 3, 4)")).toThrow();
+    const tablas = db
+      .prepare(
+        "SELECT name, strict FROM pragma_table_list WHERE schema = 'main' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+      )
+      .all();
+    expect(tablas).toEqual(
+      ["bancos", "bancos_historial", "datasets", "estados", "municipios"].map((name) => ({
+        name,
+        strict: 1,
+      })),
+    );
     db.close();
   });
 
