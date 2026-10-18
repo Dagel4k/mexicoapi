@@ -14,6 +14,7 @@ import type {
 import type { ModuloCliente } from "../cliente/comun.ts";
 import { mover } from "../cliente/comun.ts";
 import type { ModuloDatos, ModuloFix, ModuloUdis } from "../datos/comun.ts";
+import type { ModuloCalendarios, ModuloConstantes } from "../datos/curados.ts";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -34,6 +35,8 @@ let m: ModuloCliente;
 let fix: ModuloFix;
 let udis: ModuloUdis;
 let datos: ModuloDatos;
+let calendarios: ModuloCalendarios;
+let constantes: ModuloConstantes;
 let base: string;
 
 /** Un fetch que anota lo que pide y lo que responde el Worker. */
@@ -53,20 +56,31 @@ function anotado(): {
 }
 
 beforeAll(async () => {
-  [m, fix, udis, datos] = await Promise.all([
+  [m, fix, udis, datos, calendarios, constantes] = await Promise.all([
     importar<ModuloCliente>("cliente/index.js"),
     importar<ModuloFix>("datos/fix.js"),
     importar<ModuloUdis>("datos/udis.js"),
     importar<ModuloDatos>("datos/index.js"),
+    importar<ModuloCalendarios>("datos/calendarios.js"),
+    importar<ModuloConstantes>("datos/constantes.js"),
   ]);
   base = inject("urlApi");
 });
 
 const enMedio = <T>(serie: readonly T[]): T => serie[Math.floor(serie.length / 2)] as T;
 
+/** El primer feriado bancario de la CNBV después del último FIX, si el calendario lo tiene. */
+function feriadoDespuesDelFix(): string | undefined {
+  return calendarios
+    .calendarioCurado("cnbv")
+    .dias.find((d) => d.tipo === "descanso" && d.fecha > fix.cobertura.hasta)?.fecha;
+}
+
 /** Las consultas que el paquete también responde, por nombre. */
 function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] {
   const publicado = enMedio(fix.serie).fecha_publicacion;
+  const primeraUma = constantes.anios.uma[0] as number;
+  const ultimaUma = constantes.anios.uma.at(-1) as number;
   const inactivo = datos.bancos({ activos: false })[0];
   const primeros = `${inactivo?.codigo ?? "000"}${"0".repeat(14)}`;
   return [
@@ -154,6 +168,38 @@ function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
           op,
         ),
     ],
+    [
+      "días hábiles CNBV cruzando el sábado 12 de diciembre, publicado como inhábil",
+      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2026-12-11", dias: 1 }, op),
+    ],
+    [
+      "días hábiles SAT general con permitir_incompleto después de la cobertura amplia",
+      (api, op) =>
+        api.diasHabiles(
+          {
+            autoridad: "sat",
+            tipoPlazo: "general",
+            desde: "2026-12-31",
+            dias: 3,
+            permitirIncompleto: true,
+          },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT declaraciones_pagos con permitir_incompleto después del 31 de diciembre",
+      (api, op) =>
+        api.diasHabiles(
+          {
+            autoridad: "sat",
+            tipoPlazo: "declaraciones_pagos",
+            desde: "2026-12-30",
+            dias: 3,
+            permitirIncompleto: true,
+          },
+          op,
+        ),
+    ],
     ["días inhábiles CNBV", (api, op) => api.diasInhabiles({ autoridad: "cnbv", anio: 2026 }, op)],
     [
       "días inhábiles CNBV 2025",
@@ -163,6 +209,14 @@ function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
     ["UMA por año", (api, op) => api.uma(2026, op)],
     ["UMA vigente en enero", (api, op) => api.umaVigente("2026-01-15", op)],
     ["UMA vigente en febrero", (api, op) => api.umaVigente("2026-02-01", op)],
+    [
+      "UMA vigente el 31 de enero siguiente a la última",
+      (api, op) => api.umaVigente(`${ultimaUma + 1}-01-31`, op),
+    ],
+    [
+      "UMA vigente el 1 de febrero de la primera",
+      (api, op) => api.umaVigente(`${primeraUma}-02-01`, op),
+    ],
     ["salario mínimo", (api, op) => api.salarioMinimo(2026, op)],
     ["tarifa mensual de ISR", (api, op) => api.tarifaIsr("mensual", 2026, op)],
     ["tarifa anual de ISR", (api, op) => api.tarifaIsr("anual", 2025, op)],
@@ -172,7 +226,25 @@ function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
 /** Las que dan un problema, en la API y en el paquete. */
 function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] {
   const antes = mover(fix.cobertura.desde, -3);
+  // Con los datos de hoy hay días hábiles entre el último FIX y el feriado: los dos cargan el
+  // calendario de la CNBV y dan dato-no-disponible. El caso con el feriado pegado a los datos se
+  // prueba con datos de ejemplo (test/cliente/fix-feriados.test.ts).
+  const feriado = feriadoDespuesDelFix();
+  const conFeriado: [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] =
+    feriado === undefined
+      ? []
+      : [
+          [
+            "FIX publicado en un feriado después de los datos",
+            (api, op) => api.fixPublicado(feriado, op),
+          ],
+          [
+            "operación después de un feriado sin FIX cargado",
+            (api, op) => api.fixParaOperacion(mover(feriado, 1), op),
+          ],
+        ];
   return [
+    ...conFeriado,
     ["estado que no existe", (api, op) => api.estado("33", op)],
     ["municipios de un estado que no existe", (api, op) => api.municipios("33", op)],
     ["municipio que no existe", (api, op) => api.municipio("99999", op)],

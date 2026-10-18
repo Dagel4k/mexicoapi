@@ -1,6 +1,7 @@
 // Respuestas del cliente sin red para los calendarios de la CNBV y el SAT y las constantes, que
 // corren igual sobre src y sobre dist. Se comparan con las entradas de datos del paquete y el
 // núcleo; los textos que dependen de la cobertura se arman con la cobertura de los datos.
+import { readFileSync } from "node:fs";
 import { beforeAll, expect, it } from "vitest";
 import type { Cliente, ConsultaDiasHabiles, MexicoApiError } from "../../src/cliente/index.js";
 import type { CoberturaSerie } from "../../src/index.js";
@@ -18,6 +19,23 @@ export interface ModulosCurados {
 }
 
 const DOCS_API = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#";
+
+const PLAZOS_SAT = (
+  JSON.parse(
+    readFileSync(
+      new URL("../../../../data/dias-inhabiles-sat/calendario.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { plazos: Record<"general" | "declaraciones_pagos", { cobertura: CoberturaSerie }> }
+).plazos;
+
+/**
+ * Si el plazo general del SAT termina antes que declaraciones_pagos, porque faltan vacaciones por
+ * publicar: entonces tiene respaldo y la lista del año lo advierte. Se lee de data/ al definir las
+ * pruebas, para saltar las que solo aplican entonces.
+ */
+const SAT_GENERAL_CORTO =
+  PLAZOS_SAT.general.cobertura.hasta < PLAZOS_SAT.declaraciones_pagos.cobertura.hasta;
 
 const cubre = ({ desde, hasta }: CoberturaSerie): string => `cubre del ${desde} al ${hasta}`;
 const siguiente = (fecha: string): string =>
@@ -133,20 +151,6 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
       cobertura: cnbv.amplia,
     });
 
-    const sat = m.calendarios.calendarioCurado("sat");
-    const general = sat.general.cobertura;
-    if (general.hasta < sat.amplia.hasta) {
-      const corto = await problemaDe(
-        api.diasHabiles({ autoridad: "sat", tipoPlazo: "general", desde: general.hasta, dias: 5 }),
-        "calendario-incompleto",
-        422,
-      );
-      const pagos = sat.plazos.declaraciones_pagos?.cobertura as CoberturaSerie;
-      expect(corto.detail).toBe(
-        `El calendario del SAT para tipo_plazo=general no cubre ${siguiente(general.hasta)}; ${cubre(general)} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, ${cubre(pagos)}.`,
-      );
-      expect(corto.problema.cobertura).toEqual(general);
-    }
     const lft = await problemaDe(
       api.diasHabiles({ desde: "2100-12-30", dias: 2 }),
       "calendario-incompleto",
@@ -157,10 +161,25 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     );
   });
 
-  it("con permitir_incompleto usa el respaldo y avisa, como la API", async () => {
+  it.skipIf(!SAT_GENERAL_CORTO)("el 422 del SAT general dice por qué no cubre", async () => {
+    const sat = m.calendarios.calendarioCurado("sat");
+    const general = sat.general.cobertura;
+    const corto = await problemaDe(
+      api.diasHabiles({ autoridad: "sat", tipoPlazo: "general", desde: general.hasta, dias: 5 }),
+      "calendario-incompleto",
+      422,
+    );
+    const pagos = sat.plazos.get("declaraciones_pagos")?.cobertura as CoberturaSerie;
+    expect(corto.detail).toBe(
+      `El calendario del SAT para tipo_plazo=general no cubre ${siguiente(general.hasta)}; ${cubre(general)} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, ${cubre(pagos)}.`,
+    );
+    expect(corto.problema.cobertura).toEqual(general);
+  });
+
+  it.skipIf(!SAT_GENERAL_CORTO)("con permitir_incompleto usa el respaldo y avisa", async () => {
     const sat = m.calendarios.calendarioCurado("sat");
     const { general } = sat;
-    if (general.respaldo === undefined) return;
+    if (general.respaldo === undefined) throw new Error("El SAT general no tiene respaldo");
     const r = await api.diasHabiles({
       autoridad: "sat",
       tipoPlazo: "general",
@@ -209,11 +228,14 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     const sat = await api.diasInhabiles({ autoridad: "sat", anio: 2026 });
     expect(sat.data).toEqual(m.calendarios.calendarioCurado("sat").dias);
     const { general, amplia } = m.calendarios.calendarioCurado("sat");
-    if (general.cobertura.hasta < amplia.hasta) {
-      expect(sat.advertencias).toEqual([
-        `Los días de tipo vacaciones del SAT solo están completos del ${general.cobertura.desde} al ${general.cobertura.hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.`,
-      ]);
-    }
+    // Mientras falte el segundo periodo de vacaciones de 2026, la lista lo advierte.
+    expect(sat.advertencias).toEqual(
+      SAT_GENERAL_CORTO
+        ? [
+            `Los días de tipo vacaciones del SAT solo están completos del ${general.cobertura.desde} al ${general.cobertura.hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.`,
+          ]
+        : [],
+    );
     const lft = await api.diasInhabiles({ anio: 2026 });
     expect(lft.advertencias).toEqual([]);
     const sinAnio = await problemaDe(

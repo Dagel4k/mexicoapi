@@ -1,25 +1,11 @@
-// La UMA, el salario mínimo y las tarifas de ISR desde el paquete, con las reglas y los textos del
-// Worker (apps/api/src/computados/constantes.ts): antes del primer año cargado, no existe; después
-// del último, todavía no se carga.
+// La UMA, el salario mínimo y las tarifas de ISR desde el paquete, con las reglas y los textos de
+// las constantes del núcleo, los mismos que usa la API: antes del primer año cargado, no existe;
+// después del último, todavía no se carga.
+import { anioDeConstante, umaVigente } from "@mexicoapi/core/constantes";
 import type { MetaDatos } from "../datos/tipos.js";
 import { type Contexto, conDocs, falla, type RutaPaquete, valor } from "./paquete-comun.js";
 
 const constantes = () => import("../datos/constantes.js");
-
-/** El 404 de un año que no está: antes del primero no existe; después del último, no se carga. */
-function anioSinDato(c: Contexto, nombre: string, anios: readonly number[], anio: string) {
-  const numero = Number(anio);
-  // Las listas de años del paquete nunca están vacías.
-  const primero = anios[0] as number;
-  const ultimo = anios[anios.length - 1] as number;
-  const cargados =
-    primero === ultimo
-      ? `el único año cargado es ${primero}`
-      : `los años cargados van de ${primero} a ${ultimo}`;
-  return numero > ultimo
-    ? falla(c, "dato-no-disponible", `Todavía no se carga ${nombre} de ${anio}; ${cargados}.`)
-    : falla(c, "no-encontrado", `No existe ${nombre} de ${anio} en los datos; ${cargados}.`);
-}
 
 /** Una ruta por año: el dato de ese año con la meta del dataset, o el 404 que le toca. */
 function porAnio(
@@ -36,10 +22,14 @@ function porAnio(
 ): RutaPaquete {
   return {
     responder: async (c) => {
-      const anio = valor(c, "anio");
-      const { dato, nombre, anios, meta } = buscar(await constantes(), c, Number(anio));
-      if (dato === undefined) throw anioSinDato(c, nombre, anios, anio);
-      return { data: dato, meta };
+      const anio = Number(valor(c, "anio"));
+      const { dato, nombre, anios, meta } = buscar(await constantes(), c, anio);
+      if (dato !== undefined) return { data: dato, meta };
+      const consulta = anioDeConstante(anios, anio, nombre);
+      // El paquete trae el dato de cada año de su lista.
+      if (consulta.tipo === "encontrado") throw new Error(`Falta ${nombre} de ${anio}.`);
+      const tipo = consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible";
+      throw falla(c, tipo, consulta.detalle);
     },
   };
 }
@@ -49,23 +39,12 @@ export const UMA_VIGENTE: RutaPaquete = {
   responder: async (c) => {
     const m = await constantes();
     const fecha = valor(c, "fecha");
-    const umas = m.umas();
-    // La lista nunca está vacía y va en años consecutivos.
-    const primera = umas[0] as (typeof umas)[number];
-    const ultima = umas[umas.length - 1] as (typeof umas)[number];
-    const cobertura = { desde: primera.vigencia_desde, hasta: `${ultima.anio + 1}-01-31` };
-    if (fecha < cobertura.desde || fecha > cobertura.hasta) {
-      const antes = fecha < cobertura.desde;
-      throw falla(
-        c,
-        antes ? "no-encontrado" : "dato-no-disponible",
-        antes
-          ? `Los datos empiezan con la UMA de ${primera.anio}, vigente desde el ${cobertura.desde}; no incluyen la UMA vigente el ${fecha}.`
-          : `La UMA vigente el ${fecha} todavía no está cargada; la última cargada es la de ${ultima.anio}, vigente hasta el ${cobertura.hasta}.`,
-        { fecha, cobertura },
-      );
+    const consulta = umaVigente(m.umas(), fecha);
+    if (consulta.tipo !== "encontrado") {
+      const tipo = consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible";
+      throw falla(c, tipo, consulta.detalle, { fecha, cobertura: consulta.cobertura });
     }
-    return { data: m.umaVigente(fecha), meta: conDocs(m.meta.uma, "constantes") };
+    return { data: consulta.registro, meta: conDocs(m.meta.uma, "constantes") };
   },
 };
 
