@@ -58,7 +58,7 @@ Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) 
    ./scripts/verify.sh
    ```
 
-   El orden importa: si se compila antes de `curar`, el Worker publica los datos anteriores.
+   El orden importa: si se compila antes de `curar`, el Worker publica los datos anteriores. Las pruebas de integración lo detectan: fallan y piden `pnpm -r build`.
 
 8. Si cambió la cobertura de un calendario, actualizar los documentos que citan la cobertura vigente. Las pruebas la toman de los datos, así que no fallan cuando estos textos quedan viejos:
 
