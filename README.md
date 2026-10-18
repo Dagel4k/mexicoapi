@@ -12,7 +12,7 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 
 Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, y los mantiene al día de forma automática.
 
-> En desarrollo. Los primeros datos ya están en [`data/`](data/); la API y el paquete de npm vienen después. Todavía no hay versión publicada.
+> En desarrollo. Los primeros datos ya están en [`data/`](data/) y la API v1 está construida y documentada, pero todavía no está desplegada; el paquete de npm viene después. No hay versión publicada.
 
 ## Qué va a incluir
 
@@ -37,17 +37,30 @@ Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá
 
 ## Datos disponibles hoy
 
-| Dataset | Carpeta | Fuente | Se actualiza |
-| --- | --- | --- | --- |
-| Estados | `data/inegi-estados/` | INEGI | semanal |
-| Municipios | `data/inegi-municipios/` | INEGI | semanal |
-| Bancos, con historial | `data/bancos/` | Banxico | diario |
+| Dataset | Carpeta | Fuente | Se actualiza | Documentación |
+| --- | --- | --- | --- | --- |
+| Estados | `data/inegi-estados/` | INEGI | semanal | [estados](docs/datos/inegi-estados.md) |
+| Municipios | `data/inegi-municipios/` | INEGI | semanal | [municipios](docs/datos/inegi-municipios.md) |
+| Bancos, con historial | `data/bancos/` | Banxico | diario | [bancos](docs/datos/bancos.md) |
+
+Además, la API calcula la validación de CLABE y los días hábiles con el calendario de la Ley Federal del Trabajo.
 
 Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los archivos fuente en `raw/` (los descargados tal cual y, en bancos, la compilación mensual del CEP). Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
 
+## API
+
+API de solo lectura, con respuestas JSON `{ data, meta }`, descargas completas y especificación OpenAPI. Se publicará primero en `workers.dev` y después en un dominio propio; el despliegue público viene después. La referencia está en [docs/api/README.md](docs/api/README.md) y los errores en [docs/api/problemas.md](docs/api/problemas.md).
+
+```bash
+curl https://<base>/v1/estados/25
+curl https://<base>/v1/clabe/002010077777777771
+```
+
 ## Documentación
 
+- [API v1](docs/api/README.md) y [errores](docs/api/problemas.md)
 - [Diseño técnico v1](docs/diseno/arquitectura-v1.md)
+- [Bot de datos](docs/operacion/bot-de-datos.md)
 
 ## Licencia
 
