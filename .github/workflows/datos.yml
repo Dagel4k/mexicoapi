@@ -122,6 +122,9 @@ jobs:
           RESUMEN_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
+          # Con el token en el entorno, ni el commit, ni el switch ni el push corren hooks del repo.
+          # El check verify del PR cubre biome y gitleaks.
+          git config core.hooksPath /dev/null
           resumen_md="${RESUMEN_DIR}/resumen.md"
           resumen_json="${RESUMEN_DIR}/resumen.json"
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -130,7 +133,8 @@ jobs:
           # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él.
           abrir_o_comentar() {
             local titulo="$1" cuerpo="$2" numero
-            numero="$(gh issue list --state open --search "in:title \"${titulo}\"" --json number,title \
+            numero="$(gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
+              --json number,title \
               | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
             if [ -n "${numero}" ]; then
               gh issue comment "${numero}" --body-file "${cuerpo}"
@@ -182,18 +186,33 @@ jobs:
             exit 0
           fi
 
-          # Si ya hay un PR de revisión abierto para este grupo, no se abre otro.
-          pr_pendiente="$(gh pr list --state open --label revisar --json url,headRefName             | jq -r --arg p "datos/${GRUPO}-" '[.[] | select(.headRefName | startswith($p))][0].url // empty')"
+          # Si el bot ya tiene un PR abierto para este grupo (con o sin etiqueta), no se abre otro:
+          # se comenta en él. Solo cuentan ramas del propio repo, no de forks.
+          pr_pendiente="$(gh pr list --state open --author "app/${APP_SLUG}" --limit 100 \
+            --json url,headRefName,isCrossRepository \
+            | jq -r --arg p "datos/${GRUPO}-" \
+              '[.[] | select((.isCrossRepository | not) and (.headRefName | startswith($p)))][0].url // empty')"
           if [ -n "${pr_pendiente}" ]; then
-            cuerpo="${RUNNER_TEMP}/issue-pendiente.md"
+            cuerpo="${RUNNER_TEMP}/pr-pendiente.md"
             {
-              echo "Hay cambios nuevos en \`${GRUPO}\`, pero el PR ${pr_pendiente} sigue pendiente de revisión, así que no se abrió otro."
+              echo "Una corrida nueva de \`${GRUPO}\` trae cambios, pero este PR sigue abierto, así que no se abrió otro."
               echo
-              motivos
+              cat "${resumen_md}"
               echo
               echo "Corrida: ${url_corrida}"
             } > "${cuerpo}"
-            abrir_o_comentar "Revisar datos: ${GRUPO}" "${cuerpo}"
+            gh pr comment "${pr_pendiente}" --body-file "${cuerpo}"
+            if [ "${CODIGO}" = "3" ]; then
+              cuerpo="${RUNNER_TEMP}/issue-pendiente.md"
+              {
+                echo "Hay cambios nuevos en \`${GRUPO}\` que piden revisión humana, pero el PR ${pr_pendiente} sigue abierto, así que no se abrió otro."
+                echo
+                motivos
+                echo
+                echo "Corrida: ${url_corrida}"
+              } > "${cuerpo}"
+              abrir_o_comentar "Revisar datos: ${GRUPO}" "${cuerpo}"
+            fi
             exit 0
           fi
 
@@ -212,8 +231,8 @@ jobs:
 
           git switch -c "${rama}"
           git add data/
-          # Sin hooks y sin el token en el entorno: el check verify del PR cubre biome y gitleaks.
-          env -u GH_TOKEN git -c core.hooksPath=/dev/null commit -q -m "datos(${GRUPO}): ${fecha}"
+          # Los hooks ya están apagados desde el inicio del paso; además, el commit no ve el token.
+          env -u GH_TOKEN git commit -q -m "datos(${GRUPO}): ${fecha}"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${rama}"
 
           cuerpo_pr="${RUNNER_TEMP}/pr.md"
@@ -261,7 +280,9 @@ jobs:
             echo
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo}"
-          numero="$(gh issue list --state open --search "in:title \"${titulo}\"" --json number,title             | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
+          numero="$(gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
+            --json number,title \
+            | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
           if [ -n "${numero}" ]; then
             gh issue comment "${numero}" --body-file "${cuerpo}"
           else
