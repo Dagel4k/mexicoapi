@@ -43,7 +43,7 @@ Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá
 | Municipios | `data/inegi-municipios/` | INEGI | semanal |
 | Bancos, con historial | `data/bancos/` | Banxico | diario |
 
-Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los originales descargados en `raw/`. Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
+Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los archivos fuente en `raw/` (los descargados tal cual y, en bancos, la compilación mensual del CEP). Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
 
 ## Documentación
 
