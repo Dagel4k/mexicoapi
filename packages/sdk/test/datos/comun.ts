@@ -242,16 +242,16 @@ export function probarDatos(
       expect(m.buscarMunicipio("guadalupe")[0]?.nombre).toBe("Guadalupe");
     });
 
-    it("busca solo en un estado con la opción estado", () => {
-      const resultado = m.buscarMunicipio("guadalupe", { estado: "32" });
+    it("busca solo en una entidad con la opción cve_ent", () => {
+      const resultado = m.buscarMunicipio("guadalupe", { cve_ent: "32" });
       expect(resultado.map((x) => x.cvegeo)).toEqual(
         municipios.registros
           .filter((x) => x.cve_ent === "32" && normal(x.nombre).includes("guadalupe"))
           .map((x) => x.cvegeo),
       );
       expect(resultado[0]?.nombre).toBe("Guadalupe");
-      expect(m.buscarMunicipio("culiacan", { estado: "01" })).toEqual([]);
-      expect(m.buscarMunicipio("culiacan", { estado: undefined })[0]?.cvegeo).toBe("25006");
+      expect(m.buscarMunicipio("culiacan", { cve_ent: "01" })).toEqual([]);
+      expect(m.buscarMunicipio("culiacan", { cve_ent: undefined })[0]?.cvegeo).toBe("25006");
     });
 
     it("corta en limite", () => {
