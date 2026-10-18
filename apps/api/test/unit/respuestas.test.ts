@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CACHE_DATOS,
   CACHE_STATUS,
+  CACHE_ULTIMO,
   respuestaJson,
   respuestaProblema,
   respuestaVacia,
@@ -10,11 +11,12 @@ import {
 import { SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
 
 describe("constantes de caché", () => {
-  it("datos sin s-maxage y status de un minuto", () => {
+  it("datos sin s-maxage, status de un minuto y el último FIX de cinco minutos sin stale", () => {
     expect(CACHE_DATOS).toBe(
       "public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800",
     );
     expect(CACHE_STATUS).toBe("public, max-age=60");
+    expect(CACHE_ULTIMO).toBe("public, max-age=300");
   });
 });
 

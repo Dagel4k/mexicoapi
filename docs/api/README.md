@@ -391,7 +391,7 @@ El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica e
 curl https://<base>/v1/tipo-cambio/fix/ultimo
 ```
 
-Responde `{ "data": { "fecha_publicacion": "2026-10-16", "valor": "18.4250" }, "meta": … }`, con la misma `meta` de arriba.
+Responde `{ "data": { "fecha_publicacion": "2026-10-16", "valor": "18.4250" }, "meta": … }`, con la misma `meta` de arriba y `Cache-Control: public, max-age=300` (ver [Caché y ETag](#caché-y-etag)).
 
 ### Errores de fecha
 
@@ -517,10 +517,13 @@ El ejemplo es de una corrida local, sin registro de corridas, por eso `status` e
 | Respuesta | `Cache-Control` |
 | --- | --- |
 | Datos, cálculos, índice y OpenAPI | `public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800` |
+| `/v1/tipo-cambio/fix/ultimo` | `public, max-age=300` |
 | `/v1/status` | `public, max-age=60` |
 | Errores (problem+json) | `no-store` |
 
 Los datos se actualizan como máximo una vez al día, así que una hora de caché es segura. No se usa `s-maxage`: un caché compartido de 24 horas rompería la meta de frescura.
+
+`/v1/tipo-cambio/fix/ultimo` cambia con cada publicación del FIX, así que su caché es de cinco minutos y sin `stale-while-revalidate` ni `stale-if-error`: con ellos, un cliente podría seguir viendo el FIX anterior hasta un día después de la actualización.
 
 Las rutas de estados, municipios y bancos, y `/v1/openapi.json`, traen `ETag`. Si lo mandas en `If-None-Match`, responde 304 sin cuerpo:
 

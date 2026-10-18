@@ -2,7 +2,7 @@ import { FUENTE_CFF_20 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reiniciarCargas } from "../../src/cargas.js";
 import { manejar } from "../../src/index.js";
-import { CACHE_DATOS } from "../../src/respuestas.js";
+import { CACHE_DATOS, CACHE_ULTIMO } from "../../src/respuestas.js";
 import {
   type AssetFalso,
   crearAssets,
@@ -131,11 +131,11 @@ async function pedir(ruta: string, datos: Datos = {}, init?: RequestInit) {
 }
 
 /** Pide la ruta y devuelve el cuerpo; comprueba los encabezados de una respuesta de datos. */
-async function datos(ruta: string, d: Datos = {}) {
+async function datos(ruta: string, d: Datos = {}, cache = CACHE_DATOS) {
   const { respuesta, assets } = await pedir(ruta, d);
   expect(respuesta.status, ruta).toBe(200);
   expect(respuesta.headers.get("content-type")).toBe("application/json; charset=utf-8");
-  expect(respuesta.headers.get("cache-control")).toBe(CACHE_DATOS);
+  expect(respuesta.headers.get("cache-control")).toBe(cache);
   expect(respuesta.headers.get("etag")).toBeNull();
   expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
   const texto = await respuesta.text();
@@ -490,8 +490,8 @@ describe("GET /v1/tipo-cambio/fix: parámetros", () => {
 });
 
 describe("GET /v1/tipo-cambio/fix/ultimo", () => {
-  it("responde la última publicación de la serie", async () => {
-    const { cuerpo, pedidas } = await datos("/v1/tipo-cambio/fix/ultimo");
+  it("responde la última publicación de la serie, con un caché corto y sin stale", async () => {
+    const { cuerpo, pedidas } = await datos("/v1/tipo-cambio/fix/ultimo", {}, CACHE_ULTIMO);
     expect(cuerpo).toEqual({
       data: { fecha_publicacion: "2026-10-16", valor: "18.4250" },
       meta: META_FIX_API,

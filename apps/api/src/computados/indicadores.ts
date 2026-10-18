@@ -13,7 +13,7 @@ import { type Meta, metaInterna, type ShardSerie, shardFix, shardUdis } from "..
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
-import { CACHE_DATOS, respuestaJson, respuestaProblema } from "../respuestas.js";
+import { CACHE_DATOS, CACHE_ULTIMO, respuestaJson, respuestaProblema } from "../respuestas.js";
 import type { Contexto } from "../rutas.js";
 
 const DOCS_FIX = `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`;
@@ -198,7 +198,7 @@ export async function ultimoFix(c: Contexto): Promise<Response> {
   if (ultimo.tipo !== "encontrado") {
     throw new Error("El shard del último año no tiene la última publicación de la cobertura.");
   }
-  return respuestaJson({ data: ultimo.registro, meta }, { cache: CACHE_DATOS });
+  return respuestaJson({ data: ultimo.registro, meta }, { cache: CACHE_ULTIMO });
 }
 
 /** `GET /v1/udis`: el valor de la UDI del día `fecha`. */
