@@ -299,13 +299,13 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 
 | Entrada | gzip |
 | --- | --- |
-| `mexicoapi` | 12.0 KB (una prueba exige 15 KB o menos) |
-| `mexicoapi/cliente` | 8.6 KB al importarlo; el núcleo y cada dataset se cargan solo si responde el paquete |
+| `mexicoapi` | 13.8 KB (una prueba exige 15 KB o menos) |
+| `mexicoapi/cliente` | 10.8 KB al importarlo, con el catálogo de problemas y las reglas de la ruta del núcleo; lo demás del núcleo y cada dataset se cargan solo si responde el paquete |
 | `mexicoapi/datos` | 44.8 KB |
 | `mexicoapi/datos/fix` | 13.4 KB |
 | `mexicoapi/datos/udis` | 19.1 KB |
-| `mexicoapi/datos/calendarios` | 16.6 KB |
-| `mexicoapi/datos/constantes` | 8.7 KB |
+| `mexicoapi/datos/calendarios` | 18.6 KB |
+| `mexicoapi/datos/constantes` | 9.3 KB |
 
 | Entorno | Estado |
 | --- | --- |
