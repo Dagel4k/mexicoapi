@@ -36,6 +36,9 @@ const CLABE = "012180000000000015";
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
+// Una fecha dentro de la cobertura de las UDIS (la serie empieza el 2020-01-01).
+const FECHA_UDI = "2024-06-03";
+
 function objeto(valor: unknown): Record<string, unknown> | undefined {
   return typeof valor === "object" && valor !== null && !Array.isArray(valor)
     ? (valor as Record<string, unknown>)
@@ -91,6 +94,32 @@ const COMPROBACIONES: readonly Comprobacion[] = [
       return resultado === "2026-11-17"
         ? undefined
         : `resultado ${String(resultado)}, no 2026-11-17`;
+    },
+  },
+  {
+    ruta: "/v1/tipo-cambio/fix/ultimo",
+    estado: 200,
+    tipo: "json",
+    validar(cuerpo) {
+      const data = objeto(dataDe(cuerpo));
+      if (typeof data?.fecha_publicacion !== "string" || !FECHA.test(data.fecha_publicacion)) {
+        return "fecha_publicacion no es una fecha";
+      }
+      return typeof data.valor === "string" && /^\d+\.\d{4}$/.test(data.valor)
+        ? undefined
+        : "valor no es un decimal con 4 decimales";
+    },
+  },
+  {
+    ruta: `/v1/udis?fecha=${FECHA_UDI}`,
+    estado: 200,
+    tipo: "json",
+    validar(cuerpo) {
+      const data = objeto(dataDe(cuerpo));
+      if (data?.fecha !== FECHA_UDI) return `fecha ${String(data?.fecha)}, no ${FECHA_UDI}`;
+      return typeof data.valor === "string" && /^\d+\.\d{6}$/.test(data.valor)
+        ? undefined
+        : "valor no es un decimal con 6 decimales";
     },
   },
   { ruta: "/v1/estados/33", estado: 404, tipo: "problema" },

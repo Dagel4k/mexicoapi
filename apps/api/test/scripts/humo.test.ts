@@ -6,6 +6,7 @@ import { principal, probarHumo } from "../../scripts/humo.ts";
 const BASE = "https://api.ejemplo.mx";
 const SCRIPT = fileURLToPath(new URL("../../scripts/humo.ts", import.meta.url));
 const SEGURIDAD = { "access-control-allow-origin": "*", "x-content-type-options": "nosniff" };
+const UDIS = "/v1/udis?fecha=2024-06-03";
 const DIAS = "/v1/dias-habiles?autoridad=lft&desde=2026-11-13&dias=1";
 
 interface Ruta {
@@ -23,6 +24,10 @@ function rutasBuenas(): Record<string, Ruta> {
     "/v1/bancos/012": { cuerpo: { data: { codigo: "012" } } },
     "/v1/clabe/012180000000000015": { cuerpo: { data: { valido: true } } },
     [DIAS]: { cuerpo: { data: { resultado: "2026-11-17" } } },
+    "/v1/tipo-cambio/fix/ultimo": {
+      cuerpo: { data: { fecha_publicacion: "2026-10-16", valor: "18.4250" } },
+    },
+    [UDIS]: { cuerpo: { data: { fecha: "2024-06-03", valor: "8.146030" } } },
     "/v1/estados/33": {
       estado: 404,
       tipo: "application/problem+json; charset=utf-8",
@@ -57,7 +62,7 @@ describe("probarHumo", () => {
     const r = await probarHumo(`${BASE}/`, { fetch: falso(rutasBuenas()) });
     expect(r.fallas).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(Object.keys(r.tiempos)).toHaveLength(9);
+    expect(Object.keys(r.tiempos)).toHaveLength(11);
   });
 
   it("un 200 con HTML es una falla", async () => {
@@ -108,7 +113,7 @@ describe("probarHumo", () => {
   it("un fetch que ignora la señal también vence", async () => {
     const mudo = (() => new Promise(() => {})) as typeof fetch;
     const r = await probarHumo(BASE, { fetch: mudo, timeoutMs: 5 });
-    expect(r.fallas).toHaveLength(9);
+    expect(r.fallas).toHaveLength(11);
   });
 
   it("un error de red es una falla con su mensaje", async () => {
@@ -140,6 +145,14 @@ describe("probarHumo", () => {
       ["/v1/bancos/012", { data: { codigo: "014" } }, "no es el banco"],
       ["/v1/clabe/012180000000000015", { data: { valido: false } }, "no es válida"],
       [DIAS, { data: { resultado: "2026-11-16" } }, "no 2026-11-17"],
+      ["/v1/tipo-cambio/fix/ultimo", { data: {} }, "fecha_publicacion no es una fecha"],
+      [
+        "/v1/tipo-cambio/fix/ultimo",
+        { data: { fecha_publicacion: "2026-10-16", valor: "18.425" } },
+        "4 decimales",
+      ],
+      [UDIS, { data: { fecha: "2024-06-04", valor: "8.146030" } }, "no 2024-06-03"],
+      [UDIS, { data: { fecha: "2024-06-03", valor: "8.14603" } }, "6 decimales"],
       ["/v1/status", { data: {} }, "no es una lista"],
       ["/v1/status", { data: [] }, "no trae datasets"],
     ];
@@ -172,7 +185,7 @@ describe("principal", () => {
     const codigo = await principal([BASE], (t) => salida.push(t), { fetch: falso(rutasBuenas()) });
     expect(codigo).toBe(0);
     const texto = salida.join("");
-    expect(texto.match(/^ok /gm)).toHaveLength(9);
+    expect(texto.match(/^ok /gm)).toHaveLength(11);
     expect(texto).toContain("Prueba de humo correcta.");
   });
 
