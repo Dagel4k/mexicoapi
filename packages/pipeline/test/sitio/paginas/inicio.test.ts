@@ -110,6 +110,7 @@ describe("página de inicio", () => {
     expect(html).toContain('<script type="module" src="/sitio.js"></script>');
     expect(html).toContain("<h1>MéxicoAPI</h1>");
     expect(html).toContain("Datos de referencia de México con fuente oficial, licencia y sha256.");
+    expect(html).toContain("con 3 datasets oficiales y descargas completas en JSON, CSV y SQLite.");
   });
 
   it("navega a las cinco secciones", () => {
