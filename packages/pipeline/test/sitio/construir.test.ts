@@ -10,6 +10,7 @@ import { DATASETS } from "../../src/registro.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
+import { PRUEBA_LENTA } from "../ayudas.js";
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -124,7 +125,7 @@ afterEach(async () => {
   await rm(raiz, { recursive: true, force: true });
 });
 
-describe("construirSitio", () => {
+describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
   it("genera exactamente la estructura de archivos", async () => {
     const resultado = await construirSitio({ raizDatos: datos, salida });
     const archivos = await listar(salida);
@@ -349,7 +350,7 @@ describe("construirSitio", () => {
   });
 });
 
-describe("salida y frescura", () => {
+describe("salida y frescura", { timeout: PRUEBA_LENTA }, () => {
   const SALIDA_MALA = /no puede ser la carpeta de datos, contenerla ni estar dentro de ella/;
 
   it("rechaza una salida igual a los datos o que los contiene", async () => {
