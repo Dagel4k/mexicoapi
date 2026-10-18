@@ -317,6 +317,27 @@ function aDiaCurado(v: unknown): DiaInhabil | undefined {
   return Object.freeze({ fecha: v.fecha, motivo: v.motivo, tipo: v.tipo as TipoDiaCurado, fuente });
 }
 
+/**
+ * Una fuente por año de la cobertura amplia y ninguna más: cada fin de semana cita la publicación
+ * de su año (las disposiciones de la CNBV son anuales).
+ */
+function aFuentesFinDeSemana(
+  v: unknown,
+  amplia: CoberturaSerie,
+): ReadonlyMap<number, FuenteDof> | undefined {
+  if (!esObjeto(v)) return undefined;
+  const primero = anioDe(amplia.desde);
+  const anios = anioDe(amplia.hasta) - primero + 1;
+  if (Object.keys(v).length !== anios) return undefined;
+  const fuentes = new Map<number, FuenteDof>();
+  for (let anio = primero; anio < primero + anios; anio++) {
+    const fuente = aFuenteDof(v[String(anio)]);
+    if (fuente === undefined) return undefined;
+    fuentes.set(anio, fuente);
+  }
+  return fuentes;
+}
+
 type PlazoLeido = Omit<PlazoCurado, "calendario">;
 
 function aPlazo(v: unknown): PlazoLeido | undefined {
@@ -338,8 +359,8 @@ function aPlazo(v: unknown): PlazoLeido | undefined {
 /**
  * Revisa el calendario de una autoridad y arma un `Calendario` por tipo de plazo con los días
  * de su cobertura. `general` cuenta todos los tipos de día y un plazo contiene las coberturas de
- * los demás; los días van en orden estricto y dentro de esa cobertura. Lo que no cumple falla en
- * vez de llegar a un plazo legal.
+ * los demás; cada año de esa cobertura cita sus fines de semana y los días van en orden estricto
+ * y dentro de ella. Lo que no cumple falla en vez de llegar a un plazo legal.
  */
 function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): CalendarioCurado {
   const nombre = `calendarios/${autoridad}`;
@@ -350,10 +371,6 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
     !Array.isArray(valor.dias)
   ) {
     throw new Error(`El shard ${nombre} no tiene autoridad, plazos y días.`);
-  }
-  const fuenteFinDeSemana = aFuenteDof(valor.fuente_fin_de_semana);
-  if (fuenteFinDeSemana === undefined) {
-    throw new Error(`El shard ${nombre} no cita la regla de los fines de semana.`);
   }
   const leidos = new Map<TipoPlazo, PlazoLeido>();
   for (const [tipo, v] of Object.entries(valor.plazos)) {
@@ -369,6 +386,10 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
   const amplia = coberturas.find((c) => coberturas.every((otra) => contiene(c, otra)));
   if (amplia === undefined) {
     throw new Error(`Ningún plazo del shard ${nombre} contiene a los demás.`);
+  }
+  const fuentes = aFuentesFinDeSemana(valor.fuentes_fin_de_semana, amplia);
+  if (fuentes === undefined) {
+    throw new Error(`El shard ${nombre} no cita los fines de semana de cada año de su cobertura.`);
   }
   const dias: DiaInhabil[] = [];
   let anterior = "";
@@ -386,7 +407,8 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
       autoridad,
       cobertura,
       dias: dias.filter((d) => dentro(d.fecha, cobertura)),
-      fuenteFinDeSemana,
+      // La cobertura de cada plazo cae en la amplia: todos sus años tienen fuente.
+      fuenteFinDeSemana: (anio) => fuentes.get(anio) as FuenteDof,
       excluirTipos,
     });
   for (const [tipo, { cobertura, excluirTipos }] of leidos) {

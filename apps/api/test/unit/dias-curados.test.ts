@@ -10,6 +10,7 @@ import {
   DIAS_SAT,
   DOCS,
   FUENTE_CFF,
+  FUENTE_CNBV,
   INTERNA_CURADOS,
   META_CNBV,
   META_SAT,
@@ -109,7 +110,7 @@ const cnbv = (desde: string, dias: number, extra = "") =>
 interface ShardDePrueba {
   autoridad: string;
   plazos: Record<string, { cobertura: { desde: string; hasta: string }; excluir_tipos: string[] }>;
-  fuente_fin_de_semana: typeof FUENTE_CFF;
+  fuentes_fin_de_semana: Record<string, typeof FUENTE_CFF>;
   dias: ReadonlyArray<{ fecha: string; motivo: string; tipo: string; fuente: typeof FUENTE_CFF }>;
 }
 
@@ -124,7 +125,7 @@ function delNucleo(shard: ShardDePrueba, tipo: string, desde: string, dias: numb
     dias: shard.dias
       .filter((d) => d.fecha >= cobertura.desde && d.fecha <= cobertura.hasta)
       .map((d) => ({ ...d, tipo: d.tipo as "descanso" | "vacaciones" })),
-    fuenteFinDeSemana: shard.fuente_fin_de_semana,
+    fuenteFinDeSemana: (anio) => shard.fuentes_fin_de_semana[String(anio)] as typeof FUENTE_CFF,
     excluirTipos: excluir_tipos as "vacaciones"[],
   });
   return JSON.parse(JSON.stringify(sumarDiasHabiles({ calendario, desde, dias })));
@@ -563,6 +564,7 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
       [RUTA_CNBV]: {
         ...SHARD_CNBV,
         plazos: { general: { cobertura: { desde, hasta }, excluir_tipos: [] } },
+        fuentes_fin_de_semana: { 2026: FUENTE_CNBV },
         dias: DIAS_CNBV.slice(1, 2),
       },
     });

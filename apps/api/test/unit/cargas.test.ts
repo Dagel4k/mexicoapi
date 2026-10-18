@@ -14,6 +14,8 @@ import { crearAssets, entornoDe } from "./ayudas.js";
 import {
   DIAS_SAT,
   FUENTE_CFF,
+  FUENTE_CNBV,
+  FUENTE_CNBV_2025,
   INTERNA_CURADOS,
   LISTA_UMA,
   META_UMA,
@@ -460,6 +462,23 @@ describe("calendarios curados", () => {
     expect((await calendarioCurado(entorno, "cnbv")).general.respaldo).toBeUndefined();
   });
 
+  it("cita cada fin de semana con la fuente de su año", async () => {
+    const { entorno } = conAssets({ [RUTA_CNBV]: SHARD_CNBV });
+    const { general } = await calendarioCurado(entorno, "cnbv");
+    expect(general.calendario.inhabil("2025-10-18")).toEqual({
+      fecha: "2025-10-18",
+      motivo: "Sábado",
+      tipo: "fin_de_semana",
+      fuente: FUENTE_CNBV_2025,
+    });
+    expect(general.calendario.inhabil("2026-10-17")?.fuente).toEqual(FUENTE_CNBV);
+    // Un día publicado que cae en sábado conserva su propia cita.
+    expect(general.calendario.inhabil("2026-12-12")).toMatchObject({
+      tipo: "descanso",
+      fuente: FUENTE_CNBV,
+    });
+  });
+
   it("la CNBV sale de su archivo y no comparte memoria con el SAT", async () => {
     const { assets, entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT, [RUTA_CNBV]: SHARD_CNBV });
     const cnbv = await calendarioCurado(entorno, "cnbv");
@@ -533,10 +552,20 @@ describe("calendarios curados", () => {
     ["sin plazos", conPlazos(undefined)],
     ["plazos no objeto", conPlazos([])],
     ["días no lista", conDias({})],
-    ["sin fuente de fines de semana", { ...SHARD_SAT, fuente_fin_de_semana: undefined }],
+    ["sin fuentes de fines de semana", { ...SHARD_SAT, fuentes_fin_de_semana: undefined }],
+    ["fuentes de fines de semana en lista", { ...SHARD_SAT, fuentes_fin_de_semana: [FUENTE_CFF] }],
     [
       "fuente de fines de semana sin fragmento",
-      { ...SHARD_SAT, fuente_fin_de_semana: { ...FUENTE_CFF, fragmento: undefined } },
+      { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: { ...FUENTE_CFF, fragmento: undefined } } },
+    ],
+    ["sin la fuente de un año de la cobertura", { ...SHARD_SAT, fuentes_fin_de_semana: {} }],
+    [
+      "fuente de fines de semana de un año fuera de la cobertura",
+      { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: FUENTE_CFF, 2027: FUENTE_CFF } },
+    ],
+    [
+      "fuente de fines de semana con otro año en la llave",
+      { ...SHARD_SAT, fuentes_fin_de_semana: { "2026-01": FUENTE_CFF } },
     ],
     ["plazo desconocido", conPlazos({ general, anual: general })],
     ["plazo nulo", conPlazos({ general, declaraciones_pagos: null })],

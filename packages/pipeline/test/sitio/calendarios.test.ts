@@ -34,7 +34,7 @@ const shardDe = (autoridad: AutoridadCurada, d: DocumentoCurado<DiaInhabilCurado
  * del plazo (crearCalendario rechaza los de afuera) y arma el calendario.
  */
 function calendarioDe(shard: ShardCalendario, tipo: TipoPlazo): Calendario {
-  const { autoridad, plazos, dias, fuente_fin_de_semana } = JSON.parse(
+  const { autoridad, plazos, dias, fuentes_fin_de_semana } = JSON.parse(
     JSON.stringify(shard),
   ) as ShardCalendario;
   const plazo = plazos[tipo];
@@ -44,7 +44,7 @@ function calendarioDe(shard: ShardCalendario, tipo: TipoPlazo): Calendario {
     autoridad,
     cobertura: plazo.cobertura,
     dias: dias.filter((d) => d.fecha >= desde && d.fecha <= hasta),
-    fuenteFinDeSemana: fuente_fin_de_semana,
+    fuenteFinDeSemana: (anio) => fuentes_fin_de_semana[String(anio)] as FuenteDof,
     excluirTipos: plazo.excluir_tipos,
   });
 }
@@ -67,7 +67,7 @@ describe("shardCalendario", () => {
   it("SAT: general cubre la intersección y declaraciones_pagos la de descanso, sin vacaciones", () => {
     const d = documento(curadoDiasSat, YAML_SAT);
     const shard = shardDe("sat", d);
-    expect(Object.keys(shard)).toEqual(["autoridad", "plazos", "fuente_fin_de_semana", "dias"]);
+    expect(Object.keys(shard)).toEqual(["autoridad", "plazos", "fuentes_fin_de_semana", "dias"]);
     expect(shard.autoridad).toBe("sat");
     expect(shard.plazos).toEqual({
       general: { cobertura: { desde: "2026-01-01", hasta: "2026-11-30" }, excluir_tipos: [] },
@@ -82,10 +82,12 @@ describe("shardCalendario", () => {
     );
     expect(shard.dias.map((x) => x.fecha)).toEqual([...shard.dias.map((x) => x.fecha)].sort());
     // Los fines de semana se citan con el CFF art. 12, la fuente de los días de descanso.
-    expect(shard.fuente_fin_de_semana).toEqual(
-      d.registros.find((r) => r.fecha === "2026-12-25")?.fuente,
+    expect(shard.fuentes_fin_de_semana).toEqual({
+      2026: d.registros.find((r) => r.fecha === "2026-12-25")?.fuente,
+    });
+    expect(shard.fuentes_fin_de_semana["2026"]?.nombre).toBe(
+      "Código Fiscal de la Federación, artículo 12",
     );
-    expect(shard.fuente_fin_de_semana.nombre).toBe("Código Fiscal de la Federación, artículo 12");
   });
 
   it("CNBV: solo el plazo general, con la cobertura de descanso", () => {
@@ -94,23 +96,39 @@ describe("shardCalendario", () => {
     expect(shard.plazos).toEqual({
       general: { cobertura: { desde: "2026-01-01", hasta: "2026-12-31" }, excluir_tipos: [] },
     });
-    expect(shard.fuente_fin_de_semana.fragmento).toContain("IX. Los sábados y domingos.");
+    expect(Object.keys(shard.fuentes_fin_de_semana)).toEqual(["2026"]);
+    expect(shard.fuentes_fin_de_semana["2026"]?.fragmento).toContain("IX. Los sábados y domingos.");
     expect(shard.dias).toHaveLength(11);
     for (const d of shard.dias) expect(d).not.toHaveProperty("autoridad");
   });
 
-  it("la fuente de los fines de semana es la del último día de descanso", () => {
+  it("cada año cita los fines de semana con la fuente de su último día de descanso", () => {
     const de2025 = fuente("2025: IX. Los sábados y domingos.", "2024-12-27");
     const de2026 = fuente("2026: IX. Los sábados y domingos.");
+    const otra = fuente("Otra publicación de 2025, sin fines de semana.", "2025-03-01");
     const shard = shardCalendario(
       "cnbv",
       [
+        dia("2025-04-17", "descanso", otra, "cnbv"),
         dia("2025-12-25", "descanso", de2025, "cnbv"),
         dia("2026-12-25", "descanso", de2026, "cnbv"),
       ],
       { descanso: { desde: "2025-01-01", hasta: "2026-12-31" } },
     );
-    expect(shard.fuente_fin_de_semana).toEqual(de2026);
+    expect(shard.fuentes_fin_de_semana).toEqual({ 2025: de2025, 2026: de2026 });
+    // Lo que usa el Worker: un sábado de 2025 cita las disposiciones de 2025.
+    const calendario = calendarioDe(shard, "general");
+    expect(calendario.inhabil("2025-10-18")?.fuente).toEqual(de2025);
+    expect(calendario.inhabil("2026-10-17")?.fuente).toEqual(de2026);
+  });
+
+  it("falla con ErrorDatos si un año de la cobertura no tiene días de descanso", () => {
+    const fds = fuente("IX. Los sábados y domingos.");
+    expect(() =>
+      shardCalendario("cnbv", [dia("2026-12-25", "descanso", fds, "cnbv")], {
+        descanso: { desde: "2026-01-01", hasta: "2027-01-31" },
+      }),
+    ).toThrow(/sin días de descanso en 2027/);
   });
 
   it("falla con ErrorDatos si la fuente de los fines de semana no los menciona", () => {
@@ -277,8 +295,15 @@ describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabil
     }
   });
 
-  it("los fines de semana citan la fuente de cada autoridad", () => {
+  it("los fines de semana citan la fuente de cada autoridad y de cada año", () => {
     expect(general.inhabil("2026-10-17")?.fuente.fragmento).toContain("los sábados, los domingos");
-    expect(bancos.inhabil("2025-10-18")?.fuente.fragmento).toContain("IX. Los sábados y domingos.");
+    const fuenteDe = (fecha: string) => cnbv.dias.find((d) => d.fecha === fecha)?.fuente;
+    expect(bancos.inhabil("2025-10-18")?.fuente).toEqual(fuenteDe("2025-12-25"));
+    expect(bancos.inhabil("2025-10-18")?.fuente.fragmento).toContain("del año 2025");
+    expect(bancos.inhabil("2026-10-17")?.fuente).toEqual(fuenteDe("2026-12-25"));
+    expect(bancos.inhabil("2026-10-17")?.fuente.fragmento).toContain("del año 2026");
+    for (const fuente of Object.values(cnbv.fuentes_fin_de_semana)) {
+      expect(fuente.fragmento).toContain("IX. Los sábados y domingos.");
+    }
   });
 });

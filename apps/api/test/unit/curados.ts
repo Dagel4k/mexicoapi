@@ -103,6 +103,12 @@ const FUENTE_RMF_1 = fuente(
   "2026-07-09",
   "2.1.6. [...] el primer periodo general de vacaciones comprende del 20 al 31 de julio de 2026.",
 );
+export const FUENTE_CNBV_2025 = fuente(
+  "Disposiciones de la CNBV para 2025",
+  "https://dof.gob.mx/nota_detalle.php?codigo=5746258&fecha=27/12/2024",
+  "2024-12-27",
+  "Artículo 1.- [...] los siguientes días del año 2025: [...] IX. Los sábados y domingos.",
+);
 export const FUENTE_CNBV = fuente(
   "Disposiciones de la CNBV para 2026",
   "https://dof.gob.mx/nota_detalle.php?codigo=5775684&fecha=10/12/2025",
@@ -150,12 +156,12 @@ export const SHARD_SAT = {
       excluir_tipos: ["vacaciones"],
     },
   },
-  fuente_fin_de_semana: FUENTE_CFF,
+  fuentes_fin_de_semana: { 2026: FUENTE_CFF },
   dias: DIAS_SAT,
 };
 
 export const DIAS_CNBV = [
-  dia("2025-12-12", "12 de diciembre", "descanso", FUENTE_CNBV),
+  dia("2025-12-12", "12 de diciembre", "descanso", FUENTE_CNBV_2025),
   dia("2026-11-02", "2 de noviembre", "descanso", FUENTE_CNBV),
   dia("2026-12-12", "12 de diciembre", "descanso", FUENTE_CNBV),
 ];
@@ -165,7 +171,7 @@ export const SHARD_CNBV = {
   plazos: {
     general: { cobertura: { desde: "2025-01-01", hasta: "2026-12-31" }, excluir_tipos: [] },
   },
-  fuente_fin_de_semana: FUENTE_CNBV,
+  fuentes_fin_de_semana: { 2025: FUENTE_CNBV_2025, 2026: FUENTE_CNBV },
   dias: DIAS_CNBV,
 };
 

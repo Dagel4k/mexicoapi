@@ -139,6 +139,37 @@ describe("crearCalendario", () => {
       (c.cobertura as { hasta: string }).hasta = "2030-01-01";
     }).toThrow(TypeError);
   });
+
+  it("con una función, cita los fines de semana con la fuente de su año", () => {
+    const de2025: Fuente = { nombre: "Disposiciones 2025", url: "https://example.com/2025" };
+    const de2026: Fuente = { nombre: "Disposiciones 2026", url: "https://example.com/2026" };
+    const pedidos: number[] = [];
+    const c = crearCalendario({
+      autoridad: "cnbv",
+      cobertura: { desde: "2025-01-01", hasta: "2026-12-31" },
+      dias: [],
+      fuenteFinDeSemana: (anio) => {
+        pedidos.push(anio);
+        return anio === 2025 ? de2025 : de2026;
+      },
+    });
+    expect(pedidos).toEqual([]);
+    const sabado = c.inhabil("2025-10-18");
+    expect(sabado).toEqual({
+      fecha: "2025-10-18",
+      motivo: "Sábado",
+      tipo: "fin_de_semana",
+      fuente: de2025,
+    });
+    expect(c.inhabil("2026-10-17")?.fuente).toEqual(de2026);
+    expect(c.inhabil("2026-10-19")).toBeNull();
+    // Una copia congelada por año: la función se llama una vez y alterar su valor no cambia nada.
+    expect(c.inhabil("2025-10-19")?.fuente).toBe(sabado?.fuente);
+    expect(Object.isFrozen(sabado?.fuente)).toBe(true);
+    de2025.nombre = "alterado";
+    expect(c.inhabil("2025-12-27")?.fuente.nombre).toBe("Disposiciones 2025");
+    expect(pedidos).toEqual([2025, 2026]);
+  });
 });
 
 describe("Calendario congelado", () => {
