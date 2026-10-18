@@ -7,7 +7,7 @@ Los paquetes `mexicoapi` (`packages/sdk`) y `mexicoapi-mcp` (`packages/mcp`, el 
 El `package.json` de `packages/sdk` trae cosas que solo sirven en el monorepo: `devDependencies` con `@mexicoapi/core` (`workspace:*`) y wrangler, y `scripts` que llaman a archivos que no viajan en el paquete. Por eso el paquete no se empaqueta desde ahí:
 
 1. `pnpm --filter "mexicoapi..." build` compila el núcleo y después el paquete (el núcleo queda copiado en `dist/nucleo`).
-2. `node packages/sdk/scripts/publicable.ts <destino>` arma en `<destino>` (una carpeta nueva o vacía, fuera de `packages/sdk`) lo que lista `files` (`dist`, `README.md` y `LICENSE`) y un `package.json` igual al del repositorio sin `devDependencies` ni `scripts`. Antes de escribir revisa que exista cada archivo que declaran `exports`, `main`, `types` y `bin`, y falla si el manifiesto nombra un paquete `@mexicoapi/` o un rango `workspace:`.
+2. `node packages/sdk/scripts/publicable.ts <destino>` arma en `<destino>` (una carpeta nueva o vacía, fuera de `packages/sdk`) lo que lista `files` (`dist`, `README.md`, `CHANGELOG.md` y `LICENSE`) y un `package.json` igual al del repositorio sin `devDependencies` ni `scripts`. Revisa también que `CHANGELOG.md` empiece, en su primer encabezado `## `, con la versión del `package.json` (`revisarHistorial`, que el workflow de publicación puede llamar). Antes de escribir revisa que exista cada archivo que declaran `exports`, `main`, `types` y `bin`, y falla si el manifiesto nombra un paquete `@mexicoapi/` o un rango `workspace:`.
 3. `npm pack` y `npm publish` se corren dentro de `<destino>`. Así el `.tgz` y lo que npm registra de la versión salen del mismo manifiesto.
 
 Un `npm pack` o `npm publish` en `packages/sdk` falla a propósito (el `prepack` lo rechaza con un mensaje que dice qué hacer).
@@ -21,7 +21,7 @@ Hoy (0.1.0) el paquete tiene 145 archivos: unos 180 kB comprimido y 900 kB sin c
 Igual que `mexicoapi`, y con el mismo código: `packages/mcp/scripts/publicable.ts` usa el de `packages/sdk`. La diferencia es la dependencia `mexicoapi`, que en el monorepo es `workspace:*` y se publica como `^<versión de packages/sdk>` (hoy `^0.1.0`). Cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp` con ese piso (la regla está en "Cómo se corta una versión").
 
 1. `pnpm --filter "mexicoapi-mcp..." build` compila el núcleo, `mexicoapi` y el servidor.
-2. `node packages/mcp/scripts/publicable.ts <destino>` arma en `<destino>` (nuevo o vacío, fuera de `packages/mcp`) `dist`, `README.md`, `LICENSE` y el `package.json` sin `devDependencies` (el cliente oficial de MCP que usan las pruebas) ni `scripts`, con `mexicoapi` en `^` y la versión que lee de `packages/sdk/package.json`. Falla si queda un rango `workspace:` o un paquete `@mexicoapi/`, o si falta un archivo que declara `bin`. Con `--publicar` (`node packages/mcp/scripts/publicable.ts --publicar <destino>`) revisa además con `npm view` que `mexicoapi@<versión de packages/sdk>` ya esté en npm, y si no está (o npm no responde) se niega sin escribir nada: así ningún servidor sale con un piso que todavía no existe.
+2. `node packages/mcp/scripts/publicable.ts <destino>` arma en `<destino>` (nuevo o vacío, fuera de `packages/mcp`) `dist`, `README.md`, `CHANGELOG.md`, `LICENSE` y el `package.json` sin `devDependencies` (el cliente oficial de MCP que usan las pruebas) ni `scripts`, con `mexicoapi` en `^` y la versión que lee de `packages/sdk/package.json`. Falla si queda un rango `workspace:` o un paquete `@mexicoapi/`, o si falta un archivo que declara `bin`. Con `--publicar` (`node packages/mcp/scripts/publicable.ts --publicar <destino>`) revisa además con `npm view` que `mexicoapi@<versión de packages/sdk>` ya esté en npm, y si no está (o npm no responde) se niega sin escribir nada: así ningún servidor sale con un piso que todavía no existe.
 3. `npm pack` y `npm publish` se corren dentro de `<destino>`.
 
 Un `npm pack` o `npm publish` en `packages/mcp` también falla a propósito.
@@ -49,7 +49,7 @@ El publicador de confianza de npm (trusted publishing) solo se configura en un p
    cd ../mexicoapi-publicable
    ```
 
-3. Revisa lo que se va a publicar: `npm pack --dry-run` (solo `dist/`, `README.md`, `LICENSE` y `package.json`) y el `package.json` (sin `devDependencies` ni `scripts`).
+3. Revisa lo que se va a publicar: `npm pack --dry-run` (solo `dist/`, `README.md`, `CHANGELOG.md`, `LICENSE` y `package.json`) y el `package.json` (sin `devDependencies` ni `scripts`).
 4. Publica: `npm login` (abre el navegador y pide el segundo factor) y después `npm publish --access public`, que pide el código otra vez.
 5. Comprueba: `npm view mexicoapi` y, en una carpeta vacía, `npm install mexicoapi` y `npx mexicoapi clabe 002010077777777771`.
 6. Marca el commit publicado con la etiqueta `mexicoapi@0.1.0` y súbela: `git tag mexicoapi@0.1.0 <commit>` y `git push origin mexicoapi@0.1.0`.
@@ -69,7 +69,7 @@ Con `mexicoapi@0.1.0` ya en npm, y con los mismos pasos:
    cd ../mexicoapi-mcp-publicable
    ```
 
-3. Revisa lo que se va a publicar: `npm pack --dry-run` (solo `dist/`, `README.md`, `LICENSE` y `package.json`) y el `package.json` (sin `devDependencies` ni `scripts`, con `"mexicoapi": "^0.1.0"` en `dependencies`).
+3. Revisa lo que se va a publicar: `npm pack --dry-run` (solo `dist/`, `README.md`, `CHANGELOG.md`, `LICENSE` y `package.json`) y el `package.json` (sin `devDependencies` ni `scripts`, con `"mexicoapi": "^0.1.0"` en `dependencies`).
 4. Publica con `npm publish --access public` (con la sesión de `npm login` y el segundo factor).
 5. Comprueba: `npm view mexicoapi-mcp dependencies` y, en una carpeta vacía con un `package.json` de `"type": "module"`, `npm install mexicoapi-mcp`, copia ahí `packages/mcp/test/paquete/humo.mjs` y corre `node humo.mjs`, que termina con `humo: OK`.
 6. Marca el commit publicado con la etiqueta `mexicoapi-mcp@0.1.0` y súbela.
@@ -101,15 +101,17 @@ Lo mismo se repite para `mexicoapi-mcp`: cada paquete tiene su propia configurac
 
 Con el workflow de publicación (pendiente):
 
-1. Un PR a `main` cambia la versión de `packages/sdk/package.json` con semver: los datos nuevos son un cambio *patch*; mientras el paquete esté en 0.x, un cambio que rompe la API sube la versión menor.
+1. Un PR a `main` cambia la versión de `packages/sdk/package.json` con semver: los datos nuevos son un cambio *patch*; mientras el paquete esté en 0.x, un cambio que rompe la API sube la versión menor. El mismo PR agrega al principio de `packages/sdk/CHANGELOG.md` una sección `## <versión> (sin publicar)` con lo que cambia.
 2. Con el PR integrado y CI en verde, se crea la etiqueta `mexicoapi@<versión>` sobre ese commit.
 3. `publicacion.yml` corre por la etiqueta en el Environment `npm`, en un runner de GitHub (npm no acepta runners propios), con `permissions: id-token: write`, Node 22.14 o posterior y npm 11.5.1 o posterior. Compila con `pnpm --filter "mexicoapi..." build`, arma el paquete con `publicable.ts` y corre `npm publish` en esa carpeta. Con un repositorio público, npm agrega la procedencia sola.
 
 Hasta que exista ese workflow, cada versión se publica a mano como la primera, sin procedencia.
 
+Cada paquete lleva su historial en `CHANGELOG.md` (`packages/sdk` y `packages/mcp`), que viaja en el paquete publicado. El PR que sube la versión agrega al principio una sección `## <versión> (AAAA-MM-DD)` con una lista corta de lo que cambia; mientras la versión no sale, el encabezado dice `## <versión> (sin publicar)`, y el PR de la publicación cambia "sin publicar" por la fecha. `publicable.ts` se niega a armar el paquete si el primer encabezado `## ` no empieza con la versión del `package.json`, así que olvidar esta sección detiene la publicación.
+
 `mexicoapi-mcp` lleva su propia versión y su etiqueta `mexicoapi-mcp@<versión>`. La regla: cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp`, en dos pasos y en este orden:
 
 1. Se publica `mexicoapi@<versión>` (etiqueta `mexicoapi@<versión>`).
-2. Un PR sube la versión *patch* de `packages/mcp/package.json`. Con ese commit integrado se arma el servidor con `publicable.ts --publicar`, que pone la dependencia en `^<versión nueva>` y se niega si el paso 1 no está en npm, y se publica con la etiqueta `mexicoapi-mcp@<versión>`.
+2. Un PR sube la versión *patch* de `packages/mcp/package.json` y agrega a `packages/mcp/CHANGELOG.md` su sección; si el patch solo sube el piso de `mexicoapi`, basta una línea que lo diga (por ejemplo, "Sube la dependencia a `mexicoapi` ^0.1.1."). Con ese commit integrado se arma el servidor con `publicable.ts --publicar`, que pone la dependencia en `^<versión nueva>` y se niega si el paso 1 no está en npm, y se publica con la etiqueta `mexicoapi-mcp@<versión>`.
 
 El motivo: `^` basta para las instalaciones nuevas, pero npx guarda lo que instaló y no actualiza las dependencias de un paquete que no cambió de versión. Quien ya usó `npx -y mexicoapi-mcp` seguiría con los datos viejos. Con el *patch* del servidor, npx ve una versión nueva de `mexicoapi-mcp` cuyo piso ya no cumple la instalación vieja, y la reinstala con la `mexicoapi` nueva. Una versión menor de `mexicoapi` (0.2.0) queda fuera de `^0.1.0` y sigue la misma regla: el servidor sale con `^0.2.0`. `publicacion.yml`, cuando exista, hará los dos pasos.

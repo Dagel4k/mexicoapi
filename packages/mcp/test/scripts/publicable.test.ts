@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { manifiestoPublicable } from "../../../sdk/scripts/publicable.ts";
+import { manifiestoPublicable, revisarHistorial } from "../../../sdk/scripts/publicable.ts";
 import {
   principal,
   publicadaEnNpm,
@@ -41,7 +41,7 @@ const MANIFIESTO = {
   version: "0.4.0",
   type: "module",
   bin: { "mexicoapi-mcp": "dist/index.js" },
-  files: ["dist", "README.md", "LICENSE"],
+  files: ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
   scripts: { build: "tsc", prepack: "node scripts/publicable.ts" },
   dependencies: { mexicoapi: "workspace:*" },
   devDependencies: { "@modelcontextprotocol/sdk": "1.0.0" },
@@ -54,6 +54,7 @@ async function repoFalso(sdk: object = { name: "mexicoapi", version: "1.2.3" }):
   await escribir("mcp/dist/index.js", "#!/usr/bin/env node\n");
   await escribir("mcp/README.md", "# mexicoapi-mcp\n");
   await escribir("mcp/LICENSE", "MIT\n");
+  await escribir("mcp/CHANGELOG.md", "# Cambios\n\n## 0.4.0 (sin publicar)\n\n- primera versión\n");
 }
 
 function consola() {
@@ -189,6 +190,7 @@ describe("principal", () => {
       dependencies: { mexicoapi: "^1.2.3" },
     });
     expect((await readdir(join(dir, "publicable"))).sort()).toEqual([
+      "CHANGELOG.md",
       "LICENSE",
       "README.md",
       "dist",
@@ -240,9 +242,9 @@ describe("el package.json de packages/mcp", () => {
     expect(publicable.scripts).toBeUndefined();
   });
 
-  it("publica dist, README.md y LICENSE, y npm pack desde aquí se niega", async () => {
+  it("publica dist, README.md, CHANGELOG.md y LICENSE, y npm pack desde aquí se niega", async () => {
     const manifiesto = await leerJson(join(MCP, "package.json"));
-    expect(manifiesto.files).toEqual(["dist", "README.md", "LICENSE"]);
+    expect(manifiesto.files).toEqual(["dist", "README.md", "CHANGELOG.md", "LICENSE"]);
     expect(manifiesto.bin).toEqual({ "mexicoapi-mcp": "dist/index.js" });
     expect((manifiesto.scripts as Record<string, string>).prepack).toBe(
       "node scripts/publicable.ts",
@@ -254,6 +256,10 @@ describe("el package.json de packages/mcp", () => {
     expect((manifiesto.scripts as Record<string, string>).build).toBe(
       "node scripts/limpiar.ts && tsc -p tsconfig.build.json",
     );
+  });
+
+  it("trae un historial de cambios cuyo primer encabezado es la versión", async () => {
+    await expect(revisarHistorial(MCP)).resolves.toBeUndefined();
   });
 
   it("trae la misma licencia que el repositorio", async () => {

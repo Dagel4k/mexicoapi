@@ -46,7 +46,7 @@ describe("package.json de mexicoapi", () => {
     expect(manifiesto.type).toBe("module");
     expect(manifiesto.sideEffects).toBe(false);
     expect(manifiesto.engines).toEqual({ node: ">=20" });
-    expect(manifiesto.files).toEqual(["dist", "README.md", "LICENSE"]);
+    expect(manifiesto.files).toEqual(["dist", "README.md", "CHANGELOG.md", "LICENSE"]);
     expect(manifiesto.repository).toEqual({
       type: "git",
       url: "git+https://github.com/Dagel4k/mexicoapi.git",
