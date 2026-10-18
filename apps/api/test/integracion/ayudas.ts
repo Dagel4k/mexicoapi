@@ -55,3 +55,12 @@ export async function registrosDe(directorio: string): Promise<number> {
   }
   return records;
 }
+
+/** Los registros de `data/<directorio>`, según el `data_file` de su manifiesto. */
+export async function datosDe<T>(directorio: string): Promise<T[]> {
+  const base = new URL(`../../../../data/${directorio}/`, import.meta.url);
+  const { data_file } = JSON.parse(await readFile(new URL("manifest.json", base), "utf8")) as {
+    data_file: string;
+  };
+  return JSON.parse(await readFile(new URL(data_file, base), "utf8")) as T[];
+}

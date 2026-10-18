@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { catalogoBancos, metaInterna, reiniciarCargas } from "../../src/cargas.js";
+import {
+  catalogoBancos,
+  metaInterna,
+  reiniciarCargas,
+  shardFix,
+  shardUdis,
+} from "../../src/cargas.js";
 import { crearAssets, entornoDe } from "./ayudas.js";
 
 const META = {
@@ -96,8 +102,20 @@ describe("metaInterna", () => {
     }
   });
 
+  it("conserva la cobertura de las series", async () => {
+    const cobertura = { desde: "2020-01-02", hasta: "2026-10-16" };
+    const conSerie = { datasets: { fix: { ...INTERNA.datasets.bancos, cobertura } } };
+    const { entorno } = conAssets({ "/v1/_internos/meta.json": conSerie });
+    const interna = await metaInterna(entorno);
+    expect(interna.datasets.fix?.cobertura).toEqual(cobertura);
+    expect(Object.isFrozen(interna.datasets.fix?.cobertura)).toBe(true);
+  });
+
   const dataset = INTERNA.datasets.bancos;
   const conMeta = (meta: unknown) => ({ datasets: { bancos: { ...dataset, meta } } });
+  const conCobertura = (cobertura: unknown) => ({
+    datasets: { bancos: { ...dataset, cobertura } },
+  });
   for (const [caso, valor] of [
     ["JSON roto", "{"],
     ["no es objeto", []],
@@ -111,6 +129,13 @@ describe("metaInterna", () => {
     ["records no numérico", { datasets: { bancos: { ...dataset, records: "2" } } }],
     ["sin data_sha256", { datasets: { bancos: { ...dataset, data_sha256: undefined } } }],
     ["frescura no numérica", { datasets: { bancos: { ...dataset, frescura_horas: null } } }],
+    ["cobertura no objeto", conCobertura("2020-01-01")],
+    ["cobertura sin hasta", conCobertura({ desde: "2020-01-01" })],
+    [
+      "cobertura con fecha que no existe",
+      conCobertura({ desde: "2020-01-01", hasta: "2026-02-30" }),
+    ],
+    ["cobertura invertida", conCobertura({ desde: "2026-10-16", hasta: "2020-01-02" })],
   ] as const) {
     it(`rechaza un meta interno con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ "/v1/_internos/meta.json": valor });
@@ -198,4 +223,140 @@ describe("catalogoBancos", () => {
       await expect(catalogoBancos(entorno)).rejects.toThrow();
     });
   }
+});
+
+describe("shards anuales de las series", () => {
+  const COBERTURA = { desde: "2020-01-02", hasta: "2026-10-16" };
+  const SHARD_FIX = {
+    tramo: { desde: "2026-01-01", hasta: "2026-10-16" },
+    datos: [
+      { fecha_publicacion: "2026-01-02", valor: "18.0012" },
+      { fecha_publicacion: "2026-10-16", valor: "18.4250" },
+    ],
+  };
+  const SHARD_UDIS = {
+    tramo: { desde: "2021-01-01", hasta: "2021-12-31" },
+    datos: [
+      { fecha: "2021-01-01", valor: "6.606023" },
+      { fecha: "2021-01-02", valor: "6.606458" },
+    ],
+  };
+  const RUTA_FIX = "/v1/_internos/fix/2026.json";
+  const RUTA_UDIS = "/v1/_internos/udis/2021.json";
+
+  it("lee el shard del año una vez por isolate, con su tramo y sus datos", async () => {
+    const { assets, entorno } = conAssets({ [RUTA_FIX]: SHARD_FIX });
+    const shard = await shardFix(entorno, 2026, COBERTURA);
+    expect(shard).toEqual(SHARD_FIX);
+    expect(await shardFix(entorno, 2026, COBERTURA)).toBe(shard);
+    expect(assets.pedidas).toEqual([RUTA_FIX]);
+  });
+
+  it("las UDIS salen de su carpeta y no comparten memoria con el FIX", async () => {
+    const { assets, entorno } = conAssets({
+      [RUTA_UDIS]: SHARD_UDIS,
+      "/v1/_internos/fix/2021.json": { tramo: SHARD_UDIS.tramo, datos: [] },
+    });
+    const cobertura = { desde: "2020-01-01", hasta: "2026-10-25" };
+    expect(await shardUdis(entorno, 2021, cobertura)).toEqual(SHARD_UDIS);
+    expect((await shardFix(entorno, 2021, cobertura)).datos).toEqual([]);
+    expect(assets.pedidas).toEqual([RUTA_UDIS, "/v1/_internos/fix/2021.json"]);
+  });
+
+  it("lo que devuelve no se puede alterar y solo trae los campos del registro", async () => {
+    const conExtra = {
+      ...SHARD_FIX,
+      datos: SHARD_FIX.datos.map((r) => ({ ...r, interno: "x" })),
+    };
+    const { entorno } = conAssets({ [RUTA_FIX]: conExtra });
+    const shard = await shardFix(entorno, 2026, COBERTURA);
+    expect(shard.datos).toEqual(SHARD_FIX.datos);
+    for (const parte of [shard, shard.tramo, shard.datos, shard.datos[0]]) {
+      expect(Object.isFrozen(parte)).toBe(true);
+    }
+  });
+
+  it("un año fuera de la cobertura falla sin pedir nada", async () => {
+    const { assets, entorno } = conAssets({ [RUTA_FIX]: SHARD_FIX });
+    for (const anio of [2019, 2027, Number.NaN]) {
+      await expect(shardFix(entorno, anio, COBERTURA)).rejects.toThrow();
+    }
+    expect(assets.pedidas).toEqual([]);
+  });
+
+  it("una carga fallida cancela el cuerpo y no se recuerda", async () => {
+    const vacio = conAssets({});
+    await expect(shardFix(vacio.entorno, 2026, COBERTURA)).rejects.toThrow();
+    expect(vacio.assets.canceladas).toEqual([RUTA_FIX]);
+    const roto = conAssets({ [RUTA_FIX]: SHARD_FIX }, 500);
+    await expect(shardFix(roto.entorno, 2026, COBERTURA)).rejects.toThrow();
+    const { assets, entorno } = conAssets({ [RUTA_FIX]: SHARD_FIX });
+    expect((await shardFix(entorno, 2026, COBERTURA)).datos).toHaveLength(2);
+    expect(assets.pedidas).toEqual([RUTA_FIX]);
+  });
+
+  it("reiniciarCargas obliga a leer de nuevo", async () => {
+    const { assets, entorno } = conAssets({ [RUTA_FIX]: SHARD_FIX });
+    await shardFix(entorno, 2026, COBERTURA);
+    reiniciarCargas();
+    await shardFix(entorno, 2026, COBERTURA);
+    expect(assets.pedidas).toEqual([RUTA_FIX, RUTA_FIX]);
+  });
+
+  const fix = (fecha_publicacion: unknown, valor: unknown = "18.4250") => ({
+    fecha_publicacion,
+    valor,
+  });
+  const conDatos = (datos: unknown) => ({ tramo: SHARD_FIX.tramo, datos });
+  for (const [caso, valor] of [
+    ["JSON roto", "{"],
+    ["no es objeto", []],
+    ["sin tramo", { datos: [] }],
+    ["tramo sin desde", { tramo: { hasta: "2026-10-16" }, datos: [] }],
+    [
+      "tramo con fecha que no existe",
+      { tramo: { desde: "2026-01-01", hasta: "2026-02-30" }, datos: [] },
+    ],
+    ["tramo invertido", { tramo: { desde: "2026-10-16", hasta: "2026-01-01" }, datos: [] }],
+    [
+      "tramo que empieza en otro año",
+      { tramo: { desde: "2025-12-31", hasta: "2026-10-16" }, datos: [] },
+    ],
+    [
+      "tramo que termina en otro año",
+      { tramo: { desde: "2026-01-01", hasta: "2027-01-01" }, datos: [] },
+    ],
+    ["datos no lista", conDatos({})],
+    ["registro nulo", conDatos([null])],
+    ["registro sin fecha", conDatos([{ valor: "18.4250" }])],
+    ["fecha que no existe", conDatos([fix("2026-02-30")])],
+    ["valor numérico", conDatos([fix("2026-01-02", 18.425)])],
+    ["valor con 3 decimales", conDatos([fix("2026-01-02", "18.425")])],
+    ["valor con 6 decimales", conDatos([fix("2026-01-02", "18.425000")])],
+    ["valor negativo", conDatos([fix("2026-01-02", "-18.4250")])],
+    [
+      "registro antes del tramo",
+      { tramo: { desde: "2026-01-05", hasta: "2026-10-16" }, datos: [fix("2026-01-02")] },
+    ],
+    ["registro después del tramo", conDatos([fix("2026-10-19")])],
+    ["fuera de orden", conDatos([fix("2026-01-05"), fix("2026-01-02")])],
+    ["fecha repetida", conDatos([fix("2026-01-02"), fix("2026-01-02")])],
+  ] as const) {
+    it(`rechaza un shard del FIX con forma inesperada: ${caso}`, async () => {
+      const { entorno } = conAssets({ [RUTA_FIX]: valor });
+      await expect(shardFix(entorno, 2026, COBERTURA)).rejects.toThrow();
+    });
+  }
+
+  it("rechaza en las UDIS un valor sin 6 decimales o un registro del FIX", async () => {
+    const cobertura = { desde: "2020-01-01", hasta: "2026-10-25" };
+    for (const datos of [
+      [{ fecha: "2021-01-01", valor: "6.6060" }],
+      [{ fecha_publicacion: "2021-01-01", valor: "6.606023" }],
+    ]) {
+      reiniciarCargas();
+      const { entorno } = conAssets({ [RUTA_UDIS]: { tramo: SHARD_UDIS.tramo, datos } });
+      await expect(shardUdis(entorno, 2021, cobertura)).rejects.toThrow();
+    }
+  });
 });

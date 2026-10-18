@@ -62,10 +62,34 @@ function comprobar(url: string): void {
 
 const META = { dataset: "bancos", as_of: "2026-10-17", sources: [], docs: "sin usar" };
 
+const serie = (dataset: string, desde: string, hasta: string) => ({
+  meta: { ...META, dataset },
+  records: 1,
+  data_sha256: "a",
+  frescura_horas: 72,
+  cobertura: { desde, hasta },
+});
+
 const ASSETS = {
   "/v1/_internos/meta.json": {
     cuerpo: JSON.stringify({
-      datasets: { bancos: { meta: META, records: 1, data_sha256: "a", frescura_horas: 72 } },
+      datasets: {
+        bancos: { meta: META, records: 1, data_sha256: "a", frescura_horas: 72 },
+        "tipo-cambio.fix": serie("tipo-cambio.fix", "2026-10-16", "2026-10-16"),
+        udis: serie("udis", "2026-10-16", "2026-10-16"),
+      },
+    }),
+  },
+  "/v1/_internos/fix/2026.json": {
+    cuerpo: JSON.stringify({
+      tramo: { desde: "2026-10-16", hasta: "2026-10-16" },
+      datos: [{ fecha_publicacion: "2026-10-16", valor: "18.4250" }],
+    }),
+  },
+  "/v1/_internos/udis/2026.json": {
+    cuerpo: JSON.stringify({
+      tramo: { desde: "2026-10-16", hasta: "2026-10-16" },
+      datos: [{ fecha: "2026-10-16", valor: "8.850000" }],
     }),
   },
   "/v1/bancos.json": {
@@ -101,12 +125,20 @@ describe("enlaces a la documentación", () => {
       await docsDe("/v1/clabe/002010077777777771"),
       await docsDe("/v1/dias-habiles?autoridad=lft&desde=2026-01-05&dias=1"),
       await docsDe("/v1/dias-inhabiles?autoridad=lft&anio=2026"),
+      await docsDe("/v1/tipo-cambio/fix?publicado=2026-10-16"),
+      await docsDe("/v1/tipo-cambio/fix?operacion=2026-10-17"),
+      await docsDe("/v1/tipo-cambio/fix/ultimo"),
+      await docsDe("/v1/udis?fecha=2026-10-16"),
     ];
     expect(enlaces).toEqual([
       `${URL_DOCS}/api/README.md`,
       `${URL_DOCS}/api/README.md#clabe`,
       `${URL_DOCS}/api/README.md#dias-habiles`,
       `${URL_DOCS}/api/README.md#dias-inhabiles`,
+      `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
+      `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
+      `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
+      `${URL_DOCS}/api/README.md#udis`,
     ]);
     for (const url of enlaces) comprobar(url);
   });
@@ -117,7 +149,13 @@ describe("enlaces a la documentación", () => {
 
   it("los de cada dataset del build existen: <URL_DOCS>/datos/<directorio>.md", () => {
     expect(DIRECTORIOS_DE_DATOS).toEqual(
-      expect.arrayContaining(["bancos", "inegi-estados", "inegi-municipios"]),
+      expect.arrayContaining([
+        "bancos",
+        "inegi-estados",
+        "inegi-municipios",
+        "tipo-cambio-fix",
+        "udis",
+      ]),
     );
     for (const directorio of DIRECTORIOS_DE_DATOS) comprobar(`${URL_DOCS}/datos/${directorio}.md`);
   });

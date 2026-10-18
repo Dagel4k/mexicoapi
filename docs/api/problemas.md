@@ -10,6 +10,7 @@ Campos de siempre: `type`, `title`, `status`, `detail` (el motivo, en español) 
 | [`parametro-desconocido`](#parametro-desconocido) | 400 | La ruta no acepta ese parámetro |
 | [`parametro-faltante`](#parametro-faltante) | 400 | Falta un parámetro obligatorio |
 | [`no-encontrado`](#no-encontrado) | 404 | No existe la ruta o el recurso |
+| [`dato-no-disponible`](#dato-no-disponible) | 404 | El dato de esa fecha todavía no se carga |
 | [`metodo-no-permitido`](#metodo-no-permitido) | 405 | Método distinto de GET, HEAD u OPTIONS |
 | [`calendario-incompleto`](#calendario-incompleto) | 422 | El calendario no cubre las fechas pedidas |
 | [`demasiadas-peticiones`](#demasiadas-peticiones) | 429 | Se rebasó el límite de peticiones |
@@ -34,7 +35,7 @@ curl https://<base>/v1/estados/99x
 }
 ```
 
-Otros casos que dan este tipo: una CLABE que no tiene 18 dígitos, una fecha que no existe, `dias` fuera de 1 a 3650, o, con `permitir_incompleto=true`, un resultado de `dias-habiles` que pasaría del año 9999 (en ese caso `parametro` es `desde`).
+Otros casos que dan este tipo: una CLABE que no tiene 18 dígitos, una fecha que no existe, `dias` fuera de 1 a 3650, o, con `permitir_incompleto=true`, un resultado de `dias-habiles` que pasaría del año 9999 (en ese caso `parametro` es `desde`). En `/v1/tipo-cambio/fix`, pedir `publicado` y `operacion` a la vez también da este tipo, sin `parametro`.
 
 Qué hacer: corrige el valor. El `detail` dice el formato esperado.
 
@@ -61,7 +62,7 @@ Qué hacer: quita el parámetro. Si es para evitar el caché, no hace falta: los
 
 ## parametro-faltante
 
-Status 400. Falta un parámetro obligatorio. Solo `dias-habiles` y `dias-inhabiles` tienen parámetros de query obligatorios.
+Status 400. Falta un parámetro obligatorio. Tienen parámetros de query obligatorios `dias-habiles`, `dias-inhabiles` y `udis` (`fecha`). `/v1/tipo-cambio/fix` pide exactamente uno de `publicado` u `operacion`: sin ninguno, el `detail` es `Indica publicado u operacion.` y no hay `parametro`.
 
 ```bash
 curl "https://<base>/v1/dias-habiles?autoridad=lft&dias=3"
@@ -100,7 +101,49 @@ curl https://<base>/v1/estados/99
 
 Si la ruta no existe, el `detail` es `No existe la ruta.`
 
-Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`09`, no `9`).
+En el tipo de cambio FIX y las UDIS, este tipo es definitivo: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. El problema trae además `fecha` (la pedida) y `cobertura` (la primera y la última fecha de la serie). Si el dato puede llegar después, el tipo es [`dato-no-disponible`](#dato-no-disponible).
+
+```bash
+curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
+  "title": "Recurso no encontrado",
+  "status": 404,
+  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10.",
+  "instance": "/v1/tipo-cambio/fix",
+  "fecha": "2026-10-10",
+  "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }
+}
+```
+
+Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`09`, no `9`). En el FIX, para saber qué tipo de cambio aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
+
+## dato-no-disponible
+
+Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie o, en una operación con FIX, falta cargar la publicación de la víspera. La API no responde un valor anterior en su lugar. El problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado.
+
+```bash
+curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#dato-no-disponible",
+  "title": "Dato todavía no disponible",
+  "status": 404,
+  "detail": "Todavía no está cargado el FIX que aplica a una operación del 2026-10-20; la última publicación cargada es del 2026-10-16.",
+  "instance": "/v1/tipo-cambio/fix",
+  "fecha": "2026-10-20",
+  "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }
+}
+```
+
+A diferencia de `no-encontrado`, la respuesta puede cambiar: los datos se actualizan una vez al día.
+
+Qué hacer: reintenta después de la siguiente actualización. [`/v1/status`](README.md#status) dice cuándo se actualizó cada dataset.
 
 ## metodo-no-permitido
 

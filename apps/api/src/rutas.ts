@@ -1,6 +1,7 @@
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { clabe } from "./computados/clabe.js";
 import { diasHabiles, diasInhabiles } from "./computados/dias.js";
+import { consultarFix, consultarUdi, ultimoFix } from "./computados/indicadores.js";
 import { status } from "./computados/status.js";
 import type { Entorno, Opciones } from "./entorno.js";
 import { servirShard } from "./estaticos.js";
@@ -165,12 +166,31 @@ const AUTORIDAD: ReglaConsulta = {
   detalle: "Autoridades disponibles: lft.",
   obligatorio: true,
 };
-const DESDE: ReglaConsulta = {
+/** Una fecha real con formato AAAA-MM-DD. */
+const fecha = (detalle: string, obligatorio: boolean): ReglaConsulta => ({
   patron: /^\d{4}-\d{2}-\d{2}$/,
   cumple: esFechaIsoValida,
-  detalle: "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
-  obligatorio: true,
-};
+  detalle,
+  obligatorio,
+});
+
+const DESDE = fecha(
+  "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
+  true,
+);
+// El manejador exige exactamente uno de los dos.
+const PUBLICADO = fecha(
+  "La fecha de publicación (publicado) debe ser una fecha válida con formato AAAA-MM-DD.",
+  false,
+);
+const OPERACION = fecha(
+  "La fecha de la operación (operacion) debe ser una fecha válida con formato AAAA-MM-DD.",
+  false,
+);
+const FECHA_UDI = fecha(
+  "La fecha del valor (fecha) debe ser una fecha válida con formato AAAA-MM-DD.",
+  true,
+);
 const DIAS: ReglaConsulta = {
   patron: /^[1-9]\d{0,3}$/,
   cumple: (valor) => Number(valor) <= 3650,
@@ -266,6 +286,23 @@ export const RUTAS: readonly Ruta[] = [
     patron: /^\/v1\/dias-inhabiles$/,
     consulta: { autoridad: AUTORIDAD, anio: ANIO },
     manejar: diasInhabiles,
+  },
+  {
+    plantilla: "/v1/tipo-cambio/fix",
+    patron: /^\/v1\/tipo-cambio\/fix$/,
+    consulta: { publicado: PUBLICADO, operacion: OPERACION },
+    manejar: consultarFix,
+  },
+  {
+    plantilla: "/v1/tipo-cambio/fix/ultimo",
+    patron: /^\/v1\/tipo-cambio\/fix\/ultimo$/,
+    manejar: ultimoFix,
+  },
+  {
+    plantilla: "/v1/udis",
+    patron: /^\/v1\/udis$/,
+    consulta: { fecha: FECHA_UDI },
+    manejar: consultarUdi,
   },
   { plantilla: "/v1/status", patron: /^\/v1\/status$/, manejar: status },
   {

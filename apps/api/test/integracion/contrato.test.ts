@@ -193,6 +193,33 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2006", estado: 422 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2101", estado: 422 },
 
+  // Lunes tras un viernes con publicación; cambio de año (sin publicación en 2021 antes del 4).
+  { ruta: "/v1/tipo-cambio/fix?publicado=2026-10-16", estado: 200 },
+  { ruta: "/v1/tipo-cambio/fix?operacion=2026-10-19", estado: 200 },
+  { ruta: "/v1/tipo-cambio/fix?operacion=2021-01-04", estado: 200 },
+  { ruta: "/v1/tipo-cambio/fix", estado: 400 },
+  { ruta: "/v1/tipo-cambio/fix?publicado=2026-10-16&operacion=2026-10-19", estado: 400 },
+  { ruta: "/v1/tipo-cambio/fix?publicado=2026-02-30", estado: 400 },
+  { ruta: "/v1/tipo-cambio/fix?operacion=19-10-2026", estado: 400 },
+  { ruta: "/v1/tipo-cambio/fix?fecha=2026-10-16", estado: 400 },
+  // Sábado, feriado bancario, antes de la serie, y fechas que todavía no se cargan.
+  { ruta: "/v1/tipo-cambio/fix?publicado=2026-10-10", estado: 404 },
+  { ruta: "/v1/tipo-cambio/fix?publicado=2021-01-01", estado: 404 },
+  { ruta: "/v1/tipo-cambio/fix?publicado=2019-12-31", estado: 404 },
+  { ruta: "/v1/tipo-cambio/fix?operacion=2020-01-02", estado: 404 },
+  { ruta: "/v1/tipo-cambio/fix?publicado=2099-01-02", estado: 404 },
+  { ruta: "/v1/tipo-cambio/fix?operacion=2099-01-06", estado: 404 },
+
+  { ruta: "/v1/tipo-cambio/fix/ultimo", estado: 200 },
+  { ruta: "/v1/tipo-cambio/fix/ultimo?fecha=2026-10-16", estado: 400 },
+
+  { ruta: "/v1/udis?fecha=2026-01-05", estado: 200 },
+  { ruta: "/v1/udis?fecha=2021-01-01", estado: 200 },
+  { ruta: "/v1/udis", estado: 400 },
+  { ruta: "/v1/udis?fecha=2026-13-01", estado: 400 },
+  { ruta: "/v1/udis?fecha=2019-12-31", estado: 404 },
+  { ruta: "/v1/udis?fecha=2099-01-01", estado: 404 },
+
   { ruta: "/v1/status", estado: 200 },
   { ruta: "/v1/status?dataset=bancos", estado: 400 },
 
@@ -203,8 +230,28 @@ const CASOS: Caso[] = [
 /** 429 pide el binding de límite y 500 un asset roto; ninguno se provoca en local. */
 const PRACTICABLES = [200, 400, 404, 422];
 
-/** Ruta de ejemplo de una operación, armada con los `example` de sus parámetros obligatorios. */
+/**
+ * Ejemplos de las operaciones que no se arman con sus parámetros obligatorios: `consultarFix`
+ * pide exactamente uno de publicado u operacion, y ninguno es obligatorio.
+ */
+const EJEMPLOS: Readonly<Record<string, readonly string[]>> = {
+  consultarFix: [
+    "/v1/tipo-cambio/fix?publicado=2026-10-16",
+    "/v1/tipo-cambio/fix?operacion=2026-10-19",
+  ],
+};
+
+/** Rutas de ejemplo de una operación: las explícitas, o la armada con sus obligatorios. */
+function ejemplos(ruta: string, op: Operacion): readonly string[] {
+  return EJEMPLOS[op.operationId] ?? [armarEjemplo(ruta, op)];
+}
+
 function ejemplo(ruta: string, op: Operacion): string {
+  return ejemplos(ruta, op)[0] as string;
+}
+
+/** Ruta de ejemplo de una operación, armada con los `example` de sus parámetros obligatorios. */
+function armarEjemplo(ruta: string, op: Operacion): string {
   const valor = (p: Parametro | undefined, nombre: string): string => {
     if (p?.example === undefined) throw new Error(`${ruta}: ${nombre} no tiene example.`);
     return p.example;
@@ -375,8 +422,16 @@ describe("ETag y 304 según el documento", () => {
 describe("respuestas del Worker contra el documento", () => {
   it.each(CASOS)("GET $ruta → $estado", validarCaso);
 
-  describe.each(OPERACIONES.map((o) => ({ ruta: o.ruta, ejemplo: ejemplo(o.ruta, o.op) })))(
-    "$ruta con los ejemplos del documento",
+  it("los ejemplos explícitos son de operaciones del documento, en su ruta", () => {
+    for (const [id, rutas] of Object.entries(EJEMPLOS)) {
+      const o = OPERACIONES.find((x) => x.op.operationId === id);
+      expect(o, id).toBeDefined();
+      for (const ruta of rutas) expect(operacionDe(ruta).ruta, ruta).toBe(o?.ruta);
+    }
+  });
+
+  describe.each(OPERACIONES.flatMap((o) => ejemplos(o.ruta, o.op).map((ejemplo) => ({ ejemplo }))))(
+    "$ejemplo, ejemplo del documento",
     ({ ejemplo: ruta }) => {
       it("GET → 200", () => validarCaso({ ruta, estado: 200 }));
       it("con un parámetro no declarado → 400", () =>
@@ -469,6 +524,9 @@ describe("rutas del Worker y del documento", () => {
     "/v1/bancos/012/historial",
     "/v1/clabe",
     "/v1/dias",
+    "/v1/tipo-cambio",
+    "/v1/tipo-cambio/fix/2026-10-16",
+    "/v1/udis/2026-01-05",
     "/v1/openapi",
     "/v2",
     "/descargas",
