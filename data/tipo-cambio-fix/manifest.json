@@ -1,0 +1,56 @@
+{
+  "dataset": "tipo-cambio.fix",
+  "schema_version": 1,
+  "as_of": "2026-10-18",
+  "fetched_at": "2026-10-18T09:44:34.996Z",
+  "data_file": "fix.json",
+  "data_sha256": "ed5d51c0b2ecc8cda7ca984a3cae9fbe6f5d9daf989b7cf76863aa7c5b840f13",
+  "records": 1710,
+  "sources": [
+    {
+      "name": "Diario Oficial de la Federación (SIDOF): tipo de cambio para solventar obligaciones denominadas en moneda extranjera (FIX)",
+      "url": "https://sidof.segob.gob.mx/",
+      "license": "Publicación oficial en el DOF; el Banco de México determina estos valores y autoriza su reproducción citando la fuente",
+      "license_url": "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+      "citation": "Banco de México. Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana. Diario Oficial de la Federación, consultado en el SIDOF: https://sidof.segob.gob.mx/",
+      "published_at": null,
+      "raw": [
+        {
+          "file": "raw/sidof-158-2020.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2020/31-12-2020",
+          "sha256": "bb831dbb87e9488f40cb2e93c4efa01e60862aa326bce29a1dc5d3e8d4a0761d"
+        },
+        {
+          "file": "raw/sidof-158-2021.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2021/31-12-2021",
+          "sha256": "4c9304e4ad9b15d85632f40ce8fc1ffb429a560d60cc5e705254ad55d32a2df4"
+        },
+        {
+          "file": "raw/sidof-158-2022.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2022/31-12-2022",
+          "sha256": "3d7bfc1eb246bf053a96dc51913538430864173d5aaba541c7b36e1a4c2d712f"
+        },
+        {
+          "file": "raw/sidof-158-2023.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2023/31-12-2023",
+          "sha256": "82436f07b30f6d364d1058278e76123d16af635ca338c3447da6d11ac76bd93e"
+        },
+        {
+          "file": "raw/sidof-158-2024.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2024/31-12-2024",
+          "sha256": "e3d517a345081fe7b5e1a00ff9bf448857bc0e197639363597421dd7c52cbbbe"
+        },
+        {
+          "file": "raw/sidof-158-2025.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2025/31-12-2025",
+          "sha256": "b994b58814dafe66e8e2d809b1ba30c52cad4870a5db721b93d0ba56b678e337"
+        },
+        {
+          "file": "raw/sidof-158-2026.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2026/31-12-2026",
+          "sha256": "e997389404f4fa0bd0c47b9ce86cd3f30372a3f9dd04063b2431d23603c57e5b"
+        }
+      ]
+    }
+  ]
+}

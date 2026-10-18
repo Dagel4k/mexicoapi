@@ -1,0 +1,6842 @@
+[
+  {
+    "fecha_publicacion": "2020-01-02",
+    "valor": "18.8642"
+  },
+  {
+    "fecha_publicacion": "2020-01-03",
+    "valor": "18.8817"
+  },
+  {
+    "fecha_publicacion": "2020-01-06",
+    "valor": "18.8673"
+  },
+  {
+    "fecha_publicacion": "2020-01-07",
+    "valor": "18.8270"
+  },
+  {
+    "fecha_publicacion": "2020-01-08",
+    "valor": "18.8852"
+  },
+  {
+    "fecha_publicacion": "2020-01-09",
+    "valor": "18.7980"
+  },
+  {
+    "fecha_publicacion": "2020-01-10",
+    "valor": "18.8453"
+  },
+  {
+    "fecha_publicacion": "2020-01-13",
+    "valor": "18.7732"
+  },
+  {
+    "fecha_publicacion": "2020-01-14",
+    "valor": "18.8215"
+  },
+  {
+    "fecha_publicacion": "2020-01-15",
+    "valor": "18.8120"
+  },
+  {
+    "fecha_publicacion": "2020-01-16",
+    "valor": "18.8077"
+  },
+  {
+    "fecha_publicacion": "2020-01-17",
+    "valor": "18.7930"
+  },
+  {
+    "fecha_publicacion": "2020-01-20",
+    "valor": "18.7388"
+  },
+  {
+    "fecha_publicacion": "2020-01-21",
+    "valor": "18.6725"
+  },
+  {
+    "fecha_publicacion": "2020-01-22",
+    "valor": "18.7007"
+  },
+  {
+    "fecha_publicacion": "2020-01-23",
+    "valor": "18.6883"
+  },
+  {
+    "fecha_publicacion": "2020-01-24",
+    "valor": "18.8018"
+  },
+  {
+    "fecha_publicacion": "2020-01-27",
+    "valor": "18.8313"
+  },
+  {
+    "fecha_publicacion": "2020-01-28",
+    "valor": "18.9407"
+  },
+  {
+    "fecha_publicacion": "2020-01-29",
+    "valor": "18.8022"
+  },
+  {
+    "fecha_publicacion": "2020-01-30",
+    "valor": "18.7067"
+  },
+  {
+    "fecha_publicacion": "2020-01-31",
+    "valor": "18.7853"
+  },
+  {
+    "fecha_publicacion": "2020-02-04",
+    "valor": "18.9082"
+  },
+  {
+    "fecha_publicacion": "2020-02-05",
+    "valor": "18.6797"
+  },
+  {
+    "fecha_publicacion": "2020-02-06",
+    "valor": "18.6245"
+  },
+  {
+    "fecha_publicacion": "2020-02-07",
+    "valor": "18.6645"
+  },
+  {
+    "fecha_publicacion": "2020-02-10",
+    "valor": "18.7763"
+  },
+  {
+    "fecha_publicacion": "2020-02-11",
+    "valor": "18.7653"
+  },
+  {
+    "fecha_publicacion": "2020-02-12",
+    "valor": "18.6740"
+  },
+  {
+    "fecha_publicacion": "2020-02-13",
+    "valor": "18.6308"
+  },
+  {
+    "fecha_publicacion": "2020-02-14",
+    "valor": "18.6458"
+  },
+  {
+    "fecha_publicacion": "2020-02-17",
+    "valor": "18.5712"
+  },
+  {
+    "fecha_publicacion": "2020-02-18",
+    "valor": "18.5715"
+  },
+  {
+    "fecha_publicacion": "2020-02-19",
+    "valor": "18.5952"
+  },
+  {
+    "fecha_publicacion": "2020-02-20",
+    "valor": "18.5910"
+  },
+  {
+    "fecha_publicacion": "2020-02-21",
+    "valor": "18.7992"
+  },
+  {
+    "fecha_publicacion": "2020-02-24",
+    "valor": "18.9138"
+  },
+  {
+    "fecha_publicacion": "2020-02-25",
+    "valor": "19.1197"
+  },
+  {
+    "fecha_publicacion": "2020-02-26",
+    "valor": "19.0878"
+  },
+  {
+    "fecha_publicacion": "2020-02-27",
+    "valor": "19.1585"
+  },
+  {
+    "fecha_publicacion": "2020-02-28",
+    "valor": "19.3973"
+  },
+  {
+    "fecha_publicacion": "2020-03-02",
+    "valor": "19.7760"
+  },
+  {
+    "fecha_publicacion": "2020-03-03",
+    "valor": "19.6985"
+  },
+  {
+    "fecha_publicacion": "2020-03-04",
+    "valor": "19.2837"
+  },
+  {
+    "fecha_publicacion": "2020-03-05",
+    "valor": "19.5335"
+  },
+  {
+    "fecha_publicacion": "2020-03-06",
+    "valor": "19.8095"
+  },
+  {
+    "fecha_publicacion": "2020-03-09",
+    "valor": "20.1623"
+  },
+  {
+    "fecha_publicacion": "2020-03-10",
+    "valor": "21.1117"
+  },
+  {
+    "fecha_publicacion": "2020-03-11",
+    "valor": "21.0267"
+  },
+  {
+    "fecha_publicacion": "2020-03-12",
+    "valor": "21.2130"
+  },
+  {
+    "fecha_publicacion": "2020-03-13",
+    "valor": "22.1518"
+  },
+  {
+    "fecha_publicacion": "2020-03-17",
+    "valor": "21.9288"
+  },
+  {
+    "fecha_publicacion": "2020-03-18",
+    "valor": "23.0573"
+  },
+  {
+    "fecha_publicacion": "2020-03-19",
+    "valor": "23.9008"
+  },
+  {
+    "fecha_publicacion": "2020-03-20",
+    "valor": "24.0868"
+  },
+  {
+    "fecha_publicacion": "2020-03-23",
+    "valor": "24.1113"
+  },
+  {
+    "fecha_publicacion": "2020-03-24",
+    "valor": "25.0782"
+  },
+  {
+    "fecha_publicacion": "2020-03-25",
+    "valor": "25.1185"
+  },
+  {
+    "fecha_publicacion": "2020-03-26",
+    "valor": "24.2948"
+  },
+  {
+    "fecha_publicacion": "2020-03-27",
+    "valor": "23.0970"
+  },
+  {
+    "fecha_publicacion": "2020-03-30",
+    "valor": "23.5122"
+  },
+  {
+    "fecha_publicacion": "2020-03-31",
+    "valor": "24.2853"
+  },
+  {
+    "fecha_publicacion": "2020-04-01",
+    "valor": "23.4847"
+  },
+  {
+    "fecha_publicacion": "2020-04-02",
+    "valor": "24.4918"
+  },
+  {
+    "fecha_publicacion": "2020-04-03",
+    "valor": "24.1087"
+  },
+  {
+    "fecha_publicacion": "2020-04-06",
+    "valor": "24.6938"
+  },
+  {
+    "fecha_publicacion": "2020-04-07",
+    "valor": "24.6895"
+  },
+  {
+    "fecha_publicacion": "2020-04-08",
+    "valor": "24.0388"
+  },
+  {
+    "fecha_publicacion": "2020-04-13",
+    "valor": "24.0925"
+  },
+  {
+    "fecha_publicacion": "2020-04-14",
+    "valor": "23.7427"
+  },
+  {
+    "fecha_publicacion": "2020-04-15",
+    "valor": "23.5645"
+  },
+  {
+    "fecha_publicacion": "2020-04-16",
+    "valor": "24.1155"
+  },
+  {
+    "fecha_publicacion": "2020-04-17",
+    "valor": "24.2098"
+  },
+  {
+    "fecha_publicacion": "2020-04-20",
+    "valor": "23.9012"
+  },
+  {
+    "fecha_publicacion": "2020-04-21",
+    "valor": "24.0077"
+  },
+  {
+    "fecha_publicacion": "2020-04-22",
+    "valor": "24.4248"
+  },
+  {
+    "fecha_publicacion": "2020-04-23",
+    "valor": "24.5883"
+  },
+  {
+    "fecha_publicacion": "2020-04-24",
+    "valor": "24.6230"
+  },
+  {
+    "fecha_publicacion": "2020-04-27",
+    "valor": "24.8583"
+  },
+  {
+    "fecha_publicacion": "2020-04-28",
+    "valor": "24.8492"
+  },
+  {
+    "fecha_publicacion": "2020-04-29",
+    "valor": "24.3882"
+  },
+  {
+    "fecha_publicacion": "2020-04-30",
+    "valor": "24.0002"
+  },
+  {
+    "fecha_publicacion": "2020-05-04",
+    "valor": "23.9283"
+  },
+  {
+    "fecha_publicacion": "2020-05-05",
+    "valor": "24.3812"
+  },
+  {
+    "fecha_publicacion": "2020-05-06",
+    "valor": "23.8343"
+  },
+  {
+    "fecha_publicacion": "2020-05-07",
+    "valor": "24.2942"
+  },
+  {
+    "fecha_publicacion": "2020-05-08",
+    "valor": "24.0563"
+  },
+  {
+    "fecha_publicacion": "2020-05-11",
+    "valor": "23.6805"
+  },
+  {
+    "fecha_publicacion": "2020-05-12",
+    "valor": "23.8693"
+  },
+  {
+    "fecha_publicacion": "2020-05-13",
+    "valor": "24.0487"
+  },
+  {
+    "fecha_publicacion": "2020-05-14",
+    "valor": "24.2113"
+  },
+  {
+    "fecha_publicacion": "2020-05-15",
+    "valor": "24.2708"
+  },
+  {
+    "fecha_publicacion": "2020-05-18",
+    "valor": "23.9580"
+  },
+  {
+    "fecha_publicacion": "2020-05-19",
+    "valor": "23.6032"
+  },
+  {
+    "fecha_publicacion": "2020-05-20",
+    "valor": "23.6023"
+  },
+  {
+    "fecha_publicacion": "2020-05-21",
+    "valor": "23.2962"
+  },
+  {
+    "fecha_publicacion": "2020-05-22",
+    "valor": "22.9600"
+  },
+  {
+    "fecha_publicacion": "2020-05-25",
+    "valor": "22.7928"
+  },
+  {
+    "fecha_publicacion": "2020-05-26",
+    "valor": "22.5630"
+  },
+  {
+    "fecha_publicacion": "2020-05-27",
+    "valor": "22.2932"
+  },
+  {
+    "fecha_publicacion": "2020-05-28",
+    "valor": "22.3633"
+  },
+  {
+    "fecha_publicacion": "2020-05-29",
+    "valor": "22.2040"
+  },
+  {
+    "fecha_publicacion": "2020-06-01",
+    "valor": "22.1778"
+  },
+  {
+    "fecha_publicacion": "2020-06-02",
+    "valor": "22.0168"
+  },
+  {
+    "fecha_publicacion": "2020-06-03",
+    "valor": "21.6827"
+  },
+  {
+    "fecha_publicacion": "2020-06-04",
+    "valor": "21.6043"
+  },
+  {
+    "fecha_publicacion": "2020-06-05",
+    "valor": "21.8388"
+  },
+  {
+    "fecha_publicacion": "2020-06-08",
+    "valor": "21.5837"
+  },
+  {
+    "fecha_publicacion": "2020-06-09",
+    "valor": "21.6552"
+  },
+  {
+    "fecha_publicacion": "2020-06-10",
+    "valor": "21.7252"
+  },
+  {
+    "fecha_publicacion": "2020-06-11",
+    "valor": "21.9230"
+  },
+  {
+    "fecha_publicacion": "2020-06-12",
+    "valor": "22.4252"
+  },
+  {
+    "fecha_publicacion": "2020-06-15",
+    "valor": "22.3347"
+  },
+  {
+    "fecha_publicacion": "2020-06-16",
+    "valor": "22.5435"
+  },
+  {
+    "fecha_publicacion": "2020-06-17",
+    "valor": "22.2168"
+  },
+  {
+    "fecha_publicacion": "2020-06-18",
+    "valor": "22.2783"
+  },
+  {
+    "fecha_publicacion": "2020-06-19",
+    "valor": "22.6088"
+  },
+  {
+    "fecha_publicacion": "2020-06-22",
+    "valor": "22.6300"
+  },
+  {
+    "fecha_publicacion": "2020-06-23",
+    "valor": "22.4413"
+  },
+  {
+    "fecha_publicacion": "2020-06-24",
+    "valor": "22.4130"
+  },
+  {
+    "fecha_publicacion": "2020-06-25",
+    "valor": "22.6662"
+  },
+  {
+    "fecha_publicacion": "2020-06-26",
+    "valor": "22.7963"
+  },
+  {
+    "fecha_publicacion": "2020-06-29",
+    "valor": "22.9715"
+  },
+  {
+    "fecha_publicacion": "2020-06-30",
+    "valor": "23.1325"
+  },
+  {
+    "fecha_publicacion": "2020-07-01",
+    "valor": "23.0893"
+  },
+  {
+    "fecha_publicacion": "2020-07-02",
+    "valor": "22.8078"
+  },
+  {
+    "fecha_publicacion": "2020-07-03",
+    "valor": "22.5225"
+  },
+  {
+    "fecha_publicacion": "2020-07-06",
+    "valor": "22.4147"
+  },
+  {
+    "fecha_publicacion": "2020-07-07",
+    "valor": "22.2808"
+  },
+  {
+    "fecha_publicacion": "2020-07-08",
+    "valor": "22.6213"
+  },
+  {
+    "fecha_publicacion": "2020-07-09",
+    "valor": "22.8225"
+  },
+  {
+    "fecha_publicacion": "2020-07-10",
+    "valor": "22.6945"
+  },
+  {
+    "fecha_publicacion": "2020-07-13",
+    "valor": "22.5342"
+  },
+  {
+    "fecha_publicacion": "2020-07-14",
+    "valor": "22.4633"
+  },
+  {
+    "fecha_publicacion": "2020-07-15",
+    "valor": "22.6173"
+  },
+  {
+    "fecha_publicacion": "2020-07-16",
+    "valor": "22.3647"
+  },
+  {
+    "fecha_publicacion": "2020-07-17",
+    "valor": "22.3032"
+  },
+  {
+    "fecha_publicacion": "2020-07-20",
+    "valor": "22.4897"
+  },
+  {
+    "fecha_publicacion": "2020-07-21",
+    "valor": "22.6278"
+  },
+  {
+    "fecha_publicacion": "2020-07-22",
+    "valor": "22.3597"
+  },
+  {
+    "fecha_publicacion": "2020-07-23",
+    "valor": "22.2510"
+  },
+  {
+    "fecha_publicacion": "2020-07-24",
+    "valor": "22.3627"
+  },
+  {
+    "fecha_publicacion": "2020-07-27",
+    "valor": "22.3842"
+  },
+  {
+    "fecha_publicacion": "2020-07-28",
+    "valor": "22.0275"
+  },
+  {
+    "fecha_publicacion": "2020-07-29",
+    "valor": "21.9615"
+  },
+  {
+    "fecha_publicacion": "2020-07-30",
+    "valor": "21.9907"
+  },
+  {
+    "fecha_publicacion": "2020-07-31",
+    "valor": "22.1727"
+  },
+  {
+    "fecha_publicacion": "2020-08-03",
+    "valor": "22.2012"
+  },
+  {
+    "fecha_publicacion": "2020-08-04",
+    "valor": "22.6140"
+  },
+  {
+    "fecha_publicacion": "2020-08-05",
+    "valor": "22.7845"
+  },
+  {
+    "fecha_publicacion": "2020-08-06",
+    "valor": "22.4068"
+  },
+  {
+    "fecha_publicacion": "2020-08-07",
+    "valor": "22.3652"
+  },
+  {
+    "fecha_publicacion": "2020-08-10",
+    "valor": "22.4892"
+  },
+  {
+    "fecha_publicacion": "2020-08-11",
+    "valor": "22.4850"
+  },
+  {
+    "fecha_publicacion": "2020-08-12",
+    "valor": "22.3490"
+  },
+  {
+    "fecha_publicacion": "2020-08-13",
+    "valor": "22.3457"
+  },
+  {
+    "fecha_publicacion": "2020-08-14",
+    "valor": "22.2628"
+  },
+  {
+    "fecha_publicacion": "2020-08-17",
+    "valor": "22.0313"
+  },
+  {
+    "fecha_publicacion": "2020-08-18",
+    "valor": "22.0570"
+  },
+  {
+    "fecha_publicacion": "2020-08-19",
+    "valor": "22.1535"
+  },
+  {
+    "fecha_publicacion": "2020-08-20",
+    "valor": "22.0527"
+  },
+  {
+    "fecha_publicacion": "2020-08-21",
+    "valor": "22.1760"
+  },
+  {
+    "fecha_publicacion": "2020-08-24",
+    "valor": "22.0362"
+  },
+  {
+    "fecha_publicacion": "2020-08-25",
+    "valor": "21.9840"
+  },
+  {
+    "fecha_publicacion": "2020-08-26",
+    "valor": "21.9723"
+  },
+  {
+    "fecha_publicacion": "2020-08-27",
+    "valor": "21.9202"
+  },
+  {
+    "fecha_publicacion": "2020-08-28",
+    "valor": "22.1168"
+  },
+  {
+    "fecha_publicacion": "2020-08-31",
+    "valor": "21.8602"
+  },
+  {
+    "fecha_publicacion": "2020-09-01",
+    "valor": "21.8880"
+  },
+  {
+    "fecha_publicacion": "2020-09-02",
+    "valor": "21.7445"
+  },
+  {
+    "fecha_publicacion": "2020-09-03",
+    "valor": "21.8393"
+  },
+  {
+    "fecha_publicacion": "2020-09-04",
+    "valor": "21.6383"
+  },
+  {
+    "fecha_publicacion": "2020-09-07",
+    "valor": "21.6115"
+  },
+  {
+    "fecha_publicacion": "2020-09-08",
+    "valor": "21.5887"
+  },
+  {
+    "fecha_publicacion": "2020-09-09",
+    "valor": "21.7138"
+  },
+  {
+    "fecha_publicacion": "2020-09-10",
+    "valor": "21.5377"
+  },
+  {
+    "fecha_publicacion": "2020-09-11",
+    "valor": "21.2773"
+  },
+  {
+    "fecha_publicacion": "2020-09-14",
+    "valor": "21.3210"
+  },
+  {
+    "fecha_publicacion": "2020-09-15",
+    "valor": "21.0728"
+  },
+  {
+    "fecha_publicacion": "2020-09-17",
+    "valor": "21.0692"
+  },
+  {
+    "fecha_publicacion": "2020-09-18",
+    "valor": "20.9850"
+  },
+  {
+    "fecha_publicacion": "2020-09-21",
+    "valor": "20.9697"
+  },
+  {
+    "fecha_publicacion": "2020-09-22",
+    "valor": "21.5050"
+  },
+  {
+    "fecha_publicacion": "2020-09-23",
+    "valor": "21.5682"
+  },
+  {
+    "fecha_publicacion": "2020-09-24",
+    "valor": "22.0897"
+  },
+  {
+    "fecha_publicacion": "2020-09-25",
+    "valor": "22.3678"
+  },
+  {
+    "fecha_publicacion": "2020-09-28",
+    "valor": "22.4402"
+  },
+  {
+    "fecha_publicacion": "2020-09-29",
+    "valor": "22.4573"
+  },
+  {
+    "fecha_publicacion": "2020-09-30",
+    "valor": "22.3598"
+  },
+  {
+    "fecha_publicacion": "2020-10-01",
+    "valor": "22.1438"
+  },
+  {
+    "fecha_publicacion": "2020-10-02",
+    "valor": "21.9562"
+  },
+  {
+    "fecha_publicacion": "2020-10-05",
+    "valor": "21.7025"
+  },
+  {
+    "fecha_publicacion": "2020-10-06",
+    "valor": "21.3960"
+  },
+  {
+    "fecha_publicacion": "2020-10-07",
+    "valor": "21.4507"
+  },
+  {
+    "fecha_publicacion": "2020-10-08",
+    "valor": "21.4930"
+  },
+  {
+    "fecha_publicacion": "2020-10-09",
+    "valor": "21.4318"
+  },
+  {
+    "fecha_publicacion": "2020-10-12",
+    "valor": "21.1822"
+  },
+  {
+    "fecha_publicacion": "2020-10-13",
+    "valor": "21.2183"
+  },
+  {
+    "fecha_publicacion": "2020-10-14",
+    "valor": "21.3677"
+  },
+  {
+    "fecha_publicacion": "2020-10-15",
+    "valor": "21.2998"
+  },
+  {
+    "fecha_publicacion": "2020-10-16",
+    "valor": "21.3832"
+  },
+  {
+    "fecha_publicacion": "2020-10-19",
+    "valor": "21.1765"
+  },
+  {
+    "fecha_publicacion": "2020-10-20",
+    "valor": "21.1342"
+  },
+  {
+    "fecha_publicacion": "2020-10-21",
+    "valor": "21.0902"
+  },
+  {
+    "fecha_publicacion": "2020-10-22",
+    "valor": "21.0640"
+  },
+  {
+    "fecha_publicacion": "2020-10-23",
+    "valor": "21.0300"
+  },
+  {
+    "fecha_publicacion": "2020-10-26",
+    "valor": "20.9205"
+  },
+  {
+    "fecha_publicacion": "2020-10-27",
+    "valor": "20.9818"
+  },
+  {
+    "fecha_publicacion": "2020-10-28",
+    "valor": "20.8798"
+  },
+  {
+    "fecha_publicacion": "2020-10-29",
+    "valor": "21.1648"
+  },
+  {
+    "fecha_publicacion": "2020-10-30",
+    "valor": "21.3770"
+  },
+  {
+    "fecha_publicacion": "2020-11-03",
+    "valor": "21.2508"
+  },
+  {
+    "fecha_publicacion": "2020-11-04",
+    "valor": "21.1555"
+  },
+  {
+    "fecha_publicacion": "2020-11-05",
+    "valor": "21.0345"
+  },
+  {
+    "fecha_publicacion": "2020-11-06",
+    "valor": "20.7612"
+  },
+  {
+    "fecha_publicacion": "2020-11-09",
+    "valor": "20.6200"
+  },
+  {
+    "fecha_publicacion": "2020-11-10",
+    "valor": "20.3600"
+  },
+  {
+    "fecha_publicacion": "2020-11-11",
+    "valor": "20.4018"
+  },
+  {
+    "fecha_publicacion": "2020-11-12",
+    "valor": "20.5772"
+  },
+  {
+    "fecha_publicacion": "2020-11-13",
+    "valor": "20.5303"
+  },
+  {
+    "fecha_publicacion": "2020-11-17",
+    "valor": "20.4833"
+  },
+  {
+    "fecha_publicacion": "2020-11-18",
+    "valor": "20.3212"
+  },
+  {
+    "fecha_publicacion": "2020-11-19",
+    "valor": "20.2388"
+  },
+  {
+    "fecha_publicacion": "2020-11-20",
+    "valor": "20.1858"
+  },
+  {
+    "fecha_publicacion": "2020-11-23",
+    "valor": "20.1172"
+  },
+  {
+    "fecha_publicacion": "2020-11-24",
+    "valor": "20.1012"
+  },
+  {
+    "fecha_publicacion": "2020-11-25",
+    "valor": "20.0577"
+  },
+  {
+    "fecha_publicacion": "2020-11-26",
+    "valor": "20.0465"
+  },
+  {
+    "fecha_publicacion": "2020-11-27",
+    "valor": "20.0467"
+  },
+  {
+    "fecha_publicacion": "2020-11-30",
+    "valor": "20.0777"
+  },
+  {
+    "fecha_publicacion": "2020-12-01",
+    "valor": "20.1398"
+  },
+  {
+    "fecha_publicacion": "2020-12-02",
+    "valor": "20.0508"
+  },
+  {
+    "fecha_publicacion": "2020-12-03",
+    "valor": "20.0497"
+  },
+  {
+    "fecha_publicacion": "2020-12-04",
+    "valor": "19.9083"
+  },
+  {
+    "fecha_publicacion": "2020-12-07",
+    "valor": "19.7838"
+  },
+  {
+    "fecha_publicacion": "2020-12-08",
+    "valor": "19.8213"
+  },
+  {
+    "fecha_publicacion": "2020-12-09",
+    "valor": "19.7537"
+  },
+  {
+    "fecha_publicacion": "2020-12-10",
+    "valor": "19.8368"
+  },
+  {
+    "fecha_publicacion": "2020-12-11",
+    "valor": "19.9572"
+  },
+  {
+    "fecha_publicacion": "2020-12-14",
+    "valor": "20.1075"
+  },
+  {
+    "fecha_publicacion": "2020-12-15",
+    "valor": "20.1778"
+  },
+  {
+    "fecha_publicacion": "2020-12-16",
+    "valor": "20.1113"
+  },
+  {
+    "fecha_publicacion": "2020-12-17",
+    "valor": "19.9513"
+  },
+  {
+    "fecha_publicacion": "2020-12-18",
+    "valor": "19.8173"
+  },
+  {
+    "fecha_publicacion": "2020-12-21",
+    "valor": "19.9487"
+  },
+  {
+    "fecha_publicacion": "2020-12-22",
+    "valor": "20.0905"
+  },
+  {
+    "fecha_publicacion": "2020-12-23",
+    "valor": "20.0562"
+  },
+  {
+    "fecha_publicacion": "2020-12-24",
+    "valor": "20.1175"
+  },
+  {
+    "fecha_publicacion": "2020-12-28",
+    "valor": "19.8517"
+  },
+  {
+    "fecha_publicacion": "2020-12-29",
+    "valor": "20.0477"
+  },
+  {
+    "fecha_publicacion": "2020-12-30",
+    "valor": "19.9487"
+  },
+  {
+    "fecha_publicacion": "2020-12-31",
+    "valor": "19.9352"
+  },
+  {
+    "fecha_publicacion": "2021-01-04",
+    "valor": "19.9087"
+  },
+  {
+    "fecha_publicacion": "2021-01-05",
+    "valor": "19.8457"
+  },
+  {
+    "fecha_publicacion": "2021-01-06",
+    "valor": "19.9437"
+  },
+  {
+    "fecha_publicacion": "2021-01-07",
+    "valor": "19.7250"
+  },
+  {
+    "fecha_publicacion": "2021-01-08",
+    "valor": "19.9100"
+  },
+  {
+    "fecha_publicacion": "2021-01-11",
+    "valor": "19.9705"
+  },
+  {
+    "fecha_publicacion": "2021-01-12",
+    "valor": "20.1130"
+  },
+  {
+    "fecha_publicacion": "2021-01-13",
+    "valor": "19.9373"
+  },
+  {
+    "fecha_publicacion": "2021-01-14",
+    "valor": "19.7935"
+  },
+  {
+    "fecha_publicacion": "2021-01-15",
+    "valor": "19.7793"
+  },
+  {
+    "fecha_publicacion": "2021-01-18",
+    "valor": "19.7875"
+  },
+  {
+    "fecha_publicacion": "2021-01-19",
+    "valor": "19.7570"
+  },
+  {
+    "fecha_publicacion": "2021-01-20",
+    "valor": "19.6788"
+  },
+  {
+    "fecha_publicacion": "2021-01-21",
+    "valor": "19.5793"
+  },
+  {
+    "fecha_publicacion": "2021-01-22",
+    "valor": "19.7393"
+  },
+  {
+    "fecha_publicacion": "2021-01-25",
+    "valor": "19.9833"
+  },
+  {
+    "fecha_publicacion": "2021-01-26",
+    "valor": "20.1598"
+  },
+  {
+    "fecha_publicacion": "2021-01-27",
+    "valor": "20.0152"
+  },
+  {
+    "fecha_publicacion": "2021-01-28",
+    "valor": "20.2168"
+  },
+  {
+    "fecha_publicacion": "2021-01-29",
+    "valor": "20.2697"
+  },
+  {
+    "fecha_publicacion": "2021-02-02",
+    "valor": "20.2248"
+  },
+  {
+    "fecha_publicacion": "2021-02-03",
+    "valor": "20.1722"
+  },
+  {
+    "fecha_publicacion": "2021-02-04",
+    "valor": "20.1953"
+  },
+  {
+    "fecha_publicacion": "2021-02-05",
+    "valor": "20.4435"
+  },
+  {
+    "fecha_publicacion": "2021-02-08",
+    "valor": "20.1388"
+  },
+  {
+    "fecha_publicacion": "2021-02-09",
+    "valor": "20.1227"
+  },
+  {
+    "fecha_publicacion": "2021-02-10",
+    "valor": "20.0913"
+  },
+  {
+    "fecha_publicacion": "2021-02-11",
+    "valor": "20.0588"
+  },
+  {
+    "fecha_publicacion": "2021-02-12",
+    "valor": "19.9535"
+  },
+  {
+    "fecha_publicacion": "2021-02-15",
+    "valor": "19.9622"
+  },
+  {
+    "fecha_publicacion": "2021-02-16",
+    "valor": "19.9518"
+  },
+  {
+    "fecha_publicacion": "2021-02-17",
+    "valor": "20.2023"
+  },
+  {
+    "fecha_publicacion": "2021-02-18",
+    "valor": "20.2257"
+  },
+  {
+    "fecha_publicacion": "2021-02-19",
+    "valor": "20.4165"
+  },
+  {
+    "fecha_publicacion": "2021-02-22",
+    "valor": "20.4222"
+  },
+  {
+    "fecha_publicacion": "2021-02-23",
+    "valor": "20.6783"
+  },
+  {
+    "fecha_publicacion": "2021-02-24",
+    "valor": "20.5833"
+  },
+  {
+    "fecha_publicacion": "2021-02-25",
+    "valor": "20.4752"
+  },
+  {
+    "fecha_publicacion": "2021-02-26",
+    "valor": "20.8523"
+  },
+  {
+    "fecha_publicacion": "2021-03-01",
+    "valor": "20.9390"
+  },
+  {
+    "fecha_publicacion": "2021-03-02",
+    "valor": "20.6123"
+  },
+  {
+    "fecha_publicacion": "2021-03-03",
+    "valor": "20.6903"
+  },
+  {
+    "fecha_publicacion": "2021-03-04",
+    "valor": "20.8957"
+  },
+  {
+    "fecha_publicacion": "2021-03-05",
+    "valor": "20.8498"
+  },
+  {
+    "fecha_publicacion": "2021-03-08",
+    "valor": "21.2635"
+  },
+  {
+    "fecha_publicacion": "2021-03-09",
+    "valor": "21.4177"
+  },
+  {
+    "fecha_publicacion": "2021-03-10",
+    "valor": "21.2575"
+  },
+  {
+    "fecha_publicacion": "2021-03-11",
+    "valor": "20.9853"
+  },
+  {
+    "fecha_publicacion": "2021-03-12",
+    "valor": "20.7133"
+  },
+  {
+    "fecha_publicacion": "2021-03-16",
+    "valor": "20.7637"
+  },
+  {
+    "fecha_publicacion": "2021-03-17",
+    "valor": "20.5753"
+  },
+  {
+    "fecha_publicacion": "2021-03-18",
+    "valor": "20.6828"
+  },
+  {
+    "fecha_publicacion": "2021-03-19",
+    "valor": "20.4415"
+  },
+  {
+    "fecha_publicacion": "2021-03-22",
+    "valor": "20.4823"
+  },
+  {
+    "fecha_publicacion": "2021-03-23",
+    "valor": "20.5788"
+  },
+  {
+    "fecha_publicacion": "2021-03-24",
+    "valor": "20.6408"
+  },
+  {
+    "fecha_publicacion": "2021-03-25",
+    "valor": "20.7882"
+  },
+  {
+    "fecha_publicacion": "2021-03-26",
+    "valor": "20.7662"
+  },
+  {
+    "fecha_publicacion": "2021-03-29",
+    "valor": "20.5677"
+  },
+  {
+    "fecha_publicacion": "2021-03-30",
+    "valor": "20.6047"
+  },
+  {
+    "fecha_publicacion": "2021-03-31",
+    "valor": "20.6025"
+  },
+  {
+    "fecha_publicacion": "2021-04-05",
+    "valor": "20.4400"
+  },
+  {
+    "fecha_publicacion": "2021-04-06",
+    "valor": "20.2483"
+  },
+  {
+    "fecha_publicacion": "2021-04-07",
+    "valor": "20.1612"
+  },
+  {
+    "fecha_publicacion": "2021-04-08",
+    "valor": "20.1765"
+  },
+  {
+    "fecha_publicacion": "2021-04-09",
+    "valor": "20.0890"
+  },
+  {
+    "fecha_publicacion": "2021-04-12",
+    "valor": "20.1630"
+  },
+  {
+    "fecha_publicacion": "2021-04-13",
+    "valor": "20.0950"
+  },
+  {
+    "fecha_publicacion": "2021-04-14",
+    "valor": "20.0735"
+  },
+  {
+    "fecha_publicacion": "2021-04-15",
+    "valor": "20.0583"
+  },
+  {
+    "fecha_publicacion": "2021-04-16",
+    "valor": "19.9270"
+  },
+  {
+    "fecha_publicacion": "2021-04-19",
+    "valor": "19.9158"
+  },
+  {
+    "fecha_publicacion": "2021-04-20",
+    "valor": "19.8145"
+  },
+  {
+    "fecha_publicacion": "2021-04-21",
+    "valor": "19.8877"
+  },
+  {
+    "fecha_publicacion": "2021-04-22",
+    "valor": "19.8740"
+  },
+  {
+    "fecha_publicacion": "2021-04-23",
+    "valor": "19.8865"
+  },
+  {
+    "fecha_publicacion": "2021-04-26",
+    "valor": "19.8695"
+  },
+  {
+    "fecha_publicacion": "2021-04-27",
+    "valor": "19.8362"
+  },
+  {
+    "fecha_publicacion": "2021-04-28",
+    "valor": "19.9785"
+  },
+  {
+    "fecha_publicacion": "2021-04-29",
+    "valor": "19.9712"
+  },
+  {
+    "fecha_publicacion": "2021-04-30",
+    "valor": "20.0978"
+  },
+  {
+    "fecha_publicacion": "2021-05-03",
+    "valor": "20.1822"
+  },
+  {
+    "fecha_publicacion": "2021-05-04",
+    "valor": "20.1902"
+  },
+  {
+    "fecha_publicacion": "2021-05-05",
+    "valor": "20.2235"
+  },
+  {
+    "fecha_publicacion": "2021-05-06",
+    "valor": "20.2077"
+  },
+  {
+    "fecha_publicacion": "2021-05-07",
+    "valor": "20.1838"
+  },
+  {
+    "fecha_publicacion": "2021-05-10",
+    "valor": "19.9223"
+  },
+  {
+    "fecha_publicacion": "2021-05-11",
+    "valor": "19.8860"
+  },
+  {
+    "fecha_publicacion": "2021-05-12",
+    "valor": "19.8848"
+  },
+  {
+    "fecha_publicacion": "2021-05-13",
+    "valor": "20.0940"
+  },
+  {
+    "fecha_publicacion": "2021-05-14",
+    "valor": "20.0495"
+  },
+  {
+    "fecha_publicacion": "2021-05-17",
+    "valor": "19.8487"
+  },
+  {
+    "fecha_publicacion": "2021-05-18",
+    "valor": "19.8028"
+  },
+  {
+    "fecha_publicacion": "2021-05-19",
+    "valor": "19.8313"
+  },
+  {
+    "fecha_publicacion": "2021-05-20",
+    "valor": "19.8143"
+  },
+  {
+    "fecha_publicacion": "2021-05-21",
+    "valor": "19.8810"
+  },
+  {
+    "fecha_publicacion": "2021-05-24",
+    "valor": "19.9510"
+  },
+  {
+    "fecha_publicacion": "2021-05-25",
+    "valor": "19.8720"
+  },
+  {
+    "fecha_publicacion": "2021-05-26",
+    "valor": "19.8903"
+  },
+  {
+    "fecha_publicacion": "2021-05-27",
+    "valor": "19.8783"
+  },
+  {
+    "fecha_publicacion": "2021-05-28",
+    "valor": "19.9487"
+  },
+  {
+    "fecha_publicacion": "2021-05-31",
+    "valor": "19.9442"
+  },
+  {
+    "fecha_publicacion": "2021-06-01",
+    "valor": "19.9213"
+  },
+  {
+    "fecha_publicacion": "2021-06-02",
+    "valor": "19.8927"
+  },
+  {
+    "fecha_publicacion": "2021-06-03",
+    "valor": "19.9277"
+  },
+  {
+    "fecha_publicacion": "2021-06-04",
+    "valor": "20.0605"
+  },
+  {
+    "fecha_publicacion": "2021-06-07",
+    "valor": "19.9328"
+  },
+  {
+    "fecha_publicacion": "2021-06-08",
+    "valor": "19.7970"
+  },
+  {
+    "fecha_publicacion": "2021-06-09",
+    "valor": "19.7728"
+  },
+  {
+    "fecha_publicacion": "2021-06-10",
+    "valor": "19.6897"
+  },
+  {
+    "fecha_publicacion": "2021-06-11",
+    "valor": "19.7002"
+  },
+  {
+    "fecha_publicacion": "2021-06-14",
+    "valor": "19.8823"
+  },
+  {
+    "fecha_publicacion": "2021-06-15",
+    "valor": "19.9065"
+  },
+  {
+    "fecha_publicacion": "2021-06-16",
+    "valor": "20.1235"
+  },
+  {
+    "fecha_publicacion": "2021-06-17",
+    "valor": "20.0588"
+  },
+  {
+    "fecha_publicacion": "2021-06-18",
+    "valor": "20.4292"
+  },
+  {
+    "fecha_publicacion": "2021-06-21",
+    "valor": "20.7002"
+  },
+  {
+    "fecha_publicacion": "2021-06-22",
+    "valor": "20.6000"
+  },
+  {
+    "fecha_publicacion": "2021-06-23",
+    "valor": "20.5712"
+  },
+  {
+    "fecha_publicacion": "2021-06-24",
+    "valor": "20.2505"
+  },
+  {
+    "fecha_publicacion": "2021-06-25",
+    "valor": "20.0483"
+  },
+  {
+    "fecha_publicacion": "2021-06-28",
+    "valor": "19.7930"
+  },
+  {
+    "fecha_publicacion": "2021-06-29",
+    "valor": "19.8027"
+  },
+  {
+    "fecha_publicacion": "2021-06-30",
+    "valor": "19.8157"
+  },
+  {
+    "fecha_publicacion": "2021-07-01",
+    "valor": "19.9062"
+  },
+  {
+    "fecha_publicacion": "2021-07-02",
+    "valor": "20.0368"
+  },
+  {
+    "fecha_publicacion": "2021-07-05",
+    "valor": "19.8817"
+  },
+  {
+    "fecha_publicacion": "2021-07-06",
+    "valor": "19.8532"
+  },
+  {
+    "fecha_publicacion": "2021-07-07",
+    "valor": "19.9658"
+  },
+  {
+    "fecha_publicacion": "2021-07-08",
+    "valor": "19.9915"
+  },
+  {
+    "fecha_publicacion": "2021-07-09",
+    "valor": "20.0070"
+  },
+  {
+    "fecha_publicacion": "2021-07-12",
+    "valor": "19.8800"
+  },
+  {
+    "fecha_publicacion": "2021-07-13",
+    "valor": "19.8577"
+  },
+  {
+    "fecha_publicacion": "2021-07-14",
+    "valor": "19.9988"
+  },
+  {
+    "fecha_publicacion": "2021-07-15",
+    "valor": "19.8992"
+  },
+  {
+    "fecha_publicacion": "2021-07-16",
+    "valor": "19.9412"
+  },
+  {
+    "fecha_publicacion": "2021-07-19",
+    "valor": "19.8537"
+  },
+  {
+    "fecha_publicacion": "2021-07-20",
+    "valor": "20.0000"
+  },
+  {
+    "fecha_publicacion": "2021-07-21",
+    "valor": "20.1348"
+  },
+  {
+    "fecha_publicacion": "2021-07-22",
+    "valor": "20.1907"
+  },
+  {
+    "fecha_publicacion": "2021-07-23",
+    "valor": "20.1812"
+  },
+  {
+    "fecha_publicacion": "2021-07-26",
+    "valor": "20.0238"
+  },
+  {
+    "fecha_publicacion": "2021-07-27",
+    "valor": "20.0245"
+  },
+  {
+    "fecha_publicacion": "2021-07-28",
+    "valor": "19.9770"
+  },
+  {
+    "fecha_publicacion": "2021-07-29",
+    "valor": "19.9535"
+  },
+  {
+    "fecha_publicacion": "2021-07-30",
+    "valor": "19.8448"
+  },
+  {
+    "fecha_publicacion": "2021-08-02",
+    "valor": "19.8455"
+  },
+  {
+    "fecha_publicacion": "2021-08-03",
+    "valor": "19.8520"
+  },
+  {
+    "fecha_publicacion": "2021-08-04",
+    "valor": "19.8920"
+  },
+  {
+    "fecha_publicacion": "2021-08-05",
+    "valor": "19.9547"
+  },
+  {
+    "fecha_publicacion": "2021-08-06",
+    "valor": "19.9293"
+  },
+  {
+    "fecha_publicacion": "2021-08-09",
+    "valor": "20.0037"
+  },
+  {
+    "fecha_publicacion": "2021-08-10",
+    "valor": "20.0648"
+  },
+  {
+    "fecha_publicacion": "2021-08-11",
+    "valor": "20.1038"
+  },
+  {
+    "fecha_publicacion": "2021-08-12",
+    "valor": "19.9530"
+  },
+  {
+    "fecha_publicacion": "2021-08-13",
+    "valor": "19.8907"
+  },
+  {
+    "fecha_publicacion": "2021-08-16",
+    "valor": "19.8603"
+  },
+  {
+    "fecha_publicacion": "2021-08-17",
+    "valor": "19.8863"
+  },
+  {
+    "fecha_publicacion": "2021-08-18",
+    "valor": "19.9912"
+  },
+  {
+    "fecha_publicacion": "2021-08-19",
+    "valor": "20.0107"
+  },
+  {
+    "fecha_publicacion": "2021-08-20",
+    "valor": "20.1175"
+  },
+  {
+    "fecha_publicacion": "2021-08-23",
+    "valor": "20.4020"
+  },
+  {
+    "fecha_publicacion": "2021-08-24",
+    "valor": "20.3907"
+  },
+  {
+    "fecha_publicacion": "2021-08-25",
+    "valor": "20.2967"
+  },
+  {
+    "fecha_publicacion": "2021-08-26",
+    "valor": "20.2933"
+  },
+  {
+    "fecha_publicacion": "2021-08-27",
+    "valor": "20.3522"
+  },
+  {
+    "fecha_publicacion": "2021-08-30",
+    "valor": "20.2293"
+  },
+  {
+    "fecha_publicacion": "2021-08-31",
+    "valor": "20.1403"
+  },
+  {
+    "fecha_publicacion": "2021-09-01",
+    "valor": "20.0605"
+  },
+  {
+    "fecha_publicacion": "2021-09-02",
+    "valor": "19.9615"
+  },
+  {
+    "fecha_publicacion": "2021-09-03",
+    "valor": "19.9703"
+  },
+  {
+    "fecha_publicacion": "2021-09-06",
+    "valor": "19.8992"
+  },
+  {
+    "fecha_publicacion": "2021-09-07",
+    "valor": "19.8878"
+  },
+  {
+    "fecha_publicacion": "2021-09-08",
+    "valor": "19.9440"
+  },
+  {
+    "fecha_publicacion": "2021-09-09",
+    "valor": "19.9383"
+  },
+  {
+    "fecha_publicacion": "2021-09-10",
+    "valor": "19.9318"
+  },
+  {
+    "fecha_publicacion": "2021-09-13",
+    "valor": "19.8717"
+  },
+  {
+    "fecha_publicacion": "2021-09-14",
+    "valor": "19.8677"
+  },
+  {
+    "fecha_publicacion": "2021-09-15",
+    "valor": "19.9035"
+  },
+  {
+    "fecha_publicacion": "2021-09-17",
+    "valor": "19.9003"
+  },
+  {
+    "fecha_publicacion": "2021-09-20",
+    "valor": "19.9853"
+  },
+  {
+    "fecha_publicacion": "2021-09-21",
+    "valor": "20.1735"
+  },
+  {
+    "fecha_publicacion": "2021-09-22",
+    "valor": "20.1438"
+  },
+  {
+    "fecha_publicacion": "2021-09-23",
+    "valor": "20.0328"
+  },
+  {
+    "fecha_publicacion": "2021-09-24",
+    "valor": "20.0280"
+  },
+  {
+    "fecha_publicacion": "2021-09-27",
+    "valor": "20.1118"
+  },
+  {
+    "fecha_publicacion": "2021-09-28",
+    "valor": "20.1052"
+  },
+  {
+    "fecha_publicacion": "2021-09-29",
+    "valor": "20.3060"
+  },
+  {
+    "fecha_publicacion": "2021-09-30",
+    "valor": "20.4977"
+  },
+  {
+    "fecha_publicacion": "2021-10-01",
+    "valor": "20.5623"
+  },
+  {
+    "fecha_publicacion": "2021-10-04",
+    "valor": "20.5103"
+  },
+  {
+    "fecha_publicacion": "2021-10-05",
+    "valor": "20.5747"
+  },
+  {
+    "fecha_publicacion": "2021-10-06",
+    "valor": "20.5818"
+  },
+  {
+    "fecha_publicacion": "2021-10-07",
+    "valor": "20.6947"
+  },
+  {
+    "fecha_publicacion": "2021-10-08",
+    "valor": "20.6040"
+  },
+  {
+    "fecha_publicacion": "2021-10-11",
+    "valor": "20.7293"
+  },
+  {
+    "fecha_publicacion": "2021-10-12",
+    "valor": "20.8017"
+  },
+  {
+    "fecha_publicacion": "2021-10-13",
+    "valor": "20.7767"
+  },
+  {
+    "fecha_publicacion": "2021-10-14",
+    "valor": "20.6827"
+  },
+  {
+    "fecha_publicacion": "2021-10-15",
+    "valor": "20.6075"
+  },
+  {
+    "fecha_publicacion": "2021-10-18",
+    "valor": "20.4672"
+  },
+  {
+    "fecha_publicacion": "2021-10-19",
+    "valor": "20.3587"
+  },
+  {
+    "fecha_publicacion": "2021-10-20",
+    "valor": "20.2647"
+  },
+  {
+    "fecha_publicacion": "2021-10-21",
+    "valor": "20.1850"
+  },
+  {
+    "fecha_publicacion": "2021-10-22",
+    "valor": "20.2643"
+  },
+  {
+    "fecha_publicacion": "2021-10-25",
+    "valor": "20.1837"
+  },
+  {
+    "fecha_publicacion": "2021-10-26",
+    "valor": "20.1897"
+  },
+  {
+    "fecha_publicacion": "2021-10-27",
+    "valor": "20.1888"
+  },
+  {
+    "fecha_publicacion": "2021-10-28",
+    "valor": "20.1930"
+  },
+  {
+    "fecha_publicacion": "2021-10-29",
+    "valor": "20.3255"
+  },
+  {
+    "fecha_publicacion": "2021-11-01",
+    "valor": "20.5297"
+  },
+  {
+    "fecha_publicacion": "2021-11-03",
+    "valor": "20.8598"
+  },
+  {
+    "fecha_publicacion": "2021-11-04",
+    "valor": "20.8352"
+  },
+  {
+    "fecha_publicacion": "2021-11-05",
+    "valor": "20.6242"
+  },
+  {
+    "fecha_publicacion": "2021-11-08",
+    "valor": "20.3925"
+  },
+  {
+    "fecha_publicacion": "2021-11-09",
+    "valor": "20.3265"
+  },
+  {
+    "fecha_publicacion": "2021-11-10",
+    "valor": "20.2833"
+  },
+  {
+    "fecha_publicacion": "2021-11-11",
+    "valor": "20.4702"
+  },
+  {
+    "fecha_publicacion": "2021-11-12",
+    "valor": "20.4652"
+  },
+  {
+    "fecha_publicacion": "2021-11-16",
+    "valor": "20.5072"
+  },
+  {
+    "fecha_publicacion": "2021-11-17",
+    "valor": "20.8092"
+  },
+  {
+    "fecha_publicacion": "2021-11-18",
+    "valor": "20.6912"
+  },
+  {
+    "fecha_publicacion": "2021-11-19",
+    "valor": "20.7628"
+  },
+  {
+    "fecha_publicacion": "2021-11-22",
+    "valor": "20.8283"
+  },
+  {
+    "fecha_publicacion": "2021-11-23",
+    "valor": "20.9632"
+  },
+  {
+    "fecha_publicacion": "2021-11-24",
+    "valor": "21.2107"
+  },
+  {
+    "fecha_publicacion": "2021-11-25",
+    "valor": "21.4357"
+  },
+  {
+    "fecha_publicacion": "2021-11-26",
+    "valor": "21.5462"
+  },
+  {
+    "fecha_publicacion": "2021-11-29",
+    "valor": "21.8185"
+  },
+  {
+    "fecha_publicacion": "2021-11-30",
+    "valor": "21.7333"
+  },
+  {
+    "fecha_publicacion": "2021-12-01",
+    "valor": "21.4453"
+  },
+  {
+    "fecha_publicacion": "2021-12-02",
+    "valor": "21.2710"
+  },
+  {
+    "fecha_publicacion": "2021-12-03",
+    "valor": "21.3033"
+  },
+  {
+    "fecha_publicacion": "2021-12-06",
+    "valor": "21.4177"
+  },
+  {
+    "fecha_publicacion": "2021-12-07",
+    "valor": "21.2047"
+  },
+  {
+    "fecha_publicacion": "2021-12-08",
+    "valor": "21.0907"
+  },
+  {
+    "fecha_publicacion": "2021-12-09",
+    "valor": "20.9330"
+  },
+  {
+    "fecha_publicacion": "2021-12-10",
+    "valor": "21.0328"
+  },
+  {
+    "fecha_publicacion": "2021-12-13",
+    "valor": "20.8922"
+  },
+  {
+    "fecha_publicacion": "2021-12-14",
+    "valor": "20.9383"
+  },
+  {
+    "fecha_publicacion": "2021-12-15",
+    "valor": "21.1650"
+  },
+  {
+    "fecha_publicacion": "2021-12-16",
+    "valor": "21.2393"
+  },
+  {
+    "fecha_publicacion": "2021-12-17",
+    "valor": "20.9238"
+  },
+  {
+    "fecha_publicacion": "2021-12-20",
+    "valor": "20.7337"
+  },
+  {
+    "fecha_publicacion": "2021-12-21",
+    "valor": "20.7363"
+  },
+  {
+    "fecha_publicacion": "2021-12-22",
+    "valor": "20.7823"
+  },
+  {
+    "fecha_publicacion": "2021-12-23",
+    "valor": "20.7527"
+  },
+  {
+    "fecha_publicacion": "2021-12-24",
+    "valor": "20.6582"
+  },
+  {
+    "fecha_publicacion": "2021-12-27",
+    "valor": "20.6112"
+  },
+  {
+    "fecha_publicacion": "2021-12-28",
+    "valor": "20.6828"
+  },
+  {
+    "fecha_publicacion": "2021-12-29",
+    "valor": "20.5770"
+  },
+  {
+    "fecha_publicacion": "2021-12-30",
+    "valor": "20.5835"
+  },
+  {
+    "fecha_publicacion": "2021-12-31",
+    "valor": "20.5157"
+  },
+  {
+    "fecha_publicacion": "2022-01-03",
+    "valor": "20.4672"
+  },
+  {
+    "fecha_publicacion": "2022-01-04",
+    "valor": "20.5890"
+  },
+  {
+    "fecha_publicacion": "2022-01-05",
+    "valor": "20.4742"
+  },
+  {
+    "fecha_publicacion": "2022-01-06",
+    "valor": "20.3977"
+  },
+  {
+    "fecha_publicacion": "2022-01-07",
+    "valor": "20.4588"
+  },
+  {
+    "fecha_publicacion": "2022-01-10",
+    "valor": "20.4237"
+  },
+  {
+    "fecha_publicacion": "2022-01-11",
+    "valor": "20.4453"
+  },
+  {
+    "fecha_publicacion": "2022-01-12",
+    "valor": "20.3785"
+  },
+  {
+    "fecha_publicacion": "2022-01-13",
+    "valor": "20.3660"
+  },
+  {
+    "fecha_publicacion": "2022-01-14",
+    "valor": "20.3607"
+  },
+  {
+    "fecha_publicacion": "2022-01-17",
+    "valor": "20.3118"
+  },
+  {
+    "fecha_publicacion": "2022-01-18",
+    "valor": "20.3002"
+  },
+  {
+    "fecha_publicacion": "2022-01-19",
+    "valor": "20.4030"
+  },
+  {
+    "fecha_publicacion": "2022-01-20",
+    "valor": "20.4600"
+  },
+  {
+    "fecha_publicacion": "2022-01-21",
+    "valor": "20.4507"
+  },
+  {
+    "fecha_publicacion": "2022-01-24",
+    "valor": "20.4598"
+  },
+  {
+    "fecha_publicacion": "2022-01-25",
+    "valor": "20.6308"
+  },
+  {
+    "fecha_publicacion": "2022-01-26",
+    "valor": "20.6683"
+  },
+  {
+    "fecha_publicacion": "2022-01-27",
+    "valor": "20.6415"
+  },
+  {
+    "fecha_publicacion": "2022-01-28",
+    "valor": "20.7383"
+  },
+  {
+    "fecha_publicacion": "2022-01-31",
+    "valor": "20.8597"
+  },
+  {
+    "fecha_publicacion": "2022-02-01",
+    "valor": "20.6352"
+  },
+  {
+    "fecha_publicacion": "2022-02-02",
+    "valor": "20.5800"
+  },
+  {
+    "fecha_publicacion": "2022-02-03",
+    "valor": "20.6003"
+  },
+  {
+    "fecha_publicacion": "2022-02-04",
+    "valor": "20.5562"
+  },
+  {
+    "fecha_publicacion": "2022-02-08",
+    "valor": "20.7325"
+  },
+  {
+    "fecha_publicacion": "2022-02-09",
+    "valor": "20.6413"
+  },
+  {
+    "fecha_publicacion": "2022-02-10",
+    "valor": "20.5008"
+  },
+  {
+    "fecha_publicacion": "2022-02-11",
+    "valor": "20.4148"
+  },
+  {
+    "fecha_publicacion": "2022-02-14",
+    "valor": "20.4188"
+  },
+  {
+    "fecha_publicacion": "2022-02-15",
+    "valor": "20.4110"
+  },
+  {
+    "fecha_publicacion": "2022-02-16",
+    "valor": "20.3992"
+  },
+  {
+    "fecha_publicacion": "2022-02-17",
+    "valor": "20.3335"
+  },
+  {
+    "fecha_publicacion": "2022-02-18",
+    "valor": "20.2978"
+  },
+  {
+    "fecha_publicacion": "2022-02-21",
+    "valor": "20.3063"
+  },
+  {
+    "fecha_publicacion": "2022-02-22",
+    "valor": "20.2825"
+  },
+  {
+    "fecha_publicacion": "2022-02-23",
+    "valor": "20.2977"
+  },
+  {
+    "fecha_publicacion": "2022-02-24",
+    "valor": "20.2435"
+  },
+  {
+    "fecha_publicacion": "2022-02-25",
+    "valor": "20.6525"
+  },
+  {
+    "fecha_publicacion": "2022-02-28",
+    "valor": "20.4465"
+  },
+  {
+    "fecha_publicacion": "2022-03-01",
+    "valor": "20.4257"
+  },
+  {
+    "fecha_publicacion": "2022-03-02",
+    "valor": "20.5272"
+  },
+  {
+    "fecha_publicacion": "2022-03-03",
+    "valor": "20.7193"
+  },
+  {
+    "fecha_publicacion": "2022-03-04",
+    "valor": "20.7033"
+  },
+  {
+    "fecha_publicacion": "2022-03-07",
+    "valor": "20.9262"
+  },
+  {
+    "fecha_publicacion": "2022-03-08",
+    "valor": "21.1947"
+  },
+  {
+    "fecha_publicacion": "2022-03-09",
+    "valor": "21.3775"
+  },
+  {
+    "fecha_publicacion": "2022-03-10",
+    "valor": "20.9677"
+  },
+  {
+    "fecha_publicacion": "2022-03-11",
+    "valor": "20.9743"
+  },
+  {
+    "fecha_publicacion": "2022-03-14",
+    "valor": "20.9695"
+  },
+  {
+    "fecha_publicacion": "2022-03-15",
+    "valor": "20.8908"
+  },
+  {
+    "fecha_publicacion": "2022-03-16",
+    "valor": "20.8743"
+  },
+  {
+    "fecha_publicacion": "2022-03-17",
+    "valor": "20.7035"
+  },
+  {
+    "fecha_publicacion": "2022-03-18",
+    "valor": "20.5585"
+  },
+  {
+    "fecha_publicacion": "2022-03-22",
+    "valor": "20.4145"
+  },
+  {
+    "fecha_publicacion": "2022-03-23",
+    "valor": "20.2782"
+  },
+  {
+    "fecha_publicacion": "2022-03-24",
+    "valor": "20.1800"
+  },
+  {
+    "fecha_publicacion": "2022-03-25",
+    "valor": "20.1313"
+  },
+  {
+    "fecha_publicacion": "2022-03-28",
+    "valor": "19.9577"
+  },
+  {
+    "fecha_publicacion": "2022-03-29",
+    "valor": "20.1195"
+  },
+  {
+    "fecha_publicacion": "2022-03-30",
+    "valor": "19.9942"
+  },
+  {
+    "fecha_publicacion": "2022-03-31",
+    "valor": "19.8632"
+  },
+  {
+    "fecha_publicacion": "2022-04-01",
+    "valor": "19.9112"
+  },
+  {
+    "fecha_publicacion": "2022-04-04",
+    "valor": "19.8432"
+  },
+  {
+    "fecha_publicacion": "2022-04-05",
+    "valor": "19.7443"
+  },
+  {
+    "fecha_publicacion": "2022-04-06",
+    "valor": "19.9012"
+  },
+  {
+    "fecha_publicacion": "2022-04-07",
+    "valor": "20.0665"
+  },
+  {
+    "fecha_publicacion": "2022-04-08",
+    "valor": "20.1605"
+  },
+  {
+    "fecha_publicacion": "2022-04-11",
+    "valor": "20.1200"
+  },
+  {
+    "fecha_publicacion": "2022-04-12",
+    "valor": "20.0093"
+  },
+  {
+    "fecha_publicacion": "2022-04-13",
+    "valor": "19.8407"
+  },
+  {
+    "fecha_publicacion": "2022-04-18",
+    "valor": "19.7967"
+  },
+  {
+    "fecha_publicacion": "2022-04-19",
+    "valor": "19.9377"
+  },
+  {
+    "fecha_publicacion": "2022-04-20",
+    "valor": "20.0447"
+  },
+  {
+    "fecha_publicacion": "2022-04-21",
+    "valor": "20.0383"
+  },
+  {
+    "fecha_publicacion": "2022-04-22",
+    "valor": "20.1802"
+  },
+  {
+    "fecha_publicacion": "2022-04-25",
+    "valor": "20.3183"
+  },
+  {
+    "fecha_publicacion": "2022-04-26",
+    "valor": "20.2992"
+  },
+  {
+    "fecha_publicacion": "2022-04-27",
+    "valor": "20.3560"
+  },
+  {
+    "fecha_publicacion": "2022-04-28",
+    "valor": "20.4707"
+  },
+  {
+    "fecha_publicacion": "2022-04-29",
+    "valor": "20.5670"
+  },
+  {
+    "fecha_publicacion": "2022-05-02",
+    "valor": "20.3728"
+  },
+  {
+    "fecha_publicacion": "2022-05-03",
+    "valor": "20.4075"
+  },
+  {
+    "fecha_publicacion": "2022-05-04",
+    "valor": "20.3350"
+  },
+  {
+    "fecha_publicacion": "2022-05-05",
+    "valor": "20.2535"
+  },
+  {
+    "fecha_publicacion": "2022-05-06",
+    "valor": "20.2218"
+  },
+  {
+    "fecha_publicacion": "2022-05-09",
+    "valor": "20.1085"
+  },
+  {
+    "fecha_publicacion": "2022-05-10",
+    "valor": "20.3172"
+  },
+  {
+    "fecha_publicacion": "2022-05-11",
+    "valor": "20.3720"
+  },
+  {
+    "fecha_publicacion": "2022-05-12",
+    "valor": "20.2592"
+  },
+  {
+    "fecha_publicacion": "2022-05-13",
+    "valor": "20.3200"
+  },
+  {
+    "fecha_publicacion": "2022-05-16",
+    "valor": "20.1443"
+  },
+  {
+    "fecha_publicacion": "2022-05-17",
+    "valor": "20.0782"
+  },
+  {
+    "fecha_publicacion": "2022-05-18",
+    "valor": "19.9637"
+  },
+  {
+    "fecha_publicacion": "2022-05-19",
+    "valor": "19.9663"
+  },
+  {
+    "fecha_publicacion": "2022-05-20",
+    "valor": "19.9267"
+  },
+  {
+    "fecha_publicacion": "2022-05-23",
+    "valor": "19.8657"
+  },
+  {
+    "fecha_publicacion": "2022-05-24",
+    "valor": "19.8282"
+  },
+  {
+    "fecha_publicacion": "2022-05-25",
+    "valor": "19.8870"
+  },
+  {
+    "fecha_publicacion": "2022-05-26",
+    "valor": "19.8377"
+  },
+  {
+    "fecha_publicacion": "2022-05-27",
+    "valor": "19.7933"
+  },
+  {
+    "fecha_publicacion": "2022-05-30",
+    "valor": "19.5965"
+  },
+  {
+    "fecha_publicacion": "2022-05-31",
+    "valor": "19.4953"
+  },
+  {
+    "fecha_publicacion": "2022-06-01",
+    "valor": "19.6940"
+  },
+  {
+    "fecha_publicacion": "2022-06-02",
+    "valor": "19.7388"
+  },
+  {
+    "fecha_publicacion": "2022-06-03",
+    "valor": "19.5585"
+  },
+  {
+    "fecha_publicacion": "2022-06-06",
+    "valor": "19.5742"
+  },
+  {
+    "fecha_publicacion": "2022-06-07",
+    "valor": "19.5547"
+  },
+  {
+    "fecha_publicacion": "2022-06-08",
+    "valor": "19.5998"
+  },
+  {
+    "fecha_publicacion": "2022-06-09",
+    "valor": "19.5900"
+  },
+  {
+    "fecha_publicacion": "2022-06-10",
+    "valor": "19.6128"
+  },
+  {
+    "fecha_publicacion": "2022-06-13",
+    "valor": "19.9297"
+  },
+  {
+    "fecha_publicacion": "2022-06-14",
+    "valor": "20.4527"
+  },
+  {
+    "fecha_publicacion": "2022-06-15",
+    "valor": "20.6583"
+  },
+  {
+    "fecha_publicacion": "2022-06-16",
+    "valor": "20.6675"
+  },
+  {
+    "fecha_publicacion": "2022-06-17",
+    "valor": "20.5728"
+  },
+  {
+    "fecha_publicacion": "2022-06-20",
+    "valor": "20.4760"
+  },
+  {
+    "fecha_publicacion": "2022-06-21",
+    "valor": "20.2442"
+  },
+  {
+    "fecha_publicacion": "2022-06-22",
+    "valor": "20.1963"
+  },
+  {
+    "fecha_publicacion": "2022-06-23",
+    "valor": "20.0465"
+  },
+  {
+    "fecha_publicacion": "2022-06-24",
+    "valor": "20.0365"
+  },
+  {
+    "fecha_publicacion": "2022-06-27",
+    "valor": "19.8707"
+  },
+  {
+    "fecha_publicacion": "2022-06-28",
+    "valor": "19.8797"
+  },
+  {
+    "fecha_publicacion": "2022-06-29",
+    "valor": "19.9847"
+  },
+  {
+    "fecha_publicacion": "2022-06-30",
+    "valor": "20.1443"
+  },
+  {
+    "fecha_publicacion": "2022-07-01",
+    "valor": "20.1335"
+  },
+  {
+    "fecha_publicacion": "2022-07-04",
+    "valor": "20.3817"
+  },
+  {
+    "fecha_publicacion": "2022-07-05",
+    "valor": "20.2877"
+  },
+  {
+    "fecha_publicacion": "2022-07-06",
+    "valor": "20.5598"
+  },
+  {
+    "fecha_publicacion": "2022-07-07",
+    "valor": "20.7228"
+  },
+  {
+    "fecha_publicacion": "2022-07-08",
+    "valor": "20.6022"
+  },
+  {
+    "fecha_publicacion": "2022-07-11",
+    "valor": "20.4423"
+  },
+  {
+    "fecha_publicacion": "2022-07-12",
+    "valor": "20.7473"
+  },
+  {
+    "fecha_publicacion": "2022-07-13",
+    "valor": "20.7882"
+  },
+  {
+    "fecha_publicacion": "2022-07-14",
+    "valor": "20.7613"
+  },
+  {
+    "fecha_publicacion": "2022-07-15",
+    "valor": "20.9415"
+  },
+  {
+    "fecha_publicacion": "2022-07-18",
+    "valor": "20.6110"
+  },
+  {
+    "fecha_publicacion": "2022-07-19",
+    "valor": "20.3957"
+  },
+  {
+    "fecha_publicacion": "2022-07-20",
+    "valor": "20.4407"
+  },
+  {
+    "fecha_publicacion": "2022-07-21",
+    "valor": "20.4913"
+  },
+  {
+    "fecha_publicacion": "2022-07-22",
+    "valor": "20.6562"
+  },
+  {
+    "fecha_publicacion": "2022-07-25",
+    "valor": "20.5150"
+  },
+  {
+    "fecha_publicacion": "2022-07-26",
+    "valor": "20.4652"
+  },
+  {
+    "fecha_publicacion": "2022-07-27",
+    "valor": "20.4330"
+  },
+  {
+    "fecha_publicacion": "2022-07-28",
+    "valor": "20.5120"
+  },
+  {
+    "fecha_publicacion": "2022-07-29",
+    "valor": "20.3778"
+  },
+  {
+    "fecha_publicacion": "2022-08-01",
+    "valor": "20.3485"
+  },
+  {
+    "fecha_publicacion": "2022-08-02",
+    "valor": "20.2633"
+  },
+  {
+    "fecha_publicacion": "2022-08-03",
+    "valor": "20.5152"
+  },
+  {
+    "fecha_publicacion": "2022-08-04",
+    "valor": "20.6305"
+  },
+  {
+    "fecha_publicacion": "2022-08-05",
+    "valor": "20.3358"
+  },
+  {
+    "fecha_publicacion": "2022-08-08",
+    "valor": "20.4010"
+  },
+  {
+    "fecha_publicacion": "2022-08-09",
+    "valor": "20.2789"
+  },
+  {
+    "fecha_publicacion": "2022-08-10",
+    "valor": "20.2715"
+  },
+  {
+    "fecha_publicacion": "2022-08-11",
+    "valor": "19.9562"
+  },
+  {
+    "fecha_publicacion": "2022-08-12",
+    "valor": "19.9595"
+  },
+  {
+    "fecha_publicacion": "2022-08-15",
+    "valor": "19.8740"
+  },
+  {
+    "fecha_publicacion": "2022-08-16",
+    "valor": "19.8618"
+  },
+  {
+    "fecha_publicacion": "2022-08-17",
+    "valor": "19.9303"
+  },
+  {
+    "fecha_publicacion": "2022-08-18",
+    "valor": "20.0387"
+  },
+  {
+    "fecha_publicacion": "2022-08-19",
+    "valor": "20.0835"
+  },
+  {
+    "fecha_publicacion": "2022-08-22",
+    "valor": "20.1957"
+  },
+  {
+    "fecha_publicacion": "2022-08-23",
+    "valor": "20.1598"
+  },
+  {
+    "fecha_publicacion": "2022-08-24",
+    "valor": "19.9982"
+  },
+  {
+    "fecha_publicacion": "2022-08-25",
+    "valor": "19.9198"
+  },
+  {
+    "fecha_publicacion": "2022-08-26",
+    "valor": "19.9437"
+  },
+  {
+    "fecha_publicacion": "2022-08-29",
+    "valor": "19.9268"
+  },
+  {
+    "fecha_publicacion": "2022-08-30",
+    "valor": "19.9945"
+  },
+  {
+    "fecha_publicacion": "2022-08-31",
+    "valor": "20.1465"
+  },
+  {
+    "fecha_publicacion": "2022-09-01",
+    "valor": "20.0962"
+  },
+  {
+    "fecha_publicacion": "2022-09-02",
+    "valor": "20.2473"
+  },
+  {
+    "fecha_publicacion": "2022-09-05",
+    "valor": "19.9753"
+  },
+  {
+    "fecha_publicacion": "2022-09-06",
+    "valor": "19.9620"
+  },
+  {
+    "fecha_publicacion": "2022-09-07",
+    "valor": "20.1380"
+  },
+  {
+    "fecha_publicacion": "2022-09-08",
+    "valor": "20.0297"
+  },
+  {
+    "fecha_publicacion": "2022-09-09",
+    "valor": "20.0203"
+  },
+  {
+    "fecha_publicacion": "2022-09-12",
+    "valor": "19.9027"
+  },
+  {
+    "fecha_publicacion": "2022-09-13",
+    "valor": "19.7957"
+  },
+  {
+    "fecha_publicacion": "2022-09-14",
+    "valor": "20.0550"
+  },
+  {
+    "fecha_publicacion": "2022-09-15",
+    "valor": "19.9768"
+  },
+  {
+    "fecha_publicacion": "2022-09-19",
+    "valor": "20.0525"
+  },
+  {
+    "fecha_publicacion": "2022-09-20",
+    "valor": "19.9943"
+  },
+  {
+    "fecha_publicacion": "2022-09-21",
+    "valor": "20.0000"
+  },
+  {
+    "fecha_publicacion": "2022-09-22",
+    "valor": "20.0027"
+  },
+  {
+    "fecha_publicacion": "2022-09-23",
+    "valor": "19.9608"
+  },
+  {
+    "fecha_publicacion": "2022-09-26",
+    "valor": "20.1627"
+  },
+  {
+    "fecha_publicacion": "2022-09-27",
+    "valor": "20.3517"
+  },
+  {
+    "fecha_publicacion": "2022-09-28",
+    "valor": "20.3570"
+  },
+  {
+    "fecha_publicacion": "2022-09-29",
+    "valor": "20.3058"
+  },
+  {
+    "fecha_publicacion": "2022-09-30",
+    "valor": "20.1927"
+  },
+  {
+    "fecha_publicacion": "2022-10-03",
+    "valor": "20.0925"
+  },
+  {
+    "fecha_publicacion": "2022-10-04",
+    "valor": "20.0008"
+  },
+  {
+    "fecha_publicacion": "2022-10-05",
+    "valor": "19.9698"
+  },
+  {
+    "fecha_publicacion": "2022-10-06",
+    "valor": "20.1267"
+  },
+  {
+    "fecha_publicacion": "2022-10-07",
+    "valor": "20.1087"
+  },
+  {
+    "fecha_publicacion": "2022-10-10",
+    "valor": "20.0502"
+  },
+  {
+    "fecha_publicacion": "2022-10-11",
+    "valor": "19.9752"
+  },
+  {
+    "fecha_publicacion": "2022-10-12",
+    "valor": "19.9652"
+  },
+  {
+    "fecha_publicacion": "2022-10-13",
+    "valor": "20.0352"
+  },
+  {
+    "fecha_publicacion": "2022-10-14",
+    "valor": "20.0398"
+  },
+  {
+    "fecha_publicacion": "2022-10-17",
+    "valor": "20.0838"
+  },
+  {
+    "fecha_publicacion": "2022-10-18",
+    "valor": "19.9913"
+  },
+  {
+    "fecha_publicacion": "2022-10-19",
+    "valor": "20.0207"
+  },
+  {
+    "fecha_publicacion": "2022-10-20",
+    "valor": "20.1272"
+  },
+  {
+    "fecha_publicacion": "2022-10-21",
+    "valor": "20.0448"
+  },
+  {
+    "fecha_publicacion": "2022-10-24",
+    "valor": "19.9647"
+  },
+  {
+    "fecha_publicacion": "2022-10-25",
+    "valor": "19.9535"
+  },
+  {
+    "fecha_publicacion": "2022-10-26",
+    "valor": "19.8712"
+  },
+  {
+    "fecha_publicacion": "2022-10-27",
+    "valor": "19.8553"
+  },
+  {
+    "fecha_publicacion": "2022-10-28",
+    "valor": "19.8365"
+  },
+  {
+    "fecha_publicacion": "2022-10-31",
+    "valor": "19.8303"
+  },
+  {
+    "fecha_publicacion": "2022-11-01",
+    "valor": "19.8245"
+  },
+  {
+    "fecha_publicacion": "2022-11-03",
+    "valor": "19.7463"
+  },
+  {
+    "fecha_publicacion": "2022-11-04",
+    "valor": "19.6673"
+  },
+  {
+    "fecha_publicacion": "2022-11-07",
+    "valor": "19.5202"
+  },
+  {
+    "fecha_publicacion": "2022-11-08",
+    "valor": "19.4647"
+  },
+  {
+    "fecha_publicacion": "2022-11-09",
+    "valor": "19.4775"
+  },
+  {
+    "fecha_publicacion": "2022-11-10",
+    "valor": "19.5887"
+  },
+  {
+    "fecha_publicacion": "2022-11-11",
+    "valor": "19.3940"
+  },
+  {
+    "fecha_publicacion": "2022-11-14",
+    "valor": "19.5353"
+  },
+  {
+    "fecha_publicacion": "2022-11-15",
+    "valor": "19.4015"
+  },
+  {
+    "fecha_publicacion": "2022-11-16",
+    "valor": "19.3818"
+  },
+  {
+    "fecha_publicacion": "2022-11-17",
+    "valor": "19.3137"
+  },
+  {
+    "fecha_publicacion": "2022-11-18",
+    "valor": "19.4333"
+  },
+  {
+    "fecha_publicacion": "2022-11-22",
+    "valor": "19.4930"
+  },
+  {
+    "fecha_publicacion": "2022-11-23",
+    "valor": "19.4667"
+  },
+  {
+    "fecha_publicacion": "2022-11-24",
+    "valor": "19.3683"
+  },
+  {
+    "fecha_publicacion": "2022-11-25",
+    "valor": "19.3692"
+  },
+  {
+    "fecha_publicacion": "2022-11-28",
+    "valor": "19.3393"
+  },
+  {
+    "fecha_publicacion": "2022-11-29",
+    "valor": "19.3250"
+  },
+  {
+    "fecha_publicacion": "2022-11-30",
+    "valor": "19.2160"
+  },
+  {
+    "fecha_publicacion": "2022-12-01",
+    "valor": "19.3965"
+  },
+  {
+    "fecha_publicacion": "2022-12-02",
+    "valor": "19.1433"
+  },
+  {
+    "fecha_publicacion": "2022-12-05",
+    "valor": "19.3422"
+  },
+  {
+    "fecha_publicacion": "2022-12-06",
+    "valor": "19.7567"
+  },
+  {
+    "fecha_publicacion": "2022-12-07",
+    "valor": "19.8030"
+  },
+  {
+    "fecha_publicacion": "2022-12-08",
+    "valor": "19.6977"
+  },
+  {
+    "fecha_publicacion": "2022-12-09",
+    "valor": "19.6732"
+  },
+  {
+    "fecha_publicacion": "2022-12-13",
+    "valor": "19.8192"
+  },
+  {
+    "fecha_publicacion": "2022-12-14",
+    "valor": "19.6458"
+  },
+  {
+    "fecha_publicacion": "2022-12-15",
+    "valor": "19.6955"
+  },
+  {
+    "fecha_publicacion": "2022-12-16",
+    "valor": "19.7963"
+  },
+  {
+    "fecha_publicacion": "2022-12-19",
+    "valor": "19.7932"
+  },
+  {
+    "fecha_publicacion": "2022-12-20",
+    "valor": "19.7557"
+  },
+  {
+    "fecha_publicacion": "2022-12-21",
+    "valor": "19.7482"
+  },
+  {
+    "fecha_publicacion": "2022-12-22",
+    "valor": "19.6932"
+  },
+  {
+    "fecha_publicacion": "2022-12-23",
+    "valor": "19.5740"
+  },
+  {
+    "fecha_publicacion": "2022-12-26",
+    "valor": "19.4287"
+  },
+  {
+    "fecha_publicacion": "2022-12-27",
+    "valor": "19.3983"
+  },
+  {
+    "fecha_publicacion": "2022-12-28",
+    "valor": "19.4407"
+  },
+  {
+    "fecha_publicacion": "2022-12-29",
+    "valor": "19.4143"
+  },
+  {
+    "fecha_publicacion": "2022-12-30",
+    "valor": "19.3615"
+  },
+  {
+    "fecha_publicacion": "2023-01-02",
+    "valor": "19.4715"
+  },
+  {
+    "fecha_publicacion": "2023-01-03",
+    "valor": "19.4883"
+  },
+  {
+    "fecha_publicacion": "2023-01-04",
+    "valor": "19.4220"
+  },
+  {
+    "fecha_publicacion": "2023-01-05",
+    "valor": "19.3568"
+  },
+  {
+    "fecha_publicacion": "2023-01-06",
+    "valor": "19.3672"
+  },
+  {
+    "fecha_publicacion": "2023-01-09",
+    "valor": "19.1753"
+  },
+  {
+    "fecha_publicacion": "2023-01-10",
+    "valor": "19.1648"
+  },
+  {
+    "fecha_publicacion": "2023-01-11",
+    "valor": "19.1108"
+  },
+  {
+    "fecha_publicacion": "2023-01-12",
+    "valor": "19.0260"
+  },
+  {
+    "fecha_publicacion": "2023-01-13",
+    "valor": "18.8735"
+  },
+  {
+    "fecha_publicacion": "2023-01-16",
+    "valor": "18.7922"
+  },
+  {
+    "fecha_publicacion": "2023-01-17",
+    "valor": "18.7913"
+  },
+  {
+    "fecha_publicacion": "2023-01-18",
+    "valor": "18.7493"
+  },
+  {
+    "fecha_publicacion": "2023-01-19",
+    "valor": "18.7493"
+  },
+  {
+    "fecha_publicacion": "2023-01-20",
+    "valor": "19.0327"
+  },
+  {
+    "fecha_publicacion": "2023-01-23",
+    "valor": "18.9257"
+  },
+  {
+    "fecha_publicacion": "2023-01-24",
+    "valor": "18.8267"
+  },
+  {
+    "fecha_publicacion": "2023-01-25",
+    "valor": "18.8318"
+  },
+  {
+    "fecha_publicacion": "2023-01-26",
+    "valor": "18.8200"
+  },
+  {
+    "fecha_publicacion": "2023-01-27",
+    "valor": "18.8355"
+  },
+  {
+    "fecha_publicacion": "2023-01-30",
+    "valor": "18.7872"
+  },
+  {
+    "fecha_publicacion": "2023-01-31",
+    "valor": "18.7793"
+  },
+  {
+    "fecha_publicacion": "2023-02-01",
+    "valor": "18.7937"
+  },
+  {
+    "fecha_publicacion": "2023-02-02",
+    "valor": "18.7390"
+  },
+  {
+    "fecha_publicacion": "2023-02-03",
+    "valor": "18.6232"
+  },
+  {
+    "fecha_publicacion": "2023-02-07",
+    "valor": "18.8895"
+  },
+  {
+    "fecha_publicacion": "2023-02-08",
+    "valor": "19.0517"
+  },
+  {
+    "fecha_publicacion": "2023-02-09",
+    "valor": "18.9435"
+  },
+  {
+    "fecha_publicacion": "2023-02-10",
+    "valor": "18.9543"
+  },
+  {
+    "fecha_publicacion": "2023-02-13",
+    "valor": "18.6893"
+  },
+  {
+    "fecha_publicacion": "2023-02-14",
+    "valor": "18.6327"
+  },
+  {
+    "fecha_publicacion": "2023-02-15",
+    "valor": "18.5383"
+  },
+  {
+    "fecha_publicacion": "2023-02-16",
+    "valor": "18.6428"
+  },
+  {
+    "fecha_publicacion": "2023-02-17",
+    "valor": "18.5497"
+  },
+  {
+    "fecha_publicacion": "2023-02-20",
+    "valor": "18.4142"
+  },
+  {
+    "fecha_publicacion": "2023-02-21",
+    "valor": "18.3970"
+  },
+  {
+    "fecha_publicacion": "2023-02-22",
+    "valor": "18.3938"
+  },
+  {
+    "fecha_publicacion": "2023-02-23",
+    "valor": "18.3483"
+  },
+  {
+    "fecha_publicacion": "2023-02-24",
+    "valor": "18.4107"
+  },
+  {
+    "fecha_publicacion": "2023-02-27",
+    "valor": "18.4023"
+  },
+  {
+    "fecha_publicacion": "2023-02-28",
+    "valor": "18.4077"
+  },
+  {
+    "fecha_publicacion": "2023-03-01",
+    "valor": "18.3448"
+  },
+  {
+    "fecha_publicacion": "2023-03-02",
+    "valor": "18.1700"
+  },
+  {
+    "fecha_publicacion": "2023-03-03",
+    "valor": "18.1260"
+  },
+  {
+    "fecha_publicacion": "2023-03-06",
+    "valor": "18.0123"
+  },
+  {
+    "fecha_publicacion": "2023-03-07",
+    "valor": "18.0122"
+  },
+  {
+    "fecha_publicacion": "2023-03-08",
+    "valor": "18.1155"
+  },
+  {
+    "fecha_publicacion": "2023-03-09",
+    "valor": "17.9662"
+  },
+  {
+    "fecha_publicacion": "2023-03-10",
+    "valor": "18.0577"
+  },
+  {
+    "fecha_publicacion": "2023-03-13",
+    "valor": "18.4083"
+  },
+  {
+    "fecha_publicacion": "2023-03-14",
+    "valor": "18.8302"
+  },
+  {
+    "fecha_publicacion": "2023-03-15",
+    "valor": "18.6427"
+  },
+  {
+    "fecha_publicacion": "2023-03-16",
+    "valor": "18.9972"
+  },
+  {
+    "fecha_publicacion": "2023-03-17",
+    "valor": "18.9095"
+  },
+  {
+    "fecha_publicacion": "2023-03-21",
+    "valor": "18.8977"
+  },
+  {
+    "fecha_publicacion": "2023-03-22",
+    "valor": "18.6755"
+  },
+  {
+    "fecha_publicacion": "2023-03-23",
+    "valor": "18.5437"
+  },
+  {
+    "fecha_publicacion": "2023-03-24",
+    "valor": "18.4902"
+  },
+  {
+    "fecha_publicacion": "2023-03-27",
+    "valor": "18.5178"
+  },
+  {
+    "fecha_publicacion": "2023-03-28",
+    "valor": "18.3830"
+  },
+  {
+    "fecha_publicacion": "2023-03-29",
+    "valor": "18.2523"
+  },
+  {
+    "fecha_publicacion": "2023-03-30",
+    "valor": "18.1052"
+  },
+  {
+    "fecha_publicacion": "2023-03-31",
+    "valor": "18.0932"
+  },
+  {
+    "fecha_publicacion": "2023-04-03",
+    "valor": "18.0415"
+  },
+  {
+    "fecha_publicacion": "2023-04-04",
+    "valor": "18.1070"
+  },
+  {
+    "fecha_publicacion": "2023-04-05",
+    "valor": "18.1185"
+  },
+  {
+    "fecha_publicacion": "2023-04-10",
+    "valor": "18.3323"
+  },
+  {
+    "fecha_publicacion": "2023-04-11",
+    "valor": "18.1765"
+  },
+  {
+    "fecha_publicacion": "2023-04-12",
+    "valor": "18.1870"
+  },
+  {
+    "fecha_publicacion": "2023-04-13",
+    "valor": "18.0660"
+  },
+  {
+    "fecha_publicacion": "2023-04-14",
+    "valor": "18.0152"
+  },
+  {
+    "fecha_publicacion": "2023-04-17",
+    "valor": "18.0638"
+  },
+  {
+    "fecha_publicacion": "2023-04-18",
+    "valor": "18.0868"
+  },
+  {
+    "fecha_publicacion": "2023-04-19",
+    "valor": "18.0630"
+  },
+  {
+    "fecha_publicacion": "2023-04-20",
+    "valor": "18.0448"
+  },
+  {
+    "fecha_publicacion": "2023-04-21",
+    "valor": "18.0090"
+  },
+  {
+    "fecha_publicacion": "2023-04-24",
+    "valor": "17.9988"
+  },
+  {
+    "fecha_publicacion": "2023-04-25",
+    "valor": "18.0082"
+  },
+  {
+    "fecha_publicacion": "2023-04-26",
+    "valor": "18.0892"
+  },
+  {
+    "fecha_publicacion": "2023-04-27",
+    "valor": "18.1030"
+  },
+  {
+    "fecha_publicacion": "2023-04-28",
+    "valor": "18.0723"
+  },
+  {
+    "fecha_publicacion": "2023-05-02",
+    "valor": "17.9975"
+  },
+  {
+    "fecha_publicacion": "2023-05-03",
+    "valor": "18.0325"
+  },
+  {
+    "fecha_publicacion": "2023-05-04",
+    "valor": "17.9060"
+  },
+  {
+    "fecha_publicacion": "2023-05-05",
+    "valor": "17.9575"
+  },
+  {
+    "fecha_publicacion": "2023-05-08",
+    "valor": "17.7863"
+  },
+  {
+    "fecha_publicacion": "2023-05-09",
+    "valor": "17.8213"
+  },
+  {
+    "fecha_publicacion": "2023-05-10",
+    "valor": "17.7608"
+  },
+  {
+    "fecha_publicacion": "2023-05-11",
+    "valor": "17.5845"
+  },
+  {
+    "fecha_publicacion": "2023-05-12",
+    "valor": "17.6287"
+  },
+  {
+    "fecha_publicacion": "2023-05-15",
+    "valor": "17.6142"
+  },
+  {
+    "fecha_publicacion": "2023-05-16",
+    "valor": "17.5380"
+  },
+  {
+    "fecha_publicacion": "2023-05-17",
+    "valor": "17.4672"
+  },
+  {
+    "fecha_publicacion": "2023-05-18",
+    "valor": "17.5872"
+  },
+  {
+    "fecha_publicacion": "2023-05-19",
+    "valor": "17.7342"
+  },
+  {
+    "fecha_publicacion": "2023-05-22",
+    "valor": "17.6930"
+  },
+  {
+    "fecha_publicacion": "2023-05-23",
+    "valor": "17.8680"
+  },
+  {
+    "fecha_publicacion": "2023-05-24",
+    "valor": "17.9687"
+  },
+  {
+    "fecha_publicacion": "2023-05-25",
+    "valor": "17.8195"
+  },
+  {
+    "fecha_publicacion": "2023-05-26",
+    "valor": "17.8252"
+  },
+  {
+    "fecha_publicacion": "2023-05-29",
+    "valor": "17.6723"
+  },
+  {
+    "fecha_publicacion": "2023-05-30",
+    "valor": "17.5605"
+  },
+  {
+    "fecha_publicacion": "2023-05-31",
+    "valor": "17.6532"
+  },
+  {
+    "fecha_publicacion": "2023-06-01",
+    "valor": "17.7418"
+  },
+  {
+    "fecha_publicacion": "2023-06-02",
+    "valor": "17.5673"
+  },
+  {
+    "fecha_publicacion": "2023-06-05",
+    "valor": "17.5063"
+  },
+  {
+    "fecha_publicacion": "2023-06-06",
+    "valor": "17.4732"
+  },
+  {
+    "fecha_publicacion": "2023-06-07",
+    "valor": "17.4192"
+  },
+  {
+    "fecha_publicacion": "2023-06-08",
+    "valor": "17.3608"
+  },
+  {
+    "fecha_publicacion": "2023-06-09",
+    "valor": "17.4085"
+  },
+  {
+    "fecha_publicacion": "2023-06-12",
+    "valor": "17.2840"
+  },
+  {
+    "fecha_publicacion": "2023-06-13",
+    "valor": "17.3120"
+  },
+  {
+    "fecha_publicacion": "2023-06-14",
+    "valor": "17.2185"
+  },
+  {
+    "fecha_publicacion": "2023-06-15",
+    "valor": "17.1247"
+  },
+  {
+    "fecha_publicacion": "2023-06-16",
+    "valor": "17.1762"
+  },
+  {
+    "fecha_publicacion": "2023-06-19",
+    "valor": "17.0792"
+  },
+  {
+    "fecha_publicacion": "2023-06-20",
+    "valor": "17.0945"
+  },
+  {
+    "fecha_publicacion": "2023-06-21",
+    "valor": "17.2043"
+  },
+  {
+    "fecha_publicacion": "2023-06-22",
+    "valor": "17.1547"
+  },
+  {
+    "fecha_publicacion": "2023-06-23",
+    "valor": "17.1713"
+  },
+  {
+    "fecha_publicacion": "2023-06-26",
+    "valor": "17.1795"
+  },
+  {
+    "fecha_publicacion": "2023-06-27",
+    "valor": "17.1445"
+  },
+  {
+    "fecha_publicacion": "2023-06-28",
+    "valor": "17.1013"
+  },
+  {
+    "fecha_publicacion": "2023-06-29",
+    "valor": "17.0720"
+  },
+  {
+    "fecha_publicacion": "2023-06-30",
+    "valor": "17.1187"
+  },
+  {
+    "fecha_publicacion": "2023-07-03",
+    "valor": "17.1358"
+  },
+  {
+    "fecha_publicacion": "2023-07-04",
+    "valor": "17.0517"
+  },
+  {
+    "fecha_publicacion": "2023-07-05",
+    "valor": "17.0260"
+  },
+  {
+    "fecha_publicacion": "2023-07-06",
+    "valor": "17.0040"
+  },
+  {
+    "fecha_publicacion": "2023-07-07",
+    "valor": "17.2825"
+  },
+  {
+    "fecha_publicacion": "2023-07-10",
+    "valor": "17.1012"
+  },
+  {
+    "fecha_publicacion": "2023-07-11",
+    "valor": "17.0605"
+  },
+  {
+    "fecha_publicacion": "2023-07-12",
+    "valor": "17.0783"
+  },
+  {
+    "fecha_publicacion": "2023-07-13",
+    "valor": "16.8537"
+  },
+  {
+    "fecha_publicacion": "2023-07-14",
+    "valor": "16.8905"
+  },
+  {
+    "fecha_publicacion": "2023-07-17",
+    "valor": "16.7892"
+  },
+  {
+    "fecha_publicacion": "2023-07-18",
+    "valor": "16.7858"
+  },
+  {
+    "fecha_publicacion": "2023-07-19",
+    "valor": "16.7480"
+  },
+  {
+    "fecha_publicacion": "2023-07-20",
+    "valor": "16.7667"
+  },
+  {
+    "fecha_publicacion": "2023-07-21",
+    "valor": "16.8460"
+  },
+  {
+    "fecha_publicacion": "2023-07-24",
+    "valor": "16.9393"
+  },
+  {
+    "fecha_publicacion": "2023-07-25",
+    "valor": "16.8367"
+  },
+  {
+    "fecha_publicacion": "2023-07-26",
+    "valor": "16.9075"
+  },
+  {
+    "fecha_publicacion": "2023-07-27",
+    "valor": "16.8825"
+  },
+  {
+    "fecha_publicacion": "2023-07-28",
+    "valor": "16.7338"
+  },
+  {
+    "fecha_publicacion": "2023-07-31",
+    "valor": "16.6895"
+  },
+  {
+    "fecha_publicacion": "2023-08-01",
+    "valor": "16.7303"
+  },
+  {
+    "fecha_publicacion": "2023-08-02",
+    "valor": "16.8533"
+  },
+  {
+    "fecha_publicacion": "2023-08-03",
+    "valor": "17.0193"
+  },
+  {
+    "fecha_publicacion": "2023-08-04",
+    "valor": "17.2892"
+  },
+  {
+    "fecha_publicacion": "2023-08-07",
+    "valor": "17.0555"
+  },
+  {
+    "fecha_publicacion": "2023-08-08",
+    "valor": "17.0608"
+  },
+  {
+    "fecha_publicacion": "2023-08-09",
+    "valor": "17.1122"
+  },
+  {
+    "fecha_publicacion": "2023-08-10",
+    "valor": "17.0767"
+  },
+  {
+    "fecha_publicacion": "2023-08-11",
+    "valor": "16.9548"
+  },
+  {
+    "fecha_publicacion": "2023-08-14",
+    "valor": "17.0045"
+  },
+  {
+    "fecha_publicacion": "2023-08-15",
+    "valor": "17.0672"
+  },
+  {
+    "fecha_publicacion": "2023-08-16",
+    "valor": "17.1388"
+  },
+  {
+    "fecha_publicacion": "2023-08-17",
+    "valor": "17.0768"
+  },
+  {
+    "fecha_publicacion": "2023-08-18",
+    "valor": "17.1225"
+  },
+  {
+    "fecha_publicacion": "2023-08-21",
+    "valor": "17.0477"
+  },
+  {
+    "fecha_publicacion": "2023-08-22",
+    "valor": "17.0202"
+  },
+  {
+    "fecha_publicacion": "2023-08-23",
+    "valor": "16.9267"
+  },
+  {
+    "fecha_publicacion": "2023-08-24",
+    "valor": "16.8077"
+  },
+  {
+    "fecha_publicacion": "2023-08-25",
+    "valor": "16.8090"
+  },
+  {
+    "fecha_publicacion": "2023-08-28",
+    "valor": "16.7718"
+  },
+  {
+    "fecha_publicacion": "2023-08-29",
+    "valor": "16.7432"
+  },
+  {
+    "fecha_publicacion": "2023-08-30",
+    "valor": "16.8402"
+  },
+  {
+    "fecha_publicacion": "2023-08-31",
+    "valor": "16.7477"
+  },
+  {
+    "fecha_publicacion": "2023-09-01",
+    "valor": "16.9170"
+  },
+  {
+    "fecha_publicacion": "2023-09-04",
+    "valor": "17.1113"
+  },
+  {
+    "fecha_publicacion": "2023-09-05",
+    "valor": "17.1750"
+  },
+  {
+    "fecha_publicacion": "2023-09-06",
+    "valor": "17.3492"
+  },
+  {
+    "fecha_publicacion": "2023-09-07",
+    "valor": "17.5805"
+  },
+  {
+    "fecha_publicacion": "2023-09-08",
+    "valor": "17.5543"
+  },
+  {
+    "fecha_publicacion": "2023-09-11",
+    "valor": "17.5767"
+  },
+  {
+    "fecha_publicacion": "2023-09-12",
+    "valor": "17.3813"
+  },
+  {
+    "fecha_publicacion": "2023-09-13",
+    "valor": "17.2553"
+  },
+  {
+    "fecha_publicacion": "2023-09-14",
+    "valor": "17.1235"
+  },
+  {
+    "fecha_publicacion": "2023-09-15",
+    "valor": "17.1042"
+  },
+  {
+    "fecha_publicacion": "2023-09-18",
+    "valor": "17.0807"
+  },
+  {
+    "fecha_publicacion": "2023-09-19",
+    "valor": "17.1307"
+  },
+  {
+    "fecha_publicacion": "2023-09-20",
+    "valor": "17.0805"
+  },
+  {
+    "fecha_publicacion": "2023-09-21",
+    "valor": "17.0240"
+  },
+  {
+    "fecha_publicacion": "2023-09-22",
+    "valor": "17.1675"
+  },
+  {
+    "fecha_publicacion": "2023-09-25",
+    "valor": "17.1568"
+  },
+  {
+    "fecha_publicacion": "2023-09-26",
+    "valor": "17.3733"
+  },
+  {
+    "fecha_publicacion": "2023-09-27",
+    "valor": "17.4758"
+  },
+  {
+    "fecha_publicacion": "2023-09-28",
+    "valor": "17.7287"
+  },
+  {
+    "fecha_publicacion": "2023-09-29",
+    "valor": "17.6195"
+  },
+  {
+    "fecha_publicacion": "2023-10-02",
+    "valor": "17.4127"
+  },
+  {
+    "fecha_publicacion": "2023-10-03",
+    "valor": "17.5920"
+  },
+  {
+    "fecha_publicacion": "2023-10-04",
+    "valor": "17.9025"
+  },
+  {
+    "fecha_publicacion": "2023-10-05",
+    "valor": "18.0170"
+  },
+  {
+    "fecha_publicacion": "2023-10-06",
+    "valor": "18.2407"
+  },
+  {
+    "fecha_publicacion": "2023-10-09",
+    "valor": "18.1837"
+  },
+  {
+    "fecha_publicacion": "2023-10-10",
+    "valor": "18.3482"
+  },
+  {
+    "fecha_publicacion": "2023-10-11",
+    "valor": "17.9917"
+  },
+  {
+    "fecha_publicacion": "2023-10-12",
+    "valor": "17.8420"
+  },
+  {
+    "fecha_publicacion": "2023-10-13",
+    "valor": "17.9132"
+  },
+  {
+    "fecha_publicacion": "2023-10-16",
+    "valor": "18.0362"
+  },
+  {
+    "fecha_publicacion": "2023-10-17",
+    "valor": "17.9568"
+  },
+  {
+    "fecha_publicacion": "2023-10-18",
+    "valor": "17.9097"
+  },
+  {
+    "fecha_publicacion": "2023-10-19",
+    "valor": "18.2440"
+  },
+  {
+    "fecha_publicacion": "2023-10-20",
+    "valor": "18.2873"
+  },
+  {
+    "fecha_publicacion": "2023-10-23",
+    "valor": "18.2343"
+  },
+  {
+    "fecha_publicacion": "2023-10-24",
+    "valor": "18.1218"
+  },
+  {
+    "fecha_publicacion": "2023-10-25",
+    "valor": "18.2842"
+  },
+  {
+    "fecha_publicacion": "2023-10-26",
+    "valor": "18.3122"
+  },
+  {
+    "fecha_publicacion": "2023-10-27",
+    "valor": "18.2178"
+  },
+  {
+    "fecha_publicacion": "2023-10-30",
+    "valor": "18.0752"
+  },
+  {
+    "fecha_publicacion": "2023-10-31",
+    "valor": "18.0640"
+  },
+  {
+    "fecha_publicacion": "2023-11-01",
+    "valor": "18.0368"
+  },
+  {
+    "fecha_publicacion": "2023-11-03",
+    "valor": "17.9305"
+  },
+  {
+    "fecha_publicacion": "2023-11-06",
+    "valor": "17.4117"
+  },
+  {
+    "fecha_publicacion": "2023-11-07",
+    "valor": "17.5308"
+  },
+  {
+    "fecha_publicacion": "2023-11-08",
+    "valor": "17.5097"
+  },
+  {
+    "fecha_publicacion": "2023-11-09",
+    "valor": "17.5017"
+  },
+  {
+    "fecha_publicacion": "2023-11-10",
+    "valor": "17.4888"
+  },
+  {
+    "fecha_publicacion": "2023-11-13",
+    "valor": "17.7480"
+  },
+  {
+    "fecha_publicacion": "2023-11-14",
+    "valor": "17.6138"
+  },
+  {
+    "fecha_publicacion": "2023-11-15",
+    "valor": "17.3917"
+  },
+  {
+    "fecha_publicacion": "2023-11-16",
+    "valor": "17.3387"
+  },
+  {
+    "fecha_publicacion": "2023-11-17",
+    "valor": "17.2708"
+  },
+  {
+    "fecha_publicacion": "2023-11-21",
+    "valor": "17.2175"
+  },
+  {
+    "fecha_publicacion": "2023-11-22",
+    "valor": "17.2102"
+  },
+  {
+    "fecha_publicacion": "2023-11-23",
+    "valor": "17.2133"
+  },
+  {
+    "fecha_publicacion": "2023-11-24",
+    "valor": "17.1787"
+  },
+  {
+    "fecha_publicacion": "2023-11-27",
+    "valor": "17.1268"
+  },
+  {
+    "fecha_publicacion": "2023-11-28",
+    "valor": "17.1555"
+  },
+  {
+    "fecha_publicacion": "2023-11-29",
+    "valor": "17.1357"
+  },
+  {
+    "fecha_publicacion": "2023-11-30",
+    "valor": "17.1870"
+  },
+  {
+    "fecha_publicacion": "2023-12-01",
+    "valor": "17.3730"
+  },
+  {
+    "fecha_publicacion": "2023-12-04",
+    "valor": "17.2143"
+  },
+  {
+    "fecha_publicacion": "2023-12-05",
+    "valor": "17.4060"
+  },
+  {
+    "fecha_publicacion": "2023-12-06",
+    "valor": "17.4215"
+  },
+  {
+    "fecha_publicacion": "2023-12-07",
+    "valor": "17.2685"
+  },
+  {
+    "fecha_publicacion": "2023-12-08",
+    "valor": "17.4197"
+  },
+  {
+    "fecha_publicacion": "2023-12-11",
+    "valor": "17.3688"
+  },
+  {
+    "fecha_publicacion": "2023-12-13",
+    "valor": "17.4470"
+  },
+  {
+    "fecha_publicacion": "2023-12-14",
+    "valor": "17.3980"
+  },
+  {
+    "fecha_publicacion": "2023-12-15",
+    "valor": "17.2990"
+  },
+  {
+    "fecha_publicacion": "2023-12-18",
+    "valor": "17.1908"
+  },
+  {
+    "fecha_publicacion": "2023-12-19",
+    "valor": "17.2277"
+  },
+  {
+    "fecha_publicacion": "2023-12-20",
+    "valor": "17.0652"
+  },
+  {
+    "fecha_publicacion": "2023-12-21",
+    "valor": "17.0673"
+  },
+  {
+    "fecha_publicacion": "2023-12-22",
+    "valor": "17.0590"
+  },
+  {
+    "fecha_publicacion": "2023-12-26",
+    "valor": "16.9738"
+  },
+  {
+    "fecha_publicacion": "2023-12-27",
+    "valor": "16.9727"
+  },
+  {
+    "fecha_publicacion": "2023-12-28",
+    "valor": "16.9220"
+  },
+  {
+    "fecha_publicacion": "2023-12-29",
+    "valor": "16.8935"
+  },
+  {
+    "fecha_publicacion": "2024-01-02",
+    "valor": "16.9190"
+  },
+  {
+    "fecha_publicacion": "2024-01-03",
+    "valor": "17.0297"
+  },
+  {
+    "fecha_publicacion": "2024-01-04",
+    "valor": "17.0492"
+  },
+  {
+    "fecha_publicacion": "2024-01-05",
+    "valor": "17.0458"
+  },
+  {
+    "fecha_publicacion": "2024-01-08",
+    "valor": "16.8987"
+  },
+  {
+    "fecha_publicacion": "2024-01-09",
+    "valor": "16.8133"
+  },
+  {
+    "fecha_publicacion": "2024-01-10",
+    "valor": "16.9347"
+  },
+  {
+    "fecha_publicacion": "2024-01-11",
+    "valor": "16.9912"
+  },
+  {
+    "fecha_publicacion": "2024-01-12",
+    "valor": "16.9898"
+  },
+  {
+    "fecha_publicacion": "2024-01-15",
+    "valor": "16.8580"
+  },
+  {
+    "fecha_publicacion": "2024-01-16",
+    "valor": "16.8983"
+  },
+  {
+    "fecha_publicacion": "2024-01-17",
+    "valor": "17.1598"
+  },
+  {
+    "fecha_publicacion": "2024-01-18",
+    "valor": "17.2957"
+  },
+  {
+    "fecha_publicacion": "2024-01-19",
+    "valor": "17.1995"
+  },
+  {
+    "fecha_publicacion": "2024-01-22",
+    "valor": "17.1325"
+  },
+  {
+    "fecha_publicacion": "2024-01-23",
+    "valor": "17.1125"
+  },
+  {
+    "fecha_publicacion": "2024-01-24",
+    "valor": "17.3520"
+  },
+  {
+    "fecha_publicacion": "2024-01-25",
+    "valor": "17.1673"
+  },
+  {
+    "fecha_publicacion": "2024-01-26",
+    "valor": "17.2375"
+  },
+  {
+    "fecha_publicacion": "2024-01-29",
+    "valor": "17.1657"
+  },
+  {
+    "fecha_publicacion": "2024-01-30",
+    "valor": "17.2333"
+  },
+  {
+    "fecha_publicacion": "2024-01-31",
+    "valor": "17.1932"
+  },
+  {
+    "fecha_publicacion": "2024-02-01",
+    "valor": "17.1633"
+  },
+  {
+    "fecha_publicacion": "2024-02-02",
+    "valor": "17.1335"
+  },
+  {
+    "fecha_publicacion": "2024-02-06",
+    "valor": "17.1447"
+  },
+  {
+    "fecha_publicacion": "2024-02-07",
+    "valor": "17.0357"
+  },
+  {
+    "fecha_publicacion": "2024-02-08",
+    "valor": "17.0398"
+  },
+  {
+    "fecha_publicacion": "2024-02-09",
+    "valor": "17.1023"
+  },
+  {
+    "fecha_publicacion": "2024-02-12",
+    "valor": "17.0855"
+  },
+  {
+    "fecha_publicacion": "2024-02-13",
+    "valor": "17.0680"
+  },
+  {
+    "fecha_publicacion": "2024-02-14",
+    "valor": "17.1982"
+  },
+  {
+    "fecha_publicacion": "2024-02-15",
+    "valor": "17.1105"
+  },
+  {
+    "fecha_publicacion": "2024-02-16",
+    "valor": "17.0680"
+  },
+  {
+    "fecha_publicacion": "2024-02-19",
+    "valor": "17.0602"
+  },
+  {
+    "fecha_publicacion": "2024-02-20",
+    "valor": "17.0500"
+  },
+  {
+    "fecha_publicacion": "2024-02-21",
+    "valor": "17.0458"
+  },
+  {
+    "fecha_publicacion": "2024-02-22",
+    "valor": "17.0603"
+  },
+  {
+    "fecha_publicacion": "2024-02-23",
+    "valor": "17.1210"
+  },
+  {
+    "fecha_publicacion": "2024-02-26",
+    "valor": "17.1260"
+  },
+  {
+    "fecha_publicacion": "2024-02-27",
+    "valor": "17.1260"
+  },
+  {
+    "fecha_publicacion": "2024-02-28",
+    "valor": "17.0605"
+  },
+  {
+    "fecha_publicacion": "2024-02-29",
+    "valor": "17.0962"
+  },
+  {
+    "fecha_publicacion": "2024-03-01",
+    "valor": "17.0633"
+  },
+  {
+    "fecha_publicacion": "2024-03-04",
+    "valor": "17.0217"
+  },
+  {
+    "fecha_publicacion": "2024-03-05",
+    "valor": "16.9828"
+  },
+  {
+    "fecha_publicacion": "2024-03-06",
+    "valor": "16.9257"
+  },
+  {
+    "fecha_publicacion": "2024-03-07",
+    "valor": "16.8728"
+  },
+  {
+    "fecha_publicacion": "2024-03-08",
+    "valor": "16.8770"
+  },
+  {
+    "fecha_publicacion": "2024-03-11",
+    "valor": "16.7985"
+  },
+  {
+    "fecha_publicacion": "2024-03-12",
+    "valor": "16.8083"
+  },
+  {
+    "fecha_publicacion": "2024-03-13",
+    "valor": "16.8272"
+  },
+  {
+    "fecha_publicacion": "2024-03-14",
+    "valor": "16.7127"
+  },
+  {
+    "fecha_publicacion": "2024-03-15",
+    "valor": "16.6920"
+  },
+  {
+    "fecha_publicacion": "2024-03-19",
+    "valor": "16.7100"
+  },
+  {
+    "fecha_publicacion": "2024-03-20",
+    "valor": "16.8523"
+  },
+  {
+    "fecha_publicacion": "2024-03-21",
+    "valor": "16.7590"
+  },
+  {
+    "fecha_publicacion": "2024-03-22",
+    "valor": "16.7620"
+  },
+  {
+    "fecha_publicacion": "2024-03-25",
+    "valor": "16.7367"
+  },
+  {
+    "fecha_publicacion": "2024-03-26",
+    "valor": "16.7032"
+  },
+  {
+    "fecha_publicacion": "2024-03-27",
+    "valor": "16.6780"
+  },
+  {
+    "fecha_publicacion": "2024-04-01",
+    "valor": "16.5323"
+  },
+  {
+    "fecha_publicacion": "2024-04-02",
+    "valor": "16.6578"
+  },
+  {
+    "fecha_publicacion": "2024-04-03",
+    "valor": "16.5673"
+  },
+  {
+    "fecha_publicacion": "2024-04-04",
+    "valor": "16.5415"
+  },
+  {
+    "fecha_publicacion": "2024-04-05",
+    "valor": "16.5173"
+  },
+  {
+    "fecha_publicacion": "2024-04-08",
+    "valor": "16.4758"
+  },
+  {
+    "fecha_publicacion": "2024-04-09",
+    "valor": "16.3357"
+  },
+  {
+    "fecha_publicacion": "2024-04-10",
+    "valor": "16.3932"
+  },
+  {
+    "fecha_publicacion": "2024-04-11",
+    "valor": "16.4883"
+  },
+  {
+    "fecha_publicacion": "2024-04-12",
+    "valor": "16.4583"
+  },
+  {
+    "fecha_publicacion": "2024-04-15",
+    "valor": "16.6693"
+  },
+  {
+    "fecha_publicacion": "2024-04-16",
+    "valor": "16.6815"
+  },
+  {
+    "fecha_publicacion": "2024-04-17",
+    "valor": "17.0252"
+  },
+  {
+    "fecha_publicacion": "2024-04-18",
+    "valor": "16.9948"
+  },
+  {
+    "fecha_publicacion": "2024-04-19",
+    "valor": "17.1145"
+  },
+  {
+    "fecha_publicacion": "2024-04-22",
+    "valor": "17.2120"
+  },
+  {
+    "fecha_publicacion": "2024-04-23",
+    "valor": "17.1243"
+  },
+  {
+    "fecha_publicacion": "2024-04-24",
+    "valor": "16.9995"
+  },
+  {
+    "fecha_publicacion": "2024-04-25",
+    "valor": "17.1098"
+  },
+  {
+    "fecha_publicacion": "2024-04-26",
+    "valor": "17.1883"
+  },
+  {
+    "fecha_publicacion": "2024-04-29",
+    "valor": "17.1552"
+  },
+  {
+    "fecha_publicacion": "2024-04-30",
+    "valor": "17.0243"
+  },
+  {
+    "fecha_publicacion": "2024-05-02",
+    "valor": "17.0958"
+  },
+  {
+    "fecha_publicacion": "2024-05-03",
+    "valor": "16.9393"
+  },
+  {
+    "fecha_publicacion": "2024-05-06",
+    "valor": "17.0042"
+  },
+  {
+    "fecha_publicacion": "2024-05-07",
+    "valor": "16.8947"
+  },
+  {
+    "fecha_publicacion": "2024-05-08",
+    "valor": "16.9083"
+  },
+  {
+    "fecha_publicacion": "2024-05-09",
+    "valor": "16.9087"
+  },
+  {
+    "fecha_publicacion": "2024-05-10",
+    "valor": "16.8660"
+  },
+  {
+    "fecha_publicacion": "2024-05-13",
+    "valor": "16.7690"
+  },
+  {
+    "fecha_publicacion": "2024-05-14",
+    "valor": "16.8072"
+  },
+  {
+    "fecha_publicacion": "2024-05-15",
+    "valor": "16.8460"
+  },
+  {
+    "fecha_publicacion": "2024-05-16",
+    "valor": "16.6782"
+  },
+  {
+    "fecha_publicacion": "2024-05-17",
+    "valor": "16.6893"
+  },
+  {
+    "fecha_publicacion": "2024-05-20",
+    "valor": "16.6217"
+  },
+  {
+    "fecha_publicacion": "2024-05-21",
+    "valor": "16.5668"
+  },
+  {
+    "fecha_publicacion": "2024-05-22",
+    "valor": "16.6138"
+  },
+  {
+    "fecha_publicacion": "2024-05-23",
+    "valor": "16.6405"
+  },
+  {
+    "fecha_publicacion": "2024-05-24",
+    "valor": "16.6945"
+  },
+  {
+    "fecha_publicacion": "2024-05-27",
+    "valor": "16.7023"
+  },
+  {
+    "fecha_publicacion": "2024-05-28",
+    "valor": "16.6568"
+  },
+  {
+    "fecha_publicacion": "2024-05-29",
+    "valor": "16.7457"
+  },
+  {
+    "fecha_publicacion": "2024-05-30",
+    "valor": "16.9500"
+  },
+  {
+    "fecha_publicacion": "2024-05-31",
+    "valor": "16.9377"
+  },
+  {
+    "fecha_publicacion": "2024-06-03",
+    "valor": "17.0177"
+  },
+  {
+    "fecha_publicacion": "2024-06-04",
+    "valor": "17.6338"
+  },
+  {
+    "fecha_publicacion": "2024-06-05",
+    "valor": "17.8607"
+  },
+  {
+    "fecha_publicacion": "2024-06-06",
+    "valor": "17.5592"
+  },
+  {
+    "fecha_publicacion": "2024-06-07",
+    "valor": "17.5335"
+  },
+  {
+    "fecha_publicacion": "2024-06-10",
+    "valor": "18.2622"
+  },
+  {
+    "fecha_publicacion": "2024-06-11",
+    "valor": "18.3848"
+  },
+  {
+    "fecha_publicacion": "2024-06-12",
+    "valor": "18.4457"
+  },
+  {
+    "fecha_publicacion": "2024-06-13",
+    "valor": "18.7832"
+  },
+  {
+    "fecha_publicacion": "2024-06-14",
+    "valor": "18.5385"
+  },
+  {
+    "fecha_publicacion": "2024-06-17",
+    "valor": "18.4512"
+  },
+  {
+    "fecha_publicacion": "2024-06-18",
+    "valor": "18.5248"
+  },
+  {
+    "fecha_publicacion": "2024-06-19",
+    "valor": "18.4128"
+  },
+  {
+    "fecha_publicacion": "2024-06-20",
+    "valor": "18.4230"
+  },
+  {
+    "fecha_publicacion": "2024-06-21",
+    "valor": "18.4027"
+  },
+  {
+    "fecha_publicacion": "2024-06-24",
+    "valor": "18.1848"
+  },
+  {
+    "fecha_publicacion": "2024-06-25",
+    "valor": "17.9627"
+  },
+  {
+    "fecha_publicacion": "2024-06-26",
+    "valor": "18.1372"
+  },
+  {
+    "fecha_publicacion": "2024-06-27",
+    "valor": "18.2215"
+  },
+  {
+    "fecha_publicacion": "2024-06-28",
+    "valor": "18.3773"
+  },
+  {
+    "fecha_publicacion": "2024-07-01",
+    "valor": "18.2478"
+  },
+  {
+    "fecha_publicacion": "2024-07-02",
+    "valor": "18.3897"
+  },
+  {
+    "fecha_publicacion": "2024-07-03",
+    "valor": "18.2485"
+  },
+  {
+    "fecha_publicacion": "2024-07-04",
+    "valor": "18.1355"
+  },
+  {
+    "fecha_publicacion": "2024-07-05",
+    "valor": "18.0958"
+  },
+  {
+    "fecha_publicacion": "2024-07-08",
+    "valor": "18.0977"
+  },
+  {
+    "fecha_publicacion": "2024-07-09",
+    "valor": "18.0095"
+  },
+  {
+    "fecha_publicacion": "2024-07-10",
+    "valor": "17.9428"
+  },
+  {
+    "fecha_publicacion": "2024-07-11",
+    "valor": "17.8288"
+  },
+  {
+    "fecha_publicacion": "2024-07-12",
+    "valor": "17.8192"
+  },
+  {
+    "fecha_publicacion": "2024-07-15",
+    "valor": "17.6502"
+  },
+  {
+    "fecha_publicacion": "2024-07-16",
+    "valor": "17.7837"
+  },
+  {
+    "fecha_publicacion": "2024-07-17",
+    "valor": "17.6795"
+  },
+  {
+    "fecha_publicacion": "2024-07-18",
+    "valor": "17.7438"
+  },
+  {
+    "fecha_publicacion": "2024-07-19",
+    "valor": "17.8907"
+  },
+  {
+    "fecha_publicacion": "2024-07-22",
+    "valor": "17.9970"
+  },
+  {
+    "fecha_publicacion": "2024-07-23",
+    "valor": "17.9107"
+  },
+  {
+    "fecha_publicacion": "2024-07-24",
+    "valor": "18.0987"
+  },
+  {
+    "fecha_publicacion": "2024-07-25",
+    "valor": "18.3458"
+  },
+  {
+    "fecha_publicacion": "2024-07-26",
+    "valor": "18.3850"
+  },
+  {
+    "fecha_publicacion": "2024-07-29",
+    "valor": "18.4475"
+  },
+  {
+    "fecha_publicacion": "2024-07-30",
+    "valor": "18.6818"
+  },
+  {
+    "fecha_publicacion": "2024-07-31",
+    "valor": "18.7900"
+  },
+  {
+    "fecha_publicacion": "2024-08-01",
+    "valor": "18.5970"
+  },
+  {
+    "fecha_publicacion": "2024-08-02",
+    "valor": "18.7060"
+  },
+  {
+    "fecha_publicacion": "2024-08-05",
+    "valor": "19.0442"
+  },
+  {
+    "fecha_publicacion": "2024-08-06",
+    "valor": "19.3905"
+  },
+  {
+    "fecha_publicacion": "2024-08-07",
+    "valor": "19.3300"
+  },
+  {
+    "fecha_publicacion": "2024-08-08",
+    "valor": "19.1890"
+  },
+  {
+    "fecha_publicacion": "2024-08-09",
+    "valor": "19.0900"
+  },
+  {
+    "fecha_publicacion": "2024-08-12",
+    "valor": "18.8368"
+  },
+  {
+    "fecha_publicacion": "2024-08-13",
+    "valor": "19.0320"
+  },
+  {
+    "fecha_publicacion": "2024-08-14",
+    "valor": "19.0387"
+  },
+  {
+    "fecha_publicacion": "2024-08-15",
+    "valor": "18.8478"
+  },
+  {
+    "fecha_publicacion": "2024-08-16",
+    "valor": "18.6513"
+  },
+  {
+    "fecha_publicacion": "2024-08-19",
+    "valor": "18.6228"
+  },
+  {
+    "fecha_publicacion": "2024-08-20",
+    "valor": "18.7357"
+  },
+  {
+    "fecha_publicacion": "2024-08-21",
+    "valor": "18.9448"
+  },
+  {
+    "fecha_publicacion": "2024-08-22",
+    "valor": "19.2535"
+  },
+  {
+    "fecha_publicacion": "2024-08-23",
+    "valor": "19.4235"
+  },
+  {
+    "fecha_publicacion": "2024-08-26",
+    "valor": "19.0708"
+  },
+  {
+    "fecha_publicacion": "2024-08-27",
+    "valor": "19.3820"
+  },
+  {
+    "fecha_publicacion": "2024-08-28",
+    "valor": "19.6692"
+  },
+  {
+    "fecha_publicacion": "2024-08-29",
+    "valor": "19.6037"
+  },
+  {
+    "fecha_publicacion": "2024-08-30",
+    "valor": "19.8168"
+  },
+  {
+    "fecha_publicacion": "2024-09-02",
+    "valor": "19.6535"
+  },
+  {
+    "fecha_publicacion": "2024-09-03",
+    "valor": "19.7980"
+  },
+  {
+    "fecha_publicacion": "2024-09-04",
+    "valor": "19.8335"
+  },
+  {
+    "fecha_publicacion": "2024-09-05",
+    "valor": "19.8460"
+  },
+  {
+    "fecha_publicacion": "2024-09-06",
+    "valor": "20.0028"
+  },
+  {
+    "fecha_publicacion": "2024-09-09",
+    "valor": "20.0172"
+  },
+  {
+    "fecha_publicacion": "2024-09-10",
+    "valor": "19.8798"
+  },
+  {
+    "fecha_publicacion": "2024-09-11",
+    "valor": "20.0583"
+  },
+  {
+    "fecha_publicacion": "2024-09-12",
+    "valor": "19.8390"
+  },
+  {
+    "fecha_publicacion": "2024-09-13",
+    "valor": "19.5887"
+  },
+  {
+    "fecha_publicacion": "2024-09-17",
+    "valor": "19.2483"
+  },
+  {
+    "fecha_publicacion": "2024-09-18",
+    "valor": "19.2670"
+  },
+  {
+    "fecha_publicacion": "2024-09-19",
+    "valor": "19.3033"
+  },
+  {
+    "fecha_publicacion": "2024-09-20",
+    "valor": "19.2773"
+  },
+  {
+    "fecha_publicacion": "2024-09-23",
+    "valor": "19.3725"
+  },
+  {
+    "fecha_publicacion": "2024-09-24",
+    "valor": "19.4150"
+  },
+  {
+    "fecha_publicacion": "2024-09-25",
+    "valor": "19.3562"
+  },
+  {
+    "fecha_publicacion": "2024-09-26",
+    "valor": "19.5870"
+  },
+  {
+    "fecha_publicacion": "2024-09-27",
+    "valor": "19.6290"
+  },
+  {
+    "fecha_publicacion": "2024-09-30",
+    "valor": "19.6697"
+  },
+  {
+    "fecha_publicacion": "2024-10-02",
+    "valor": "19.6440"
+  },
+  {
+    "fecha_publicacion": "2024-10-03",
+    "valor": "19.3885"
+  },
+  {
+    "fecha_publicacion": "2024-10-04",
+    "valor": "19.4678"
+  },
+  {
+    "fecha_publicacion": "2024-10-07",
+    "valor": "19.2127"
+  },
+  {
+    "fecha_publicacion": "2024-10-08",
+    "valor": "19.3388"
+  },
+  {
+    "fecha_publicacion": "2024-10-09",
+    "valor": "19.3532"
+  },
+  {
+    "fecha_publicacion": "2024-10-10",
+    "valor": "19.4175"
+  },
+  {
+    "fecha_publicacion": "2024-10-11",
+    "valor": "19.5113"
+  },
+  {
+    "fecha_publicacion": "2024-10-14",
+    "valor": "19.3983"
+  },
+  {
+    "fecha_publicacion": "2024-10-15",
+    "valor": "19.3420"
+  },
+  {
+    "fecha_publicacion": "2024-10-16",
+    "valor": "19.6200"
+  },
+  {
+    "fecha_publicacion": "2024-10-17",
+    "valor": "19.8925"
+  },
+  {
+    "fecha_publicacion": "2024-10-18",
+    "valor": "19.9313"
+  },
+  {
+    "fecha_publicacion": "2024-10-21",
+    "valor": "19.8325"
+  },
+  {
+    "fecha_publicacion": "2024-10-22",
+    "valor": "20.0075"
+  },
+  {
+    "fecha_publicacion": "2024-10-23",
+    "valor": "19.8985"
+  },
+  {
+    "fecha_publicacion": "2024-10-24",
+    "valor": "19.9338"
+  },
+  {
+    "fecha_publicacion": "2024-10-25",
+    "valor": "19.8385"
+  },
+  {
+    "fecha_publicacion": "2024-10-28",
+    "valor": "19.9303"
+  },
+  {
+    "fecha_publicacion": "2024-10-29",
+    "valor": "20.0007"
+  },
+  {
+    "fecha_publicacion": "2024-10-30",
+    "valor": "20.0208"
+  },
+  {
+    "fecha_publicacion": "2024-10-31",
+    "valor": "20.1617"
+  },
+  {
+    "fecha_publicacion": "2024-11-01",
+    "valor": "20.0378"
+  },
+  {
+    "fecha_publicacion": "2024-11-04",
+    "valor": "20.0908"
+  },
+  {
+    "fecha_publicacion": "2024-11-05",
+    "valor": "20.0367"
+  },
+  {
+    "fecha_publicacion": "2024-11-06",
+    "valor": "20.2695"
+  },
+  {
+    "fecha_publicacion": "2024-11-07",
+    "valor": "20.3093"
+  },
+  {
+    "fecha_publicacion": "2024-11-08",
+    "valor": "19.8277"
+  },
+  {
+    "fecha_publicacion": "2024-11-11",
+    "valor": "20.1332"
+  },
+  {
+    "fecha_publicacion": "2024-11-12",
+    "valor": "20.4502"
+  },
+  {
+    "fecha_publicacion": "2024-11-13",
+    "valor": "20.5693"
+  },
+  {
+    "fecha_publicacion": "2024-11-14",
+    "valor": "20.6025"
+  },
+  {
+    "fecha_publicacion": "2024-11-15",
+    "valor": "20.4940"
+  },
+  {
+    "fecha_publicacion": "2024-11-19",
+    "valor": "20.3887"
+  },
+  {
+    "fecha_publicacion": "2024-11-20",
+    "valor": "20.1848"
+  },
+  {
+    "fecha_publicacion": "2024-11-21",
+    "valor": "20.2903"
+  },
+  {
+    "fecha_publicacion": "2024-11-22",
+    "valor": "20.3775"
+  },
+  {
+    "fecha_publicacion": "2024-11-25",
+    "valor": "20.4872"
+  },
+  {
+    "fecha_publicacion": "2024-11-26",
+    "valor": "20.2993"
+  },
+  {
+    "fecha_publicacion": "2024-11-27",
+    "valor": "20.7185"
+  },
+  {
+    "fecha_publicacion": "2024-11-28",
+    "valor": "20.6418"
+  },
+  {
+    "fecha_publicacion": "2024-11-29",
+    "valor": "20.4173"
+  },
+  {
+    "fecha_publicacion": "2024-12-02",
+    "valor": "20.3212"
+  },
+  {
+    "fecha_publicacion": "2024-12-03",
+    "valor": "20.4357"
+  },
+  {
+    "fecha_publicacion": "2024-12-04",
+    "valor": "20.3233"
+  },
+  {
+    "fecha_publicacion": "2024-12-05",
+    "valor": "20.2830"
+  },
+  {
+    "fecha_publicacion": "2024-12-06",
+    "valor": "20.1963"
+  },
+  {
+    "fecha_publicacion": "2024-12-09",
+    "valor": "20.2275"
+  },
+  {
+    "fecha_publicacion": "2024-12-10",
+    "valor": "20.1547"
+  },
+  {
+    "fecha_publicacion": "2024-12-11",
+    "valor": "20.2485"
+  },
+  {
+    "fecha_publicacion": "2024-12-13",
+    "valor": "20.1647"
+  },
+  {
+    "fecha_publicacion": "2024-12-16",
+    "valor": "20.1420"
+  },
+  {
+    "fecha_publicacion": "2024-12-17",
+    "valor": "20.1448"
+  },
+  {
+    "fecha_publicacion": "2024-12-18",
+    "valor": "20.2363"
+  },
+  {
+    "fecha_publicacion": "2024-12-19",
+    "valor": "20.1395"
+  },
+  {
+    "fecha_publicacion": "2024-12-20",
+    "valor": "20.4402"
+  },
+  {
+    "fecha_publicacion": "2024-12-23",
+    "valor": "20.1035"
+  },
+  {
+    "fecha_publicacion": "2024-12-24",
+    "valor": "20.1948"
+  },
+  {
+    "fecha_publicacion": "2024-12-26",
+    "valor": "20.1558"
+  },
+  {
+    "fecha_publicacion": "2024-12-27",
+    "valor": "20.1657"
+  },
+  {
+    "fecha_publicacion": "2024-12-30",
+    "valor": "20.2683"
+  },
+  {
+    "fecha_publicacion": "2024-12-31",
+    "valor": "20.5103"
+  },
+  {
+    "fecha_publicacion": "2025-01-02",
+    "valor": "20.7862"
+  },
+  {
+    "fecha_publicacion": "2025-01-03",
+    "valor": "20.6917"
+  },
+  {
+    "fecha_publicacion": "2025-01-06",
+    "valor": "20.6708"
+  },
+  {
+    "fecha_publicacion": "2025-01-07",
+    "valor": "20.3195"
+  },
+  {
+    "fecha_publicacion": "2025-01-08",
+    "valor": "20.3440"
+  },
+  {
+    "fecha_publicacion": "2025-01-09",
+    "valor": "20.3823"
+  },
+  {
+    "fecha_publicacion": "2025-01-10",
+    "valor": "20.4742"
+  },
+  {
+    "fecha_publicacion": "2025-01-13",
+    "valor": "20.7045"
+  },
+  {
+    "fecha_publicacion": "2025-01-14",
+    "valor": "20.8012"
+  },
+  {
+    "fecha_publicacion": "2025-01-15",
+    "valor": "20.4820"
+  },
+  {
+    "fecha_publicacion": "2025-01-16",
+    "valor": "20.4875"
+  },
+  {
+    "fecha_publicacion": "2025-01-17",
+    "valor": "20.7732"
+  },
+  {
+    "fecha_publicacion": "2025-01-20",
+    "valor": "20.7180"
+  },
+  {
+    "fecha_publicacion": "2025-01-21",
+    "valor": "20.5430"
+  },
+  {
+    "fecha_publicacion": "2025-01-22",
+    "valor": "20.6358"
+  },
+  {
+    "fecha_publicacion": "2025-01-23",
+    "valor": "20.5397"
+  },
+  {
+    "fecha_publicacion": "2025-01-24",
+    "valor": "20.3943"
+  },
+  {
+    "fecha_publicacion": "2025-01-27",
+    "valor": "20.2255"
+  },
+  {
+    "fecha_publicacion": "2025-01-28",
+    "valor": "20.7002"
+  },
+  {
+    "fecha_publicacion": "2025-01-29",
+    "valor": "20.5668"
+  },
+  {
+    "fecha_publicacion": "2025-01-30",
+    "valor": "20.5677"
+  },
+  {
+    "fecha_publicacion": "2025-01-31",
+    "valor": "20.4497"
+  },
+  {
+    "fecha_publicacion": "2025-02-04",
+    "valor": "20.6068"
+  },
+  {
+    "fecha_publicacion": "2025-02-05",
+    "valor": "20.4268"
+  },
+  {
+    "fecha_publicacion": "2025-02-06",
+    "valor": "20.6363"
+  },
+  {
+    "fecha_publicacion": "2025-02-07",
+    "valor": "20.5125"
+  },
+  {
+    "fecha_publicacion": "2025-02-10",
+    "valor": "20.5512"
+  },
+  {
+    "fecha_publicacion": "2025-02-11",
+    "valor": "20.6693"
+  },
+  {
+    "fecha_publicacion": "2025-02-12",
+    "valor": "20.5680"
+  },
+  {
+    "fecha_publicacion": "2025-02-13",
+    "valor": "20.4917"
+  },
+  {
+    "fecha_publicacion": "2025-02-14",
+    "valor": "20.4978"
+  },
+  {
+    "fecha_publicacion": "2025-02-17",
+    "valor": "20.3082"
+  },
+  {
+    "fecha_publicacion": "2025-02-18",
+    "valor": "20.2830"
+  },
+  {
+    "fecha_publicacion": "2025-02-19",
+    "valor": "20.2617"
+  },
+  {
+    "fecha_publicacion": "2025-02-20",
+    "valor": "20.4208"
+  },
+  {
+    "fecha_publicacion": "2025-02-21",
+    "valor": "20.3733"
+  },
+  {
+    "fecha_publicacion": "2025-02-24",
+    "valor": "20.3448"
+  },
+  {
+    "fecha_publicacion": "2025-02-25",
+    "valor": "20.4640"
+  },
+  {
+    "fecha_publicacion": "2025-02-26",
+    "valor": "20.4683"
+  },
+  {
+    "fecha_publicacion": "2025-02-27",
+    "valor": "20.4277"
+  },
+  {
+    "fecha_publicacion": "2025-02-28",
+    "valor": "20.4722"
+  },
+  {
+    "fecha_publicacion": "2025-03-03",
+    "valor": "20.5080"
+  },
+  {
+    "fecha_publicacion": "2025-03-04",
+    "valor": "20.4333"
+  },
+  {
+    "fecha_publicacion": "2025-03-05",
+    "valor": "20.8518"
+  },
+  {
+    "fecha_publicacion": "2025-03-06",
+    "valor": "20.3893"
+  },
+  {
+    "fecha_publicacion": "2025-03-07",
+    "valor": "20.2777"
+  },
+  {
+    "fecha_publicacion": "2025-03-10",
+    "valor": "20.2830"
+  },
+  {
+    "fecha_publicacion": "2025-03-11",
+    "valor": "20.2922"
+  },
+  {
+    "fecha_publicacion": "2025-03-12",
+    "valor": "20.3388"
+  },
+  {
+    "fecha_publicacion": "2025-03-13",
+    "valor": "20.1828"
+  },
+  {
+    "fecha_publicacion": "2025-03-14",
+    "valor": "20.0848"
+  },
+  {
+    "fecha_publicacion": "2025-03-18",
+    "valor": "19.8693"
+  },
+  {
+    "fecha_publicacion": "2025-03-19",
+    "valor": "19.9845"
+  },
+  {
+    "fecha_publicacion": "2025-03-20",
+    "valor": "20.0553"
+  },
+  {
+    "fecha_publicacion": "2025-03-21",
+    "valor": "20.1345"
+  },
+  {
+    "fecha_publicacion": "2025-03-24",
+    "valor": "20.2163"
+  },
+  {
+    "fecha_publicacion": "2025-03-25",
+    "valor": "20.1123"
+  },
+  {
+    "fecha_publicacion": "2025-03-26",
+    "valor": "20.0762"
+  },
+  {
+    "fecha_publicacion": "2025-03-27",
+    "valor": "20.0963"
+  },
+  {
+    "fecha_publicacion": "2025-03-28",
+    "valor": "20.3182"
+  },
+  {
+    "fecha_publicacion": "2025-03-31",
+    "valor": "20.4003"
+  },
+  {
+    "fecha_publicacion": "2025-04-01",
+    "valor": "20.4380"
+  },
+  {
+    "fecha_publicacion": "2025-04-02",
+    "valor": "20.3587"
+  },
+  {
+    "fecha_publicacion": "2025-04-03",
+    "valor": "20.4568"
+  },
+  {
+    "fecha_publicacion": "2025-04-04",
+    "valor": "19.9708"
+  },
+  {
+    "fecha_publicacion": "2025-04-07",
+    "valor": "20.5010"
+  },
+  {
+    "fecha_publicacion": "2025-04-08",
+    "valor": "20.6947"
+  },
+  {
+    "fecha_publicacion": "2025-04-09",
+    "valor": "20.6867"
+  },
+  {
+    "fecha_publicacion": "2025-04-10",
+    "valor": "20.7653"
+  },
+  {
+    "fecha_publicacion": "2025-04-11",
+    "valor": "20.4920"
+  },
+  {
+    "fecha_publicacion": "2025-04-14",
+    "valor": "20.3363"
+  },
+  {
+    "fecha_publicacion": "2025-04-15",
+    "valor": "20.1025"
+  },
+  {
+    "fecha_publicacion": "2025-04-16",
+    "valor": "20.0213"
+  },
+  {
+    "fecha_publicacion": "2025-04-21",
+    "valor": "19.9737"
+  },
+  {
+    "fecha_publicacion": "2025-04-22",
+    "valor": "19.6718"
+  },
+  {
+    "fecha_publicacion": "2025-04-23",
+    "valor": "19.5688"
+  },
+  {
+    "fecha_publicacion": "2025-04-24",
+    "valor": "19.6278"
+  },
+  {
+    "fecha_publicacion": "2025-04-25",
+    "valor": "19.5825"
+  },
+  {
+    "fecha_publicacion": "2025-04-28",
+    "valor": "19.5478"
+  },
+  {
+    "fecha_publicacion": "2025-04-29",
+    "valor": "19.5723"
+  },
+  {
+    "fecha_publicacion": "2025-04-30",
+    "valor": "19.5868"
+  },
+  {
+    "fecha_publicacion": "2025-05-02",
+    "valor": "19.6095"
+  },
+  {
+    "fecha_publicacion": "2025-05-05",
+    "valor": "19.6570"
+  },
+  {
+    "fecha_publicacion": "2025-05-06",
+    "valor": "19.6365"
+  },
+  {
+    "fecha_publicacion": "2025-05-07",
+    "valor": "19.6785"
+  },
+  {
+    "fecha_publicacion": "2025-05-08",
+    "valor": "19.5880"
+  },
+  {
+    "fecha_publicacion": "2025-05-09",
+    "valor": "19.5642"
+  },
+  {
+    "fecha_publicacion": "2025-05-12",
+    "valor": "19.4912"
+  },
+  {
+    "fecha_publicacion": "2025-05-13",
+    "valor": "19.6162"
+  },
+  {
+    "fecha_publicacion": "2025-05-14",
+    "valor": "19.4373"
+  },
+  {
+    "fecha_publicacion": "2025-05-15",
+    "valor": "19.3630"
+  },
+  {
+    "fecha_publicacion": "2025-05-16",
+    "valor": "19.4780"
+  },
+  {
+    "fecha_publicacion": "2025-05-19",
+    "valor": "19.5147"
+  },
+  {
+    "fecha_publicacion": "2025-05-20",
+    "valor": "19.3723"
+  },
+  {
+    "fecha_publicacion": "2025-05-21",
+    "valor": "19.2648"
+  },
+  {
+    "fecha_publicacion": "2025-05-22",
+    "valor": "19.3198"
+  },
+  {
+    "fecha_publicacion": "2025-05-23",
+    "valor": "19.3227"
+  },
+  {
+    "fecha_publicacion": "2025-05-26",
+    "valor": "19.2748"
+  },
+  {
+    "fecha_publicacion": "2025-05-27",
+    "valor": "19.2188"
+  },
+  {
+    "fecha_publicacion": "2025-05-28",
+    "valor": "19.2338"
+  },
+  {
+    "fecha_publicacion": "2025-05-29",
+    "valor": "19.4000"
+  },
+  {
+    "fecha_publicacion": "2025-05-30",
+    "valor": "19.3280"
+  },
+  {
+    "fecha_publicacion": "2025-06-02",
+    "valor": "19.3858"
+  },
+  {
+    "fecha_publicacion": "2025-06-03",
+    "valor": "19.2338"
+  },
+  {
+    "fecha_publicacion": "2025-06-04",
+    "valor": "19.2638"
+  },
+  {
+    "fecha_publicacion": "2025-06-05",
+    "valor": "19.1932"
+  },
+  {
+    "fecha_publicacion": "2025-06-06",
+    "valor": "19.1700"
+  },
+  {
+    "fecha_publicacion": "2025-06-09",
+    "valor": "19.1317"
+  },
+  {
+    "fecha_publicacion": "2025-06-10",
+    "valor": "19.0595"
+  },
+  {
+    "fecha_publicacion": "2025-06-11",
+    "valor": "19.0518"
+  },
+  {
+    "fecha_publicacion": "2025-06-12",
+    "valor": "18.8790"
+  },
+  {
+    "fecha_publicacion": "2025-06-13",
+    "valor": "18.9068"
+  },
+  {
+    "fecha_publicacion": "2025-06-16",
+    "valor": "18.9302"
+  },
+  {
+    "fecha_publicacion": "2025-06-17",
+    "valor": "18.9083"
+  },
+  {
+    "fecha_publicacion": "2025-06-18",
+    "valor": "18.9872"
+  },
+  {
+    "fecha_publicacion": "2025-06-19",
+    "valor": "19.0047"
+  },
+  {
+    "fecha_publicacion": "2025-06-20",
+    "valor": "19.0898"
+  },
+  {
+    "fecha_publicacion": "2025-06-23",
+    "valor": "19.1458"
+  },
+  {
+    "fecha_publicacion": "2025-06-24",
+    "valor": "19.1527"
+  },
+  {
+    "fecha_publicacion": "2025-06-25",
+    "valor": "19.0267"
+  },
+  {
+    "fecha_publicacion": "2025-06-26",
+    "valor": "18.9203"
+  },
+  {
+    "fecha_publicacion": "2025-06-27",
+    "valor": "18.8928"
+  },
+  {
+    "fecha_publicacion": "2025-06-30",
+    "valor": "18.8483"
+  },
+  {
+    "fecha_publicacion": "2025-07-01",
+    "valor": "18.8332"
+  },
+  {
+    "fecha_publicacion": "2025-07-02",
+    "valor": "18.7650"
+  },
+  {
+    "fecha_publicacion": "2025-07-03",
+    "valor": "18.7540"
+  },
+  {
+    "fecha_publicacion": "2025-07-04",
+    "valor": "18.6652"
+  },
+  {
+    "fecha_publicacion": "2025-07-07",
+    "valor": "18.6327"
+  },
+  {
+    "fecha_publicacion": "2025-07-08",
+    "valor": "18.6698"
+  },
+  {
+    "fecha_publicacion": "2025-07-09",
+    "valor": "18.7140"
+  },
+  {
+    "fecha_publicacion": "2025-07-10",
+    "valor": "18.5733"
+  },
+  {
+    "fecha_publicacion": "2025-07-11",
+    "valor": "18.6267"
+  },
+  {
+    "fecha_publicacion": "2025-07-14",
+    "valor": "18.6595"
+  },
+  {
+    "fecha_publicacion": "2025-07-15",
+    "valor": "18.7510"
+  },
+  {
+    "fecha_publicacion": "2025-07-16",
+    "valor": "18.8397"
+  },
+  {
+    "fecha_publicacion": "2025-07-17",
+    "valor": "18.7178"
+  },
+  {
+    "fecha_publicacion": "2025-07-18",
+    "valor": "18.7685"
+  },
+  {
+    "fecha_publicacion": "2025-07-21",
+    "valor": "18.7200"
+  },
+  {
+    "fecha_publicacion": "2025-07-22",
+    "valor": "18.6455"
+  },
+  {
+    "fecha_publicacion": "2025-07-23",
+    "valor": "18.6212"
+  },
+  {
+    "fecha_publicacion": "2025-07-24",
+    "valor": "18.5735"
+  },
+  {
+    "fecha_publicacion": "2025-07-25",
+    "valor": "18.5538"
+  },
+  {
+    "fecha_publicacion": "2025-07-28",
+    "valor": "18.5570"
+  },
+  {
+    "fecha_publicacion": "2025-07-29",
+    "valor": "18.7267"
+  },
+  {
+    "fecha_publicacion": "2025-07-30",
+    "valor": "18.7642"
+  },
+  {
+    "fecha_publicacion": "2025-07-31",
+    "valor": "18.7960"
+  },
+  {
+    "fecha_publicacion": "2025-08-01",
+    "valor": "18.7963"
+  },
+  {
+    "fecha_publicacion": "2025-08-04",
+    "valor": "18.9160"
+  },
+  {
+    "fecha_publicacion": "2025-08-05",
+    "valor": "18.8783"
+  },
+  {
+    "fecha_publicacion": "2025-08-06",
+    "valor": "18.7620"
+  },
+  {
+    "fecha_publicacion": "2025-08-07",
+    "valor": "18.6192"
+  },
+  {
+    "fecha_publicacion": "2025-08-08",
+    "valor": "18.6765"
+  },
+  {
+    "fecha_publicacion": "2025-08-11",
+    "valor": "18.5518"
+  },
+  {
+    "fecha_publicacion": "2025-08-12",
+    "valor": "18.6683"
+  },
+  {
+    "fecha_publicacion": "2025-08-13",
+    "valor": "18.5657"
+  },
+  {
+    "fecha_publicacion": "2025-08-14",
+    "valor": "18.6353"
+  },
+  {
+    "fecha_publicacion": "2025-08-15",
+    "valor": "18.8137"
+  },
+  {
+    "fecha_publicacion": "2025-08-18",
+    "valor": "18.7295"
+  },
+  {
+    "fecha_publicacion": "2025-08-19",
+    "valor": "18.7840"
+  },
+  {
+    "fecha_publicacion": "2025-08-20",
+    "valor": "18.7982"
+  },
+  {
+    "fecha_publicacion": "2025-08-21",
+    "valor": "18.7572"
+  },
+  {
+    "fecha_publicacion": "2025-08-22",
+    "valor": "18.7737"
+  },
+  {
+    "fecha_publicacion": "2025-08-25",
+    "valor": "18.5950"
+  },
+  {
+    "fecha_publicacion": "2025-08-26",
+    "valor": "18.6368"
+  },
+  {
+    "fecha_publicacion": "2025-08-27",
+    "valor": "18.6843"
+  },
+  {
+    "fecha_publicacion": "2025-08-28",
+    "valor": "18.6912"
+  },
+  {
+    "fecha_publicacion": "2025-08-29",
+    "valor": "18.6522"
+  },
+  {
+    "fecha_publicacion": "2025-09-01",
+    "valor": "18.6440"
+  },
+  {
+    "fecha_publicacion": "2025-09-02",
+    "valor": "18.6460"
+  },
+  {
+    "fecha_publicacion": "2025-09-03",
+    "valor": "18.7072"
+  },
+  {
+    "fecha_publicacion": "2025-09-04",
+    "valor": "18.6873"
+  },
+  {
+    "fecha_publicacion": "2025-09-05",
+    "valor": "18.7577"
+  },
+  {
+    "fecha_publicacion": "2025-09-08",
+    "valor": "18.6792"
+  },
+  {
+    "fecha_publicacion": "2025-09-09",
+    "valor": "18.6550"
+  },
+  {
+    "fecha_publicacion": "2025-09-10",
+    "valor": "18.6353"
+  },
+  {
+    "fecha_publicacion": "2025-09-11",
+    "valor": "18.5920"
+  },
+  {
+    "fecha_publicacion": "2025-09-12",
+    "valor": "18.5287"
+  },
+  {
+    "fecha_publicacion": "2025-09-15",
+    "valor": "18.4757"
+  },
+  {
+    "fecha_publicacion": "2025-09-17",
+    "valor": "18.3635"
+  },
+  {
+    "fecha_publicacion": "2025-09-18",
+    "valor": "18.3257"
+  },
+  {
+    "fecha_publicacion": "2025-09-19",
+    "valor": "18.3610"
+  },
+  {
+    "fecha_publicacion": "2025-09-22",
+    "valor": "18.3892"
+  },
+  {
+    "fecha_publicacion": "2025-09-23",
+    "valor": "18.4082"
+  },
+  {
+    "fecha_publicacion": "2025-09-24",
+    "valor": "18.3232"
+  },
+  {
+    "fecha_publicacion": "2025-09-25",
+    "valor": "18.4312"
+  },
+  {
+    "fecha_publicacion": "2025-09-26",
+    "valor": "18.4457"
+  },
+  {
+    "fecha_publicacion": "2025-09-29",
+    "valor": "18.3825"
+  },
+  {
+    "fecha_publicacion": "2025-09-30",
+    "valor": "18.3507"
+  },
+  {
+    "fecha_publicacion": "2025-10-01",
+    "valor": "18.3342"
+  },
+  {
+    "fecha_publicacion": "2025-10-02",
+    "valor": "18.3477"
+  },
+  {
+    "fecha_publicacion": "2025-10-03",
+    "valor": "18.4843"
+  },
+  {
+    "fecha_publicacion": "2025-10-06",
+    "valor": "18.3902"
+  },
+  {
+    "fecha_publicacion": "2025-10-07",
+    "valor": "18.3528"
+  },
+  {
+    "fecha_publicacion": "2025-10-08",
+    "valor": "18.3762"
+  },
+  {
+    "fecha_publicacion": "2025-10-09",
+    "valor": "18.3477"
+  },
+  {
+    "fecha_publicacion": "2025-10-10",
+    "valor": "18.3830"
+  },
+  {
+    "fecha_publicacion": "2025-10-13",
+    "valor": "18.5567"
+  },
+  {
+    "fecha_publicacion": "2025-10-14",
+    "valor": "18.4400"
+  },
+  {
+    "fecha_publicacion": "2025-10-15",
+    "valor": "18.5220"
+  },
+  {
+    "fecha_publicacion": "2025-10-16",
+    "valor": "18.4808"
+  },
+  {
+    "fecha_publicacion": "2025-10-17",
+    "valor": "18.4108"
+  },
+  {
+    "fecha_publicacion": "2025-10-20",
+    "valor": "18.4070"
+  },
+  {
+    "fecha_publicacion": "2025-10-21",
+    "valor": "18.4032"
+  },
+  {
+    "fecha_publicacion": "2025-10-22",
+    "valor": "18.4252"
+  },
+  {
+    "fecha_publicacion": "2025-10-23",
+    "valor": "18.4333"
+  },
+  {
+    "fecha_publicacion": "2025-10-24",
+    "valor": "18.4033"
+  },
+  {
+    "fecha_publicacion": "2025-10-27",
+    "valor": "18.3948"
+  },
+  {
+    "fecha_publicacion": "2025-10-28",
+    "valor": "18.3892"
+  },
+  {
+    "fecha_publicacion": "2025-10-29",
+    "valor": "18.4145"
+  },
+  {
+    "fecha_publicacion": "2025-10-30",
+    "valor": "18.4072"
+  },
+  {
+    "fecha_publicacion": "2025-10-31",
+    "valor": "18.5380"
+  },
+  {
+    "fecha_publicacion": "2025-11-03",
+    "valor": "18.5725"
+  },
+  {
+    "fecha_publicacion": "2025-11-04",
+    "valor": "18.4835"
+  },
+  {
+    "fecha_publicacion": "2025-11-05",
+    "valor": "18.6133"
+  },
+  {
+    "fecha_publicacion": "2025-11-06",
+    "valor": "18.5947"
+  },
+  {
+    "fecha_publicacion": "2025-11-07",
+    "valor": "18.6233"
+  },
+  {
+    "fecha_publicacion": "2025-11-10",
+    "valor": "18.5000"
+  },
+  {
+    "fecha_publicacion": "2025-11-11",
+    "valor": "18.3922"
+  },
+  {
+    "fecha_publicacion": "2025-11-12",
+    "valor": "18.3333"
+  },
+  {
+    "fecha_publicacion": "2025-11-13",
+    "valor": "18.2982"
+  },
+  {
+    "fecha_publicacion": "2025-11-14",
+    "valor": "18.2805"
+  },
+  {
+    "fecha_publicacion": "2025-11-18",
+    "valor": "18.3262"
+  },
+  {
+    "fecha_publicacion": "2025-11-19",
+    "valor": "18.3728"
+  },
+  {
+    "fecha_publicacion": "2025-11-20",
+    "valor": "18.3410"
+  },
+  {
+    "fecha_publicacion": "2025-11-21",
+    "valor": "18.3550"
+  },
+  {
+    "fecha_publicacion": "2025-11-24",
+    "valor": "18.4965"
+  },
+  {
+    "fecha_publicacion": "2025-11-25",
+    "valor": "18.4997"
+  },
+  {
+    "fecha_publicacion": "2025-11-26",
+    "valor": "18.4308"
+  },
+  {
+    "fecha_publicacion": "2025-11-27",
+    "valor": "18.3560"
+  },
+  {
+    "fecha_publicacion": "2025-11-28",
+    "valor": "18.3467"
+  },
+  {
+    "fecha_publicacion": "2025-12-01",
+    "valor": "18.3075"
+  },
+  {
+    "fecha_publicacion": "2025-12-02",
+    "valor": "18.2757"
+  },
+  {
+    "fecha_publicacion": "2025-12-03",
+    "valor": "18.2910"
+  },
+  {
+    "fecha_publicacion": "2025-12-04",
+    "valor": "18.2642"
+  },
+  {
+    "fecha_publicacion": "2025-12-05",
+    "valor": "18.2293"
+  },
+  {
+    "fecha_publicacion": "2025-12-08",
+    "valor": "18.1860"
+  },
+  {
+    "fecha_publicacion": "2025-12-09",
+    "valor": "18.2367"
+  },
+  {
+    "fecha_publicacion": "2025-12-10",
+    "valor": "18.1940"
+  },
+  {
+    "fecha_publicacion": "2025-12-11",
+    "valor": "18.2085"
+  },
+  {
+    "fecha_publicacion": "2025-12-15",
+    "valor": "18.0543"
+  },
+  {
+    "fecha_publicacion": "2025-12-16",
+    "valor": "17.9925"
+  },
+  {
+    "fecha_publicacion": "2025-12-17",
+    "valor": "17.9525"
+  },
+  {
+    "fecha_publicacion": "2025-12-18",
+    "valor": "18.0200"
+  },
+  {
+    "fecha_publicacion": "2025-12-19",
+    "valor": "17.9792"
+  },
+  {
+    "fecha_publicacion": "2025-12-22",
+    "valor": "18.0065"
+  },
+  {
+    "fecha_publicacion": "2025-12-23",
+    "valor": "17.9785"
+  },
+  {
+    "fecha_publicacion": "2025-12-24",
+    "valor": "17.9332"
+  },
+  {
+    "fecha_publicacion": "2025-12-26",
+    "valor": "17.9248"
+  },
+  {
+    "fecha_publicacion": "2025-12-29",
+    "valor": "17.9042"
+  },
+  {
+    "fecha_publicacion": "2025-12-30",
+    "valor": "17.9667"
+  },
+  {
+    "fecha_publicacion": "2025-12-31",
+    "valor": "17.9528"
+  },
+  {
+    "fecha_publicacion": "2026-01-02",
+    "valor": "18.0012"
+  },
+  {
+    "fecha_publicacion": "2026-01-05",
+    "valor": "17.8803"
+  },
+  {
+    "fecha_publicacion": "2026-01-06",
+    "valor": "17.8905"
+  },
+  {
+    "fecha_publicacion": "2026-01-07",
+    "valor": "17.9697"
+  },
+  {
+    "fecha_publicacion": "2026-01-08",
+    "valor": "17.9587"
+  },
+  {
+    "fecha_publicacion": "2026-01-09",
+    "valor": "17.9807"
+  },
+  {
+    "fecha_publicacion": "2026-01-12",
+    "valor": "17.9842"
+  },
+  {
+    "fecha_publicacion": "2026-01-13",
+    "valor": "17.9075"
+  },
+  {
+    "fecha_publicacion": "2026-01-14",
+    "valor": "17.8540"
+  },
+  {
+    "fecha_publicacion": "2026-01-15",
+    "valor": "17.8167"
+  },
+  {
+    "fecha_publicacion": "2026-01-16",
+    "valor": "17.6897"
+  },
+  {
+    "fecha_publicacion": "2026-01-19",
+    "valor": "17.6867"
+  },
+  {
+    "fecha_publicacion": "2026-01-20",
+    "valor": "17.5990"
+  },
+  {
+    "fecha_publicacion": "2026-01-21",
+    "valor": "17.6008"
+  },
+  {
+    "fecha_publicacion": "2026-01-22",
+    "valor": "17.4520"
+  },
+  {
+    "fecha_publicacion": "2026-01-23",
+    "valor": "17.4828"
+  },
+  {
+    "fecha_publicacion": "2026-01-26",
+    "valor": "17.4545"
+  },
+  {
+    "fecha_publicacion": "2026-01-27",
+    "valor": "17.2830"
+  },
+  {
+    "fecha_publicacion": "2026-01-28",
+    "valor": "17.2357"
+  },
+  {
+    "fecha_publicacion": "2026-01-29",
+    "valor": "17.2322"
+  },
+  {
+    "fecha_publicacion": "2026-01-30",
+    "valor": "17.2532"
+  },
+  {
+    "fecha_publicacion": "2026-02-03",
+    "valor": "17.3310"
+  },
+  {
+    "fecha_publicacion": "2026-02-04",
+    "valor": "17.2350"
+  },
+  {
+    "fecha_publicacion": "2026-02-05",
+    "valor": "17.2925"
+  },
+  {
+    "fecha_publicacion": "2026-02-06",
+    "valor": "17.4070"
+  },
+  {
+    "fecha_publicacion": "2026-02-09",
+    "valor": "17.2988"
+  },
+  {
+    "fecha_publicacion": "2026-02-10",
+    "valor": "17.1907"
+  },
+  {
+    "fecha_publicacion": "2026-02-11",
+    "valor": "17.2315"
+  },
+  {
+    "fecha_publicacion": "2026-02-12",
+    "valor": "17.2155"
+  },
+  {
+    "fecha_publicacion": "2026-02-13",
+    "valor": "17.2000"
+  },
+  {
+    "fecha_publicacion": "2026-02-16",
+    "valor": "17.1798"
+  },
+  {
+    "fecha_publicacion": "2026-02-17",
+    "valor": "17.1723"
+  },
+  {
+    "fecha_publicacion": "2026-02-18",
+    "valor": "17.1753"
+  },
+  {
+    "fecha_publicacion": "2026-02-19",
+    "valor": "17.1392"
+  },
+  {
+    "fecha_publicacion": "2026-02-20",
+    "valor": "17.2700"
+  },
+  {
+    "fecha_publicacion": "2026-02-23",
+    "valor": "17.1722"
+  },
+  {
+    "fecha_publicacion": "2026-02-24",
+    "valor": "17.2162"
+  },
+  {
+    "fecha_publicacion": "2026-02-25",
+    "valor": "17.1910"
+  },
+  {
+    "fecha_publicacion": "2026-02-26",
+    "valor": "17.1700"
+  },
+  {
+    "fecha_publicacion": "2026-02-27",
+    "valor": "17.2563"
+  },
+  {
+    "fecha_publicacion": "2026-03-02",
+    "valor": "17.2193"
+  },
+  {
+    "fecha_publicacion": "2026-03-03",
+    "valor": "17.3485"
+  },
+  {
+    "fecha_publicacion": "2026-03-04",
+    "valor": "17.7228"
+  },
+  {
+    "fecha_publicacion": "2026-03-05",
+    "valor": "17.5445"
+  },
+  {
+    "fecha_publicacion": "2026-03-06",
+    "valor": "17.6770"
+  },
+  {
+    "fecha_publicacion": "2026-03-09",
+    "valor": "17.7962"
+  },
+  {
+    "fecha_publicacion": "2026-03-10",
+    "valor": "17.7687"
+  },
+  {
+    "fecha_publicacion": "2026-03-11",
+    "valor": "17.5037"
+  },
+  {
+    "fecha_publicacion": "2026-03-12",
+    "valor": "17.6543"
+  },
+  {
+    "fecha_publicacion": "2026-03-13",
+    "valor": "17.8368"
+  },
+  {
+    "fecha_publicacion": "2026-03-17",
+    "valor": "17.9218"
+  },
+  {
+    "fecha_publicacion": "2026-03-18",
+    "valor": "17.6922"
+  },
+  {
+    "fecha_publicacion": "2026-03-19",
+    "valor": "17.6690"
+  },
+  {
+    "fecha_publicacion": "2026-03-20",
+    "valor": "17.8117"
+  },
+  {
+    "fecha_publicacion": "2026-03-23",
+    "valor": "17.8998"
+  },
+  {
+    "fecha_publicacion": "2026-03-24",
+    "valor": "17.7780"
+  },
+  {
+    "fecha_publicacion": "2026-03-25",
+    "valor": "17.8047"
+  },
+  {
+    "fecha_publicacion": "2026-03-26",
+    "valor": "17.7548"
+  },
+  {
+    "fecha_publicacion": "2026-03-27",
+    "valor": "17.7957"
+  },
+  {
+    "fecha_publicacion": "2026-03-30",
+    "valor": "18.0667"
+  },
+  {
+    "fecha_publicacion": "2026-03-31",
+    "valor": "18.1033"
+  },
+  {
+    "fecha_publicacion": "2026-04-01",
+    "valor": "18.0033"
+  },
+  {
+    "fecha_publicacion": "2026-04-06",
+    "valor": "17.8117"
+  },
+  {
+    "fecha_publicacion": "2026-04-07",
+    "valor": "17.7932"
+  },
+  {
+    "fecha_publicacion": "2026-04-08",
+    "valor": "17.7580"
+  },
+  {
+    "fecha_publicacion": "2026-04-09",
+    "valor": "17.4157"
+  },
+  {
+    "fecha_publicacion": "2026-04-10",
+    "valor": "17.3593"
+  },
+  {
+    "fecha_publicacion": "2026-04-13",
+    "valor": "17.3033"
+  },
+  {
+    "fecha_publicacion": "2026-04-14",
+    "valor": "17.3470"
+  },
+  {
+    "fecha_publicacion": "2026-04-15",
+    "valor": "17.2688"
+  },
+  {
+    "fecha_publicacion": "2026-04-16",
+    "valor": "17.2623"
+  },
+  {
+    "fecha_publicacion": "2026-04-17",
+    "valor": "17.2723"
+  },
+  {
+    "fecha_publicacion": "2026-04-20",
+    "valor": "17.2447"
+  },
+  {
+    "fecha_publicacion": "2026-04-21",
+    "valor": "17.3200"
+  },
+  {
+    "fecha_publicacion": "2026-04-22",
+    "valor": "17.3323"
+  },
+  {
+    "fecha_publicacion": "2026-04-23",
+    "valor": "17.3287"
+  },
+  {
+    "fecha_publicacion": "2026-04-24",
+    "valor": "17.3587"
+  },
+  {
+    "fecha_publicacion": "2026-04-27",
+    "valor": "17.4052"
+  },
+  {
+    "fecha_publicacion": "2026-04-28",
+    "valor": "17.3838"
+  },
+  {
+    "fecha_publicacion": "2026-04-29",
+    "valor": "17.4030"
+  },
+  {
+    "fecha_publicacion": "2026-04-30",
+    "valor": "17.4948"
+  },
+  {
+    "fecha_publicacion": "2026-05-04",
+    "valor": "17.5118"
+  },
+  {
+    "fecha_publicacion": "2026-05-05",
+    "valor": "17.5157"
+  },
+  {
+    "fecha_publicacion": "2026-05-06",
+    "valor": "17.3752"
+  },
+  {
+    "fecha_publicacion": "2026-05-07",
+    "valor": "17.2530"
+  },
+  {
+    "fecha_publicacion": "2026-05-08",
+    "valor": "17.2400"
+  },
+  {
+    "fecha_publicacion": "2026-05-11",
+    "valor": "17.2105"
+  },
+  {
+    "fecha_publicacion": "2026-05-12",
+    "valor": "17.1908"
+  },
+  {
+    "fecha_publicacion": "2026-05-13",
+    "valor": "17.2520"
+  },
+  {
+    "fecha_publicacion": "2026-05-14",
+    "valor": "17.1878"
+  },
+  {
+    "fecha_publicacion": "2026-05-15",
+    "valor": "17.2130"
+  },
+  {
+    "fecha_publicacion": "2026-05-18",
+    "valor": "17.3477"
+  },
+  {
+    "fecha_publicacion": "2026-05-19",
+    "valor": "17.2928"
+  },
+  {
+    "fecha_publicacion": "2026-05-20",
+    "valor": "17.3968"
+  },
+  {
+    "fecha_publicacion": "2026-05-21",
+    "valor": "17.2938"
+  },
+  {
+    "fecha_publicacion": "2026-05-22",
+    "valor": "17.3305"
+  },
+  {
+    "fecha_publicacion": "2026-05-25",
+    "valor": "17.3213"
+  },
+  {
+    "fecha_publicacion": "2026-05-26",
+    "valor": "17.2720"
+  },
+  {
+    "fecha_publicacion": "2026-05-27",
+    "valor": "17.3232"
+  },
+  {
+    "fecha_publicacion": "2026-05-28",
+    "valor": "17.3793"
+  },
+  {
+    "fecha_publicacion": "2026-05-29",
+    "valor": "17.3213"
+  },
+  {
+    "fecha_publicacion": "2026-06-01",
+    "valor": "17.3505"
+  },
+  {
+    "fecha_publicacion": "2026-06-02",
+    "valor": "17.3780"
+  },
+  {
+    "fecha_publicacion": "2026-06-03",
+    "valor": "17.2945"
+  },
+  {
+    "fecha_publicacion": "2026-06-04",
+    "valor": "17.3328"
+  },
+  {
+    "fecha_publicacion": "2026-06-05",
+    "valor": "17.2888"
+  },
+  {
+    "fecha_publicacion": "2026-06-08",
+    "valor": "17.4755"
+  },
+  {
+    "fecha_publicacion": "2026-06-09",
+    "valor": "17.4453"
+  },
+  {
+    "fecha_publicacion": "2026-06-10",
+    "valor": "17.4312"
+  },
+  {
+    "fecha_publicacion": "2026-06-11",
+    "valor": "17.3898"
+  },
+  {
+    "fecha_publicacion": "2026-06-12",
+    "valor": "17.3833"
+  },
+  {
+    "fecha_publicacion": "2026-06-15",
+    "valor": "17.2067"
+  },
+  {
+    "fecha_publicacion": "2026-06-16",
+    "valor": "17.2008"
+  },
+  {
+    "fecha_publicacion": "2026-06-17",
+    "valor": "17.2023"
+  },
+  {
+    "fecha_publicacion": "2026-06-18",
+    "valor": "17.1892"
+  },
+  {
+    "fecha_publicacion": "2026-06-19",
+    "valor": "17.3688"
+  },
+  {
+    "fecha_publicacion": "2026-06-22",
+    "valor": "17.3247"
+  },
+  {
+    "fecha_publicacion": "2026-06-23",
+    "valor": "17.3480"
+  },
+  {
+    "fecha_publicacion": "2026-06-24",
+    "valor": "17.5505"
+  },
+  {
+    "fecha_publicacion": "2026-06-25",
+    "valor": "17.6213"
+  },
+  {
+    "fecha_publicacion": "2026-06-26",
+    "valor": "17.5260"
+  },
+  {
+    "fecha_publicacion": "2026-06-29",
+    "valor": "17.4700"
+  },
+  {
+    "fecha_publicacion": "2026-06-30",
+    "valor": "17.5053"
+  },
+  {
+    "fecha_publicacion": "2026-07-01",
+    "valor": "17.4693"
+  },
+  {
+    "fecha_publicacion": "2026-07-02",
+    "valor": "17.5368"
+  },
+  {
+    "fecha_publicacion": "2026-07-03",
+    "valor": "17.4725"
+  },
+  {
+    "fecha_publicacion": "2026-07-06",
+    "valor": "17.4758"
+  },
+  {
+    "fecha_publicacion": "2026-07-07",
+    "valor": "17.4342"
+  },
+  {
+    "fecha_publicacion": "2026-07-08",
+    "valor": "17.4958"
+  },
+  {
+    "fecha_publicacion": "2026-07-09",
+    "valor": "17.5993"
+  },
+  {
+    "fecha_publicacion": "2026-07-10",
+    "valor": "17.5350"
+  },
+  {
+    "fecha_publicacion": "2026-07-13",
+    "valor": "17.4842"
+  },
+  {
+    "fecha_publicacion": "2026-07-14",
+    "valor": "17.5023"
+  },
+  {
+    "fecha_publicacion": "2026-07-15",
+    "valor": "17.4278"
+  },
+  {
+    "fecha_publicacion": "2026-07-16",
+    "valor": "17.3910"
+  },
+  {
+    "fecha_publicacion": "2026-07-17",
+    "valor": "17.4418"
+  },
+  {
+    "fecha_publicacion": "2026-07-20",
+    "valor": "17.5242"
+  },
+  {
+    "fecha_publicacion": "2026-07-21",
+    "valor": "17.4315"
+  },
+  {
+    "fecha_publicacion": "2026-07-22",
+    "valor": "17.3975"
+  },
+  {
+    "fecha_publicacion": "2026-07-23",
+    "valor": "17.3973"
+  },
+  {
+    "fecha_publicacion": "2026-07-24",
+    "valor": "17.5130"
+  },
+  {
+    "fecha_publicacion": "2026-07-27",
+    "valor": "17.4635"
+  },
+  {
+    "fecha_publicacion": "2026-07-28",
+    "valor": "17.4440"
+  },
+  {
+    "fecha_publicacion": "2026-07-29",
+    "valor": "17.4312"
+  },
+  {
+    "fecha_publicacion": "2026-07-30",
+    "valor": "17.5133"
+  },
+  {
+    "fecha_publicacion": "2026-07-31",
+    "valor": "17.3562"
+  },
+  {
+    "fecha_publicacion": "2026-08-03",
+    "valor": "17.3288"
+  },
+  {
+    "fecha_publicacion": "2026-08-04",
+    "valor": "17.3317"
+  },
+  {
+    "fecha_publicacion": "2026-08-05",
+    "valor": "17.2717"
+  },
+  {
+    "fecha_publicacion": "2026-08-06",
+    "valor": "17.2317"
+  },
+  {
+    "fecha_publicacion": "2026-08-07",
+    "valor": "17.2195"
+  },
+  {
+    "fecha_publicacion": "2026-08-10",
+    "valor": "17.1387"
+  },
+  {
+    "fecha_publicacion": "2026-08-11",
+    "valor": "17.1408"
+  },
+  {
+    "fecha_publicacion": "2026-08-12",
+    "valor": "17.1092"
+  },
+  {
+    "fecha_publicacion": "2026-08-13",
+    "valor": "17.0627"
+  },
+  {
+    "fecha_publicacion": "2026-08-14",
+    "valor": "17.0530"
+  },
+  {
+    "fecha_publicacion": "2026-08-17",
+    "valor": "17.0218"
+  },
+  {
+    "fecha_publicacion": "2026-08-18",
+    "valor": "17.0245"
+  },
+  {
+    "fecha_publicacion": "2026-08-19",
+    "valor": "17.0638"
+  },
+  {
+    "fecha_publicacion": "2026-08-20",
+    "valor": "16.9593"
+  },
+  {
+    "fecha_publicacion": "2026-08-21",
+    "valor": "16.9583"
+  },
+  {
+    "fecha_publicacion": "2026-08-24",
+    "valor": "16.9018"
+  },
+  {
+    "fecha_publicacion": "2026-08-25",
+    "valor": "16.9647"
+  },
+  {
+    "fecha_publicacion": "2026-08-26",
+    "valor": "16.9460"
+  },
+  {
+    "fecha_publicacion": "2026-08-27",
+    "valor": "16.9660"
+  },
+  {
+    "fecha_publicacion": "2026-08-28",
+    "valor": "16.9712"
+  },
+  {
+    "fecha_publicacion": "2026-08-31",
+    "valor": "17.0427"
+  },
+  {
+    "fecha_publicacion": "2026-09-01",
+    "valor": "17.0147"
+  },
+  {
+    "fecha_publicacion": "2026-09-02",
+    "valor": "16.9755"
+  },
+  {
+    "fecha_publicacion": "2026-09-03",
+    "valor": "16.9852"
+  },
+  {
+    "fecha_publicacion": "2026-09-04",
+    "valor": "16.9560"
+  },
+  {
+    "fecha_publicacion": "2026-09-07",
+    "valor": "16.8748"
+  },
+  {
+    "fecha_publicacion": "2026-09-08",
+    "valor": "16.9237"
+  },
+  {
+    "fecha_publicacion": "2026-09-09",
+    "valor": "16.9202"
+  },
+  {
+    "fecha_publicacion": "2026-09-10",
+    "valor": "16.8947"
+  },
+  {
+    "fecha_publicacion": "2026-09-11",
+    "valor": "16.9722"
+  },
+  {
+    "fecha_publicacion": "2026-09-14",
+    "valor": "16.9707"
+  },
+  {
+    "fecha_publicacion": "2026-09-15",
+    "valor": "17.1277"
+  },
+  {
+    "fecha_publicacion": "2026-09-17",
+    "valor": "17.1527"
+  },
+  {
+    "fecha_publicacion": "2026-09-18",
+    "valor": "17.1872"
+  },
+  {
+    "fecha_publicacion": "2026-09-21",
+    "valor": "17.2450"
+  },
+  {
+    "fecha_publicacion": "2026-09-22",
+    "valor": "17.2203"
+  },
+  {
+    "fecha_publicacion": "2026-09-23",
+    "valor": "17.3015"
+  },
+  {
+    "fecha_publicacion": "2026-09-24",
+    "valor": "17.5030"
+  },
+  {
+    "fecha_publicacion": "2026-09-25",
+    "valor": "17.6425"
+  },
+  {
+    "fecha_publicacion": "2026-09-28",
+    "valor": "17.7100"
+  },
+  {
+    "fecha_publicacion": "2026-09-29",
+    "valor": "17.8413"
+  },
+  {
+    "fecha_publicacion": "2026-09-30",
+    "valor": "18.0710"
+  },
+  {
+    "fecha_publicacion": "2026-10-01",
+    "valor": "18.0692"
+  },
+  {
+    "fecha_publicacion": "2026-10-02",
+    "valor": "18.3688"
+  },
+  {
+    "fecha_publicacion": "2026-10-05",
+    "valor": "18.1903"
+  },
+  {
+    "fecha_publicacion": "2026-10-06",
+    "valor": "18.1343"
+  },
+  {
+    "fecha_publicacion": "2026-10-07",
+    "valor": "17.9670"
+  },
+  {
+    "fecha_publicacion": "2026-10-08",
+    "valor": "17.9780"
+  },
+  {
+    "fecha_publicacion": "2026-10-09",
+    "valor": "18.1128"
+  },
+  {
+    "fecha_publicacion": "2026-10-12",
+    "valor": "18.4163"
+  },
+  {
+    "fecha_publicacion": "2026-10-13",
+    "valor": "18.2542"
+  },
+  {
+    "fecha_publicacion": "2026-10-14",
+    "valor": "18.3528"
+  },
+  {
+    "fecha_publicacion": "2026-10-15",
+    "valor": "18.4888"
+  },
+  {
+    "fecha_publicacion": "2026-10-16",
+    "valor": "18.4250"
+  }
+]

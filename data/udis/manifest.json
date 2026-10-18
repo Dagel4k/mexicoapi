@@ -1,0 +1,56 @@
+{
+  "dataset": "udis",
+  "schema_version": 1,
+  "as_of": "2026-10-18",
+  "fetched_at": "2026-10-18T09:44:41.994Z",
+  "data_file": "udis.json",
+  "data_sha256": "7492ef4e5eaef083fb99deb9bb9069a37624a6c3fca8c81285e11471c629d6b4",
+  "records": 2490,
+  "sources": [
+    {
+      "name": "Diario Oficial de la Federación (SIDOF): valor de la unidad de inversión (UDIS)",
+      "url": "https://sidof.segob.gob.mx/",
+      "license": "Publicación oficial en el DOF; el Banco de México determina estos valores y autoriza su reproducción citando la fuente",
+      "license_url": "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+      "citation": "Banco de México. Valor de la unidad de inversión. Diario Oficial de la Federación, consultado en el SIDOF: https://sidof.segob.gob.mx/",
+      "published_at": null,
+      "raw": [
+        {
+          "file": "raw/sidof-159-2020.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2020/31-12-2020",
+          "sha256": "6989c5de835974ce6cead15ac95ef3dc5bdc706466e21de970f9ae3032c31fc4"
+        },
+        {
+          "file": "raw/sidof-159-2021.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2021/31-12-2021",
+          "sha256": "592d725d3514ff9e837a3deaf6708ad8ef4d7e00a8c119d0f834974d6b455a9e"
+        },
+        {
+          "file": "raw/sidof-159-2022.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2022/31-12-2022",
+          "sha256": "17e12c568013535a3ad3a5e7a47d433774247d9d3ad32efb3399073092719c62"
+        },
+        {
+          "file": "raw/sidof-159-2023.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2023/31-12-2023",
+          "sha256": "fd24de0960230445c0e605a68e2b926da1f320854ab1f8e5210312817ebc6765"
+        },
+        {
+          "file": "raw/sidof-159-2024.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2024/31-12-2024",
+          "sha256": "83e0f9471d5d5208a101baa0f52d409926804b270d216e8acd7b28568546cd92"
+        },
+        {
+          "file": "raw/sidof-159-2025.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2025/31-12-2025",
+          "sha256": "0ac06a72ee022f03fdbcb4e82e7f117fb858f1846a5a21b1ccf6729af6ff7613"
+        },
+        {
+          "file": "raw/sidof-159-2026.json",
+          "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2026/31-12-2026",
+          "sha256": "184c8600f08f13055e91e920ca857d2e0907152f9e6403aa6f39813c382b0efa"
+        }
+      ]
+    }
+  ]
+}
