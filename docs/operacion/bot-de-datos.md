@@ -14,7 +14,7 @@ El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre 
 4. Guardar dos secretos en el repo (Settings, Secrets and variables, Actions):
    - `BOT_CLIENT_ID`: el Client ID de la App, que aparece en la sección "About" de su página de ajustes (empieza con `Iv`). No es el App ID numérico.
    - `BOT_PRIVATE_KEY`: el contenido completo del `.pem`.
-5. Probar con Actions, Datos, "Run workflow", eligiendo `inegi` o `bancos`.
+5. Probar con Actions, Datos, "Run workflow", eligiendo `inegi`, `bancos` o `tipo-cambio`.
 
 Además, el repo necesita tener activos "Allow auto-merge" y "Automatically delete head branches", y la etiqueta `revisar`.
 
@@ -22,6 +22,7 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 
 - INEGI (`inegi.estados` e `inegi.municipios`): lunes a las 06:00 de la Ciudad de México.
 - Bancos: todos los días a las 08:00 de la Ciudad de México.
+- Tipo de cambio FIX y UDIS (`tipo-cambio.fix` y `udis`): todos los días a las 13:30 de la Ciudad de México (cron `30 19 * * *`, en UTC), después de la publicación del DOF. México no tiene horario de verano desde 2022, así que la hora no se mueve.
 - A mano con "Run workflow".
 
 ## Qué hace el bot

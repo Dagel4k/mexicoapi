@@ -16,18 +16,21 @@ Un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 | `GET /v1/estados` | Los 32 estados |
 | `GET /v1/estados/{cve_ent}` | Un estado |
 | `GET /v1/estados/{cve_ent}/municipios` | Municipios de un estado |
-| `GET /v1/municipios` | Los 2,478 municipios (unos 300 KB) |
+| `GET /v1/municipios` | Todos los municipios (unos 300 KB) |
 | `GET /v1/municipios/{cvegeo}` | Un municipio |
 | `GET /v1/bancos` | Bancos y participantes del SPEI |
 | `GET /v1/bancos/{codigo}` | Un banco, con su historial |
 | [`GET /v1/clabe/{clabe}`](#clabe) | Valida una CLABE |
 | [`GET /v1/dias-habiles`](#dias-habiles) | Suma días hábiles a una fecha |
 | [`GET /v1/dias-inhabiles`](#dias-inhabiles) | Días de descanso obligatorio de un año |
+| [`GET /v1/tipo-cambio/fix`](#tipo-de-cambio-fix) | FIX publicado en el DOF un día (`publicado`) o el que aplica a una operación (`operacion`) |
+| [`GET /v1/tipo-cambio/fix/ultimo`](#tipo-de-cambio-fix) | La publicación más reciente del FIX |
+| [`GET /v1/udis`](#udis) | Valor de la UDI de un día |
 | `GET /v1/status` | Frescura de cada dataset |
 | `GET /v1/openapi.json` | Especificación OpenAPI 3.1 |
 | `GET /descargas/*` | Datos completos (ver [Descargas](#descargas)) |
 
-Los campos de cada dataset están en [estados](../datos/inegi-estados.md), [municipios](../datos/inegi-municipios.md) y [bancos](../datos/bancos.md).
+Los campos de cada dataset están en [estados](../datos/inegi-estados.md), [municipios](../datos/inegi-municipios.md), [bancos](../datos/bancos.md), [tipo de cambio FIX](../datos/tipo-cambio-fix.md) y [UDIS](../datos/udis.md).
 
 ## Forma de la respuesta
 
@@ -132,7 +135,7 @@ curl https://<base>/v1/bancos
 curl https://<base>/v1/bancos/012
 ```
 
-`codigo` son los tres dígitos que van al inicio de la CLABE. La lista trae 150 instituciones, activas e inactivas. Un banco inactivo se conserva con `activo: false` para decodificar CLABE antiguas. Respuesta de `/v1/bancos/012` (con `meta.sources` recortado a la primera fuente; la segunda es el documento de participantes directos del SPEI):
+`codigo` son los tres dígitos que van al inicio de la CLABE. La lista trae las instituciones activas e inactivas. Un banco inactivo se conserva con `activo: false` para decodificar CLABE antiguas. Respuesta de `/v1/bancos/012` (con `meta.sources` recortado a la primera fuente; la segunda es el documento de participantes directos del SPEI):
 
 ```json
 {
@@ -316,11 +319,150 @@ Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. L
 
 ## Tipo de cambio FIX
 
-`GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` responde el FIX publicado en el DOF ese día; `GET /v1/tipo-cambio/fix?operacion=AAAA-MM-DD`, el que aplica a una operación de ese día según el artículo 20 del CFF; `GET /v1/tipo-cambio/fix/ultimo`, la publicación más reciente. Un día sin publicación da 404 [`no-encontrado`](problemas.md#no-encontrado) y uno que todavía no se carga, 404 [`dato-no-disponible`](problemas.md#dato-no-disponible).
+El tipo de cambio FIX que el Banco de México publica en el Diario Oficial de la Federación (DOF), en pesos por dólar de Estados Unidos. La serie empieza el 2 de enero de 2020.
+
+| Ruta | Qué devuelve |
+| --- | --- |
+| `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` | El FIX que el DOF publicó ese día |
+| `GET /v1/tipo-cambio/fix?operacion=AAAA-MM-DD` | El FIX que aplica a una operación de ese día |
+| `GET /v1/tipo-cambio/fix/ultimo` | La publicación más reciente cargada |
+
+En `/v1/tipo-cambio/fix` hay que mandar exactamente uno de `publicado` y `operacion`: sin ninguno responde 400 [`parametro-faltante`](problemas.md#parametro-faltante) y con los dos, 400 [`parametro-invalido`](problemas.md#parametro-invalido).
+
+### Publicado y operación
+
+`publicado` busca la fecha en que el DOF publicó el valor. Solo hay publicación en los días hábiles bancarios, así que un fin de semana o un feriado bancario no tiene valor.
+
+```bash
+curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-16"
+```
+
+```json
+{
+  "data": { "fecha_publicacion": "2026-10-16", "valor": "18.4250" },
+  "meta": {
+    "dataset": "tipo-cambio.fix",
+    "as_of": "2026-10-18",
+    "sources": [
+      {
+        "name": "Diario Oficial de la Federación (SIDOF): tipo de cambio para solventar obligaciones denominadas en moneda extranjera (FIX)",
+        "url": "https://sidof.segob.gob.mx/",
+        "license": "Publicación oficial en el DOF; el Banco de México determina estos valores y autoriza su reproducción citando la fuente",
+        "license_url": "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+        "citation": "Banco de México. Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana. Diario Oficial de la Federación, consultado en el SIDOF: https://sidof.segob.gob.mx/"
+      }
+    ],
+    "docs": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#tipo-de-cambio-fix"
+  }
+}
+```
+
+`valor` es un texto con 4 decimales, para no perder ceros ni precisión. `fecha_publicacion` es el día de la publicación en el DOF, no el día al que se aplica.
+
+`operacion` aplica el artículo 20 del Código Fiscal de la Federación: para una operación se usa el FIX que el Banco de México publicó el día anterior y, si ese día no hubo publicación, el último publicado antes. La respuesta dice qué publicación se usó y cita el fundamento:
+
+```bash
+curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-19"
+```
+
+```json
+{
+  "data": {
+    "fecha_operacion": "2026-10-19",
+    "fecha_publicacion": "2026-10-16",
+    "valor": "18.4250",
+    "fundamento": {
+      "nombre": "Código Fiscal de la Federación, artículo 20, tercer párrafo",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fragmento": "Para determinar las contribuciones y sus accesorios se considerará el tipo de cambio a que se haya adquirido la moneda extranjera de que se trate y no habiendo adquisición, se estará al tipo de cambio que el Banco de México publique en el Diario Oficial de la Federación el día anterior a aquél en que se causen las contribuciones. Los días en que el Banco de México no publique dicho tipo de cambio se aplicará el último tipo de cambio publicado con anterioridad al día en que se causen las contribuciones."
+    }
+  },
+  "meta": { "dataset": "tipo-cambio.fix", "…": "igual que arriba" }
+}
+```
+
+El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica el valor del viernes 16.
+
+`operacion` solo responde cuando la respuesta es cierta. Si falta cargar la publicación de la víspera de un día hábil, no devuelve un valor anterior: responde 404 `dato-no-disponible`. Los fines de semana no cuentan, porque no se espera publicación. Por eso una consulta temprano por la operación de mañana puede dar 404 hasta que corra la actualización diaria; vuelve a intentar después.
+
+### Último
+
+```bash
+curl https://<base>/v1/tipo-cambio/fix/ultimo
+```
+
+Responde `{ "data": { "fecha_publicacion": "2026-10-16", "valor": "18.4250" }, "meta": … }`, con la misma `meta` de arriba.
+
+### Errores de fecha
+
+Hay dos 404 distintos, y conviene mirar el `type`, no solo el estado HTTP:
+
+| `type` | Cuándo | Cambia con el tiempo |
+| --- | --- | --- |
+| [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie | No |
+| [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado, o falta la publicación de la víspera para `operacion` | Sí |
+
+Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
+
+```bash
+curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
+  "title": "Recurso no encontrado",
+  "status": 404,
+  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10.",
+  "instance": "/v1/tipo-cambio/fix",
+  "fecha": "2026-10-10",
+  "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }
+}
+```
+
+La cobertura y la frescura de la serie también salen en [`/v1/status`](#status).
 
 ## UDIS
 
-`GET /v1/udis?fecha=AAAA-MM-DD` responde el valor de la UDI de ese día, con los mismos 404 que el FIX.
+El valor de la Unidad de Inversión (UDI) que el Banco de México publica en el DOF, en pesos por UDI. La serie empieza el 1 de enero de 2020.
+
+`GET /v1/udis?fecha=AAAA-MM-DD` responde el valor de la UDI de ese día. Hay un valor para cada día del calendario, fines de semana y feriados incluidos, porque la UDI se publica por adelantado para los días siguientes. Por eso la serie llega unos días después de la fecha de la última corrida.
+
+```bash
+curl "https://<base>/v1/udis?fecha=2026-10-18"
+```
+
+```json
+{
+  "data": { "fecha": "2026-10-18", "valor": "8.857670" },
+  "meta": {
+    "dataset": "udis",
+    "as_of": "2026-10-18",
+    "sources": [],
+    "docs": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#udis"
+  }
+}
+```
+
+En el ejemplo `sources` se muestra vacío por brevedad; la respuesta real trae la fuente, como en el FIX. `valor` es un texto con 6 decimales. Si falta `fecha`, responde 400 [`parametro-faltante`](problemas.md#parametro-faltante).
+
+Los 404 son los mismos que en el FIX. Una fecha anterior al 2020-01-01 da `no-encontrado`; una posterior al último valor cargado da `dato-no-disponible`, porque una publicación próxima puede cubrirla:
+
+```bash
+curl "https://<base>/v1/udis?fecha=2026-12-01"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#dato-no-disponible",
+  "title": "Dato todavía no disponible",
+  "status": 404,
+  "detail": "El valor de la UDI del 2026-12-01 todavía no está cargado; el último cargado es del 2026-10-25.",
+  "instance": "/v1/udis",
+  "fecha": "2026-12-01",
+  "cobertura": { "desde": "2020-01-01", "hasta": "2026-10-25" }
+}
+```
 
 ## status
 
@@ -347,7 +489,7 @@ Frescura de cada dataset. Responde `{ "data": [...] }` sin `meta`:
 }
 ```
 
-La respuesta trae un elemento por dataset (`bancos`, `inegi.estados` e `inegi.municipios`); aquí se muestra uno.
+La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.municipios`, `tipo-cambio.fix` y `udis`); aquí se muestra uno.
 
 | Campo | Significado |
 | --- | --- |
@@ -423,6 +565,8 @@ Los datos completos están en `/descargas/`:
 | `inegi-estados.json`, `.csv`, `.manifest.json` | Estados |
 | `inegi-municipios.json`, `.csv`, `.manifest.json` | Municipios |
 | `bancos.json`, `.csv`, `.manifest.json` | Bancos |
+| `tipo-cambio-fix.json`, `.csv`, `.manifest.json` | Tipo de cambio FIX |
+| `udis.json`, `.csv`, `.manifest.json` | UDIS |
 | `bancos-historial.csv` | Un renglón por periodo de cada banco |
 | `mexicoapi.sqlite` | Todo junto en SQLite |
 | `SHA256SUMS` | Hash SHA-256 de cada archivo |
@@ -434,11 +578,11 @@ curl -O https://<base>/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
-Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash. El manifiesto es el mismo archivo de `data/`, así que su `data_file` conserva el nombre original: `estados.json` y `municipios.json`, que en `/descargas/` se llaman `inegi-estados.json` e `inegi-municipios.json` (`bancos.json` no cambia). El hash `data_sha256` es el del archivo descargado.
+Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash. El manifiesto es el mismo archivo de `data/`, así que su `data_file` conserva el nombre original: `estados.json`, `municipios.json` y `fix.json`, que en `/descargas/` se llaman `inegi-estados.json`, `inegi-municipios.json` y `tipo-cambio-fix.json` (`bancos.json` y `udis.json` no cambian). El hash `data_sha256` es el del archivo descargado.
 
 Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
-`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
+`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
 
 ## Privacidad
 

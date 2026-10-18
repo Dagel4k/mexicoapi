@@ -3,7 +3,7 @@
 Los 32 estados con su clave, nombre y abreviatura, del Catálogo Único de Claves de Áreas Geoestadísticas del INEGI.
 
 - Identificador: `inegi.estados`
-- Registros: 32
+- Registros: uno por estado; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `cve_ent`
 - Se actualiza: cada semana (lunes)
 - Datos en el repositorio: `data/inegi-estados/`

@@ -3,7 +3,7 @@
 Instituciones financieras con su código de CLABE, su código SPEI, razón social, sector y el historial de nombres. Sirve para saber a qué banco pertenece una CLABE y para validarla.
 
 - Identificador: `bancos`
-- Registros: 150, entre activas e inactivas
+- Registros: instituciones activas e inactivas; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `codigo`
 - Se actualiza: todos los días; las altas y bajas de instituciones pasan por revisión humana
 - Datos en el repositorio: `data/bancos/`

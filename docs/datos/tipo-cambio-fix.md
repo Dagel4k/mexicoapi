@@ -3,7 +3,7 @@
 El tipo de cambio FIX, que el Banco de México determina y publica en el Diario Oficial de la Federación (DOF) como tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana. La serie empieza en 2020.
 
 - Identificador: `tipo-cambio.fix`
-- Registros: 1710 (del 2020-01-02 al 2026-10-16)
+- Registros: uno por cada día con publicación en el DOF; el total y la última fecha están en `records` y `as_of` del manifiesto y en `/v1/status`
 - Clave: `fecha_publicacion`
 - Se actualiza: a diario
 - Datos en el repositorio: `data/tipo-cambio-fix/`
@@ -16,6 +16,16 @@ El tipo de cambio FIX, que el Banco de México determina y publica en el Diario 
 | `valor` | texto decimal, 4 decimales | `"17.0177"` | Pesos por dólar de Estados Unidos |
 
 El valor es texto y no número, para no perder decimales: `"18.8642"`.
+
+## Dónde consultarlo
+
+| Forma | Ruta |
+| --- | --- |
+| API | `GET /v1/tipo-cambio/fix?publicado=` o `?operacion=` y `GET /v1/tipo-cambio/fix/ultimo` |
+| Descarga | `/descargas/tipo-cambio-fix.json`, `.csv` y `.manifest.json` |
+| SQLite | tabla `tipo_cambio_fix` de `/descargas/mexicoapi.sqlite` |
+
+Ver [API v1](../api/README.md#tipo-de-cambio-fix).
 
 ## Fuente y licencia
 
