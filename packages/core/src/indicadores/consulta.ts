@@ -84,6 +84,7 @@ function primeroDesde<T>(
   return bajo;
 }
 
+/** Registro del día `fecha`; la entrada ya pasó por `validarEntrada`. */
 function registroDelDia<T>(
   serie: readonly T[],
   fechaDe: (registro: T) => FechaISO,
@@ -91,7 +92,6 @@ function registroDelDia<T>(
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<T> {
-  validarEntrada(serie, fechaDe, tramo, cobertura, fecha);
   if (fecha < cobertura.desde) return SIN_DATO;
   if (fecha > cobertura.hasta) return NO_DISPONIBLE;
   if (fecha < tramo.desde || fecha > tramo.hasta) {
@@ -110,6 +110,9 @@ const fechaUdi = (registro: Udi) => registro.fecha;
  * FIX publicado en el DOF exactamente en `fecha`. `serie` es un tramo ordenado de la serie y
  * `tramo` las fechas que cubre, dentro de `cobertura`. Si la fecha cae en la cobertura pero no
  * en el tramo, lanza SerieIncompletaError.
+ *
+ * Después de `cobertura.hasta`, un sábado o domingo sin días entre semana de por medio da
+ * `sin_dato`: el DOF no publica el FIX en fin de semana (el mismo supuesto de `fixParaOperacion`).
  */
 export function fixPublicado(
   serie: readonly TipoCambioFix[],
@@ -117,6 +120,10 @@ export function fixPublicado(
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<TipoCambioFix> {
+  validarEntrada(serie, fechaFix, tramo, cobertura, fecha);
+  if (fecha > cobertura.hasta && soloFinDeSemana(aDias(cobertura.hasta), aDias(fecha) + 1)) {
+    return SIN_DATO;
+  }
   return registroDelDia(serie, fechaFix, tramo, cobertura, fecha);
 }
 
@@ -140,7 +147,7 @@ export function fixParaOperacion(
   validarEntrada(serie, fechaFix, tramo, cobertura, fecha);
   if (fecha <= cobertura.desde) return SIN_DATO;
   const dia = aDias(fecha);
-  if (!hayCertezaHastaLaVispera(dia, aDias(cobertura.hasta))) return NO_DISPONIBLE;
+  if (!soloFinDeSemana(aDias(cobertura.hasta), dia)) return NO_DISPONIBLE;
   const vispera = deDias(dia - 1);
   const necesario = vispera < cobertura.hasta ? vispera : cobertura.hasta;
   if (tramo.hasta < necesario) {
@@ -159,10 +166,10 @@ export function fixParaOperacion(
   return SIN_DATO;
 }
 
-// El DOF no publica el FIX en sábado ni en domingo: un hueco de solo fin de semana entre
-// el último dato y la víspera no cambia la respuesta. Revisa a lo más tres días.
-function hayCertezaHastaLaVispera(dia: number, ultimo: number): boolean {
-  for (let d = ultimo + 1; d < dia; d++) {
+// El DOF no publica el FIX en sábado ni en domingo: un hueco de solo fin de semana después
+// del último dato no cambia la respuesta. Revisa los días de (ultimo, fin) y a lo más tres.
+function soloFinDeSemana(ultimo: number, fin: number): boolean {
+  for (let d = ultimo + 1; d < fin; d++) {
     const semana = diaSemanaDeDias(d);
     if (semana !== 0 && semana !== 6) return false;
   }
@@ -180,5 +187,6 @@ export function udiDeFecha(
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<Udi> {
+  validarEntrada(serie, fechaUdi, tramo, cobertura, fecha);
   return registroDelDia(serie, fechaUdi, tramo, cobertura, fecha);
 }

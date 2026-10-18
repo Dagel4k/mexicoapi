@@ -308,7 +308,7 @@ Las reglas de consulta viven en el núcleo, para que el SDK y el MCP den la mism
 
 **Certeza de la operación.** `operacion` solo responde cuando la respuesta es cierta. Si falta cargar la publicación de la víspera, el Worker no devuelve un valor anterior: responde `dato-no-disponible`. Los fines de semana no cuentan, porque no se espera publicación. El costo es que un cliente que pregunta temprano por mañana recibe 404 hasta la siguiente corrida.
 
-**Dos 404.** `no-encontrado` es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. `dato-no-disponible` puede cambiar: la fecha es posterior a lo cargado o falta la víspera. Ambos traen `fecha` y `cobertura`; un cliente que solo mira el estado HTTP no los distingue, el `type` sí.
+**Dos 404.** `no-encontrado` es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. Con `publicado`, un sábado o domingo posterior al último dato también es `no-encontrado` si de por medio solo hay fin de semana: el DOF no publica el FIX esos días. `dato-no-disponible` puede cambiar: la fecha es posterior a lo cargado y falta algún día entre semana, o falta la víspera. Ambos traen `fecha` y `cobertura`; un cliente que solo mira el estado HTTP no los distingue, el `type` sí.
 
 ### Validadores
 

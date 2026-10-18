@@ -399,8 +399,8 @@ Hay dos 404 distintos, y conviene mirar el `type`, no solo el estado HTTP:
 
 | `type` | Cuándo | Cambia con el tiempo |
 | --- | --- | --- |
-| [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie | No |
-| [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado, o falta la publicación de la víspera para `operacion` | Sí |
+| [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie. Con `publicado`, también un sábado o domingo posterior a lo cargado si entre el último dato y esa fecha solo hay fin de semana | No |
+| [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado y falta cargar algún día entre semana hasta esa fecha, o falta la publicación de la víspera para `operacion` | Sí |
 
 Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
 
