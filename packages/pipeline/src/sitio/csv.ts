@@ -1,6 +1,8 @@
 import { ErrorDatos } from "../errores.js";
 
-const PELIGROSO = /^[=+\-@\t\r]/;
+// Lo que una hoja de cálculo puede tomar como fórmula al inicio de un campo, también en ancho
+// completo (＝＋－＠), que algunas convierten a ASCII.
+const PELIGROSO = /^[=+\-@\t\r\n＝＋－＠]/;
 const NECESITA_COMILLAS = /[,"\r\n]|^\s|\s$/;
 
 function campo(valor: unknown, columna: string, dataset: string | null): string {

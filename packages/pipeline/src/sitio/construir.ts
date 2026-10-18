@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Banco, Estado, Manifiesto, Municipio } from "@mexicoapi/core";
 import { sha256Hex } from "../canonico.js";
 import { ErrorDatos } from "../errores.js";
@@ -82,11 +82,21 @@ function frescura(id: string): number {
   return horas;
 }
 
-/** La salida no puede ser la raíz de los datos ni contenerla: se reemplaza por completo. */
+/** `ruta` es `carpeta` o está dentro de ella. Una carpeta llamada `..algo` no es la de arriba. */
+function dentroDe(carpeta: string, ruta: string): boolean {
+  const rel = relative(resolve(carpeta), resolve(ruta));
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+}
+
+/**
+ * La salida se reemplaza por completo: no puede ser la raíz de los datos, contenerla ni estar
+ * dentro de ella.
+ */
 function validarSalida(raizDatos: string, salida: string): void {
-  const rel = relative(resolve(salida), resolve(raizDatos));
-  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) {
-    throw new ErrorDatos(`la salida (${salida}) no puede ser la carpeta de datos ni contenerla`);
+  if (dentroDe(salida, raizDatos) || dentroDe(raizDatos, salida)) {
+    throw new ErrorDatos(
+      `la salida (${salida}) no puede ser la carpeta de datos, contenerla ni estar dentro de ella`,
+    );
   }
 }
 
