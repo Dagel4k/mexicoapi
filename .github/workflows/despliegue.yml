@@ -8,8 +8,10 @@ on:
 permissions:
   contents: read
 
+# Por rama: una corrida desde otra rama (que no despliega) no reemplaza a un despliegue de main
+# que espera turno.
 concurrency:
-  group: despliegue
+  group: despliegue-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -128,6 +130,8 @@ jobs:
           [[ "${url}" =~ ^https://[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$ ]] || { echo "::error::URL inesperada: ${url}"; exit 1; }
           echo "url=${url}" >> "${GITHUB_OUTPUT}"
 
+      # `subido` dice si producción cambió: el despliegue terminó bien o la salida de wrangler
+      # muestra la versión subida aunque después algo fallara. Se escribe antes de salir con error.
       - name: Desplegar a producción
         id: deploy_prod
         if: steps.cf.outputs.tiene_cf == 'true'
@@ -138,15 +142,30 @@ jobs:
         run: |
           set -euo pipefail
           cd apps/api
-          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.produccion.json 2>&1 | tee "${SALIDA_DIR}/deploy-produccion.txt"
-          version="$(grep -m1 'Current Version ID:' "${SALIDA_DIR}/deploy-produccion.txt" | sed 's/.*Current Version ID:[[:space:]]*//' || true)"
+          salida="${SALIDA_DIR}/deploy-produccion.txt"
+          codigo=0
+          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.produccion.json 2>&1 | tee "${salida}" || codigo=$?
+          version="$(grep -m1 'Current Version ID:' "${salida}" | sed 's/.*Current Version ID:[[:space:]]*//' || true)"
           echo "${version:-desconocida}" > "${SALIDA_DIR}/version-produccion.txt"
+          subido=no
+          if [ "${codigo}" -eq 0 ] || [ -n "${version}" ] || grep -Eq '(^|[[:space:]])Uploaded mexicoapi \(' "${salida}"; then
+            subido=si
+          fi
+          echo "subido=${subido}" >> "${GITHUB_OUTPUT}"
+          if [ "${codigo}" -ne 0 ]; then
+            if [ "${subido}" = "si" ]; then
+              echo "::error::El despliegue a producción falló después de subir la versión; se corre el humo y, si falla, se revierte."
+            else
+              echo "::error::El despliegue a producción falló antes de subir una versión; producción no cambió."
+            fi
+            exit "${codigo}"
+          fi
 
-      # Corre también si el despliegue a producción falló: pudo fallar después de subir la
+      # Solo si producción cambió, aunque el paso de despliegue haya fallado después de subir la
       # versión. Si staging falló, el despliegue a producción se saltó y esto no corre.
       - name: Prueba de humo en producción
         id: humo_prod
-        if: always() && steps.cf.outputs.tiene_cf == 'true' && steps.humo_staging.outcome == 'success' && steps.deploy_prod.outcome != 'skipped'
+        if: always() && steps.cf.outputs.tiene_cf == 'true' && steps.humo_staging.outcome == 'success' && steps.deploy_prod.outputs.subido == 'si'
         env:
           URL_PROD: ${{ steps.conf_prod.outputs.url }}
           SALIDA_DIR: ${{ runner.temp }}
@@ -197,6 +216,8 @@ jobs:
           URL_PROD: ${{ steps.conf_prod.outputs.url }}
           REVERTIDO: ${{ steps.rollback.outputs.revertido }}
           ROLLBACK: ${{ steps.rollback.outcome }}
+          DEPLOY_PROD: ${{ steps.deploy_prod.outcome }}
+          SUBIDO: ${{ steps.deploy_prod.outputs.subido }}
           SALIDA_DIR: ${{ runner.temp }}
         run: |
           set -euo pipefail
@@ -206,6 +227,9 @@ jobs:
             echo "- Commit: \`${GITHUB_SHA}\`"
             echo "- Staging: ${URL_STAGING:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-staging.txt" 2>/dev/null || echo desconocida))"
             echo "- Producción: ${URL_PROD:-sin configurar} (versión: $(cat "${SALIDA_DIR}/version-produccion.txt" 2>/dev/null || echo desconocida))"
+            if [ "${DEPLOY_PROD}" = "failure" ] && [ "${SUBIDO}" = "no" ]; then
+              echo "- El despliegue a producción falló antes de subir una versión: producción no cambió."
+            fi
             if [ "${REVERTIDO}" = "si" ]; then
               echo "- El humo de producción falló y producción se revirtió a la versión anterior."
             elif [ "${REVERTIDO}" = "no" ]; then
