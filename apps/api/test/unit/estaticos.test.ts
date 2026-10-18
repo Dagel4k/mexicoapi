@@ -142,3 +142,96 @@ describe("estado inesperado del asset", () => {
     expect(respuesta.status).toBe(500);
   });
 });
+
+describe("peticiones condicionales", () => {
+  const condicional = (valor: string, mapa = SHARDS, method = "GET") =>
+    pedir("/v1/estados/25", { method, headers: { "If-None-Match": valor } }, mapa);
+
+  for (const valor of [
+    '"etag-1"',
+    'W/"etag-1"',
+    '"otro", "etag-1"',
+    '"otro",W/"etag-1"',
+    ' "otro" ,  "etag-1" ',
+    "*",
+  ]) {
+    it(`If-None-Match ${valor} da 304 sin cuerpo y cancela el asset`, async () => {
+      const { respuesta, assets } = await condicional(valor);
+      expect(respuesta.status).toBe(304);
+      expect(respuesta.body).toBeNull();
+      expect(respuesta.headers.get("etag")).toBe('"etag-1"');
+      expect(respuesta.headers.get("cache-control")).toBe(CACHE_DATOS);
+      expect(respuesta.headers.get("content-type")).toBeNull();
+      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+      expect(assets.pedidas).toEqual(["/v1/estados/25.json"]);
+      expect(assets.canceladas).toEqual(["/v1/estados/25.json"]);
+    });
+  }
+
+  for (const valor of [
+    '"otro"',
+    '"etag-10"',
+    "etag-1",
+    '"ETAG-1"',
+    '""',
+    "",
+    // Mal formados: no coinciden aunque contengan la etiqueta o *.
+    'w/"etag-1"',
+    '"etag-1',
+    '"x" "etag-1"',
+    '"etag-1",',
+    '*, "etag-1"',
+    '"otro", *',
+  ]) {
+    it(`If-None-Match ${JSON.stringify(valor)} no coincide y sirve el shard`, async () => {
+      const { respuesta, assets } = await condicional(valor);
+      expect(respuesta.status).toBe(200);
+      expect(await respuesta.text()).toBe(SHARDS["/v1/estados/25.json"]?.cuerpo);
+      expect(assets.canceladas).toEqual([]);
+    });
+  }
+
+  it("la comparación es débil también si el asset da un ETag débil", async () => {
+    const mapa = { "/v1/estados/25.json": { cuerpo: "{}", etag: 'W/"abc"' } };
+    expect((await condicional('"abc"', mapa)).respuesta.status).toBe(304);
+    expect((await condicional('W/"abc"', mapa)).respuesta.status).toBe(304);
+  });
+
+  it("una coma dentro de un ETag no parte la etiqueta", async () => {
+    const mapa = { "/v1/estados/25.json": { cuerpo: "{}", etag: '"a,b"' } };
+    expect((await condicional('"a,b"', mapa)).respuesta.status).toBe(304);
+    expect((await condicional('"a"', mapa)).respuesta.status).toBe(200);
+    expect((await condicional('"x", "a,b"', mapa)).respuesta.status).toBe(304);
+  });
+
+  it("sin ETag en el asset solo * coincide", async () => {
+    const mapa = { "/v1/estados/25.json": { cuerpo: "{}" } };
+    expect((await condicional('"x"', mapa)).respuesta.status).toBe(200);
+    const { respuesta } = await condicional("*", mapa);
+    expect(respuesta.status).toBe(304);
+    expect(respuesta.headers.get("etag")).toBeNull();
+  });
+
+  it("con HEAD también da 304", async () => {
+    const { respuesta, assets } = await condicional('"etag-1"', SHARDS, "HEAD");
+    expect(respuesta.status).toBe(304);
+    expect(respuesta.body).toBeNull();
+    expect(assets.canceladas).toEqual(["/v1/estados/25.json"]);
+  });
+
+  it("un recurso inexistente sigue siendo 404 aunque traiga *", async () => {
+    const { respuesta } = await pedir("/v1/estados/33", { headers: { "If-None-Match": "*" } });
+    expect(respuesta.status).toBe(404);
+  });
+});
+
+describe("HEAD", () => {
+  it("da los mismos encabezados que GET, sin cuerpo, y cancela el asset", async () => {
+    const get = (await pedir("/v1/bancos/012")).respuesta;
+    const { respuesta, assets } = await pedir("/v1/bancos/012", { method: "HEAD" });
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.body).toBeNull();
+    expect([...respuesta.headers]).toEqual([...get.headers]);
+    expect(assets.canceladas).toEqual(["/v1/bancos/012.json"]);
+  });
+});
