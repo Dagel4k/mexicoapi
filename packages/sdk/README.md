@@ -295,17 +295,17 @@ Códigos de salida:
 
 ## Tamaño y compatibilidad
 
-Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la versión 0.1.0:
+Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la versión 0.1.0. El JS se publica sin comentarios; la documentación va en los `.d.ts`.
 
 | Entrada | gzip |
 | --- | --- |
-| `mexicoapi` | 13.8 KB (una prueba exige 15 KB o menos) |
-| `mexicoapi/cliente` | 10.8 KB al importarlo, con el catálogo de problemas y las reglas de la ruta del núcleo; lo demás del núcleo y cada dataset se cargan solo si responde el paquete |
-| `mexicoapi/datos` | 44.8 KB |
-| `mexicoapi/datos/fix` | 13.4 KB |
-| `mexicoapi/datos/udis` | 19.1 KB |
-| `mexicoapi/datos/calendarios` | 18.6 KB |
-| `mexicoapi/datos/constantes` | 9.3 KB |
+| `mexicoapi` | 9.3 KB (una prueba exige 15 KB o menos) |
+| `mexicoapi/cliente` | 6.7 KB al importarlo, con el catálogo de problemas y las reglas de la ruta del núcleo; lo demás del núcleo y cada dataset se cargan solo si responde el paquete |
+| `mexicoapi/datos` | 43.7 KB |
+| `mexicoapi/datos/fix` | 13.0 KB |
+| `mexicoapi/datos/udis` | 18.7 KB |
+| `mexicoapi/datos/calendarios` | 13.0 KB |
+| `mexicoapi/datos/constantes` | 7.5 KB |
 
 | Entorno | Estado |
 | --- | --- |
