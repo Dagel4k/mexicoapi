@@ -133,6 +133,10 @@ function invariantesBanco(b: Banco): string[] {
       p(`periodo vacío o invertido desde ${per.desde}`);
     if (previo !== undefined && per.desde < previo.desde) p("historial fuera de orden");
     if (per.hasta === null && i < b.historial.length - 1) p("periodo abierto que no es el último");
+    // Con el anterior cerrado (lo exige la regla de arriba), este empieza cuando aquel ya terminó.
+    if (previo !== undefined && previo.hasta !== null && per.desde < previo.hasta) {
+      p(`periodo traslapado con el anterior desde ${per.desde}`);
+    }
   });
   const fin = ultimo(b.historial);
   if (fin.codigo_spei !== b.codigo_spei || fin.nombre_corto !== b.nombre_corto) {
