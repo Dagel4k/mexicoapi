@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { manifiestoPublicable, revisarHistorial } from "../../../sdk/scripts/publicable.ts";
 import {
+  comandoNpmView,
   principal,
   publicadaEnNpm,
   type RespuestaNpm,
@@ -124,6 +125,33 @@ describe("publicadaEnNpm", () => {
     expect(() => publicadaEnNpm({ status: null, stdout: "", stderr: "" }, "1.2.3")).toThrow(
       /no se pudo consultar npm/,
     );
+  });
+});
+
+describe("comandoNpmView", () => {
+  it("fuera de Windows llama a npm sin shell, con los argumentos aparte", () => {
+    for (const plataforma of ["linux", "darwin"] as const) {
+      expect(comandoNpmView("mexicoapi@1.2.3", plataforma)).toEqual({
+        comando: "npm",
+        argumentos: ["view", "mexicoapi@1.2.3", "version", "--json"],
+        shell: false,
+      });
+    }
+  });
+
+  it("en Windows, donde npm es un .cmd, usa shell con una sola línea y sin argumentos aparte", () => {
+    expect(comandoNpmView("mexicoapi@1.2.3", "win32")).toEqual({
+      comando: "npm view mexicoapi@1.2.3 version --json",
+      argumentos: [],
+      shell: true,
+    });
+  });
+
+  it("rechaza una especificación que no sea mexicoapi@<versión exacta>", () => {
+    for (const spec of ["mexicoapi@1.2.3 && calc", "mexicoapi@^1.2.3", "otro@1.2.3", "mexicoapi"]) {
+      expect(() => comandoNpmView(spec, "win32")).toThrow(/especificación/);
+      expect(() => comandoNpmView(spec, "linux")).toThrow(/especificación/);
+    }
   });
 });
 

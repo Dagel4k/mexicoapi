@@ -56,9 +56,24 @@ export function publicadaEnNpm(respuesta: RespuestaNpm, version: string): boolea
   throw new Error(`no se pudo consultar npm: ${motivo || `salió con ${respuesta.status}`}`);
 }
 
+/** Cómo correr `npm view <spec> version --json` en `plataforma`. */
+export function comandoNpmView(
+  spec: string,
+  plataforma: NodeJS.Platform,
+): { comando: string; argumentos: string[]; shell: boolean } {
+  const version = spec.startsWith("mexicoapi@") ? spec.slice("mexicoapi@".length) : "";
+  if (!SEMVER.test(version)) throw new Error(`especificación de npm no válida: ${spec}`);
+  const argumentos = ["view", spec, "version", "--json"];
+  // En Windows npm es un .cmd y solo corre con shell; spec ya se validó como mexicoapi@<semver>.
+  if (plataforma === "win32") {
+    return { comando: `npm ${argumentos.join(" ")}`, argumentos: [], shell: true };
+  }
+  return { comando: "npm", argumentos, shell: false };
+}
+
 function npmView(spec: string): RespuestaNpm {
-  // En Windows npm es un .cmd: va con shell. spec solo trae el nombre, @ y una versión semver.
-  const r = spawnSync(`npm view ${spec} version --json`, { encoding: "utf8", shell: true });
+  const { comando, argumentos, shell } = comandoNpmView(spec, process.platform);
+  const r = spawnSync(comando, argumentos, { encoding: "utf8", shell });
   return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 }
 
