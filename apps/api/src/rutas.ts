@@ -1,6 +1,7 @@
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { clabe } from "./computados/clabe.js";
 import { diasHabiles, diasInhabiles } from "./computados/dias.js";
+import { status } from "./computados/status.js";
 import type { Entorno, Opciones } from "./entorno.js";
 import { servirShard } from "./estaticos.js";
 import { type TipoProblema, URL_DOCS } from "./problemas.js";
@@ -243,5 +244,6 @@ export const RUTAS: readonly Ruta[] = [
     consulta: { autoridad: AUTORIDAD, anio: ANIO },
     manejar: diasInhabiles,
   },
+  { patron: /^\/v1\/status$/, manejar: status },
   { patron: /^\/v1\/openapi\.json$/, manejar: fijo("/v1/openapi.json", "el documento OpenAPI") },
 ];
