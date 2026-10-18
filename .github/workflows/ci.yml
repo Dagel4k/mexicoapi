@@ -17,6 +17,10 @@ jobs:
       # SHA-256 de gitleaks_8.30.1_linux_x64.tar.gz, del archivo de checksums oficial del release.
       # Si cambia la versión, hay que cambiar también este valor.
       GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+      ACTIONLINT_VERSION: 1.7.12
+      # SHA-256 de actionlint_1.7.12_linux_amd64.tar.gz, del archivo de checksums oficial del release.
+      # Si cambia la versión, hay que cambiar también este valor.
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,6 +45,21 @@ jobs:
           mkdir -p "${HOME}/.local/bin"
           tar -xzf "${dir}/${tarball}" -C "${HOME}/.local/bin" gitleaks
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Instalar actionlint
+        run: |
+          set -euo pipefail
+          base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          dir="$(mktemp -d)"
+          curl -fsSL -o "${dir}/${tarball}" "${base}/${tarball}"
+          echo "${ACTIONLINT_SHA256}  ${dir}/${tarball}" | sha256sum -c -
+          mkdir -p "${HOME}/.local/bin"
+          tar -xzf "${dir}/${tarball}" -C "${HOME}/.local/bin" actionlint
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Revisar workflows
+        run: actionlint
 
       - name: Verificar
         run: ./scripts/verify.sh
