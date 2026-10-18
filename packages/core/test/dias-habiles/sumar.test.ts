@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calendarioLft, crearCalendario } from "../../src/dias-habiles/calendario.js";
 import { sumarDiasHabiles } from "../../src/dias-habiles/sumar.js";
-import { CalendarioIncompletoError } from "../../src/errores.js";
+import { CalendarioIncompletoError, FechaFueraDeRangoError } from "../../src/errores.js";
 
 const lft = calendarioLft();
 const sat2026 = crearCalendario({
@@ -124,6 +124,12 @@ describe("sumarDiasHabiles", () => {
     expect(
       sumarDiasHabiles({ calendario: lft, desde: "2026-10-16", dias: 3650 }).resultado,
     ).toMatch(/^2041-/);
+  });
+
+  it("con permitirIncompleto, un resultado después de 9999-12-31 lanza FechaFueraDeRangoError", () => {
+    expect(() =>
+      sumarDiasHabiles({ calendario: lft, desde: "9999-12-31", dias: 1, permitirIncompleto: true }),
+    ).toThrow(FechaFueraDeRangoError);
   });
 
   it("lanza RangeError con desde inválido", () => {

@@ -359,7 +359,7 @@ function operaciones(): Operacion[] {
           name: "anio",
           in: "query",
           required: true,
-          description: "Año, 4 dígitos.",
+          description: "Año de 0001 a 9999, 4 dígitos.",
           schema: { type: "string", pattern: "^\\d{4}$" },
           example: "2026",
         },

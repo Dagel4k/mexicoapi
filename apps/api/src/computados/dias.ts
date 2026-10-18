@@ -1,8 +1,8 @@
 import {
   CalendarioIncompletoError,
-  COBERTURA_LFT,
   calendarioLft,
   diasDescansoLft,
+  FechaFueraDeRangoError,
   FUENTE_LFT_74,
   type ResultadoDiasHabiles,
   sumarDiasHabiles,
@@ -15,33 +15,44 @@ import { CACHE_DATOS, respuestaJson, respuestaProblema } from "../respuestas.js"
 import type { Contexto } from "../rutas.js";
 
 /** Los días de la LFT salen del núcleo, no de un dataset del build; su meta es fija. */
-const META_LFT: Meta = congelar({
-  dataset: "dias-inhabiles.lft",
-  as_of: VIGENCIA_LFT,
-  sources: [
-    {
-      name: "Ley Federal del Trabajo, artículos 74 y 715",
-      url: FUENTE_LFT_74.url,
-      license:
-        "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
-      license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
-      citation:
-        "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
-    },
-  ],
-  docs: `${URL_DOCS}/api/README.md#dias-habiles`,
-});
+function metaLft(seccion: string): Meta {
+  return congelar({
+    dataset: "dias-inhabiles.lft",
+    as_of: VIGENCIA_LFT,
+    sources: [
+      {
+        name: "Ley Federal del Trabajo, artículos 74 y 715",
+        url: FUENTE_LFT_74.url,
+        license:
+          "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
+        license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+        citation:
+          "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
+      },
+    ],
+    docs: `${URL_DOCS}/api/README.md#${seccion}`,
+  });
+}
+
+const META_DIAS_HABILES = metaLft("dias-habiles");
+const META_DIAS_INHABILES = metaLft("dias-inhabiles");
 
 const CALENDARIO = calendarioLft();
 
-const COBERTURA = `cubre del ${COBERTURA_LFT.desde} al ${COBERTURA_LFT.hasta}`;
+const cubre = ({ cobertura }: CalendarioIncompletoError): string =>
+  `cubre del ${cobertura.desde} al ${cobertura.hasta}`;
 
-function calendarioIncompleto(c: Contexto, detalle: string, fecha: string): Response {
-  const { desde, hasta } = COBERTURA_LFT;
+/** 422 con lo que trae el error: la autoridad, la fecha que falta y la cobertura. */
+function calendarioIncompleto(
+  c: Contexto,
+  error: CalendarioIncompletoError,
+  detalle: string,
+): Response {
+  const { autoridad, fecha, cobertura } = error;
   return respuestaProblema(
     "calendario-incompleto",
     detalle,
-    { autoridad: "lft", fecha, cobertura: { desde, hasta } },
+    { autoridad, fecha, cobertura: { desde: cobertura.desde, hasta: cobertura.hasta } },
     c.url.pathname,
   );
 }
@@ -60,13 +71,12 @@ export function diasHabiles(c: Contexto): Response {
     if (error instanceof CalendarioIncompletoError) {
       return calendarioIncompleto(
         c,
-        `El calendario de ${error.autoridad} no cubre ${error.fecha}; ${COBERTURA}.`,
-        error.fecha,
+        error,
+        `El calendario de ${error.autoridad} no cubre ${error.fecha}; ${cubre(error)}.`,
       );
     }
-    // Con desde y dias ya validados, el núcleo solo lanza RangeError si el resultado pasa de
-    // 9999-12-31.
-    if (error instanceof RangeError) {
+    // Solo el resultado fuera de 0001-9999 es culpa de la consulta; cualquier otro error es 500.
+    if (error instanceof FechaFueraDeRangoError) {
       return respuestaProblema(
         "parametro-invalido",
         "Con estos días, el resultado pasaría del año 9999.",
@@ -76,21 +86,23 @@ export function diasHabiles(c: Contexto): Response {
     }
     throw error;
   }
-  return respuestaJson({ data, meta: META_LFT }, { cache: CACHE_DATOS });
+  return respuestaJson({ data, meta: META_DIAS_HABILES }, { cache: CACHE_DATOS });
 }
 
-/** `GET /v1/dias-inhabiles`: días de descanso obligatorio del art. 74 en un año. */
+/** `GET /v1/dias-inhabiles`: días de descanso obligatorio del art. 74 en un año (0001-9999). */
 export function diasInhabiles(c: Contexto): Response {
   const anio = requerido(c.consulta, "anio");
-  if (`${anio}-01-01` < COBERTURA_LFT.desde || `${anio}-12-31` > COBERTURA_LFT.hasta) {
+  const { autoridad, cobertura } = CALENDARIO;
+  if (`${anio}-01-01` < cobertura.desde || `${anio}-12-31` > cobertura.hasta) {
+    const error = new CalendarioIncompletoError(autoridad, `${anio}-01-01`, cobertura);
     return calendarioIncompleto(
       c,
-      `El calendario de lft no cubre el año ${anio}; ${COBERTURA}.`,
-      `${anio}-01-01`,
+      error,
+      `El calendario de ${autoridad} no cubre el año ${anio}; ${cubre(error)}.`,
     );
   }
   return respuestaJson(
-    { data: diasDescansoLft(Number(anio)), meta: META_LFT },
+    { data: diasDescansoLft(Number(anio)), meta: META_DIAS_INHABILES },
     { cache: CACHE_DATOS },
   );
 }

@@ -183,7 +183,9 @@ const PERMITIR_INCOMPLETO: ReglaConsulta = {
 };
 const ANIO: ReglaConsulta = {
   patron: /^\d{4}$/,
-  detalle: "El año (anio) debe tener 4 dígitos.",
+  // No hay año 0000: las fechas van de 0001 a 9999.
+  cumple: (valor) => valor !== "0000",
+  detalle: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
   obligatorio: true,
 };
 

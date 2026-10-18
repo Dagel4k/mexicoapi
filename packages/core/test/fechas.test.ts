@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FechaFueraDeRangoError } from "../src/errores.js";
 import {
   diaDeLaSemana,
   enesimoDiaDeSemana,
@@ -66,6 +67,33 @@ describe("sumarDias", () => {
     expect(() => sumarDias("0001-01-01", -1)).toThrow(RangeError);
     expect(() => sumarDias("2026-01-01", 1e20)).toThrow(RangeError);
     expect(() => sumarDias("2026-01-01", -1e20)).toThrow(RangeError);
+  });
+  it("ese RangeError es FechaFueraDeRangoError, con código fijo", () => {
+    for (const [fecha, dias] of [
+      ["9999-12-31", 1],
+      ["0001-01-01", -1],
+      ["2026-01-01", 1e20],
+    ] as const) {
+      let lanzado: unknown;
+      try {
+        sumarDias(fecha, dias);
+      } catch (error) {
+        lanzado = error;
+      }
+      expect(lanzado).toBeInstanceOf(FechaFueraDeRangoError);
+      expect(lanzado).toBeInstanceOf(RangeError);
+      expect(lanzado).toMatchObject({
+        name: "FechaFueraDeRangoError",
+        codigo: "fecha-fuera-de-rango",
+        message: "La fecha resultante sale del rango 0001-9999",
+      });
+    }
+  });
+  it("los demás RangeError no son FechaFueraDeRangoError", () => {
+    for (const llamada of [() => sumarDias("2026-02-30", 1), () => sumarDias("2026-01-01", 1.5)]) {
+      expect(llamada).toThrow(RangeError);
+      expect(llamada).not.toThrow(FechaFueraDeRangoError);
+    }
   });
 });
 

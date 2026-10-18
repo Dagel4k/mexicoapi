@@ -189,6 +189,7 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-inhabiles?autoridad=lft", estado: 400 },
   { ruta: "/v1/dias-inhabiles?anio=2026", estado: 400 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=26", estado: 400 },
+  { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=0000", estado: 400 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2006", estado: 422 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2101", estado: 422 },
 

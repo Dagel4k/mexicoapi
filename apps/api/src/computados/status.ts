@@ -16,7 +16,9 @@ const RESULTADOS: ReadonlySet<unknown> = new Set([
   "error",
 ]);
 
-// Instante UTC con segundos y `Z`, como lo escribe toISOString(); es lo que acepta el contrato.
+// Instante UTC con segundos y `Z`, como lo escribe toISOString(). La validación es más
+// estricta que el contrato a propósito: lo que no la cumple se toma como sin registro en vez de
+// publicarse.
 const INSTANTE = /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z$/;
 
 function esInstante(valor: unknown): valor is string {
