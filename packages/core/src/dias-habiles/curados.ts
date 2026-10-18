@@ -157,9 +157,10 @@ const INSPECCIONAR: unique symbol = Symbol.for("nodejs.util.inspect.custom");
 /**
  * Vista de solo lectura de un Map: no tiene `set`, `delete` ni `clear`, y como no es un Map,
  * `Map.prototype.set.call(vista, …)` lanza TypeError. En JSON es un objeto por llave y al
- * inspeccionarla en Node se ve como el Map que guarda.
+ * inspeccionarla en Node se ve como el Map que guarda. La usan los calendarios curados y las
+ * cargas del Worker que viven entre peticiones.
  */
-class MapaCongelado<K extends string, V> implements ReadonlyMap<K, V> {
+export class MapaCongelado<K extends string, V> implements ReadonlyMap<K, V> {
   readonly #mapa: Map<K, V>;
 
   constructor(mapa: Map<K, V>) {
