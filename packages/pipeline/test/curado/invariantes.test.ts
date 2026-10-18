@@ -380,11 +380,39 @@ describe("días inhábiles", () => {
       "2027-01-01: está fuera de la cobertura de descanso (2025-01-01 a 2026-12-31)",
     ]);
     expect(cnbv([dia("2026-07-20", "Vacaciones", { tipo: "vacaciones" })], cobertura)).toEqual([
+      "2026-07-20: el tipo vacaciones no es de cnbv, que solo tiene descanso",
       "2026-07-20: no hay cobertura para el tipo vacaciones",
     ]);
     expect(cnbv([dia("2026-01-01", "1o. de enero")], null)).toEqual([
       "2026-01-01: no hay cobertura para el tipo descanso",
     ]);
+  });
+
+  it("la CNBV solo tiene días de descanso: rechaza vacaciones aunque declare su cobertura", () => {
+    // La API da por hecho que en un día de la CNBV no se publica el FIX; unas vacaciones
+    // administrativas, con los bancos abiertos, harían responder un FIX viejo.
+    const conVacaciones: CoberturaCurada = {
+      ...cobertura,
+      vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
+    };
+    expect(
+      cnbv(
+        [
+          dia("2026-01-01", "1o. de enero"),
+          dia("2026-07-20", "Vacaciones", { tipo: "vacaciones" }),
+        ],
+        conVacaciones,
+      ),
+    ).toEqual([
+      "2026-07-20: el tipo vacaciones no es de cnbv, que solo tiene descanso",
+      "la cobertura declara vacaciones, que no es un tipo de día de cnbv",
+    ]);
+    // El SAT sí tiene vacaciones.
+    const vacacionesSat = dia("2026-07-20", "Primer periodo general de vacaciones de 2026", {
+      autoridad: "sat",
+      tipo: "vacaciones",
+    });
+    expect(invariantesDias("sat")([vacacionesSat], conVacaciones)).toEqual([]);
   });
 });
 
