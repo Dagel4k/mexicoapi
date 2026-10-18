@@ -2,6 +2,8 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { esFechaIsoValida } from "@mexicoapi/core";
+import { curarDatos } from "./curado/curar.js";
+import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { crearBancos, registrosDesdeHistorico } from "./datasets/bancos/bancos.js";
 import type { Diferencias } from "./diferencias.js";
 import { fechaEnMexico } from "./fecha.js";
@@ -30,14 +32,17 @@ const USO = `Uso:
   actualizar <id...> [--seco] [--fecha AAAA-MM-DD] [--resumen <ruta-sin-extension>] [--datos <ruta>]
   bancos-historico [--desde AAAA-MM] [--fecha AAAA-MM-DD] [--intervalo <segundos, entero >= 1, 30 por omisión>] [--datos <ruta>]
   verificar [--datos <ruta>]
+  curar [--datos <ruta>]
   construir --salida <ruta> [--datos <ruta>]
 Datasets: ${[...DATASETS.keys()].join(", ")}
+Curados (data/curado/*.yaml): ${CURADOS.map((d) => d.id).join(", ")}
 `;
 
 const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   actualizar: ["seco", "fecha", "resumen", "datos"],
   "bancos-historico": ["desde", "fecha", "intervalo", "datos"],
   verificar: ["datos"],
+  curar: ["datos"],
   construir: ["salida", "datos"],
 };
 
@@ -219,6 +224,30 @@ async function bancosHistorico(
   }
 }
 
+async function curar(entorno: Entorno, raizDatos: string): Promise<number> {
+  let salida: Awaited<ReturnType<typeof curarDatos>>;
+  try {
+    salida = await curarDatos(raizDatos);
+  } catch (error) {
+    entorno.escribirError(`curar: ${mensajeDe(error)}
+`);
+    return 1;
+  }
+  for (const p of salida.problemas)
+    entorno.escribirError(`${p}
+`);
+  if (salida.problemas.length > 0) return 1;
+  if (salida.resultados.length === 0) {
+    entorno.escribir(`curar: no hay YAML en ${join(raizDatos, DIRECTORIO_CURADO)}
+`);
+  }
+  for (const r of salida.resultados) {
+    entorno.escribir(`${r.dataset}: ${r.estado} (${r.registros} registros)
+`);
+  }
+  return 0;
+}
+
 export async function principal(argumentos: readonly string[], entorno: Entorno): Promise<number> {
   let parseado: ReturnType<typeof leer>;
   try {
@@ -254,6 +283,8 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
       if (problemas.length === 0) entorno.escribir("datos: sin problemas\n");
       return problemas.length === 0 ? 0 : 1;
     }
+    case "curar":
+      return curar(entorno, raizDatos);
     case "construir": {
       if (values.salida === undefined) {
         entorno.escribirError(`Falta --salida.

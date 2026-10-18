@@ -16,6 +16,7 @@
     "test:tz": "TZ=America/Mexico_City vitest run && TZ=UTC vitest run",
     "build": "pnpm -r build",
     "datos:verificar": "pnpm --filter @mexicoapi/pipeline verificar",
+    "datos:curar": "pnpm --filter @mexicoapi/pipeline curar",
     "verify": "./scripts/verify.sh"
   },
   "devDependencies": {
