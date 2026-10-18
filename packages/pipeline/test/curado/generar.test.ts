@@ -5,6 +5,7 @@ import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado } from "../../src/curado/leer.js";
 import type { DefinicionCurado } from "../../src/curado/registro.js";
 import { curadoDiasSat, curadoTarifasIsr, curadoUma } from "../../src/curado/registro.js";
+import { shardCalendario } from "../../src/sitio/calendarios.js";
 import { YAML_ISR, YAML_SAT, YAML_UMA } from "./ejemplos.js";
 
 const LICENCIA_DOF =
@@ -90,6 +91,32 @@ describe("archivosCurado", () => {
     );
     expect(isr.sources).toHaveLength(1);
     expect(isr.sources[0].name).toBe("Anexo 8 de la Resolución Miscelánea Fiscal para 2026");
+  });
+
+  it("un calendario agrega calendario.json: el shard de la API sin los días", () => {
+    const doc = documento(curadoDiasSat, YAML_SAT);
+    const archivos = archivosCurado(curadoDiasSat, doc);
+    expect([...archivos.keys()]).toEqual([
+      "dias-inhabiles.json",
+      "manifest.json",
+      "calendario.json",
+    ]);
+    const { dias: _dias, ...sinDias } = shardCalendario("sat", doc.registros, doc.cobertura);
+    const texto = archivos.get("calendario.json") as string;
+    expect(texto).toBe(jsonCanonico(sinDias));
+    expect(Object.keys(JSON.parse(texto))).toEqual([
+      "autoridad",
+      "plazos",
+      "fuentes_fin_de_semana",
+    ]);
+    expect(JSON.parse(texto).plazos).toEqual({
+      general: { cobertura: { desde: "2026-01-01", hasta: "2026-11-30" }, excluir_tipos: [] },
+      declaraciones_pagos: {
+        cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+        excluir_tipos: ["vacaciones"],
+      },
+    });
+    expect(Object.keys(JSON.parse(texto).fuentes_fin_de_semana)).toEqual(["2026"]);
   });
 
   it("es determinista", () => {

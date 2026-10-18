@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "../../src/canonico.js";
 import { archivosCurado } from "../../src/curado/generar.js";
 import { interpretarCurado } from "../../src/curado/leer.js";
-import { curadoUma, type DefinicionCurado } from "../../src/curado/registro.js";
+import { curadoDiasSat, curadoUma, type DefinicionCurado } from "../../src/curado/registro.js";
 import { escribirDirectorioAtomico } from "../../src/escritura.js";
 import { verificarDatos } from "../../src/verificar.js";
-import { YAML_UMA } from "./ejemplos.js";
+import { YAML_SAT, YAML_UMA } from "./ejemplos.js";
 
 let raiz: string;
 beforeEach(async () => {
@@ -72,6 +72,23 @@ describe("verificarDatos con datos curados", () => {
     expect(await verificarDatos(raiz)).toEqual([
       "constantes-uma: falta manifest.json; corre curar",
       "constantes-uma: archivo no declarado: raw/nota.html",
+    ]);
+  });
+
+  it("revisa el calendario.json de un calendario contra su YAML", async () => {
+    const yamlSat = join(raiz, "curado", "dias-inhabiles-sat.yaml");
+    const calendario = join(raiz, "dias-inhabiles-sat", "calendario.json");
+    await writeFile(yamlSat, YAML_SAT);
+    await generar(curadoDiasSat, YAML_SAT);
+    expect(await verificarDatos(raiz)).toEqual([]);
+    const texto = await readFile(calendario, "utf8");
+    await writeFile(calendario, texto.replace('"2026-11-30"', '"2026-12-31"'));
+    expect(await verificarDatos(raiz)).toEqual([
+      "dias-inhabiles-sat: calendario.json no corresponde a curado/dias-inhabiles-sat.yaml; corre curar",
+    ]);
+    await rm(calendario);
+    expect(await verificarDatos(raiz)).toEqual([
+      "dias-inhabiles-sat: falta calendario.json; corre curar",
     ]);
   });
 

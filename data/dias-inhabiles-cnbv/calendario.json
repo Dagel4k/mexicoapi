@@ -1,0 +1,26 @@
+{
+  "autoridad": "cnbv",
+  "plazos": {
+    "general": {
+      "cobertura": {
+        "desde": "2025-01-01",
+        "hasta": "2026-12-31"
+      },
+      "excluir_tipos": []
+    }
+  },
+  "fuentes_fin_de_semana": {
+    "2025": {
+      "nombre": "Disposiciones de carácter general que señalan los días del año 2025 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender operaciones",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5746258&fecha=27/12/2024",
+      "fecha_publicacion": "2024-12-27",
+      "fragmento": "Artículo 1.- Las instituciones de crédito, casas de bolsa, bolsas de valores, [...] e instituciones de tecnología financiera deberán cerrar sus puertas, así como suspender operaciones y la prestación de servicios al público en la República Mexicana, los siguientes días del año 2025: I. El 1o. de enero. II. El primer lunes de febrero en conmemoración del 5 de febrero. III. El tercer lunes de marzo en conmemoración del 21 de marzo. IV. El 17 y 18 de abril. V. El 1o. de mayo. VI. El 16 de septiembre. VII. El 2 de noviembre y el tercer lunes de dicho mes en conmemoración del 20 de noviembre. VIII. El 12 y 25 de diciembre. IX. Los sábados y domingos."
+    },
+    "2026": {
+      "nombre": "Disposiciones de carácter general que señalan los días del año 2026 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender sus operaciones",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775684&fecha=10/12/2025",
+      "fecha_publicacion": "2025-12-10",
+      "fragmento": "Artículo 1.- Las instituciones de crédito, casas de bolsa, bolsas de valores, [...] e instituciones de tecnología financiera deberán cerrar sus puertas y suspender sus operaciones en los Estados Unidos Mexicanos, los siguientes días del año 2026: I. El 1o. de enero. II. El primer lunes de febrero en conmemoración del 5 de febrero. III. El tercer lunes de marzo en conmemoración del 21 de marzo. IV. El 2 y 3 de abril. V. El 1o. de mayo. VI. El 16 de septiembre. VII. El 2 de noviembre y el tercer lunes de dicho mes, este último en conmemoración del 20 de noviembre. VIII. El 12 y 25 de diciembre. IX. Los sábados y domingos."
+    }
+  }
+}

@@ -1,11 +1,11 @@
 // Pruebas de las entradas de datos curados (calendarios de la CNBV y el SAT, constantes) que corren
-// igual sobre src y sobre dist. Lo que depende de los datos se toma de data/ y de su YAML.
+// igual sobre src y sobre dist. Lo que depende de los datos se toma de data/.
 import { readFile } from "node:fs/promises";
 import { beforeAll, expect, it } from "vitest";
-import { coberturaDelYaml } from "../../scripts/calendarios.js";
 import type * as Calendarios from "../../src/datos/calendarios.js";
 import type * as Constantes from "../../src/datos/constantes.js";
 import type {
+  CoberturaSerie,
   DiaInhabilCurado,
   SalarioMinimo,
   TarifaIsr,
@@ -26,11 +26,13 @@ export type ModuloConstantes = typeof Constantes;
 
 const DATA = new URL("../../../../data/", import.meta.url);
 
-async function coberturaDe(directorio: string) {
-  const yaml = await readFile(new URL(`curado/${directorio}.yaml`, DATA), "utf8");
-  const cobertura = coberturaDelYaml(yaml, directorio);
-  if (cobertura === null) throw new Error(`${directorio} sin cobertura`);
-  return cobertura;
+interface CalendarioEnData {
+  plazos: Partial<Record<TipoPlazo, { cobertura: CoberturaSerie; excluir_tipos: string[] }>>;
+}
+
+/** `data/<directorio>/calendario.json`, el que `curar` escribe y `verificar` compara con el YAML. */
+async function calendarioDe(directorio: string): Promise<CalendarioEnData> {
+  return JSON.parse(await readFile(new URL(`${directorio}/calendario.json`, DATA), "utf8"));
 }
 
 export function probarCalendarios(
@@ -66,30 +68,27 @@ export function probarCalendarios(
     }
   });
 
-  it("arma los plazos con la cobertura del YAML, como la API", async () => {
-    const coberturaCnbv = await coberturaDe("dias-inhabiles-cnbv");
-    const coberturaSat = await coberturaDe("dias-inhabiles-sat");
+  it("arma los plazos de data/<carpeta>/calendario.json, como la API", async () => {
+    const cnbvDatos = await calendarioDe("dias-inhabiles-cnbv");
     const c = m.calendarioCurado("cnbv");
     expect(Object.keys(c.plazos)).toEqual(["general"]);
-    expect(c.general.cobertura).toEqual(coberturaCnbv.descanso);
-    expect(c.amplia).toEqual(coberturaCnbv.descanso);
+    expect(c.general.cobertura).toEqual(cnbvDatos.plazos.general?.cobertura);
+    expect(c.amplia).toEqual(c.general.cobertura);
     expect(c.general.respaldo).toBeUndefined();
+    const satDatos = await calendarioDe("dias-inhabiles-sat");
     const s = m.calendarioCurado("sat");
     expect(Object.keys(s.plazos)).toEqual(["general", "declaraciones_pagos"]);
-    const { descanso, vacaciones } = coberturaSat as Required<typeof coberturaSat>;
-    const general = {
-      desde: descanso.desde > vacaciones.desde ? descanso.desde : vacaciones.desde,
-      hasta: descanso.hasta < vacaciones.hasta ? descanso.hasta : vacaciones.hasta,
-    };
+    const general = satDatos.plazos.general?.cobertura as CoberturaSerie;
+    const pagos = satDatos.plazos.declaraciones_pagos?.cobertura as CoberturaSerie;
     expect(s.general.cobertura).toEqual(general);
     expect(s.general.excluirTipos).toEqual([]);
-    expect(s.plazos.declaraciones_pagos?.cobertura).toEqual(descanso);
+    expect(s.plazos.declaraciones_pagos?.cobertura).toEqual(pagos);
     expect(s.plazos.declaraciones_pagos?.excluirTipos).toEqual(["vacaciones"]);
-    expect(s.amplia).toEqual(descanso);
+    expect(s.amplia).toEqual(pagos);
     // Un plazo más corto que la cobertura amplia trae su respaldo con la amplia.
-    const corto = general.hasta < descanso.hasta;
+    const corto = general.hasta < pagos.hasta;
     expect(s.general.respaldo !== undefined).toBe(corto);
-    if (corto) expect(s.general.respaldo?.cobertura).toEqual(descanso);
+    if (corto) expect(s.general.respaldo?.cobertura).toEqual(pagos);
     expect(s.plazos.declaraciones_pagos?.respaldo).toBeUndefined();
   });
 

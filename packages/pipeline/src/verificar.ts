@@ -7,6 +7,7 @@ import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
 import { archivosCurado } from "./curado/generar.js";
 import { leerCurado } from "./curado/leer.js";
 import { CURADOS, type DefinicionCurado, DIRECTORIO_CURADO } from "./curado/registro.js";
+import { ErrorDatos } from "./errores.js";
 import { DATASETS } from "./registro.js";
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
@@ -239,7 +240,14 @@ export async function revisarYamlCurados(
     } else if (lectura.documento === null) {
       for (const p of lectura.problemas) problemas.push(`${DIRECTORIO_CURADO}/${def.yaml}: ${p}`);
     } else {
-      const archivos = archivosCurado(def, lectura.documento);
+      let archivos: Map<string, string>;
+      try {
+        archivos = archivosCurado(def, lectura.documento);
+      } catch (error) {
+        if (!(error instanceof ErrorDatos)) throw error;
+        problemas.push(`${DIRECTORIO_CURADO}/${def.yaml}: ${error.message}`);
+        continue;
+      }
       listos.push({ def, archivos, registros: lectura.documento.registros.length, generado });
     }
   }

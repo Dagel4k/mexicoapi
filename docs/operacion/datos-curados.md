@@ -10,7 +10,7 @@ Los calendarios de la CNBV y el SAT, la UMA, el salario mínimo y las tarifas de
 | `constantes-salario-minimo.yaml` | `constantes.salario-minimo` | Cada diciembre, la resolución de la CONASAMI |
 | `isr-tarifas.yaml` | `isr.tarifas` | Cada diciembre, el Anexo 8 de la RMF |
 
-Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) con el JSON canónico y el manifiesto. Esa carpeta nunca se edita a mano: `verificar` la regenera desde el YAML y falla si no coincide byte a byte.
+Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) con el JSON canónico y el manifiesto. Los calendarios llevan además `calendario.json`: sus tipos de plazo con la cobertura de cada uno y la publicación que cita los fines de semana de cada año, lo mismo que usa la API, sin los días; el paquete `mexicoapi` lo lee tal cual. Esa carpeta nunca se edita a mano: `verificar` la regenera desde el YAML y falla si no coincide byte a byte.
 
 ## Pasos
 

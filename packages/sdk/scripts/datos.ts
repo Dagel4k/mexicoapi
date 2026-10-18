@@ -1,8 +1,8 @@
 // Genera los módulos de datos del paquete desde data/: uno por cada declaración que hay en
 // src/datos/generados, con los registros y su meta congelados. El conjunto de datasets lo deciden
 // esas declaraciones (que llevan los tipos); este script no tiene nada propio de ningún dataset.
-// Un calendario curado (su YAML en data/curado declara `cobertura`) exporta además `calendario`:
-// sus plazos y las fuentes de los fines de semana (scripts/calendarios.ts).
+// Un calendario curado exporta además `calendario`: su `calendario.json`, que `curar` del pipeline
+// escribe junto a los días (los plazos con su cobertura y las fuentes de los fines de semana).
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 //
 //   node scripts/datos.ts    después de tsc: escribe dist/datos/generados
@@ -10,12 +10,6 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  armarCalendario,
-  type CalendarioGenerado,
-  coberturaDelYaml,
-  type RegistroDia,
-} from "./calendarios.ts";
 
 /** Prefijo de los módulos virtuales con los que `pluginDatos` sirve los datos en las pruebas. */
 export const PREFIJO_VIRTUAL = "\0mexicoapi-datos:";
@@ -69,8 +63,8 @@ export interface DatasetLeido {
   sha256: string;
   registros: unknown[];
   meta: MetaDatos;
-  /** Solo en los calendarios curados. */
-  calendario?: CalendarioGenerado;
+  /** Solo en los calendarios curados: su `calendario.json`. */
+  calendario?: Readonly<Record<string, unknown>>;
 }
 
 export interface Generado {
@@ -173,12 +167,47 @@ export async function leerDataset(datos: string, directorio: string): Promise<Da
       `${directorio}: el manifest dice ${manifiesto.records} registros y hay ${registros.length}`,
     );
   }
-  const yaml = await leerOpcional(join(datos, "curado", `${directorio}.yaml`));
-  const cobertura =
-    yaml === null ? null : coberturaDelYaml(yaml.toString("utf8"), `curado/${directorio}.yaml`);
-  if (cobertura === null) return { directorio, archivo, sha256: real, registros, meta };
-  const calendario = armarCalendario(registros as RegistroDia[], cobertura, meta.dataset);
+  const calendario = await leerCalendario(carpeta, directorio, registros);
+  if (calendario === undefined) return { directorio, archivo, sha256: real, registros, meta };
   return { directorio, archivo, sha256: real, registros, meta, calendario };
+}
+
+const ARCHIVO_CALENDARIO = "calendario.json";
+const LLAVES_CALENDARIO = ["autoridad", "fuentes_fin_de_semana", "plazos"];
+
+/**
+ * `datos/<directorio>/calendario.json`, si existe, en la forma canónica del pipeline: `verificar`
+ * lo compara con su YAML y el núcleo revisa sus reglas al armar el calendario, así que aquí solo
+ * se revisa que sea del calendario de estos días.
+ */
+async function leerCalendario(
+  carpeta: string,
+  directorio: string,
+  registros: unknown[],
+): Promise<Objeto | undefined> {
+  const bytes = await leerOpcional(join(carpeta, ARCHIVO_CALENDARIO));
+  if (bytes === null) return undefined;
+  const ruta = `${directorio}/${ARCHIVO_CALENDARIO}`;
+  const texto = bytes.toString("utf8");
+  let valor: unknown;
+  try {
+    valor = JSON.parse(texto);
+  } catch {
+    throw new Error(`${ruta} no es JSON válido`);
+  }
+  if (`${JSON.stringify(valor, null, 2)}\n` !== texto) {
+    throw new Error(`${ruta} no está en la forma canónica del pipeline`);
+  }
+  if (!esObjeto(valor) || Object.keys(valor).sort().join() !== LLAVES_CALENDARIO.join()) {
+    throw new Error(`${ruta} debe tener solo autoridad, plazos y fuentes_fin_de_semana`);
+  }
+  const autoridades = [...new Set(registros.map((r) => (esObjeto(r) ? r.autoridad : undefined)))];
+  if (autoridades.length !== 1 || autoridades[0] !== valor.autoridad) {
+    throw new Error(
+      `${ruta} es de ${String(valor.autoridad)} y sus días de ${autoridades.map(String).join(", ")}`,
+    );
+  }
+  return valor;
 }
 
 const cadenaJs = (texto: string): string =>
@@ -234,10 +263,11 @@ export async function generarDatos(opciones: {
     const declaracion = await readFile(join(opciones.declaraciones, `${nombre}.d.ts`), "utf8");
     const declara = /\bconst calendario\b/.test(declaracion);
     if (declara !== (leido.calendario !== undefined)) {
+      const ruta = `data/${nombre}/${ARCHIVO_CALENDARIO}`;
       throw new Error(
         declara
-          ? `${nombre}.d.ts declara calendario, pero data/curado/${nombre}.yaml no trae cobertura`
-          : `data/curado/${nombre}.yaml trae cobertura, pero ${nombre}.d.ts no declara calendario`,
+          ? `${nombre}.d.ts declara calendario, pero falta ${ruta}`
+          : `${ruta} existe, pero ${nombre}.d.ts no declara calendario`,
       );
     }
     leidos.push(leido);
