@@ -409,7 +409,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
     - `codigo_postal` (solo si el usuario ya hizo `sepomex sync`)
 - **Respuestas:** siempre incluyen `as_of` y la fuente con URL, para que el agente pueda citar.
 - **Seguridad:** las descripciones de las herramientas son constantes del código, versionadas y probadas. No hay herramientas que escriban ni que hagan peticiones arbitrarias.
-- **v1.1:** MCP remoto sin estado en Cloudflare (`createMcpHandler`), registro oficial de MCP y directorio de conectores de Claude.
+- **v1.1:** MCP remoto sin estado en Cloudflare (`createMcpHandler`), registro oficial de MCP y directorios de conectores de los asistentes.
 
 ## 12. Seguridad
 
