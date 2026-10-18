@@ -1,7 +1,7 @@
 import { crearCache } from "./cache.js";
 import { congelar } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
-import { type ConfigHttp, type Pedido, pedirApi } from "./http.js";
+import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
 import type { Contexto } from "./paquete.js";
 import type {
   Cliente,
@@ -63,13 +63,24 @@ function baseDe(base: string | { readonly href: string }): string {
   return texto.replace(/\/+$/, "").replace(/\/v1$/i, "");
 }
 
+/** Lo más que acepta setTimeout: más de 2^31 - 1 ms desborda y dispara de inmediato. */
+const MS_MAX = 2_147_483_647;
+
 function configurar(o: OpcionesCliente): Config {
+  if (o.base === undefined && o.offline !== true) {
+    throw new TypeError(
+      "crearCliente necesita base (el origen de la API) o offline: true para responder solo con el paquete.",
+    );
+  }
   const timeoutMs = o.timeoutMs ?? 10_000;
-  // Más de 2^31 - 1 ms desborda setTimeout, que entonces dispara de inmediato.
-  if (!(typeof timeoutMs === "number" && timeoutMs > 0 && timeoutMs <= 2_147_483_647)) {
+  if (!(typeof timeoutMs === "number" && timeoutMs > 0 && timeoutMs <= MS_MAX)) {
     throw new RangeError(
       "timeoutMs debe ser un número de milisegundos mayor que 0 y de hasta 2147483647.",
     );
+  }
+  const esperaMaximaMs = o.esperaMaximaMs ?? 10_000;
+  if (!(typeof esperaMaximaMs === "number" && esperaMaximaMs >= 0 && esperaMaximaMs <= MS_MAX)) {
+    throw new RangeError("esperaMaximaMs debe ser un número de milisegundos de 0 a 2147483647.");
   }
   const reintentos = o.reintentos ?? 2;
   if (!(Number.isInteger(reintentos) && reintentos >= 0 && reintentos <= 10)) {
@@ -88,9 +99,11 @@ function configurar(o: OpcionesCliente): Config {
     throw new RangeError("cache.maxEntradas debe ser un entero mayor que 0.");
   }
   return {
-    base: o.base === undefined ? undefined : baseDe(o.base),
+    // Sin base (solo con offline: true) nunca se pide nada a la API.
+    base: o.base === undefined ? "" : baseDe(o.base),
     timeoutMs,
     reintentos,
+    esperaMaximaMs,
     fetch: o.fetch,
     cache: cache === undefined ? undefined : crearCache(maxEntradas),
     ttlMs,
@@ -124,6 +137,9 @@ function armar(
     .map(([nombre, v]) => `${encodeURIComponent(nombre)}=${encodeURIComponent(v)}`)
     .join("&");
   const sufijo = query === "" ? "" : `?${query}`;
+  const consulta = Object.fromEntries(
+    Object.entries(valores).filter(([nombre]) => !deRuta.some(([n]) => n === nombre)),
+  );
   // Cada valor de la ruta, tal cual y codificado, con su nombre. Se cambian en una sola pasada y
   // los más largos primero, para no cortar un valor que contiene a otro.
   const ocultos = new Map<string, string>();
@@ -140,13 +156,14 @@ function armar(
   const modo = modoDe(plantilla);
   const pedido: Pedido & Contexto = {
     camino: camino + sufijo,
-    urlOculta: (c.base ?? "") + plantilla + sufijo,
+    urlOculta: c.base + plantilla + sufijo,
     instancia: plantilla,
     ocultar: (texto) => texto.replace(patron, (v) => `{${ocultos.get(v)}}`),
     // /v1/status no trae meta; una ruta que el cliente no conoce, solo si llega.
     conMeta: modo === "estable" || modo === "caduca",
     signal,
     valores,
+    consulta,
     advertencias: [],
   };
   for (const [nombre, v] of deRuta) {
@@ -157,10 +174,6 @@ function armar(
   }
   return pedido;
 }
-
-/** Un problema que la API dio como respuesta a la consulta (un 4xx con problem+json salvo 429). */
-const esDefinitivo = (error: MexicoApiError): boolean =>
-  error.status >= 400 && error.status < 500 && error.status !== 429 && error.type !== "about:blank";
 
 /** Responde con el paquete; su código, el núcleo y los datos se cargan aquí, al usarlos. */
 async function desdePaquete(
@@ -215,8 +228,8 @@ async function ejecutar(
  * piden a la API y, si no responde, salen del paquete con `origen: "paquete"` y advertencias.
  * Cada respuesta dice su `origen`; todo lo que entrega está congelado.
  */
-export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
-  const c = configurar(opciones);
+export function crearCliente(opciones: OpcionesCliente): Cliente {
+  const c = configurar(opciones ?? ({} as OpcionesCliente));
   type Pedir = (
     plantilla: string,
     parametros?: Readonly<Record<string, unknown>>,

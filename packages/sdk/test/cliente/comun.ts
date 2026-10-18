@@ -105,17 +105,30 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     expect(banco.detail).toBe("No existe el banco {codigo}.");
   });
 
-  it("revisa los valores de la ruta con las reglas de la API", async () => {
+  it("revisa los valores de la ruta con las reglas de la API, sin tocar su texto", async () => {
+    const estado = "La clave de estado (cve_ent) debe tener 2 dígitos.";
+    const municipio = "La clave de municipio (cvegeo) debe tener 5 dígitos.";
+    const banco = "El código de banco debe tener 3 dígitos.";
+    const clabe = "La CLABE debe tener 18 dígitos.";
+    // Valores que aparecen dentro del texto de la regla: el texto no se oculta.
     const casos: [Promise<unknown>, string, string][] = [
-      [api.estado("1"), "cve_ent", "La clave de estado (cve_ent) debe tener 2 dígitos."],
-      [api.municipios("251"), "cve_ent", "La clave de estado (cve_ent) debe tener 2 dígitos."],
-      [api.municipio("2500"), "cvegeo", "La clave de municipio (cvegeo) debe tener 5 dígitos."],
-      [api.banco("02"), "codigo", "El código de banco debe tener 3 dígitos."],
-      [api.clabe("0020100777777777"), "clabe", "La CLABE debe tener 18 dígitos."],
+      [api.estado("1"), "cve_ent", estado],
+      [api.estado("2"), "cve_ent", estado],
+      [api.estado("e"), "cve_ent", estado],
+      [api.municipios("251"), "cve_ent", estado],
+      [api.municipio("5"), "cvegeo", municipio],
+      [api.municipio("2500"), "cvegeo", municipio],
+      [api.banco("3"), "codigo", banco],
+      [api.banco("02"), "codigo", banco],
+      [api.clabe("1"), "clabe", clabe],
+      [api.clabe("8"), "clabe", clabe],
+      [api.clabe("a"), "clabe", clabe],
+      [api.clabe("0020100777777777"), "clabe", clabe],
     ];
     for (const [consulta, parametro, detalle] of casos) {
       const error = await problemaDe(m, consulta, "parametro-invalido", 400);
       expect(error.detail).toBe(detalle);
+      expect(error.message).toBe(`400 Parámetro inválido: ${detalle}`);
       expect(error.problema.parametro).toBe(parametro);
     }
   });
@@ -372,6 +385,38 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     );
     const operacion = await problemaDe(m, api.fixParaOperacion("ayer"), "parametro-invalido", 400);
     expect(operacion.problema.parametro).toBe("operacion");
+  });
+
+  it("rechaza los parámetros que la ruta no acepta, como la API", async () => {
+    const consultar = api.consultar as unknown as (
+      ruta: string,
+      parametros: Record<string, unknown>,
+    ) => Promise<unknown>;
+    const casos: [Promise<unknown>, string][] = [
+      [consultar("/v1/estados", { orden: "nombre" }), "orden"],
+      [consultar("/v1/estados/{cve_ent}", { cve_ent: "25", x: 1 }), "x"],
+      [consultar("/v1/clabe/{clabe}", { clabe: CLABE_VALIDA, banco: "002" }), "banco"],
+      // El desconocido se revisa antes que las reglas de los demás, como en la API.
+      [consultar("/v1/udis", { fecha: "ayer", hora: "12" }), "hora"],
+      [
+        consultar("/v1/dias-habiles", { autoridad: "lft", desde: "2026-11-13", dias: 3, tipo: 1 }),
+        "tipo",
+      ],
+    ];
+    for (const [consulta, parametro] of casos) {
+      const error = await problemaDe(m, consulta, "parametro-desconocido", 400);
+      expect(error.title).toBe("Parámetro desconocido");
+      expect(error.detail).toBe(`Esta ruta no acepta el parámetro ${parametro}.`);
+      expect(error.problema.parametro).toBe(parametro);
+    }
+    const sinNombre = await problemaDe(
+      m,
+      consultar("/v1/udis", { fecha: "2026-10-20", "": "1" }),
+      "parametro-invalido",
+      400,
+    );
+    expect(sinNombre.detail).toBe("La query tiene un parámetro sin nombre.");
+    expect(sinNombre.problema.parametro).toBeUndefined();
   });
 
   it("sin red, /v1/status no tiene respuesta del paquete", async () => {

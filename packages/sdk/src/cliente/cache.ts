@@ -4,8 +4,12 @@ export interface Guardado {
   respuesta: RespuestaSinMeta<unknown>;
   /** Para pedirla otra vez con If-None-Match cuando caduque. */
   etag: string | null;
-  /** Hasta cuándo se usa sin preguntar a la API (milisegundos de Date.now). */
+  /** Cuándo llegó o se revalidó (milisegundos de Date.now). */
+  guardadoEn: number;
+  /** Hasta cuándo se usa sin preguntar a la API. */
   expira: number;
+  /** Cuánto después de `expira` se puede usar si la API falla (stale-if-error). */
+  rancioMs: number;
 }
 
 export interface Cache {

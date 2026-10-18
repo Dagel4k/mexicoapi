@@ -131,6 +131,44 @@ function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
         ),
     ],
     ["FIX sin fecha", (api, op) => api.consultar("/v1/tipo-cambio/fix", {} as never, op)],
+    ["año 0", (api, op) => api.diasInhabiles({ anio: 0 }, op)],
+    ["año de 5 dígitos", (api, op) => api.diasInhabiles({ anio: 10_000 }, op)],
+    [
+      "autoridad que no existe",
+      (api, op) => api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "sat" }, op),
+    ],
+    [
+      "permitir_incompleto que no es booleano",
+      (api, op) =>
+        api.consultar(
+          "/v1/dias-habiles",
+          { autoridad: "lft", desde: "2026-11-13", dias: 3, permitir_incompleto: "si" } as never,
+          op,
+        ),
+    ],
+    ["desde vacío", (api, op) => api.diasHabiles({ desde: "", dias: 3 }, op)],
+    ["fecha vacía", (api, op) => api.consultar("/v1/udis", { fecha: "" }, op)],
+    [
+      "falta un obligatorio",
+      (api, op) =>
+        api.consultar("/v1/dias-habiles", { autoridad: "lft", desde: "2026-11-13" } as never, op),
+    ],
+    [
+      "parámetro desconocido en una ruta sin query",
+      (api, op) => api.consultar("/v1/estados", { orden: "nombre" } as never, op),
+    ],
+    [
+      "parámetro desconocido junto a uno inválido",
+      (api, op) => api.consultar("/v1/udis", { fecha: "ayer", hora: "12" } as never, op),
+    ],
+    [
+      "parámetro desconocido en la CLABE",
+      (api, op) => api.consultar("/v1/clabe/{clabe}", { clabe: CLABE, banco: "002" } as never, op),
+    ],
+    [
+      "parámetro sin nombre",
+      (api, op) => api.consultar("/v1/udis", { fecha: "2026-10-20", "": "1" } as never, op),
+    ],
   ];
 }
 
@@ -180,6 +218,36 @@ describe("el cliente contra el Worker", () => {
     }
   });
 
+  it("las reglas de la ruta del cliente dan el mismo 400 que el Worker", async () => {
+    const api = m.crearCliente({ base });
+    const casos: [string, string, (valor: string) => Promise<unknown>][] = [
+      ["/v1/estados/{cve_ent}", "2", (v) => api.estado(v, API)],
+      ["/v1/estados/{cve_ent}", "e", (v) => api.estado(v, API)],
+      ["/v1/estados/{cve_ent}/municipios", "251", (v) => api.municipios(v, API)],
+      ["/v1/municipios/{cvegeo}", "5", (v) => api.municipio(v, API)],
+      ["/v1/municipios/{cvegeo}", "2500", (v) => api.municipio(v, API)],
+      ["/v1/bancos/{codigo}", "3", (v) => api.banco(v, API)],
+      ["/v1/bancos/{codigo}", "02", (v) => api.banco(v, API)],
+      ["/v1/clabe/{clabe}", "1", (v) => api.clabe(v, API)],
+      ["/v1/clabe/{clabe}", "8", (v) => api.clabe(v, API)],
+      ["/v1/clabe/{clabe}", "a", (v) => api.clabe(v, API)],
+      ["/v1/clabe/{clabe}", CLABE.slice(0, 17), (v) => api.clabe(v, API)],
+    ];
+    for (const [plantilla, valor, consultar] of casos) {
+      const ruta = plantilla.replace(/\{\w+\}/, valor);
+      const directa = await fetch(new URL(ruta, base));
+      const delWorker = (await directa.json()) as Record<string, unknown>;
+      const local = await errorDe(consultar(valor));
+      expect(local.origen, ruta).toBe("paquete");
+      expect(delWorker.instance, ruta).toBe(ruta);
+      expect(local.problema.instance, ruta).toBe(plantilla);
+      const { instance: _a, ...restoWorker } = delWorker;
+      const { instance: _b, ...restoLocal } = local.problema;
+      expect(restoLocal, ruta).toEqual(restoWorker);
+      expect(local.status, ruta).toBe(directa.status);
+    }
+  });
+
   it("ningún error trae los valores de la ruta", async () => {
     const api = m.crearCliente({ base });
     const error = await errorDe(api.municipio("99999", API));
@@ -222,6 +290,27 @@ describe("el cliente contra el Worker", () => {
     expect(segunda).toBe(primera);
     expect(pedidos.map((p) => p.status)).toEqual([200, 304]);
     expect(pedidos[1]?.encabezados["If-None-Match"]).toMatch(/^(W\/)?"/);
+  });
+
+  it("si la API falla al revalidar, usa la respuesta guardada dentro del stale-if-error del Worker", async () => {
+    let caida = false;
+    const api = m.crearCliente({
+      base,
+      cache: { ttlMs: 1 },
+      reintentos: 0,
+      fetch: (url, init) =>
+        caida ? Promise.reject(new TypeError("fetch failed")) : fetch(url, init),
+    });
+    const fecha = enMedio(udis.serie).fecha;
+    const primera = await api.udi(fecha);
+    expect(primera.origen).toBe("api");
+    await new Promise((resolver) => setTimeout(resolver, 5));
+    caida = true;
+    const guardada = await api.udi(fecha);
+    expect(guardada.origen).toBe("api");
+    expect(guardada.data).toBe(primera.data);
+    expect(guardada.advertencias).toHaveLength(1);
+    expect(guardada.advertencias[0]).toMatch(/^Respuesta guardada de la API, de hace \d+ s/);
   });
 
   it("los datos estables no salen a la red: la CLABE no viaja si no se pide la API", async () => {

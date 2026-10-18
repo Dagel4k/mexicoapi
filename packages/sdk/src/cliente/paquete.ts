@@ -12,6 +12,10 @@ type Nucleo = typeof import("@mexicoapi/core");
 export interface Contexto extends ContextoLocal {
   /** Los parámetros como texto, igual que irían en la URL. */
   valores: Readonly<Record<string, string | undefined>>;
+  /** Solo los de la query. */
+  consulta: Readonly<Record<string, string>>;
+  /** Cambia cada valor de la ruta por `{nombre}`. */
+  ocultar(texto: string): string;
   /** Se le agregan las advertencias de antigüedad. */
   advertencias: string[];
 }
@@ -48,8 +52,9 @@ const conDocs = (meta: MetaDatos, seccion: string): MetaDatos => ({
   docs: `${DOCS}/api/README.md#${seccion}`,
 });
 
+/** El texto nombra el valor pedido, como el 404 de la API: se oculta. */
 function existe<T>(c: Contexto, valor: T | undefined, recurso: string): T {
-  if (valor === undefined) throw falla(c, "no-encontrado", `No existe ${recurso}.`);
+  if (valor === undefined) throw falla(c, "no-encontrado", c.ocultar(`No existe ${recurso}.`));
   return valor;
 }
 
@@ -86,9 +91,23 @@ function reglas(n: Nucleo): Readonly<Record<string, Regla>> {
   };
 }
 
-/** Responde `plantilla` con el paquete: carga el núcleo, revisa la query y responde. */
+/**
+ * Responde `plantilla` con el paquete: carga el núcleo, revisa la query en el orden de la API
+ * (sin nombre, desconocidos, cada regla) y responde.
+ */
 export async function responderPaquete(plantilla: RutaDelPaquete, c: Contexto): Promise<Dato> {
   const ruta = PAQUETE[plantilla];
+  const aceptados = new Set((ruta.consulta ?? []).map(([nombre]) => nombre));
+  const nombres = Object.keys(c.consulta);
+  if (nombres.includes("")) {
+    throw falla(c, "parametro-invalido", "La query tiene un parámetro sin nombre.");
+  }
+  const desconocido = nombres.find((nombre) => !aceptados.has(nombre));
+  if (desconocido !== undefined) {
+    throw falla(c, "parametro-desconocido", `Esta ruta no acepta el parámetro ${desconocido}.`, {
+      parametro: desconocido,
+    });
+  }
   const n = await nucleo();
   const r = reglas(n);
   for (const [nombre, obligatorio] of ruta.consulta ?? []) {

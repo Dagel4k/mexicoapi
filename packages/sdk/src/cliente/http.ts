@@ -1,7 +1,8 @@
 // Consultas a la API: fetch con tiempo límite por intento (incluida la lectura del cuerpo),
-// reintentos con espera exponencial y caché en memoria con revalidación por ETag.
-import type { Cache } from "./cache.js";
-import { congelar, esObjeto } from "./comun.js";
+// reintentos con espera exponencial dentro de un tope de espera total, y caché en memoria con
+// revalidación por ETag y stale-if-error.
+import type { Cache, Guardado } from "./cache.js";
+import { congelar, esObjeto, type Objeto } from "./comun.js";
 import { MexicoApiError, type Problema } from "./error.js";
 import type { FetchCompatible, InitFetch, RespuestaSinMeta, SenalAborto } from "./tipos.js";
 
@@ -19,12 +20,16 @@ const ESPERA_BASE_MS = 250;
 const ESPERA_TOPE_MS = 10_000;
 /** Lo más que se espera por un Retry-After; si pide más, no se reintenta. */
 const RETRY_AFTER_TOPE_MS = 60_000;
+/** Causas anidadas que se copian al ocultar la ruta; las demás se cortan. */
+const CAUSAS_MAX = 5;
 
 export interface ConfigHttp {
   /** Origen de la API sin barra final ni `/v1`. */
-  base: string | undefined;
+  base: string;
   timeoutMs: number;
   reintentos: number;
+  /** Espera total entre reintentos que se permite una consulta. */
+  esperaMaximaMs: number;
   fetch: FetchCompatible | undefined;
   cache: Cache | undefined;
   ttlMs: number;
@@ -51,13 +56,15 @@ interface Leida {
 
 type Falla = { falla: "tiempo" } | { falla: "red"; error: unknown };
 
-/** Pide `p` a la API (o lo toma de la caché) y lo entrega congelado; lanza MexicoApiError. */
+/** Un problema que la API dio como respuesta a la consulta: un 4xx con problem+json salvo 429. */
+export const esDefinitivo = (error: MexicoApiError): boolean =>
+  error.status >= 400 && error.status < 500 && error.status !== 429 && error.type !== "about:blank";
+
+/**
+ * Pide `p` a la API (o lo toma de la caché) y lo entrega congelado; lanza MexicoApiError. Si la
+ * API no responde y hay una respuesta guardada dentro de su stale-if-error, entrega esa.
+ */
 export async function pedirApi(c: ConfigHttp, p: Pedido): Promise<RespuestaSinMeta<unknown>> {
-  if (c.base === undefined) {
-    throw new TypeError(
-      "Falta base: crearCliente({ base }) necesita el origen de la API para consultarla; para responder solo con el paquete, usa offline: true.",
-    );
-  }
   const fetch = c.fetch ?? entorno.fetch;
   if (fetch === undefined) {
     throw new TypeError("No hay fetch en este entorno; pásalo en crearCliente({ fetch }).");
@@ -65,6 +72,28 @@ export async function pedirApi(c: ConfigHttp, p: Pedido): Promise<RespuestaSinMe
   const url = c.base + p.camino;
   const guardado = c.cache?.leer(url);
   if (guardado !== undefined && guardado.expira > Date.now()) return guardado.respuesta;
+  try {
+    return await deLaApi(c, fetch, url, guardado, p);
+  } catch (error) {
+    if (
+      guardado !== undefined &&
+      error instanceof MexicoApiError &&
+      !esDefinitivo(error) &&
+      Date.now() <= guardado.expira + guardado.rancioMs
+    ) {
+      return rancia(guardado, error);
+    }
+    throw error;
+  }
+}
+
+async function deLaApi(
+  c: ConfigHttp,
+  fetch: FetchCompatible,
+  url: string,
+  guardado: Guardado | undefined,
+  p: Pedido,
+): Promise<RespuestaSinMeta<unknown>> {
   const encabezados: Record<string, string> = { Accept: "application/json" };
   if (guardado?.etag != null) encabezados["If-None-Match"] = guardado.etag;
 
@@ -100,6 +129,7 @@ async function conReintentos(
   encabezados: Record<string, string>,
   p: Pedido,
 ): Promise<Leida> {
+  let esperado = 0;
   for (let intento = 0; ; intento++) {
     const r = await intentar(c, fetch, url, encabezados, p.signal);
     if (p.signal?.aborted) throw p.signal.reason;
@@ -108,11 +138,15 @@ async function conReintentos(
       // Un intento que agotó el tiempo no se repite: la consulta ya esperó lo que se pidió.
       if (r.falla === "tiempo" || intento >= c.reintentos) throw sinRespuesta(c, r, p);
       espera = esperaExponencial(intento);
+      if (esperado + espera > c.esperaMaximaMs) throw sinRespuesta(c, r, p);
     } else {
       if ((r.status < 500 && r.status !== 429) || intento >= c.reintentos) return r;
+      // Nunca antes de lo que pide Retry-After: si no cabe en lo que queda, no se reintenta y
+      // quien llama responde ya (con el error, la caché o el paquete).
       espera = retryAfter(r.encabezado("Retry-After")) ?? esperaExponencial(intento);
-      if (espera > RETRY_AFTER_TOPE_MS) return r;
+      if (espera > RETRY_AFTER_TOPE_MS || esperado + espera > c.esperaMaximaMs) return r;
     }
+    esperado += espera;
     await esperar(espera, p.signal);
   }
 }
@@ -190,9 +224,40 @@ function guardar(
 ): void {
   const control = r.encabezado("Cache-Control") ?? "";
   if (c.cache === undefined || /no-store/i.test(control)) return;
-  const maxAge = /max-age=(\d+)/i.exec(control)?.[1];
-  const ttl = maxAge === undefined ? c.ttlMs : Math.min(c.ttlMs, Number(maxAge) * 1000);
-  c.cache.guardar(url, { respuesta, etag, expira: Date.now() + ttl });
+  const segundos = (directiva: string): number | undefined => {
+    const valor = new RegExp(`(?:^|[\\s,])${directiva}=(\\d+)`, "i").exec(control)?.[1];
+    return valor === undefined ? undefined : Number(valor) * 1000;
+  };
+  const maxAge = segundos("max-age");
+  const ahora = Date.now();
+  c.cache.guardar(url, {
+    respuesta,
+    etag,
+    guardadoEn: ahora,
+    expira: ahora + (maxAge === undefined ? c.ttlMs : Math.min(c.ttlMs, maxAge)),
+    rancioMs: segundos("stale-if-error") ?? 0,
+  });
+}
+
+/** 45 s, 3 min, 5 h, 2 días. */
+function duracion(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s} s`;
+  const min = Math.floor(s / 60);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return h < 48 ? `${h} h` : `${Math.floor(h / 24)} días`;
+}
+
+/** La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo. */
+function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaSinMeta<unknown> {
+  const ahora = Date.now();
+  return congelar({
+    ...guardado.respuesta,
+    advertencias: [
+      `Respuesta guardada de la API, de hace ${duracion(ahora - guardado.guardadoEn)} y caducada hace ${duracion(ahora - guardado.expira)}, porque la API falló: ${causa.message}`,
+    ],
+  });
 }
 
 function leerJson(texto: string): unknown {
@@ -218,15 +283,33 @@ function sinRespuesta(c: ConfigHttp, r: Falla, p: Pedido): MexicoApiError {
   );
 }
 
-/** Copia del error de fetch sin los valores de la ruta: algunos entornos ponen la URL. */
-function limpiar(error: unknown, p: Pedido): Error {
+/**
+ * Copia del error de fetch y de su cadena de causas sin los valores de la ruta: algunos entornos
+ * o un fetch propio ponen la URL en el mensaje. Solo pasan el nombre, el mensaje y `code`.
+ */
+function limpiar(error: unknown, p: Pedido, profundidad = 0): Error {
   const original = error instanceof Error ? error : undefined;
-  const copia = new Error(
+  const causa = original?.cause;
+  const copia: Error & { code?: string } = new Error(
     p.ocultar(original?.message ?? String(error)),
-    original?.cause === undefined ? undefined : { cause: original.cause },
+    causa === undefined || profundidad >= CAUSAS_MAX
+      ? undefined
+      : { cause: limpiar(causa, p, profundidad + 1) },
   );
   copia.name = original?.name ?? "Error";
+  const code = (original as { code?: unknown } | undefined)?.code;
+  if (typeof code === "string") copia.code = p.ocultar(code);
   return copia;
+}
+
+/** Cada texto de un valor JSON, con los valores de la ruta ocultos. */
+function ocultarEn(valor: unknown, p: Pedido): unknown {
+  if (typeof valor === "string") return p.ocultar(valor);
+  if (Array.isArray(valor)) return valor.map((v) => ocultarEn(v, p));
+  if (esObjeto(valor)) {
+    return Object.fromEntries(Object.entries(valor).map(([k, v]) => [k, ocultarEn(v, p)]));
+  }
+  return valor;
 }
 
 function errorDeRespuesta(status: number, cuerpo: unknown, p: Pedido): MexicoApiError {
@@ -237,14 +320,14 @@ function errorDeRespuesta(status: number, cuerpo: unknown, p: Pedido): MexicoApi
     typeof cuerpo.type === "string" &&
     typeof cuerpo.title === "string"
   ) {
+    // `type` y `title` son del catálogo de la API: no traen valores y no se tocan.
     problema = {
-      ...cuerpo,
+      ...(ocultarEn(cuerpo, p) as Objeto),
       type: cuerpo.type,
       title: cuerpo.title,
       status,
-      detail: p.ocultar(typeof cuerpo.detail === "string" ? cuerpo.detail : ""),
+      detail: typeof cuerpo.detail === "string" ? p.ocultar(cuerpo.detail) : "",
     };
-    if (typeof problema.instance === "string") problema.instance = p.ocultar(problema.instance);
   } else {
     problema = {
       type: "about:blank",

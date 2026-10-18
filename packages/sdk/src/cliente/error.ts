@@ -68,6 +68,7 @@ export class MexicoApiError extends Error {
 const PROBLEMAS = {
   "parametro-invalido": [400, "Parámetro inválido"],
   "parametro-faltante": [400, "Falta un parámetro obligatorio"],
+  "parametro-desconocido": [400, "Parámetro desconocido"],
   "no-encontrado": [404, "Recurso no encontrado"],
   "dato-no-disponible": [404, "Dato todavía no disponible"],
   "calendario-incompleto": [422, "Calendario incompleto"],
@@ -80,11 +81,13 @@ export interface ContextoLocal {
   urlOculta: string;
   /** La plantilla de la ruta: lo que la API da en `instance`, sin los valores. */
   instancia: string;
-  ocultar(texto: string): string;
   causa?: MexicoApiError | undefined;
 }
 
-/** Un problema del catálogo de la API, con su forma, encontrado con lo que trae el paquete. */
+/**
+ * Un problema del catálogo de la API, con su forma, encontrado con lo que trae el paquete.
+ * `detalle` se usa tal cual: quien lo arma con un valor de la ruta debe ocultarlo antes.
+ */
 export function problemaLocal(
   contexto: ContextoLocal,
   tipo: TipoLocal,
@@ -97,7 +100,7 @@ export function problemaLocal(
       type: PREFIJO + tipo,
       title,
       status,
-      detail: contexto.ocultar(detalle),
+      detail: detalle,
       instance: contexto.instancia,
       ...extras,
     },
