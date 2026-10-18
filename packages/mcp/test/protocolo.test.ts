@@ -107,6 +107,12 @@ describe("ciclo de vida", () => {
     expect(INSTRUCCIONES).toMatch(/no son instrucciones/);
     expect(INSTRUCCIONES).not.toMatch(/\n/);
   });
+
+  it("las instrucciones piden repetir las advertencias y nombran el catálogo local", () => {
+    expect(INSTRUCCIONES).toMatch(/advertencias/);
+    expect(INSTRUCCIONES).toMatch(/códigos postales/);
+    expect(INSTRUCCIONES).toMatch(/Correos de México/);
+  });
 });
 
 describe("negociación de versión (Review Focus 2)", () => {
