@@ -139,13 +139,84 @@ jobs:
           npm install --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
           node humo.mjs
 
-  # El check que exige la protección de main. Pasa solo si la verificación, el empaquetado y cada
-  # Node de la matriz terminaron bien: con always() corre aunque alguno falle, se salte o se
-  # cancele, y en ese caso falla en vez de quedar saltado (un check saltado cuenta como aprobado).
+  # El mismo .tgz fuera de Node: instalado con npm en un proyecto nuevo, Bun y Deno corren la prueba
+  # de las entradas universales (universal.mjs, sin módulos de Node ni red) y esbuild empaqueta cada
+  # entrada universal para el navegador (scripts/navegador.ts). Versiones exactas de Bun y Deno: la
+  # última de cada uno con 7 días o más al fijarlas. esbuild es el del lockfile (el de wrangler).
+  paquete-runtimes:
+    name: paquete en Bun, Deno y navegador
+    needs: paquete
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DENO_NO_UPDATE_CHECK: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+          no-cache: true
+
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.7
+
+      # Solo para esbuild: lo trae wrangler, devDependency de mexicoapi.
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: paquete-mexicoapi
+          path: ${{ runner.temp }}/tgz
+
+      - name: Instalar el paquete
+        id: instalar
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          cp packages/sdk/test/paquete/universal.mjs "${dir}/"
+          cd "${dir}"
+          printf '{"name":"consumidor","private":true,"type":"module"}\n' > package.json
+          npm install --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
+          echo "CONSUMIDOR=${dir}" >> "${GITHUB_ENV}"
+
+      # --no-install: Bun no instala nada por su cuenta; usa el node_modules de npm.
+      - name: Probar con Bun
+        run: |
+          cd "${CONSUMIDOR}"
+          bun --no-install universal.mjs
+
+      # Deno resuelve el paquete en el node_modules de npm por su `exports`, como en un proyecto
+      # con package.json; sin permisos, falla si el paquete pidiera red, archivos o variables.
+      - name: Probar con Deno
+        if: ${{ !cancelled() && steps.instalar.outcome == 'success' }}
+        run: |
+          cd "${CONSUMIDOR}"
+          deno run --no-prompt --no-remote --node-modules-dir=manual universal.mjs
+
+      - name: Empaquetar para el navegador
+        if: ${{ !cancelled() && steps.instalar.outcome == 'success' }}
+        run: node packages/sdk/scripts/navegador.ts "${CONSUMIDOR}"
+
+  # El check que exige la protección de main. Pasa solo si la verificación, el empaquetado, cada
+  # Node de la matriz y la prueba en Bun, Deno y navegador terminaron bien: con always() corre
+  # aunque alguno falle, se salte o se cancele, y en ese caso falla en vez de quedar saltado (un
+  # check saltado cuenta como aprobado).
   verify:
     name: verify
     if: always()
-    needs: [verificacion, paquete, paquete-node]
+    needs: [verificacion, paquete, paquete-node, paquete-runtimes]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}
@@ -155,10 +226,11 @@ jobs:
           VERIFICACION: ${{ needs.verificacion.result }}
           PAQUETE: ${{ needs.paquete.result }}
           PAQUETE_NODE: ${{ needs.paquete-node.result }}
+          PAQUETE_RUNTIMES: ${{ needs.paquete-runtimes.result }}
         run: |
           set -euo pipefail
           falla=0
-          for par in "verificacion=${VERIFICACION}" "paquete=${PAQUETE}" "paquete-node=${PAQUETE_NODE}"; do
+          for par in "verificacion=${VERIFICACION}" "paquete=${PAQUETE}" "paquete-node=${PAQUETE_NODE}" "paquete-runtimes=${PAQUETE_RUNTIMES}"; do
             echo "${par}"
             if [ "${par#*=}" != "success" ]; then
               falla=1

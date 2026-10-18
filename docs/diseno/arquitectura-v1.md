@@ -498,7 +498,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
   El build del sitio de docs se suma cuando exista el sitio.
 - **Workflows:**
-  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`) y `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26). El check `verify`, el que exige la protección de `main`, pasa solo si los tres terminan bien;
+  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26) y `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador). El check `verify`, el que exige la protección de `main`, pasa solo si los cuatro terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);

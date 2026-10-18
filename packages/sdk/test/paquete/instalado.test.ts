@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, inject, it } from "vitest";
 
 const HUMO = fileURLToPath(new URL("./humo.mjs", import.meta.url));
+const UNIVERSAL = fileURLToPath(new URL("./universal.mjs", import.meta.url));
 const MANIFIESTO = fileURLToPath(new URL("../../package.json", import.meta.url));
 const { dir, empaquetado } = inject("paqueteInstalado");
 
@@ -19,6 +20,13 @@ describe("mexicoapi instalado desde su .tgz", () => {
     const r = spawnSync(process.execPath, ["humo.mjs"], { cwd: dir, encoding: "utf8" });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^humo: OK$/m);
+  });
+
+  it("pasa la prueba de las entradas universales (la que corre CI en Bun y Deno) con este Node", async () => {
+    await copyFile(UNIVERSAL, join(dir, "universal.mjs"));
+    const r = spawnSync(process.execPath, ["universal.mjs"], { cwd: dir, encoding: "utf8" });
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/^universal: OK$/m);
   });
 });
 
