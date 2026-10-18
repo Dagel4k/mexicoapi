@@ -1,4 +1,5 @@
-export const URL_PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
+export const URL_DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
+export const URL_PROBLEMAS = `${URL_DOCS}/api/problemas.md`;
 
 export type TipoProblema =
   | "parametro-invalido"
