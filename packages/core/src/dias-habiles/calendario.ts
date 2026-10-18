@@ -26,16 +26,39 @@ function validarCobertura(cobertura: Cobertura): void {
   }
 }
 
+/**
+ * Quién dice que los sábados y domingos son inhábiles: una sola fuente, o una por año cuando
+ * cada año tiene su publicación (las disposiciones anuales de la CNBV).
+ */
+export type FuenteFinDeSemana = Fuente | ((anio: number) => Fuente);
+
+/** Una copia congelada de la fuente de cada año, pedida la primera vez que hace falta. */
+function fuentePorAnio(fuente: FuenteFinDeSemana): (anio: number) => Fuente {
+  if (typeof fuente !== "function") {
+    const fija = Object.freeze({ ...fuente });
+    return () => fija;
+  }
+  const porAnio = new Map<number, Fuente>();
+  return (anio) => {
+    let copia = porAnio.get(anio);
+    if (copia === undefined) {
+      copia = Object.freeze({ ...fuente(anio) });
+      porAnio.set(anio, copia);
+    }
+    return copia;
+  };
+}
+
 function construir(
   autoridad: Autoridad,
   cobertura: Cobertura,
   // Recibe la fecha ya validada y su número de día (aDias).
   diasDe: (fecha: FechaISO, numero: number) => readonly DiaInhabil[],
-  fuenteFinDeSemana: Fuente,
+  fuenteFinDeSemana: FuenteFinDeSemana,
   excluirTipos: readonly DiaInhabil["tipo"][],
 ): Calendario {
   const fija = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
-  const fuenteFds = Object.freeze({ ...fuenteFinDeSemana });
+  const fuenteFds = fuentePorAnio(fuenteFinDeSemana);
   const calendario: Calendario = {
     autoridad,
     cobertura: fija,
@@ -56,7 +79,7 @@ function construir(
           fecha,
           motivo: semana === 0 ? "Domingo" : "Sábado",
           tipo: "fin_de_semana",
-          fuente: fuenteFds,
+          fuente: fuenteFds(Number(fecha.slice(0, 4))),
         });
       }
       return null;
@@ -69,7 +92,7 @@ export function crearCalendario(opciones: {
   autoridad: Autoridad;
   cobertura: { desde: FechaISO; hasta: FechaISO };
   dias: readonly DiaInhabil[];
-  fuenteFinDeSemana: Fuente;
+  fuenteFinDeSemana: FuenteFinDeSemana;
   excluirTipos?: readonly DiaInhabil["tipo"][];
 }): Calendario {
   const { autoridad, cobertura, dias, fuenteFinDeSemana, excluirTipos = [] } = opciones;

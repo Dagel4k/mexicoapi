@@ -7,6 +7,7 @@ import {
   type CoberturaSerie,
   crearCalendario,
   type DiaInhabilCurado,
+  type FuenteDof,
   fixPublicado,
   sumarDiasHabiles,
   type TipoCambioFix,
@@ -422,7 +423,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         dias: sat.dias.filter(
           (d) => d.fecha >= plazo.cobertura.desde && d.fecha <= plazo.cobertura.hasta,
         ),
-        fuenteFinDeSemana: sat.fuente_fin_de_semana,
+        fuenteFinDeSemana: (anio) => sat.fuentes_fin_de_semana[String(anio)] as FuenteDof,
         excluirTipos: plazo.excluir_tipos,
       });
     };
