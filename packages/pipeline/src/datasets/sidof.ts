@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  diaDeLaSemana,
   esFechaIsoValida,
   type FechaISO,
   sumarDias,
@@ -212,6 +213,11 @@ interface ConfigSidof<T extends { valor: string }> {
   porAdelantado: boolean;
   /** Más altas que esto en una corrida piden revisión. */
   maximoAltas: number;
+  /**
+   * Si la fuente solo publica de lunes a viernes, el motivo para un alta en sábado o domingo
+   * (la consulta del FIX supone que no las hay); null si la serie los incluye.
+   */
+  finDeSemana: string | null;
   /** Variación máxima contra el registro anterior: `numerador / denominador`. */
   umbral: { numerador: bigint; denominador: bigint; texto: string };
   /** Cómo se nombra un registro y su anterior en los motivos. */
@@ -361,6 +367,23 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
         motivos.push(`${altas} altas, más de ${c.maximoAltas}: arranque o hueco recuperado`);
       }
 
+      // Un alta antes de la última fecha publicada rellena la serie: la API pudo haber respondido
+      // antes que ese día no había dato, u otro FIX para una operación.
+      let ultimaPublicada = "";
+      for (const r of anterior) {
+        if (c.fechaDe(r) > ultimaPublicada) ultimaPublicada = c.fechaDe(r);
+      }
+      for (const a of diferencias.altas) {
+        const fecha = c.fechaDe(a);
+        if (fecha < ultimaPublicada) {
+          motivos.push(`alta dentro de la serie ya publicada: ${fecha} ${a.valor}`);
+        }
+        const dia = diaDeLaSemana(fecha);
+        if (c.finDeSemana !== null && (dia === 0 || dia === 6)) {
+          motivos.push(`${c.finDeSemana}: ${fecha}`);
+        }
+      }
+
       // Cada alta se compara con el registro anterior de la serie nueva (también puede ser alta).
       const serie = new Map(anterior.map((r) => [c.fechaDe(r), r]));
       for (const b of diferencias.bajas) serie.delete(c.fechaDe(b));
@@ -398,6 +421,7 @@ export const tipoCambioFix: DefinicionDataset<TipoCambioFix> = crearDatasetSidof
   registro: (fecha, valor) => ({ fecha_publicacion: fecha, valor }),
   diaria: false,
   porAdelantado: false,
+  finDeSemana: "FIX publicado en fin de semana",
   maximoAltas: 31,
   umbral: { numerador: 5n, denominador: 100n, texto: "5 %" },
   nombre: "el FIX",
@@ -418,6 +442,7 @@ export const udis: DefinicionDataset<Udi> = crearDatasetSidof({
   registro: (fecha, valor) => ({ fecha, valor }),
   diaria: true,
   porAdelantado: true,
+  finDeSemana: null,
   maximoAltas: 45,
   umbral: { numerador: 5n, denominador: 1000n, texto: "0.5 %" },
   nombre: "la UDI",

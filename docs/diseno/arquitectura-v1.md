@@ -232,7 +232,8 @@ Si un dataset cambia más que su umbral, el PR se abre **sin auto-merge**, con l
 
 - municipios: más de 0.5 % de altas o bajas;
 - bancos: más de 3 cambios;
-- FIX: valor fuera de ±5 % del día anterior.
+- FIX: valor fuera de ±5 % del día anterior, o una publicación en sábado o domingo (la regla de certeza de la consulta supone que no las hay);
+- FIX y UDIS: un alta con fecha anterior a la última ya publicada, porque rellena la serie y la API pudo haber respondido antes otra cosa para ese día.
 
 Es la defensa contra fuentes rotas o manipuladas.
 
