@@ -29,7 +29,7 @@ export default defineConfig({
         },
         "packages/pipeline/src/**": {
           lines: 95,
-          branches: 93,
+          branches: 95,
           functions: 95,
           statements: 95,
         },

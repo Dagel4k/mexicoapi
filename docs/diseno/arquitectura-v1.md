@@ -23,7 +23,7 @@ MéxicoAPI publica los datos de referencia de México que todo sistema necesita.
 | Procedencia | 100 % de los datasets con fuente, URL, licencia, fecha y sha256 | Validación en CI de cada `manifest.json` |
 | Latencia de la API | p95 < 100 ms desde México para endpoints estáticos | Prueba de humo tras cada despliegue más analítica de Cloudflare |
 | Disponibilidad | "Mejor esfuerzo", con descarga completa y paquete offline como respaldo | Status page y monitoreo externo gratuito |
-| Calidad de código | Núcleo con cobertura ≥ 95 %; pipeline ≥ 95 % en líneas, funciones y sentencias y ≥ 93 % en ramas | Umbrales de Vitest en CI |
+| Calidad de código | Núcleo y pipeline con cobertura ≥ 95 % | Umbrales de Vitest en CI |
 | Costo | ≤ $5 USD al mes | Facturación de Cloudflare |
 
 ## 2. Alcance
