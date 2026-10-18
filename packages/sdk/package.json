@@ -84,6 +84,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@mexicoapi/core": "workspace:*"
+    "@mexicoapi/core": "workspace:*",
+    "wrangler": "4.149.0"
   }
 }
