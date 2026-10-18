@@ -196,19 +196,19 @@ Reglas de normalización:
 
 ## 7. Códigos postales: el usuario lo descarga
 
-Como SEPOMEX prohíbe la redistribución, MéxicoAPI publica **la herramienta, no los datos**:
+Como SEPOMEX prohíbe la redistribución, MéxicoAPI publica **la herramienta, no los datos**. La entrada `mexicoapi/sepomex` (solo Node) hace en la máquina del usuario lo mismo que una persona en la página:
 
-1. `npx mexicoapi sepomex sync` descarga el ZIP oficial desde la máquina del usuario, con el formulario público y sin evadir nada.
-2. Convierte de ISO-8859-1 a UTF-8.
-3. Valida contra el esquema (número de filas, formato de CP, claves de municipio).
-4. Une cada CP con el CVEGEO de INEGI.
-5. Guarda el resultado en la caché local del usuario (JSON y SQLite).
+1. Antes de pedir nada muestra el aviso de uso de Correos de México y una nota que deja claro que los datos no vienen de MéxicoAPI (por omisión en stderr; la opción `aviso` lo recibe).
+2. `GET` de `CodigoPostal_Exportar.aspx`: toma los campos ocultos del formulario ASP.NET (`__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION` y cualquier otro que traiga) y su `action` (del mismo origen), y revisa que estén `cboEdo` con la opción `00`, `rblTipo` con `txt` y el botón `btnDescarga`. Ningún valor del formulario va fijo en el código.
+3. `POST` con esos campos, `cboEdo=00`, `rblTipo=txt` y las coordenadas del botón de imagen. Las peticiones dicen quién descarga (`User-Agent: mexicoapi (+https://github.com/Dagel4k/mexicoapi)`), no siguen redirecciones y piden las direcciones IPv4 primero: el sitio corta el TLS por IPv6 (verificado el 2026-10-18). Un 401, 403 o 429, o una página con CAPTCHA, es un error `bloqueado` que no se intenta evadir: el mensaje dice cómo bajar el archivo a mano y cargarlo con `sepomex.importar(ruta)`.
+4. Lee el ZIP con un lector propio de un solo archivo sobre `node:zlib`. Es error un ZIP con más de un archivo, un nombre con carpetas o `..`, cifrado, ZIP64, otro método que no sea deflate, o un tamaño o CRC-32 que no coincide. Límites: página 1 MB, ZIP 20 MB, TXT 60 MB (el oficial pesa 2.1 MB y 15.7 MB).
+5. Decodifica ISO-8859-1 (o UTF-8 si el archivo ya lo es), exige el aviso en la primera línea y las 15 columnas oficiales por nombre, revisa cada fila (número de campos, CP de 5 dígitos, claves de entidad y municipio, nombres) y que vengan las 32 entidades.
+6. Une cada CP con el CVEGEO de INEGI (`c_estado` + `c_mnpio`) usando los municipios del paquete. Un municipio que no está en INEGI es una advertencia contada (el CP queda con `cvegeo: null` y el nombre de SEPOMEX), no un error.
+7. Guarda en la caché del usuario (`%LOCALAPPDATA%\mexicoapi\sepomex` en Windows; `$XDG_CACHE_HOME/mexicoapi/sepomex` o `~/.cache/mexicoapi/sepomex` en los demás; la opción `dir` la cambia) `codigos-<id>.json`, `codigos-<id>.sqlite` si `node:sqlite` carga (las 15 columnas oficiales en UTF-8 más `cvegeo`) y al final `meta.json` (fecha, filas, CP, municipios, advertencias, aviso y SHA-256 del TXT), cada uno con un temporal que se renombra. Si algo falla antes de `meta.json` se borra lo nuevo y la caché anterior queda igual.
 
-En código: `import { sepomex } from "mexicoapi/sepomex"` → `await sepomex.sync()` y `sepomex.cp("80000")`.
+En código: `import { sepomex } from "mexicoapi/sepomex"` → `await sepomex.sync()`, `await sepomex.cp("80000")`, `await sepomex.colonias("80000")`, `await sepomex.estado()` y `await sepomex.importar(ruta)`. Los fallos son `SepomexError` con `tipo`: `bloqueado`, `sin-respuesta`, `pagina-inesperada`, `archivo-invalido`, `sin-datos` o `cache-invalida`.
 
 El MCP local usa esa misma caché. Cada usuario hace su propio "uso particular" de la fuente.
-
-Al ejecutar `sync`, la herramienta muestra el aviso de SEPOMEX y una nota que deja claro que los datos no vienen de MéxicoAPI.
 
 Si SEPOMEX o la ATDT dan permiso o publican el catálogo tabular abierto, se activa un dataset `sepomex.cp` en la API, sin cambiar el contrato del SDK.
 

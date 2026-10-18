@@ -23,6 +23,7 @@ import {
   probarFix,
   probarUdis,
 } from "../datos/comun.ts";
+import { type ModuloSepomex, probarSepomex } from "../sepomex/comun.ts";
 
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 const DIST = join(RAIZ, "dist");
@@ -89,6 +90,10 @@ describe("mexicoapi/datos/udis desde dist", () => {
   }));
 });
 
+describe("mexicoapi/sepomex desde dist", () => {
+  probarSepomex(() => importar<ModuloSepomex>("sepomex/index.js"));
+});
+
 describe("dist", () => {
   it(`la entrada principal pesa ${LIMITE_GZIP_PRINCIPAL} bytes o menos con gzip`, async () => {
     const medida = await medirEntrada(join(DIST, "index.js"));
@@ -140,6 +145,25 @@ describe("dist", () => {
       "./datos/udis",
     ]);
   });
+
+  it("la entrada de SEPOMEX solo importa módulos de Node y archivos del paquete", async () => {
+    const grafo = await grafoDeModulos(join(DIST, "sepomex", "index.js"));
+    const externas = grafo.externas.map((e) => e.especificador);
+    expect(externas).toEqual(expect.arrayContaining(["node:zlib", "node:https", "node:sqlite"]));
+    for (const especificador of externas)
+      expect(esModuloDeNode(especificador), especificador).toBe(true);
+    const enDist = grafo.archivos.map((a) => relative(DIST, a).split(sep).join("/"));
+    expect(enDist).toContain("datos/generados/inegi-municipios.js");
+    expect(enDist).not.toContain("datos/index.js");
+  });
+
+  it.each(entradasUniversales(manifiesto.exports))(
+    "la entrada $ruta no carga la de SEPOMEX",
+    async ({ archivo }) => {
+      const { archivos } = await grafoDeModulos(join(RAIZ, archivo));
+      expect(archivos.filter((a) => relative(DIST, a).startsWith(`sepomex${sep}`))).toEqual([]);
+    },
+  );
 
   it("cada entrada carga solo sus datos: la principal ninguno y el FIX y las UDIS aparte", async () => {
     const principal = await grafoDeModulos(join(DIST, "index.js"));
@@ -230,6 +254,9 @@ describe("npm pack", () => {
         "dist/datos/udis.js",
         "dist/datos/generados/inegi-municipios.js",
         "dist/datos/generados/inegi-municipios.d.ts",
+        "dist/sepomex/index.js",
+        "dist/sepomex/index.d.ts",
+        "dist/sepomex/zip.js",
       ]),
     );
     for (const ruta of rutas) {
