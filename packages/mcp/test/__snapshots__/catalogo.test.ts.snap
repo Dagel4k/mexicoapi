@@ -1,0 +1,2029 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`catálogo de herramientas > fija nombre, título, descripción, esquemas y anotaciones de cada herramienta 1`] = `
+[
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Busca municipios y alcaldías por nombre en el catálogo de INEGI que trae el paquete, sin red. No distingue mayúsculas, acentos ni signos: primero los de nombre igual al texto, luego los que empiezan con él y al final los que lo contienen. Devuelve de cada uno su clave geoestadística (cvegeo), la clave de su estado y el nombre del estado, y el total de coincidencias.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cve_ent": {
+          "description": "Clave INEGI del estado (2 dígitos) para buscar solo en él.",
+          "pattern": "^[0-9]{2}$",
+          "type": "string",
+        },
+        "limite": {
+          "default": 10,
+          "description": "Máximo de resultados, de 1 a 50.",
+          "maximum": 50,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "texto": {
+          "description": "Nombre o parte del nombre del municipio.",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "texto",
+      ],
+      "type": "object",
+    },
+    "name": "buscar_municipio",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "items": {
+            "properties": {
+              "cve_cabecera": {
+                "type": [
+                  "string",
+                  "null",
+                ],
+              },
+              "cve_ent": {
+                "type": "string",
+              },
+              "cve_mun": {
+                "type": "string",
+              },
+              "cvegeo": {
+                "type": "string",
+              },
+              "estado": {
+                "description": "Nombre del estado.",
+                "type": "string",
+              },
+              "nombre": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "cvegeo",
+              "cve_ent",
+              "cve_mun",
+              "nombre",
+              "cve_cabecera",
+              "estado",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+        "total": {
+          "description": "Coincidencias sin el límite.",
+          "type": "integer",
+        },
+      },
+      "required": [
+        "datos",
+        "total",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Buscar municipio",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Devuelve un municipio o alcaldía por su clave geoestadística de INEGI (cvegeo: los 2 dígitos del estado y los 3 del municipio), con el nombre de su estado. Sale del catálogo que trae el paquete, sin red.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cvegeo": {
+          "description": "Clave geoestadística de 5 dígitos.",
+          "pattern": "^[0-9]{5}$",
+          "type": "string",
+        },
+      },
+      "required": [
+        "cvegeo",
+      ],
+      "type": "object",
+    },
+    "name": "municipio",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "cve_cabecera": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "cve_ent": {
+              "type": "string",
+            },
+            "cve_mun": {
+              "type": "string",
+            },
+            "cvegeo": {
+              "type": "string",
+            },
+            "estado": {
+              "description": "Nombre del estado.",
+              "type": "string",
+            },
+            "nombre": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "cvegeo",
+            "cve_ent",
+            "cve_mun",
+            "nombre",
+            "cve_cabecera",
+            "estado",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Municipio por clave",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Valida una CLABE interbancaria de 18 dígitos: dígito de control y código de banco contra el catálogo de bancos que trae el paquete. Acepta espacios y guiones entre los dígitos. No usa la red ni confirma que la cuenta exista. Devuelve el banco (activo: false si ya no aparece en el SPEI), la plaza y la cuenta.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "clabe": {
+          "description": "La CLABE, con o sin espacios y guiones.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "clabe",
+      ],
+      "type": "object",
+    },
+    "name": "validar_clabe",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "detalle": {
+              "properties": {
+                "banco": {
+                  "properties": {
+                    "activo": {
+                      "type": "boolean",
+                    },
+                    "codigo": {
+                      "type": "string",
+                    },
+                    "nombre_corto": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "codigo",
+                    "nombre_corto",
+                    "activo",
+                  ],
+                  "type": [
+                    "object",
+                    "null",
+                  ],
+                },
+                "codigo_banco": {
+                  "type": "string",
+                },
+                "codigo_plaza": {
+                  "type": "string",
+                },
+                "cuenta": {
+                  "type": "string",
+                },
+                "digito_control": {
+                  "type": "string",
+                },
+                "plaza": {
+                  "type": [
+                    "object",
+                    "null",
+                  ],
+                },
+              },
+              "required": [
+                "codigo_banco",
+                "codigo_plaza",
+                "cuenta",
+                "digito_control",
+                "banco",
+              ],
+              "type": [
+                "object",
+                "null",
+              ],
+            },
+            "digito_verificador_valido": {
+              "type": [
+                "boolean",
+                "null",
+              ],
+            },
+            "errores": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "formato_valido": {
+              "type": "boolean",
+            },
+            "nota": {
+              "type": "string",
+            },
+            "valido": {
+              "type": "boolean",
+            },
+            "valor": {
+              "description": "El valor normalizado que se validó.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "valor",
+            "valido",
+            "formato_valido",
+            "digito_verificador_valido",
+            "errores",
+            "nota",
+            "detalle",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Validar CLABE",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Devuelve un banco o participante del SPEI por el código de 3 dígitos con el que empieza la CLABE: nombre corto, razón social, clave SPEI, si sigue activo y su historial de nombres. Sale del catálogo que trae el paquete, sin red.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "codigo": {
+          "description": "Los 3 primeros dígitos de la CLABE.",
+          "pattern": "^[0-9]{3}$",
+          "type": "string",
+        },
+      },
+      "required": [
+        "codigo",
+      ],
+      "type": "object",
+    },
+    "name": "banco_por_codigo",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "activo": {
+              "type": "boolean",
+            },
+            "baja_detectada": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "codigo": {
+              "type": "string",
+            },
+            "codigo_spei": {
+              "type": "string",
+            },
+            "historial": {
+              "items": {
+                "properties": {
+                  "codigo_spei": {
+                    "type": "string",
+                  },
+                  "desde": {
+                    "format": "date",
+                    "type": "string",
+                  },
+                  "hasta": {
+                    "format": "date",
+                    "type": [
+                      "string",
+                      "null",
+                    ],
+                  },
+                  "nombre_corto": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "nombre_corto",
+                  "desde",
+                  "hasta",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+            "nombre_corto": {
+              "type": "string",
+            },
+            "participacion": {
+              "type": "string",
+            },
+            "razon_social": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "sector": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "tipo": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "codigo",
+            "codigo_spei",
+            "nombre_corto",
+            "activo",
+            "historial",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Banco por código",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Valida el formato de un RFC de persona física (13 caracteres) o moral (12): estructura, fecha y dígito verificador de la homoclave. El dígito verificador es informativo: si no coincide se reporta, pero el RFC no se marca inválido. Corre en el equipo, sin red; no consulta al SAT ni confirma que el RFC exista.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "rfc": {
+          "description": "El RFC; se ignoran mayúsculas, espacios y guiones.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "rfc",
+      ],
+      "type": "object",
+    },
+    "name": "validar_rfc",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "datos": {
+          "properties": {
+            "detalle": {
+              "properties": {
+                "fecha_yymmdd": {
+                  "type": "string",
+                },
+                "homoclave": {
+                  "type": "string",
+                },
+                "tipo": {
+                  "enum": [
+                    "fisica",
+                    "moral",
+                    "generico",
+                  ],
+                  "type": "string",
+                },
+              },
+              "required": [
+                "tipo",
+                "fecha_yymmdd",
+                "homoclave",
+              ],
+              "type": [
+                "object",
+                "null",
+              ],
+            },
+            "digito_verificador_valido": {
+              "type": [
+                "boolean",
+                "null",
+              ],
+            },
+            "errores": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "formato_valido": {
+              "type": "boolean",
+            },
+            "nota": {
+              "type": "string",
+            },
+            "valido": {
+              "type": "boolean",
+            },
+            "valor": {
+              "description": "El valor normalizado que se validó.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "valor",
+            "valido",
+            "formato_valido",
+            "digito_verificador_valido",
+            "errores",
+            "nota",
+            "detalle",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Validar RFC",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Valida el formato de una CURP: estructura, fecha de nacimiento, sexo, entidad y dígito verificador. Corre en el equipo, sin red; no consulta a RENAPO ni confirma que la CURP exista.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "curp": {
+          "description": "La CURP de 18 caracteres; se ignoran mayúsculas, espacios y guiones.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "curp",
+      ],
+      "type": "object",
+    },
+    "name": "validar_curp",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "datos": {
+          "properties": {
+            "detalle": {
+              "properties": {
+                "diferenciador": {
+                  "type": "string",
+                },
+                "entidad": {
+                  "type": "string",
+                },
+                "fecha": {
+                  "type": "string",
+                },
+                "nombre_entidad": {
+                  "type": "string",
+                },
+                "sexo": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "fecha",
+                "sexo",
+                "entidad",
+                "nombre_entidad",
+                "diferenciador",
+              ],
+              "type": [
+                "object",
+                "null",
+              ],
+            },
+            "digito_verificador_valido": {
+              "type": [
+                "boolean",
+                "null",
+              ],
+            },
+            "errores": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "formato_valido": {
+              "type": "boolean",
+            },
+            "nota": {
+              "type": "string",
+            },
+            "valido": {
+              "type": "boolean",
+            },
+            "valor": {
+              "description": "El valor normalizado que se validó.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "valor",
+            "valido",
+            "formato_valido",
+            "digito_verificador_valido",
+            "errores",
+            "nota",
+            "detalle",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Validar CURP",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Valida un número de seguridad social del IMSS: 11 dígitos y dígito verificador (Luhn). Corre en el equipo, sin red; no consulta al IMSS ni confirma que el número exista.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "nss": {
+          "description": "El NSS de 11 dígitos; se ignoran espacios y guiones.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "nss",
+      ],
+      "type": "object",
+    },
+    "name": "validar_nss",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "datos": {
+          "properties": {
+            "detalle": {
+              "type": "null",
+            },
+            "digito_verificador_valido": {
+              "type": [
+                "boolean",
+                "null",
+              ],
+            },
+            "errores": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "formato_valido": {
+              "type": "boolean",
+            },
+            "nota": {
+              "type": "string",
+            },
+            "valido": {
+              "type": "boolean",
+            },
+            "valor": {
+              "description": "El valor normalizado que se validó.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "valor",
+            "valido",
+            "formato_valido",
+            "digito_verificador_valido",
+            "errores",
+            "nota",
+            "detalle",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Validar NSS",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": true,
+    },
+    "description": "Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "operacion": {
+          "description": "Fecha de la operación (AAAA-MM-DD).",
+          "format": "date",
+          "type": "string",
+        },
+        "publicado": {
+          "description": "Fecha de publicación en el DOF (AAAA-MM-DD).",
+          "format": "date",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "tipo_de_cambio_fix",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "fecha_operacion": {
+              "format": "date",
+              "type": "string",
+            },
+            "fecha_publicacion": {
+              "description": "Día de la publicación en el DOF.",
+              "format": "date",
+              "type": "string",
+            },
+            "fundamento": {
+              "properties": {
+                "fecha_publicacion": {
+                  "format": "date",
+                  "type": "string",
+                },
+                "fragmento": {
+                  "type": "string",
+                },
+                "nombre": {
+                  "type": "string",
+                },
+                "url": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "nombre",
+                "url",
+              ],
+              "type": "object",
+            },
+            "valor": {
+              "description": "Pesos por dólar, con 4 decimales.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "fecha_publicacion",
+            "valor",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "api",
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Tipo de cambio FIX",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": true,
+    },
+    "description": "Valor de la UDI (pesos por unidad de inversión) de un día, como se publica en el DOF. Hay un valor para cada día del calendario, fines de semana incluidos. Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "fecha": {
+          "description": "Día del valor (AAAA-MM-DD).",
+          "format": "date",
+          "type": "string",
+        },
+      },
+      "required": [
+        "fecha",
+      ],
+      "type": "object",
+    },
+    "name": "udis",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "fecha": {
+              "format": "date",
+              "type": "string",
+            },
+            "valor": {
+              "description": "Pesos por UDI, con 6 decimales.",
+              "type": "string",
+            },
+          },
+          "required": [
+            "fecha",
+            "valor",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "api",
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Valor de la UDI",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": true,
+    },
+    "description": "Días inhábiles publicados de un año según una autoridad: lft, cnbv o sat. No lista los sábados y domingos por serlo, pero sí un día publicado que cae en fin de semana. Cada día trae su motivo, su tipo (descanso, o vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles) y su fuente. Si la lista de un año puede estar incompleta, lo advierte. Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "anio": {
+          "description": "Año de 4 cifras.",
+          "maximum": 9999,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "autoridad": {
+          "description": "lft: Ley Federal del Trabajo, artículo 74; cnbv: días en que cierran las entidades financieras; sat: Código Fiscal de la Federación, artículo 12, y vacaciones del SAT.",
+          "enum": [
+            "lft",
+            "cnbv",
+            "sat",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "autoridad",
+        "anio",
+      ],
+      "type": "object",
+    },
+    "name": "dias_inhabiles",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "items": {
+            "properties": {
+              "fecha": {
+                "format": "date",
+                "type": "string",
+              },
+              "fuente": {
+                "properties": {
+                  "fecha_publicacion": {
+                    "format": "date",
+                    "type": "string",
+                  },
+                  "fragmento": {
+                    "type": "string",
+                  },
+                  "nombre": {
+                    "type": "string",
+                  },
+                  "url": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "nombre",
+                  "url",
+                ],
+                "type": "object",
+              },
+              "motivo": {
+                "type": "string",
+              },
+              "tipo": {
+                "description": "descanso o vacaciones.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "fecha",
+              "motivo",
+              "tipo",
+              "fuente",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "api",
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Días inhábiles",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": true,
+    },
+    "description": "Calcula la fecha que resulta de sumar días hábiles a la fecha desde según el calendario de una autoridad (lft, cnbv o sat), contando desde el día hábil siguiente. Con sat, tipo_plazo es obligatorio: en declaraciones_pagos las vacaciones del SAT cuentan como hábiles (CFF, artículo 12) y en general no; con lft o cnbv no se acepta. Devuelve la fecha resultante y los días inhábiles saltados con su fuente. Si el calendario no cubre el periodo responde con error; con permitir_incompleto: true calcula de todos modos y lo advierte. Es una calculadora, no asesoría legal. Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "autoridad": {
+          "description": "lft: Ley Federal del Trabajo, artículo 74; cnbv: días en que cierran las entidades financieras; sat: Código Fiscal de la Federación, artículo 12, y vacaciones del SAT.",
+          "enum": [
+            "lft",
+            "cnbv",
+            "sat",
+          ],
+          "type": "string",
+        },
+        "desde": {
+          "description": "Fecha de partida (AAAA-MM-DD).",
+          "format": "date",
+          "type": "string",
+        },
+        "dias": {
+          "description": "Días hábiles a sumar, de 1 a 3650.",
+          "maximum": 3650,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "permitir_incompleto": {
+          "description": "true para calcular fuera de la cobertura del calendario, con advertencia: el resultado puede cambiar cuando se publique lo que falta.",
+          "type": "boolean",
+        },
+        "tipo_plazo": {
+          "description": "Solo con autoridad sat, y ahí obligatorio.",
+          "enum": [
+            "general",
+            "declaraciones_pagos",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "autoridad",
+        "desde",
+        "dias",
+      ],
+      "type": "object",
+    },
+    "name": "sumar_dias_habiles",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "advertencias": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "autoridad": {
+              "type": "string",
+            },
+            "desde": {
+              "format": "date",
+              "type": "string",
+            },
+            "dias": {
+              "type": "integer",
+            },
+            "inhabiles_saltados": {
+              "items": {
+                "properties": {
+                  "fecha": {
+                    "format": "date",
+                    "type": "string",
+                  },
+                  "fuente": {
+                    "properties": {
+                      "fecha_publicacion": {
+                        "format": "date",
+                        "type": "string",
+                      },
+                      "fragmento": {
+                        "type": "string",
+                      },
+                      "nombre": {
+                        "type": "string",
+                      },
+                      "url": {
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "nombre",
+                      "url",
+                    ],
+                    "type": "object",
+                  },
+                  "motivo": {
+                    "type": "string",
+                  },
+                  "tipo": {
+                    "description": "descanso o vacaciones.",
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "fecha",
+                  "motivo",
+                  "tipo",
+                  "fuente",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+            "resultado": {
+              "description": "Fecha en que vence el plazo.",
+              "format": "date",
+              "type": "string",
+            },
+          },
+          "required": [
+            "autoridad",
+            "desde",
+            "dias",
+            "resultado",
+            "inhabiles_saltados",
+            "advertencias",
+          ],
+          "type": "object",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "api",
+            "paquete",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Sumar días hábiles",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "readOnlyHint": true,
+    },
+    "description": "UMA, salario mínimo y tarifas de ISR publicados en el DOF, cada uno con la publicación que lo respalda. tipo uma con anio (la UMA de ese año) o con fecha (la vigente ese día: cada UMA rige del 1 de febrero al 31 de enero siguiente); tipo salario_minimo con anio (zona general y Zona Libre de la Frontera Norte); tipo isr con periodo (mensual o anual) y anio. Los montos son texto con dos decimales. Consulta la API de MéxicoAPI si está configurada; si no, o si no responde, usa los datos del paquete y lo advierte.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "anio": {
+          "description": "Año de 4 cifras.",
+          "maximum": 9999,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "fecha": {
+          "description": "Solo con tipo uma: día en que se busca la vigente.",
+          "format": "date",
+          "type": "string",
+        },
+        "periodo": {
+          "description": "Solo con tipo isr.",
+          "enum": [
+            "mensual",
+            "anual",
+          ],
+          "type": "string",
+        },
+        "tipo": {
+          "enum": [
+            "uma",
+            "salario_minimo",
+            "isr",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "tipo",
+      ],
+      "type": "object",
+    },
+    "name": "constantes",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": "string",
+        },
+        "datos": {
+          "description": "La UMA (objeto), el salario mínimo (lista, uno por zona) o la tarifa de ISR (objeto con sus tramos), según tipo. Cada uno trae su fuente.",
+          "type": [
+            "object",
+            "array",
+          ],
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "api",
+            "paquete",
+          ],
+          "type": "string",
+        },
+        "tipo": {
+          "enum": [
+            "uma",
+            "salario_minimo",
+            "isr",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "tipo",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "UMA, salario mínimo e ISR",
+  },
+  {
+    "annotations": {
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true,
+    },
+    "description": "Estado, municipio y asentamientos (colonias, fraccionamientos, pueblos) de un código postal, del catálogo de Correos de México que el usuario descargó en este equipo con npx mexicoapi sepomex sync. No usa la red. Si el catálogo no está descargado, responde con error y el comando para descargarlo. Los datos son de Correos de México, para uso particular, y cada resultado trae su aviso de uso.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cp": {
+          "description": "Código postal de 5 dígitos, con ceros a la izquierda.",
+          "pattern": "^[0-9]{5}$",
+          "type": "string",
+        },
+      },
+      "required": [
+        "cp",
+      ],
+      "type": "object",
+    },
+    "name": "codigo_postal",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "advertencias": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "as_of": {
+          "description": "Fecha de los datos.",
+          "format": "date",
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "aviso": {
+          "description": "Aviso de uso de Correos de México.",
+          "type": "string",
+        },
+        "datos": {
+          "properties": {
+            "asentamientos": {
+              "items": {
+                "properties": {
+                  "ciudad": {
+                    "type": "string",
+                  },
+                  "nombre": {
+                    "type": "string",
+                  },
+                  "tipo": {
+                    "type": "string",
+                  },
+                  "zona": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "nombre",
+                  "tipo",
+                  "zona",
+                  "ciudad",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+            "cp": {
+              "type": "string",
+            },
+            "estado": {
+              "properties": {
+                "cve_ent": {
+                  "type": "string",
+                },
+                "nombre": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "cve_ent",
+                "nombre",
+              ],
+              "type": "object",
+            },
+            "municipio": {
+              "properties": {
+                "cvegeo": {
+                  "type": [
+                    "string",
+                    "null",
+                  ],
+                },
+                "nombre": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "cvegeo",
+                "nombre",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "cp",
+            "estado",
+            "municipio",
+            "asentamientos",
+          ],
+          "type": "object",
+        },
+        "descargado": {
+          "description": "Cuándo se descargó el catálogo en este equipo.",
+          "format": "date-time",
+          "type": "string",
+        },
+        "fuente": {
+          "additionalProperties": false,
+          "description": "Fuente para citar el dato.",
+          "properties": {
+            "nombre": {
+              "type": "string",
+            },
+            "url": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "nombre",
+            "url",
+          ],
+          "type": "object",
+        },
+        "fuentes": {
+          "description": "Todas las fuentes de la respuesta, empezando por fuente.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "nombre": {
+                "type": "string",
+              },
+              "url": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "nombre",
+              "url",
+            ],
+            "type": "object",
+          },
+          "minItems": 1,
+          "type": "array",
+        },
+        "origen": {
+          "enum": [
+            "cache_local",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "datos",
+        "aviso",
+        "descargado",
+        "as_of",
+        "fuente",
+        "fuentes",
+        "origen",
+        "advertencias",
+      ],
+      "type": "object",
+    },
+    "title": "Código postal",
+  },
+]
+`;
