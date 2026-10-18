@@ -8,7 +8,7 @@ import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
 import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
 import { construirSitio } from "../../src/sitio/construir.js";
-import { FRESCURA_HORAS, type Meta, type MetaInterna } from "../../src/sitio/meta.js";
+import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
 
 const estados = [
@@ -433,5 +433,14 @@ describe("con los datos reales del repositorio", () => {
       porEstado += (suyos.data as unknown[]).length;
     }
     expect(porEstado).toBe(interna.datasets["inegi.municipios"]?.records);
+    // El meta.docs de cada dataset apunta a un archivo que existe en docs/.
+    const docs = fileURLToPath(new URL("../../../../docs/", import.meta.url));
+    for (const [id, d] of Object.entries(interna.datasets)) {
+      expect(d.meta.docs.startsWith(`${URL_DOCS}/datos/`), id).toBe(true);
+      await expect(
+        readFile(join(docs, d.meta.docs.slice(URL_DOCS.length + 1))),
+        id,
+      ).resolves.toBeDefined();
+    }
   }, 120_000);
 });
