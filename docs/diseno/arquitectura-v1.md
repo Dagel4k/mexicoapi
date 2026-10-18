@@ -364,6 +364,16 @@ Cada parámetro se valida con una expresión regular estricta antes de tocar cua
 
 Un parámetro de query desconocido, repetido o vacío, o un segmento vacío (`?&`), también da 400. Un cliente que agrega `?_=` para romper el caché recibe 400. Una ruta con `%` da 404, y una ruta con `/` final redirige con 308 a la ruta sin él.
 
+### Despliegue
+
+Dos Workers en la misma cuenta: `mexicoapi-staging` y `mexicoapi` (producción), ambos en `workers.dev`. Staging es un Worker aparte y no una URL de vista previa, porque las vistas previas con assets y rate limiting no están garantizadas.
+
+`apps/api/scripts/cloudflare.ts configurar` resuelve (o crea) el namespace de KV titulado `mexicoapi-estado` y genera la configuración de cada entorno a partir de `wrangler.jsonc`, con el binding `ESTADO` de KV y el de rate limiting. El namespace se comparte entre staging y producción, porque el estado es del pipeline de datos y no del entorno.
+
+`despliegue.yml` corre en cada merge a `main` y a mano: despliega a staging, corre la prueba de humo (`apps/api/scripts/humo.ts`, hasta 5 intentos con 10 s entre ellos), despliega a producción y vuelve a correr el humo. Si el humo de producción falla, ejecuta `wrangler rollback --yes` y la corrida queda en rojo. El resumen lista las URLs y los IDs de versión. Sin los secretos de Cloudflare no despliega y deja un aviso.
+
+Rate limiting: el binding de Workers limita a 600 peticiones por minuto por IP (las IPv6 por /64) y por ubicación de Cloudflare, en todo lo que pasa por el Worker. Un cliente muy intenso recibe 429 y debe usar las descargas. Los pasos de la cuenta, el token, el rollback y los límites están en [docs/operacion/cloudflare.md](../operacion/cloudflare.md).
+
 ### Límites de la plataforma
 
 Assets estáticos ≤ 20,000 archivos en el plan gratis: los archivos por fecha se agrupan por año. Cada archivo pesa ≤ 25 MiB.
@@ -419,7 +429,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 | Robo de credenciales de publicación | npm trusted publishing con OIDC y procedencia, 2FA obligatorio, sin tokens largos en el repo |
 | Fuente comprometida o datos envenenados | Solo HTTPS, sha256 del original guardado, umbrales de anomalía, revisión humana de datos curados |
 | Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: token de Cloudflare (despliegue y KV), credenciales de la GitHub App del bot y, en v1.1, token de Banxico SIE. Ninguno en el código |
-| Abuso o saturación de la API | Rutas estáticas sin cómputo; regla de rate limiting de Cloudflare para rutas calculadas (600/min por IP); descargas completas documentadas |
+| Abuso o saturación de la API | Rutas estáticas sin cómputo; rate limiting del Worker en todas las rutas (600/min por IP y por ubicación); descargas completas documentadas |
 | Inyección vía parámetros | Expresiones regulares estrictas; nunca se construyen rutas de archivo con entrada sin validar |
 | Prompt injection vía MCP | Herramientas de solo lectura, descripciones fijas, sin texto libre de terceros en las descripciones |
 | Workflows de GitHub inseguros | Acciones fijadas por SHA, `permissions` mínimos por job, nada de `pull_request_target` con código ajeno |
@@ -435,7 +445,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - unidad, en Node, con un `ASSETS` falso;
   - integración y contrato, en workerd real con `unstable_startWorker`: arrancan el Worker construido y comparan cada respuesta contra el OpenAPI.
 
-  No se usa `@cloudflare/vitest-pool-workers`, que exige Vitest 4. Si wrangler cambia esa API inestable, se ajusta la prueba. Además habrá una prueba de humo contra el despliegue de staging antes de producción.
+  No se usa `@cloudflare/vitest-pool-workers`, que exige Vitest 4. Si wrangler cambia esa API inestable, se ajusta la prueba. Además hay una prueba de humo contra el despliegue de staging antes de producción (sección 9).
 - **`scripts/verify.sh`** (definición de terminado) corre:
   1. Biome (formato y lint);
   2. `tsc --noEmit`;
@@ -449,10 +459,10 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 - **Workflows:**
   - `ci.yml` (cada PR);
   - `datos.yml` (cron; un workflow con un grupo por dataset);
-  - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo);
-  - `publicacion.yml` (changesets: npm con procedencia);
-  - `seguridad.yml` (CodeQL, osv-scanner, Scorecard);
-  - `frescura.yml` (diario: abre un issue si algún dataset rebasa su frescura esperada).
+  - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
+  - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
+  - `publicacion.yml` (changesets: npm con procedencia), pendiente;
+  - `seguridad.yml` (CodeQL, osv-scanner, Scorecard), pendiente.
 - **Ramas:** una por tarea, PR a `main` con CI verde. `main` siempre desplegable.
 - **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk`. Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
 
@@ -493,7 +503,7 @@ Pendientes:
 | Pendiente | Cuándo se necesita |
 | --- | --- |
 | Pedir a SEPOMEX y a la ATDT el catálogo tabular con licencia abierta | Cuanto antes; no bloquea la v1 |
-| Cuenta de Cloudflare y token con permisos mínimos | Al desplegar la API (paso 4) |
+| Cuenta de Cloudflare, token con permisos mínimos, secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` y variable `API_URL`: los crea el dueño de la cuenta, con los pasos de [docs/operacion/cloudflare.md](../operacion/cloudflare.md) | Al desplegar la API (paso 4) |
 | GitHub App del bot de datos | Al automatizar los datos (paso 3) |
 | Registrar `mexicoapi` y `mexicoapi-mcp` en npm con 2FA | Antes de la primera publicación (paso 5) |
 | Dominio | Antes del lanzamiento; mientras tanto, `workers.dev` |
