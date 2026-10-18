@@ -143,7 +143,9 @@ export async function reescribirImports(
       },
     );
     if (nuevo.includes(NUCLEO)) {
-      throw new Error(`${archivo} todavía menciona ${NUCLEO} después de reescribir sus imports`);
+      throw new Error(
+        `${archivo} todavía menciona ${NUCLEO} después de reescribir sus imports: una subruta que el núcleo no exporta o un comentario que lo nombra (la revisión no distingue comentarios).`,
+      );
     }
     if (nuevo !== original) {
       await writeFile(ruta, nuevo);
