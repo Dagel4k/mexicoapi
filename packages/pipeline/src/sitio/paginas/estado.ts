@@ -23,7 +23,7 @@ ${navegacion(false)}
 <noscript><p class="aviso">La tabla se llena con JavaScript. Sin él, el mismo estado está en <a href="/v1/status">/v1/status</a>, en JSON.</p></noscript>
 <div class="acciones">
 <button type="button" id="actualizar-estado" hidden>Actualizar</button>
-<p id="mensaje-estado" class="mensaje" aria-live="polite"></p>
+<p id="mensaje-estado" class="mensaje" role="status" aria-live="polite"></p>
 </div>
 <div class="tabla" id="marco-estado" role="region" aria-labelledby="tabla-estado" tabindex="0" hidden>
 <table>
