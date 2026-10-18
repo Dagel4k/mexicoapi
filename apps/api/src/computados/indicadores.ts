@@ -151,10 +151,13 @@ async function feriadosBancarios(entorno: Entorno): Promise<OpcionesFix["sinPubl
     console.warn(AVISO_SIN_CNBV);
     return undefined;
   }
-  // Fuera de su cobertura el calendario lanza; ahí solo cuentan los fines de semana.
+  // Fuera de su cobertura el calendario lanza; ahí solo cuentan los fines de semana. Solo un día
+  // de descanso cierra los bancos: unas vacaciones administrativas no detienen el FIX.
   const { cobertura, calendario } = cnbv.general;
   return (fecha) =>
-    fecha >= cobertura.desde && fecha <= cobertura.hasta && calendario.inhabil(fecha) !== null;
+    fecha >= cobertura.desde &&
+    fecha <= cobertura.hasta &&
+    calendario.inhabil(fecha)?.tipo === "descanso";
 }
 
 /**

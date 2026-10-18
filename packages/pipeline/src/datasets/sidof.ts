@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   type CoberturaCurada,
+  type DiaInhabilCurado,
   diaDeLaSemana,
   esFechaIsoValida,
   type FechaISO,
@@ -202,8 +203,22 @@ const repetidos = (valores: readonly string[]): string[] => {
 
 /**
  * Los días de descanso de la CNBV dentro de la cobertura de su calendario (la del plazo
- * `general`, la misma que usa la API), según el YAML curado de `raizDatos`. Sin el YAML no hay
- * días que revisar; un YAML con problemas detiene la corrida.
+ * `general`, la misma que usa la API). Solo un día de descanso cierra los bancos: unas
+ * vacaciones administrativas no detienen el FIX. Recibe el YAML ya revisado (`leerCurado`).
+ */
+export function descansosBancarios(
+  cobertura: CoberturaCurada,
+  registros: readonly DiaInhabilCurado[],
+): (fecha: FechaISO) => boolean {
+  const { plazos } = revisarPlazos(PLAZOS.cnbv, cobertura, registros);
+  const { desde, hasta } = (plazos.general as PlazoCalendario).cobertura;
+  const fechas = new Set(registros.filter((r) => r.tipo === "descanso").map((r) => r.fecha));
+  return (fecha) => fecha >= desde && fecha <= hasta && fechas.has(fecha);
+}
+
+/**
+ * Los días de descanso de la CNBV según el YAML curado de `raizDatos`. Sin el YAML no hay días
+ * que revisar; un YAML con problemas detiene la corrida.
  */
 async function diasInhabilesBancarios(
   raizDatos: string,
@@ -218,11 +233,8 @@ async function diasInhabilesBancarios(
     );
   }
   const { cobertura, registros } = lectura.documento;
-  // leerCurado ya revisó la cobertura y los plazos del calendario (invariantesDias).
-  const { plazos } = revisarPlazos(PLAZOS.cnbv, cobertura as CoberturaCurada, registros);
-  const { desde, hasta } = (plazos.general as PlazoCalendario).cobertura;
-  const fechas = new Set(registros.map((r) => r.fecha));
-  return (fecha) => fecha >= desde && fecha <= hasta && fechas.has(fecha);
+  // Un calendario de días siempre declara su cobertura (conCobertura en el registro de curados).
+  return descansosBancarios(cobertura as CoberturaCurada, registros);
 }
 
 interface ConfigSidof<T extends { valor: string }> {
