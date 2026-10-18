@@ -6,6 +6,7 @@ import {
   pedir,
   pedirCruda,
   pedirJson,
+  registrosDe,
   SEGURIDAD,
   tipoDeMedio,
 } from "./ayudas.js";
@@ -62,10 +63,11 @@ describe("datos reales del build", () => {
     expect(meta.dataset).toBe("inegi.municipios");
   });
 
-  it("/v1/municipios devuelve los 2,478 municipios", async () => {
+  it("/v1/municipios devuelve todos los municipios del manifiesto, sin claves repetidas", async () => {
     const { data, meta } = await datos("/v1/municipios");
-    expect(data).toHaveLength(2478);
-    expect(new Set(data.map((m: Obj) => m.cvegeo)).size).toBe(2478);
+    const registros = await registrosDe("inegi-municipios");
+    expect(data).toHaveLength(registros);
+    expect(new Set(data.map((m: Obj) => m.cvegeo)).size).toBe(registros);
     expect(meta.dataset).toBe("inegi.municipios");
   });
 
@@ -82,7 +84,9 @@ describe("datos reales del build", () => {
   it("/v1/bancos devuelve el catálogo completo del build", async () => {
     const { data, meta } = await datos("/v1/bancos");
     const enDisco = JSON.parse((await leerPublico("v1/bancos.json")).toString("utf8")) as Obj;
-    expect(data.length).toBeGreaterThan(0);
+    const registros = await registrosDe("bancos");
+    expect(data).toHaveLength(registros);
+    expect(new Set(data.map((b: Obj) => b.codigo)).size).toBe(registros);
     expect(data).toEqual(enDisco.data);
     expect(meta.dataset).toBe("bancos");
   });
@@ -129,8 +133,11 @@ describe("datos reales del build", () => {
       });
     }
     const registros = Object.fromEntries(data.map((d: Obj) => [d.dataset, d.records]));
-    expect(registros["inegi.estados"]).toBe(32);
-    expect(registros["inegi.municipios"]).toBe(2478);
+    expect(registros).toEqual({
+      bancos: await registrosDe("bancos"),
+      "inegi.estados": 32,
+      "inegi.municipios": await registrosDe("inegi-municipios"),
+    });
   });
 
   it("/v1/openapi.json es el documento del build", async () => {

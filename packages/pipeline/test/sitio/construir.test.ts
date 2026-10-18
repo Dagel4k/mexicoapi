@@ -374,14 +374,42 @@ describe("salida y frescura", () => {
 });
 
 describe("con los datos reales del repositorio", () => {
-  it("construye 32 estados, 2478 municipios y 150 bancos", async () => {
+  // Los conteos salen de cada manifiesto: un PR de datos que agrega un registro no rompe la prueba.
+  it("construye un shard por registro de cada manifiesto, con claves únicas", async () => {
     vi.restoreAllMocks();
     const real = fileURLToPath(new URL("../../../../data", import.meta.url));
     await construirSitio({ raizDatos: real, salida });
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
     const shards = async (d: string) =>
-      (await readdir(join(salida, "v1", d))).filter((n) => n.endsWith(".json"));
+      (await readdir(join(salida, "v1", d))).filter((n) => n.endsWith(".json")).sort();
+    const casos = [
+      ["estados", "inegi-estados", "inegi.estados", "cve_ent"],
+      ["municipios", "inegi-municipios", "inegi.municipios", "cvegeo"],
+      ["bancos", "bancos", "bancos", "codigo"],
+    ] as const;
+    for (const [ruta, directorio, id, clave] of casos) {
+      const { records } = (await leerJson(join(real, directorio, "manifest.json"))) as {
+        records: number;
+      };
+      expect(records, id).toBeGreaterThan(0);
+      expect(interna.datasets[id]?.records, id).toBe(records);
+      const lista = (await leerJson(join(salida, "v1", `${ruta}.json`))) as {
+        data: Record<string, string>[];
+      };
+      const claves = lista.data.map((r) => r[clave] as string);
+      expect(claves, id).toHaveLength(records);
+      expect(new Set(claves).size, id).toBe(records);
+      expect(await shards(ruta), id).toEqual(claves.map((c) => `${c}.json`).sort());
+    }
+    // Los 32 estados no cambian.
     expect(await shards("estados")).toHaveLength(32);
-    expect(await shards("municipios")).toHaveLength(2478);
-    expect(await shards("bancos")).toHaveLength(150);
+    let porEstado = 0;
+    for (const nombre of await shards("estados")) {
+      const suyos = await leerJson(
+        join(salida, "v1/estados", nombre.replace(".json", ""), "municipios.json"),
+      );
+      porEstado += (suyos.data as unknown[]).length;
+    }
+    expect(porEstado).toBe(interna.datasets["inegi.municipios"]?.records);
   }, 120_000);
 });
