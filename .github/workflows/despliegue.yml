@@ -64,12 +64,14 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      # Solo el Worker y lo que necesita para construirse (el núcleo y el pipeline que arma
+      # public/): el paquete mexicoapi no se despliega.
       - name: Instalar y compilar
         if: steps.cf.outputs.tiene_cf == 'true'
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
-          pnpm -r build
+          pnpm --filter "@mexicoapi/api..." build
 
       - name: Configurar staging
         id: conf_staging
