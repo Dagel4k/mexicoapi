@@ -219,18 +219,19 @@ export function resultado(
 }
 
 /**
- * Corre una consulta al cliente. Sus errores esperables (un problema de la API o del paquete, un
- * uso que el paquete rechaza) pasan a ErrorHerramienta con el texto de la API, que no trae rutas
- * de archivos ni trazas. Si la llamada ya se canceló, el error sigue tal cual: no se responde.
+ * Corre una consulta al cliente. Un problema de la API o del paquete (MexicoApiError) pasa a
+ * ErrorHerramienta con su detalle en una línea, que no trae rutas de archivos ni trazas. Cualquier
+ * otro error (también TypeError o RangeError: con los argumentos ya validados son defectos) sigue
+ * tal cual y el protocolo lo responde como error interno, sin detalles. Si la llamada ya se
+ * canceló, el error sigue tal cual: no se responde.
  */
 export async function consultar<T>(signal: AbortSignal, consulta: () => Promise<T>): Promise<T> {
   try {
     return await consulta();
   } catch (error) {
     if (signal.aborted) throw error;
-    if (error instanceof MexicoApiError) throw new ErrorHerramienta(error.detail);
-    if (error instanceof TypeError || error instanceof RangeError) {
-      throw new ErrorHerramienta(error.message);
+    if (error instanceof MexicoApiError) {
+      throw new ErrorHerramienta(enLinea(error.detail) || enLinea(error.message));
     }
     throw error;
   }
