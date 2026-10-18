@@ -29,7 +29,8 @@ export function sumarDiasHabiles(parametros: {
     throw new RangeError(`Fecha ISO inválida: ${desde}`);
   }
 
-  const { autoridad, cobertura } = calendario;
+  const { autoridad, cobertura, faltaFuera } = calendario;
+  const falta = faltaFuera === undefined ? "" : ` ${faltaFuera}`;
   const saltados: DiaInhabil[] = [];
   const advertencias: string[] = [];
   const aniosAvisados = new Set<string>();
@@ -49,7 +50,7 @@ export function sumarDiasHabiles(parametros: {
       if (!aniosAvisados.has(anio)) {
         aniosAvisados.add(anio);
         advertencias.push(
-          `Calendario incompleto: ${autoridad.toUpperCase()} ${anio}; solo se descontaron fines de semana.`,
+          `Calendario incompleto: ${autoridad.toUpperCase()} ${anio}; solo se descontaron fines de semana.${falta}`,
         );
       }
       const semana = diaSemanaDeDias(numero);
@@ -64,6 +65,7 @@ export function sumarDiasHabiles(parametros: {
     }
   }
 
+  if (calendario.avisos !== undefined) advertencias.push(...calendario.avisos(desde, actual));
   return {
     autoridad,
     desde,

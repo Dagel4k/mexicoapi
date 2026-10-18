@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calendarioLft, crearCalendario } from "../../src/dias-habiles/calendario.js";
-import { FUENTE_LFT_715 } from "../../src/dias-habiles/lft.js";
+import { AVISO_LFT_715, FUENTE_LFT_715 } from "../../src/dias-habiles/lft.js";
 import type { DiaInhabil, Fuente } from "../../src/dias-habiles/tipos.js";
 import { CalendarioIncompletoError } from "../../src/errores.js";
 
@@ -198,6 +198,27 @@ describe("Calendario congelado", () => {
   });
 });
 
+describe("avisos y faltaFuera", () => {
+  it("crearCalendario los guarda tal cual y sin ellos quedan sin definir", () => {
+    const avisos = (desde: string, resultado: string) => [`de ${desde} a ${resultado}`];
+    const c = crearCalendario({
+      autoridad: "cnbv",
+      cobertura,
+      dias: [],
+      fuenteFinDeSemana: fuenteFds,
+      avisos,
+      faltaFuera: "Pueden faltar días.",
+    });
+    expect(c.avisos).toBe(avisos);
+    expect(c.faltaFuera).toBe("Pueden faltar días.");
+    const sin = calendario([]);
+    expect(sin.avisos).toBeUndefined();
+    expect(sin.faltaFuera).toBeUndefined();
+    expect(Object.hasOwn(sin, "avisos")).toBe(false);
+    expect(Object.hasOwn(sin, "faltaFuera")).toBe(false);
+  });
+});
+
 describe("calendarioLft", () => {
   const c = calendarioLft();
 
@@ -212,6 +233,11 @@ describe("calendarioLft", () => {
 
   it("usa el artículo 715 para los fines de semana", () => {
     expect(c.inhabil("2026-10-17")?.fuente).toEqual(FUENTE_LFT_715);
+  });
+
+  it("avisa en todo cálculo que no incluye las suspensiones de labores del art. 715", () => {
+    expect(c.avisos?.("2026-03-31", "2026-04-03")).toEqual([AVISO_LFT_715]);
+    expect(c.faltaFuera).toBeUndefined();
   });
 
   it("devuelve null en un día hábil y sigue consistente al repetir la consulta", () => {

@@ -1,6 +1,6 @@
 import { CalendarioIncompletoError } from "../errores.js";
 import { aDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
-import { COBERTURA_LFT, diasDescansoLft, FUENTE_LFT_715 } from "./lft.js";
+import { AVISO_LFT_715, COBERTURA_LFT, diasDescansoLft, FUENTE_LFT_715 } from "./lft.js";
 import type { Autoridad, DiaInhabil, Fuente } from "./tipos.js";
 
 type Cobertura = { readonly desde: FechaISO; readonly hasta: FechaISO };
@@ -11,6 +11,23 @@ export interface Calendario {
   readonly cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO };
   /** Incluye fines de semana; lanza CalendarioIncompletoError fuera de cobertura. */
   readonly inhabil: (fecha: FechaISO) => DiaInhabil | null;
+  /**
+   * Lo que el calendario no descuenta y conviene revisar en un cálculo de `desde` (sin contarlo)
+   * a `resultado`. `sumarDiasHabiles` lo agrega al final de sus advertencias: la LFT avisa siempre
+   * que no tiene las suspensiones de labores del art. 715.
+   */
+  readonly avisos?: (desde: FechaISO, resultado: FechaISO) => readonly string[];
+  /**
+   * Qué puede faltar fuera de la cobertura. Con `permitirIncompleto`, `sumarDiasHabiles` lo agrega
+   * a la advertencia de cada año sin calendario: la CNBV, los días de cierre bancario.
+   */
+  readonly faltaFuera?: string;
+}
+
+/** Los avisos de un calendario; los que no se dan no quedan como propiedad. */
+export interface AvisosCalendario {
+  avisos?: ((desde: FechaISO, resultado: FechaISO) => readonly string[]) | undefined;
+  faltaFuera?: string | undefined;
 }
 
 function congelar(dia: DiaInhabil): DiaInhabil {
@@ -56,12 +73,15 @@ function construir(
   diasDe: (fecha: FechaISO, numero: number) => readonly DiaInhabil[],
   fuenteFinDeSemana: FuenteFinDeSemana,
   excluirTipos: readonly DiaInhabil["tipo"][],
+  { avisos, faltaFuera }: AvisosCalendario = {},
 ): Calendario {
   const fija = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
   const fuenteFds = fuentePorAnio(fuenteFinDeSemana);
   const calendario: Calendario = {
     autoridad,
     cobertura: fija,
+    ...(avisos === undefined ? {} : { avisos }),
+    ...(faltaFuera === undefined ? {} : { faltaFuera }),
     inhabil(fecha) {
       // aDias valida una sola vez y deja el número de día para el fin de semana.
       const numero = aDias(fecha);
@@ -88,13 +108,15 @@ function construir(
   return Object.freeze(calendario);
 }
 
-export function crearCalendario(opciones: {
-  autoridad: Autoridad;
-  cobertura: { desde: FechaISO; hasta: FechaISO };
-  dias: readonly DiaInhabil[];
-  fuenteFinDeSemana: FuenteFinDeSemana;
-  excluirTipos?: readonly DiaInhabil["tipo"][];
-}): Calendario {
+export function crearCalendario(
+  opciones: {
+    autoridad: Autoridad;
+    cobertura: { desde: FechaISO; hasta: FechaISO };
+    dias: readonly DiaInhabil[];
+    fuenteFinDeSemana: FuenteFinDeSemana;
+    excluirTipos?: readonly DiaInhabil["tipo"][];
+  } & AvisosCalendario,
+): Calendario {
   const { autoridad, cobertura, dias, fuenteFinDeSemana, excluirTipos = [] } = opciones;
   validarCobertura(cobertura);
   const porNumero = new Map<number, DiaInhabil[]>();
@@ -116,8 +138,11 @@ export function crearCalendario(opciones: {
     (_fecha, numero) => porNumero.get(numero) ?? [],
     fuenteFinDeSemana,
     [...excluirTipos],
+    { avisos: opciones.avisos, faltaFuera: opciones.faltaFuera },
   );
 }
+
+const AVISOS_LFT = (): readonly string[] => [AVISO_LFT_715];
 
 export function calendarioLft(): Calendario {
   const porAnio = new Map<number, Map<number, DiaInhabil[]>>();
@@ -136,5 +161,5 @@ export function calendarioLft(): Calendario {
     }
     return mapa.get(numero) ?? [];
   };
-  return construir("lft", COBERTURA_LFT, diasDe, FUENTE_LFT_715, []);
+  return construir("lft", COBERTURA_LFT, diasDe, FUENTE_LFT_715, [], { avisos: AVISOS_LFT });
 }

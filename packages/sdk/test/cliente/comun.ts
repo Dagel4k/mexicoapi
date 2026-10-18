@@ -24,6 +24,10 @@ const DOCS_API = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README
 
 const CLABE_VALIDA = "002010077777777771";
 
+/** El aviso fijo de toda respuesta lft, el mismo que da la API. */
+export const AVISO_LFT =
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+
 /** Fecha ISO `dias` después (o antes) de `fecha`. */
 export const mover = (fecha: FechaISO, dias: number): FechaISO =>
   new Date(Date.parse(fecha) + dias * 86_400_000).toISOString().slice(0, 10);
@@ -163,18 +167,21 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       }),
     );
     expect(r.data.resultado).toBe("2026-11-19");
+    // Toda respuesta lft avisa que no tiene las suspensiones de labores del art. 715.
+    expect(r.data.advertencias).toEqual([AVISO_LFT]);
     expect(r.meta).toEqual({
       dataset: "dias-inhabiles.lft",
       as_of: m.mexicoapi.VIGENCIA_LFT,
       sources: [
         {
-          name: "Ley Federal del Trabajo, artículos 74 y 715",
+          // Dice qué se aplica de cada artículo: del 715, solo los sábados y domingos.
+          name: "Ley Federal del Trabajo, artículos 74 (descanso obligatorio) y 715 (sábados y domingos)",
           url: m.mexicoapi.FUENTE_LFT_74.url,
           license:
             "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
           license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
           citation:
-            "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
+            "Ley Federal del Trabajo: del artículo 74, los días de descanso obligatorio; del artículo 715, solo los sábados y domingos. Texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
         },
       ],
       docs: `${DOCS_API}dias-habiles`,
@@ -182,13 +189,18 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     esperarCongelado(r, "respuesta");
     const inhabiles = await api.diasInhabiles({ anio: 2026 });
     expect(inhabiles.data).toEqual(m.mexicoapi.diasDescansoLft(2026));
+    expect(inhabiles.advertencias).toEqual([AVISO_LFT]);
     expect(inhabiles.meta.docs).toBe(`${DOCS_API}dias-inhabiles`);
     const incompleto = await api.diasHabiles({
       desde: "2100-12-30",
       dias: 2,
       permitirIncompleto: true,
     });
-    expect(incompleto.data.advertencias).toHaveLength(1);
+    // El aviso del año sin calendario y, al final, el fijo de la LFT.
+    expect(incompleto.data.advertencias).toEqual([
+      "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
+      AVISO_LFT,
+    ]);
   });
 
   it("da los problemas de días hábiles e inhábiles con su forma de la API", async () => {

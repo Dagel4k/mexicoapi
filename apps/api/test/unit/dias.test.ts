@@ -1,4 +1,5 @@
 import {
+  AVISO_LFT_715,
   calendarioLft,
   diasDescansoLft,
   FUENTE_LFT_74,
@@ -17,13 +18,14 @@ const META_LFT = {
   as_of: "2026-05-14",
   sources: [
     {
-      name: "Ley Federal del Trabajo, artículos 74 y 715",
+      // Dice qué se aplica de cada artículo: del 715, solo los sábados y domingos.
+      name: "Ley Federal del Trabajo, artículos 74 (descanso obligatorio) y 715 (sábados y domingos)",
       url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf",
       license:
         "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
       license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
       citation:
-        "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
+        "Ley Federal del Trabajo: del artículo 74, los días de descanso obligatorio; del artículo 715, solo los sábados y domingos. Texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
     },
   ],
   docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#dias-habiles",
@@ -85,7 +87,8 @@ describe("GET /v1/dias-habiles", () => {
             fuente: { ...FUENTE_LFT_74 },
           },
         ],
-        advertencias: [],
+        // Toda respuesta lft avisa que no tiene las suspensiones de labores del art. 715.
+        advertencias: [AVISO_LFT_715],
       },
       meta: META_LFT,
     });
@@ -154,7 +157,10 @@ describe("GET /v1/dias-habiles", () => {
         dias: 5,
         resultado: "2101-01-06",
         inhabiles_saltados: [],
-        advertencias: ["Calendario incompleto: LFT 2101; solo se descontaron fines de semana."],
+        advertencias: [
+          "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
+          AVISO_LFT_715,
+        ],
       },
       meta: META_LFT,
     });
@@ -364,8 +370,9 @@ describe("GET /v1/dias-inhabiles", () => {
       meta: unknown;
     };
     expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "meta"]);
-    // La LFT se calcula por regla: la lista siempre está completa.
-    expect(cuerpo.advertencias).toEqual([]);
+    // La LFT se calcula por regla: la lista del art. 74 siempre está completa, y avisa que no
+    // tiene las suspensiones de labores del art. 715.
+    expect(cuerpo.advertencias).toEqual([AVISO_LFT_715]);
     expect(cuerpo.data.map((d) => d.fecha)).toEqual([
       "2026-01-01",
       "2026-02-02",

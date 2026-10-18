@@ -28,6 +28,10 @@ const SAT_GENERAL_CORTO = SAT.general.cobertura.hasta < "2026-12-31";
 const siguiente = (fecha: string): string =>
   new Date(Date.parse(fecha) + 86_400_000).toISOString().slice(0, 10);
 
+/** El aviso fijo de toda respuesta lft, el mismo que da la API. */
+const AVISO_LFT =
+  "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+
 let llamar: Llamador;
 
 beforeAll(async () => {
@@ -49,9 +53,11 @@ describe("dias_inhabiles", () => {
       "2026-12-25",
     ]);
     expect(c).toMatchObject({ fuente: LFT_74, fuentes: [LFT_74], origen: "paquete" });
-    // Sin API los calendarios no avisan: fuera de su cobertura responden error, no un dato viejo.
-    expect(c.advertencias).toEqual([]);
+    // Sin API los calendarios no avisan de antigüedad (fuera de su cobertura responden error, no
+    // un dato viejo); la LFT sí da su aviso fijo de lo que no incluye (art. 715).
+    expect(c.advertencias).toEqual([AVISO_LFT]);
     const t = texto(r);
+    expect(t).toContain(`Advertencia: ${AVISO_LFT}`);
     expect(t).toContain("7 días inhábiles de 2026 según la LFT, sin contar sábados y domingos:");
     expect(t).toContain("- 2026-12-25 25 de diciembre (descanso)");
   });
@@ -144,11 +150,12 @@ describe("sumar_dias_habiles", () => {
       dias: 3,
       resultado: "2026-12-29",
       inhabiles_saltados: [{ fecha: "2026-12-25", tipo: "descanso" }],
-      advertencias: [],
+      advertencias: [AVISO_LFT],
     });
-    // Sin API los calendarios no avisan: fuera de su cobertura responden error, no un dato viejo.
-    expect(c.advertencias).toEqual([]);
+    // Sin API los calendarios no avisan de antigüedad; la LFT sí da su aviso fijo (art. 715).
+    expect(c.advertencias).toEqual([AVISO_LFT]);
     const t = texto(r);
+    expect(t).toContain(`Advertencia: ${AVISO_LFT}`);
     expect(t).toContain("2026-12-23 + 3 días hábiles según la LFT: 2026-12-29.");
     expect(t).toContain("Inhábiles saltados (sin contar sábados y domingos):");
     expect(t).toContain("- 2026-12-25 25 de diciembre (descanso)");
