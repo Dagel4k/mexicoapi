@@ -988,6 +988,10 @@ describe("revisar", () => {
       requiereRevision: true,
       motivos: ["alta dentro de la serie ya publicada: 2026-10-15 18.4100"],
     });
+    // La última fecha publicada no depende del orden de la serie anterior.
+    expect(revisarFix([...antes].reverse(), relleno).motivos).toEqual([
+      "alta dentro de la serie ya publicada: 2026-10-15 18.4100",
+    ]);
     const u = [udi("2026-10-14", "8.000000"), udi("2026-10-16", "8.000100")];
     expect(revisarUdis(u, [u[0] as Udi, udi("2026-10-15", "8.000050"), ...u.slice(1)])).toEqual({
       requiereRevision: true,
