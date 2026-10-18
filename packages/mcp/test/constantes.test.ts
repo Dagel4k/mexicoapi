@@ -48,15 +48,15 @@ describe("constantes: UMA", () => {
   it("pide exactamente uno de anio o fecha y no acepta periodo", async () => {
     esError(
       await llamar("constantes", { tipo: "uma" }),
-      "Con tipo=uma falta anio (la UMA de ese año) o fecha (la vigente ese día).",
+      "[parametro-faltante] Con tipo=uma falta anio (la UMA de ese año) o fecha (la vigente ese día).",
     );
     esError(
       await llamar("constantes", { tipo: "uma", anio: 2026, fecha: "2026-03-01" }),
-      "Con tipo=uma indica solo uno de anio o fecha.",
+      "[parametro-invalido] Con tipo=uma indica solo uno de anio o fecha.",
     );
     esError(
       await llamar("constantes", { tipo: "uma", anio: 2026, periodo: "mensual" }),
-      "El parámetro periodo solo se acepta con tipo=isr.",
+      "[parametro-invalido] El parámetro periodo solo se acepta con tipo=isr.",
     );
   });
 
@@ -97,15 +97,15 @@ describe("constantes: salario mínimo", () => {
   it("pide anio y no acepta fecha ni periodo", async () => {
     esError(
       await llamar("constantes", { tipo: "salario_minimo" }),
-      "Con tipo=salario_minimo falta el parámetro anio.",
+      "[parametro-faltante] Con tipo=salario_minimo falta el parámetro anio.",
     );
     esError(
       await llamar("constantes", { tipo: "salario_minimo", anio: 2026, fecha: "2026-01-01" }),
-      "El parámetro fecha solo se acepta con tipo=uma.",
+      "[parametro-invalido] El parámetro fecha solo se acepta con tipo=uma.",
     );
     esError(
       await llamar("constantes", { tipo: "salario_minimo", anio: 2026, periodo: "anual" }),
-      "El parámetro periodo solo se acepta con tipo=isr.",
+      "[parametro-invalido] El parámetro periodo solo se acepta con tipo=isr.",
     );
   });
 });
@@ -132,11 +132,11 @@ describe("constantes: ISR", () => {
   it("pide periodo y anio, y no acepta fecha", async () => {
     esError(
       await llamar("constantes", { tipo: "isr", anio: 2026 }),
-      "Con tipo=isr falta el parámetro periodo: mensual o anual.",
+      "[parametro-faltante] Con tipo=isr falta el parámetro periodo: mensual o anual.",
     );
     esError(
       await llamar("constantes", { tipo: "isr", periodo: "anual" }),
-      "Con tipo=isr falta el parámetro anio.",
+      "[parametro-faltante] Con tipo=isr falta el parámetro anio.",
     );
     esError(
       await llamar("constantes", {
@@ -145,7 +145,7 @@ describe("constantes: ISR", () => {
         anio: 2026,
         fecha: "2026-01-01",
       }),
-      "El parámetro fecha solo se acepta con tipo=uma.",
+      "[parametro-invalido] El parámetro fecha solo se acepta con tipo=uma.",
     );
     esError(
       await llamar("constantes", { tipo: "isr", periodo: "mensual", anio: 2025 }),
@@ -163,7 +163,10 @@ describe("constantes: ISR", () => {
       { tipo: "uma", fecha: "2026-13-01" },
       { tipo: "isr", periodo: "semanal", anio: 2026 },
     ]) {
-      esError(await llamar("constantes", args), /^Argumentos inválidos para constantes: /);
+      esError(
+        await llamar("constantes", args),
+        /^\[parametro-invalido\] Argumentos inválidos para constantes: /,
+      );
     }
   });
 });
@@ -222,7 +225,7 @@ describe("constantes: respuestas vacías", () => {
     const { herramientas } = herramientasConApi(() => apiOk([]));
     esError(
       await (await servidor(herramientas))("constantes", { tipo: "salario_minimo", anio: 2028 }),
-      "La respuesta no trae el salario mínimo de 2028.",
+      "[error-interno] La respuesta no trae el salario mínimo de 2028.",
     );
   });
 });

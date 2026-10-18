@@ -33,6 +33,7 @@ function errorDeCache(error: unknown, sepomex: Sepomex): unknown {
   if (error.tipo === "sin-datos") return null;
   if (error.tipo === "cache-invalida") {
     return new ErrorHerramienta(
+      "dato-no-disponible",
       `El catálogo de códigos postales guardado en este equipo está dañado. Vuelve a descargarlo con: ${COMANDO}`,
     );
   }
@@ -110,15 +111,16 @@ export function codigoPostalHerramienta({ dirSepomex }: OpcionesHerramientas): H
       let encontrado: Awaited<ReturnType<Sepomex["cp"]>>;
       try {
         resumen = await sepomex.resumen(opciones);
-        if (resumen === null) return resultadoError(sinCatalogo);
+        if (resumen === null) return resultadoError("dato-no-disponible", sinCatalogo);
         encontrado = await sepomex.cp(cp, opciones);
       } catch (error) {
         const traducido = errorDeCache(error, sepomex);
-        if (traducido === null) return resultadoError(sinCatalogo);
+        if (traducido === null) return resultadoError("dato-no-disponible", sinCatalogo);
         throw traducido;
       }
       if (encontrado === null) {
         return resultadoError(
+          "no-encontrado",
           `El código postal ${cp} no está en el catálogo de Correos de México descargado en este equipo.`,
         );
       }

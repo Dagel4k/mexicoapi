@@ -31,7 +31,7 @@ Cada cliente guarda este bloque en su propio archivo; revisa su documentación p
 
 Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo e ISR) consultan la API pública de MéxicoAPI, https://mexicoapi.dagel4k.workers.dev, y si no responde usan los datos del paquete `mexicoapi` y lo advierten. Las demás nunca usan la red.
 
-- `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a la de pruebas (https://mexicoapi-staging.dagel4k.workers.dev) o a un despliegue propio.
+- `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a un despliegue propio o a la API local de `wrangler dev`.
 - `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`.
 
 ```json
@@ -40,7 +40,7 @@ Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, U
     "mexicoapi": {
       "command": "npx",
       "args": ["-y", "mexicoapi-mcp"],
-      "env": { "MEXICOAPI_BASE": "https://mexicoapi.dagel4k.workers.dev" }
+      "env": { "MEXICOAPI_BASE": "http://127.0.0.1:8787" }
     }
   }
 }
@@ -91,7 +91,7 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 
 Sin red (`MEXICOAPI_SIN_RED=1`), el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
 
-Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó.
+Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó. El texto empieza con su tipo de problema entre corchetes, los mismos de la API: `[parametro-invalido]` y `[parametro-faltante]` (hay que corregir la llamada), `[no-encontrado]` (el dato no existe), `[dato-no-disponible]` (todavía no se publica o no se ha cargado: puede llegar después), `[calendario-incompleto]`, `[demasiadas-peticiones]` y `[error-interno]` (sin conexión o una respuesta que no se esperaba). Por ejemplo: `[no-encontrado] No existe el banco 999.`
 
 ### Datos al día
 

@@ -157,7 +157,8 @@ describe("consultar", () => {
     );
     const error = await consultar(vivo(), () => Promise.reject(problema)).catch((e) => e);
     expect(error).toBeInstanceOf(ErrorHerramienta);
-    expect(error.message).toBe("No existe el banco 999.");
+    // Sin tipo de problema en el type (about:blank), el prefijo es error-interno.
+    expect(error.message).toBe("[error-interno] No existe el banco 999.");
   });
 
   it("usa el detalle en una línea, o el mensaje si el detalle está vacío", async () => {
@@ -169,10 +170,10 @@ describe("consultar", () => {
     const fallar = (detail: string) =>
       consultar(vivo(), () => Promise.reject(problema(detail))).catch((e) => e);
     const varias = await fallar("uno\ndos");
-    expect(varias.message).toBe("uno dos");
+    expect(varias.message).toBe("[error-interno] uno dos");
     const vacio = await fallar(" \n");
     expect(vacio).toBeInstanceOf(ErrorHerramienta);
-    expect(vacio.message).toBe("404 Falla:");
+    expect(vacio.message).toBe("[error-interno] 404 Falla:");
   });
 
   it("antepone el tipo de problema de la API, para distinguirlo sin leer el texto", async () => {
@@ -188,8 +189,8 @@ describe("consultar", () => {
       "[dato-no-disponible] Detalle.",
     );
     expect((await fallar(problema("no-encontrado", 404))).message).toBe("[no-encontrado] Detalle.");
-    // Un tipo con otra forma no se copia al texto.
-    expect((await fallar(problema("raro tipo]", 404))).message).toBe("Detalle.");
+    // Un tipo con otra forma no se copia al texto: todo error lleva uno, así que error-interno.
+    expect((await fallar(problema("raro tipo]", 404))).message).toBe("[error-interno] Detalle.");
   });
 
   // Con los argumentos ya validados, un TypeError o RangeError es un defecto: va por la ruta del

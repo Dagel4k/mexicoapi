@@ -1,3 +1,4 @@
+import { aUnaLinea } from "mexicoapi";
 import { compilarEsquema, type EsquemaJson, esObjeto, type Validador } from "./esquema.js";
 
 /**
@@ -65,21 +66,41 @@ export interface HerramientaRegistrada {
 /** Nombres que recomienda la especificación: 1 a 128 caracteres de A-Z, a-z, 0-9, _, - y punto. */
 const NOMBRE_VALIDO = /^[A-Za-z0-9_.-]{1,128}$/;
 
+/** Un tipo de problema de la API como `no-encontrado`; otra forma no se copia al texto. */
+const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
+
 /**
- * Error esperado de una herramienta, con un mensaje que se puede mostrar tal cual (sin datos
- * internos ni rutas): se responde como resultado con isError para que el modelo corrija la
- * llamada.
+ * El texto de todo error de herramienta: el tipo de problema de la API entre corchetes y el
+ * detalle en una línea (`[dato-no-disponible] …`). Así el modelo distingue sin leer el español un
+ * dato que todavía no se publica (vuelve a intentar después) de uno que no existe, o un argumento
+ * que debe corregir. Sin tipo (sin conexión, una respuesta que no es de la API) o con uno de otra
+ * forma, `error-interno`.
+ */
+export function textoDeError(tipo: string | undefined, detalle: string): string {
+  const cual = tipo !== undefined && TIPO_PROBLEMA.test(tipo) ? tipo : "error-interno";
+  return `[${cual}] ${aUnaLinea(detalle)}`;
+}
+
+/**
+ * Error esperado de una herramienta, con su tipo de problema y un detalle que se puede mostrar tal
+ * cual (sin datos internos ni rutas): se responde como resultado con isError para que el modelo
+ * corrija la llamada.
  */
 export class ErrorHerramienta extends Error {
-  constructor(mensaje: string) {
-    super(mensaje);
+  readonly tipo: string | undefined;
+  readonly detalle: string;
+
+  constructor(tipo: string | undefined, detalle: string) {
+    super(textoDeError(tipo, detalle));
     this.name = "ErrorHerramienta";
+    this.tipo = tipo;
+    this.detalle = detalle;
   }
 }
 
-/** Resultado de error de una herramienta, con un mensaje que el modelo puede usar para corregir. */
-export function resultadoError(mensaje: string): ResultadoHerramienta {
-  return { content: [{ type: "text", text: mensaje }], isError: true };
+/** Resultado de error de una herramienta, con su tipo de problema al inicio del texto. */
+export function resultadoError(tipo: string | undefined, detalle: string): ResultadoHerramienta {
+  return { content: [{ type: "text", text: textoDeError(tipo, detalle) }], isError: true };
 }
 
 function textoNoVacio(valor: unknown): boolean {

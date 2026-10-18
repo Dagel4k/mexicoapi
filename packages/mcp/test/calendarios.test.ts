@@ -116,7 +116,10 @@ describe("dias_inhabiles", () => {
       { autoridad: "lft", anio: 10000 },
       { autoridad: "lft", anio: "2026" },
     ]) {
-      esError(await llamar("dias_inhabiles", args), /^Argumentos inválidos para dias_inhabiles: /);
+      esError(
+        await llamar("dias_inhabiles", args),
+        /^\[parametro-invalido\] Argumentos inválidos para dias_inhabiles: /,
+      );
     }
   });
 
@@ -273,7 +276,7 @@ describe("sumar_dias_habiles", () => {
     ]) {
       esError(
         await llamar("sumar_dias_habiles", args),
-        /^Argumentos inválidos para sumar_dias_habiles: /,
+        /^\[parametro-invalido\] Argumentos inválidos para sumar_dias_habiles: /,
       );
     }
   });

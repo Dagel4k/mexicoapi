@@ -96,11 +96,11 @@ describe("tipo_de_cambio_fix sin API", () => {
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-02-30" }),
-      'Argumentos inválidos para tipo_de_cambio_fix: "publicado" debe ser una fecha AAAA-MM-DD válida',
+      '[parametro-invalido] Argumentos inválidos para tipo_de_cambio_fix: "publicado" debe ser una fecha AAAA-MM-DD válida',
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { operacion: "13/10/2026" }),
-      /^Argumentos inválidos para tipo_de_cambio_fix: "operacion" debe ser una fecha/,
+      /^\[parametro-invalido\] Argumentos inválidos para tipo_de_cambio_fix: "operacion" debe ser una fecha/,
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-10" }),
@@ -275,7 +275,10 @@ describe("udis", () => {
       await sinRed("udis", { fecha: "2019-12-31" }),
       "[no-encontrado] La serie del paquete empieza el 2020-01-01; no incluye el 2019-12-31.",
     );
-    esError(await sinRed("udis", {}), 'Argumentos inválidos para udis: falta "fecha"');
+    esError(
+      await sinRed("udis", {}),
+      '[parametro-invalido] Argumentos inválidos para udis: falta "fecha"',
+    );
   });
 
   it("con la API usa su respuesta", async () => {
