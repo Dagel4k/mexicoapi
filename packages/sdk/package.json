@@ -1,7 +1,7 @@
 {
   "name": "mexicoapi",
   "version": "0.1.0",
-  "description": "Validadores y reglas con datos oficiales de México: CLABE, RFC, CURP, NSS, días hábiles, tipo de cambio FIX y UDIS. Sin dependencias.",
+  "description": "Validadores, datos oficiales y cliente HTTP de MéxicoAPI: CLABE, RFC, CURP, NSS, días hábiles, FIX, UDIS, UMA, salario mínimo e ISR. Con CLI y descarga local de los códigos postales de SEPOMEX. Sin dependencias.",
   "keywords": [
     "méxico",
     "mexico",
@@ -9,11 +9,20 @@
     "rfc",
     "curp",
     "nss",
-    "inegi",
-    "banxico",
     "días hábiles",
     "fix",
-    "udis"
+    "udis",
+    "uma",
+    "isr",
+    "salario mínimo",
+    "sepomex",
+    "código postal",
+    "inegi",
+    "banxico",
+    "sat",
+    "cnbv",
+    "cliente http",
+    "cli"
   ],
   "homepage": "https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#readme",
   "bugs": {
