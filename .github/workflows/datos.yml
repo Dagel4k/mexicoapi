@@ -561,10 +561,13 @@ jobs:
   # Deja el estado de cada dataset en KV para /v1/status. Va en un job aparte, sin instalar
   # dependencias ni tocar datos externos, para que el token de Cloudflare no conviva con esos
   # pasos. Solo desde main (como el despliegue) y sin cambiar el resultado de la corrida de datos.
-  # Si la corrida falló antes del CLI no hay resumen y no se escribe nada.
+  # Si generar no terminó en verde, antes o después del CLI, no se escribe nada: el resumen de
+  # un intento anterior de la corrida no debe tomarse por el de este. La falla la reporta publicar.
   estado-kv:
     needs: [generar, publicar]
-    if: always() && github.ref == 'refs/heads/main' && needs.generar.outputs.codigo != ''
+    if: >-
+      always() && github.ref == 'refs/heads/main'
+      && needs.generar.result == 'success' && needs.generar.outputs.codigo != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: produccion
