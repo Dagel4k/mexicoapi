@@ -1,4 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
+import * as calendarios from "../../src/datos/calendarios.js";
+import * as constantes from "../../src/datos/constantes.js";
 import * as fix from "../../src/datos/fix.js";
 import type {
   BancoCatalogo,
@@ -22,6 +24,7 @@ import type {
 } from "../../src/index.js";
 import * as mexicoapi from "../../src/index.js";
 import { probarDatos, probarFix, probarUdis } from "./comun.js";
+import { probarCalendarios, probarConstantes } from "./curados.js";
 
 describe("mexicoapi/datos desde src", () => {
   probarDatos(async () => ({ datos, mexicoapi }));
@@ -33,6 +36,14 @@ describe("mexicoapi/datos/fix desde src", () => {
 
 describe("mexicoapi/datos/udis desde src", () => {
   probarUdis(async () => ({ udis, mexicoapi }));
+});
+
+describe("mexicoapi/datos/calendarios desde src", () => {
+  probarCalendarios(async () => ({ calendarios, mexicoapi }));
+});
+
+describe("mexicoapi/datos/constantes desde src", () => {
+  probarConstantes(async () => constantes);
 });
 
 describe("normalizarBusqueda", () => {

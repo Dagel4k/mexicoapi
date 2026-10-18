@@ -282,6 +282,75 @@ describe("generarDatos", () => {
     await mkdir(join(dir, "src/generados"), { recursive: true });
     await expect(generarDatos(opciones())).rejects.toThrow(/No hay declaraciones/);
   });
+
+  describe("calendarios curados", () => {
+    const FDS = {
+      nombre: "Disposiciones 2026",
+      url: "https://dof.gob.mx/nota_detalle.php?codigo=1",
+      fecha_publicacion: "2025-12-10",
+      fragmento: "IX. Los sábados y domingos.",
+    };
+    const DIAS = [
+      {
+        fecha: "2026-12-25",
+        autoridad: "cnbv",
+        motivo: "25 de diciembre",
+        tipo: "descanso",
+        fuente: FDS,
+      },
+    ];
+    const YAML =
+      "dataset: prueba.cal\ncobertura:\n  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }\n";
+    const CON_CALENDARIO = `${DECLARACION}export declare const calendario: {};\n`;
+
+    it("un calendario exporta sus plazos y las fuentes de los fines de semana", async () => {
+      await dataset("dias-cal", DIAS);
+      await escribir("data/curado/dias-cal.yaml", YAML);
+      await escribir("src/generados/dias-cal.d.ts", CON_CALENDARIO);
+      await generarDatos(opciones());
+      const m = await importar(await leer("dist/generados/dias-cal.js"), "dias-cal");
+      expect(Object.keys(m).sort()).toEqual(["calendario", "datos", "meta"]);
+      expect(m.calendario).toEqual({
+        autoridad: "cnbv",
+        plazos: {
+          general: { cobertura: { desde: "2026-01-01", hasta: "2026-12-31" }, excluir_tipos: [] },
+        },
+        fuentes_fin_de_semana: { "2026": FDS },
+      });
+      expect(Object.isFrozen((m.calendario as { plazos: object }).plazos)).toBe(true);
+    });
+
+    it("un YAML sin cobertura no da calendario", async () => {
+      await dataset("constante", [{ anio: 2026 }]);
+      await escribir("data/curado/constante.yaml", "dataset: prueba.constante\nregistros: []\n");
+      expect((await leerDataset(join(dir, "data"), "constante")).calendario).toBeUndefined();
+    });
+
+    it("la declaración y el YAML deben coincidir en el calendario", async () => {
+      await dataset("dias-cal", DIAS);
+      await escribir("data/curado/dias-cal.yaml", YAML);
+      await escribir("src/generados/dias-cal.d.ts", DECLARACION);
+      await expect(generarDatos(opciones())).rejects.toThrow(
+        "data/curado/dias-cal.yaml trae cobertura, pero dias-cal.d.ts no declara calendario",
+      );
+      await rm(join(dir, "data/curado"), { recursive: true });
+      await escribir("src/generados/dias-cal.d.ts", CON_CALENDARIO);
+      await expect(generarDatos(opciones())).rejects.toThrow(
+        "dias-cal.d.ts declara calendario, pero data/curado/dias-cal.yaml no trae cobertura",
+      );
+    });
+
+    it("una cobertura que no se entiende detiene el build", async () => {
+      await dataset("dias-cal", DIAS);
+      await escribir(
+        "data/curado/dias-cal.yaml",
+        "cobertura:\n  descanso:\n    desde: 2026-01-01\n",
+      );
+      await expect(leerDataset(join(dir, "data"), "dias-cal")).rejects.toThrow(
+        /curado\/dias-cal\.yaml: no se entiende la línea 2/,
+      );
+    });
+  });
 });
 
 describe("pluginDatos", () => {

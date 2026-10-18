@@ -23,6 +23,12 @@ import {
   probarFix,
   probarUdis,
 } from "../datos/comun.ts";
+import {
+  type ModuloCalendarios,
+  type ModuloConstantes,
+  probarCalendarios,
+  probarConstantes,
+} from "../datos/curados.ts";
 import { type ModuloSepomex, probarSepomex } from "../sepomex/comun.ts";
 
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
@@ -81,6 +87,17 @@ describe("mexicoapi/datos/fix desde dist", () => {
     fix: await importar<ModuloFix>("datos/fix.js"),
     mexicoapi: await importar<Modulo>("index.js"),
   }));
+});
+
+describe("mexicoapi/datos/calendarios desde dist", () => {
+  probarCalendarios(async () => ({
+    calendarios: await importar<ModuloCalendarios>("datos/calendarios.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
+});
+
+describe("mexicoapi/datos/constantes desde dist", () => {
+  probarConstantes(() => importar<ModuloConstantes>("datos/constantes.js"));
 });
 
 describe("mexicoapi/datos/udis desde dist", () => {
@@ -143,6 +160,8 @@ describe("dist", () => {
       "./datos",
       "./datos/fix",
       "./datos/udis",
+      "./datos/calendarios",
+      "./datos/constantes",
     ]);
   });
 
@@ -177,6 +196,15 @@ describe("dist", () => {
     ]);
     expect(await generadosDe("datos/fix.js")).toEqual(["tipo-cambio-fix"]);
     expect(await generadosDe("datos/udis.js")).toEqual(["udis"]);
+    expect(await generadosDe("datos/calendarios.js")).toEqual([
+      "dias-inhabiles-cnbv",
+      "dias-inhabiles-sat",
+    ]);
+    expect(await generadosDe("datos/constantes.js")).toEqual([
+      "constantes-salario-minimo",
+      "constantes-uma",
+      "isr-tarifas",
+    ]);
   });
 
   it("trae un módulo generado y sus tipos por cada declaración de src/datos/generados", async () => {
