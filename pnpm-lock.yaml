@@ -221,6 +221,12 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
 
+  packages/sdk:
+    devDependencies:
+      '@mexicoapi/core':
+        specifier: workspace:*
+        version: link:../core
+
 packages:
 
   '@babel/helper-string-parser@7.29.7':

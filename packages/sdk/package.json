@@ -1,0 +1,57 @@
+{
+  "name": "mexicoapi",
+  "version": "0.1.0",
+  "description": "Validadores y reglas con datos oficiales de México: CLABE, RFC, CURP, NSS, días hábiles, tipo de cambio FIX y UDIS. Sin dependencias.",
+  "keywords": [
+    "méxico",
+    "mexico",
+    "clabe",
+    "rfc",
+    "curp",
+    "nss",
+    "inegi",
+    "banxico",
+    "días hábiles",
+    "fix",
+    "udis"
+  ],
+  "homepage": "https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#readme",
+  "bugs": {
+    "url": "https://github.com/Dagel4k/mexicoapi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dagel4k/mexicoapi.git",
+    "directory": "packages/sdk"
+  },
+  "license": "MIT",
+  "author": "Daniel Pereda (https://github.com/Dagel4k)",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
+    "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && node scripts/empaquetar.ts nucleo",
+    "test:paquete": "vitest run --config vitest.paquete.config.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@mexicoapi/core": "workspace:*"
+  }
+}
