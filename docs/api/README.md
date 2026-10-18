@@ -21,16 +21,20 @@ Un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 | `GET /v1/bancos` | Bancos y participantes del SPEI |
 | `GET /v1/bancos/{codigo}` | Un banco, con su historial |
 | [`GET /v1/clabe/{clabe}`](#clabe) | Valida una CLABE |
-| [`GET /v1/dias-habiles`](#dias-habiles) | Suma días hábiles a una fecha |
-| [`GET /v1/dias-inhabiles`](#dias-inhabiles) | Días de descanso obligatorio de un año |
+| [`GET /v1/dias-habiles`](#dias-habiles) | Suma días hábiles a una fecha según la LFT, la CNBV o el SAT |
+| [`GET /v1/dias-inhabiles`](#dias-inhabiles) | Días inhábiles de un año según la LFT, la CNBV o el SAT |
 | [`GET /v1/tipo-cambio/fix`](#tipo-de-cambio-fix) | FIX publicado en el DOF un día (`publicado`) o el que aplica a una operación (`operacion`) |
 | [`GET /v1/tipo-cambio/fix/ultimo`](#tipo-de-cambio-fix) | La publicación más reciente del FIX |
 | [`GET /v1/udis`](#udis) | Valor de la UDI de un día |
+| [`GET /v1/constantes/uma`](#constantes) | La UMA vigente un día (`fecha`) |
+| [`GET /v1/constantes/uma/{anio}`](#constantes) | La UMA de un año |
+| [`GET /v1/constantes/salario-minimo/{anio}`](#constantes) | El salario mínimo de un año, por zona |
+| [`GET /v1/isr/tarifa/{periodo}/{anio}`](#constantes) | La tarifa de ISR mensual o anual de un año |
 | `GET /v1/status` | Frescura de cada dataset |
 | `GET /v1/openapi.json` | Especificación OpenAPI 3.1 |
 | `GET /descargas/*` | Datos completos (ver [Descargas](#descargas)) |
 
-Los campos de cada dataset están en [estados](../datos/inegi-estados.md), [municipios](../datos/inegi-municipios.md), [bancos](../datos/bancos.md), [tipo de cambio FIX](../datos/tipo-cambio-fix.md) y [UDIS](../datos/udis.md).
+Los campos de cada dataset están en [estados](../datos/inegi-estados.md), [municipios](../datos/inegi-municipios.md), [bancos](../datos/bancos.md), [tipo de cambio FIX](../datos/tipo-cambio-fix.md), [UDIS](../datos/udis.md), [días inhábiles de la CNBV](../datos/dias-inhabiles-cnbv.md), [días inhábiles del SAT](../datos/dias-inhabiles-sat.md), [UMA](../datos/constantes-uma.md), [salario mínimo](../datos/constantes-salario-minimo.md) y [tarifas de ISR](../datos/isr-tarifas.md).
 
 ## Forma de la respuesta
 
@@ -210,7 +214,7 @@ Una CLABE que no tiene 18 dígitos da 400 (`parametro-invalido`). La validación
 curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2026-12-18&dias=3"
 ```
 
-Suma días hábiles a una fecha. El plazo empieza a contar el día hábil siguiente a `desde`, sea `desde` hábil o no: del viernes 18 de diciembre de 2026, el día 1 es el lunes 21 y el día 3 el miércoles 23.
+Suma días hábiles a una fecha según el calendario de una autoridad: `lft`, `cnbv` o `sat`. El plazo empieza a contar el día hábil siguiente a `desde`, sea `desde` hábil o no: del viernes 18 de diciembre de 2026, el día 1 es el lunes 21 y el día 3 el miércoles 23.
 
 ```json
 {
@@ -227,12 +231,21 @@ Suma días hábiles a una fecha. El plazo empieza a contar el día hábil siguie
 
 | Parámetro | Obligatorio | Valores |
 | --- | --- | --- |
-| `autoridad` | sí | `lft` (por ahora el único; los calendarios de CNBV y SAT llegan con los datos curados) |
+| `autoridad` | sí | `lft`, `cnbv` o `sat` |
+| `tipo_plazo` | solo con `sat` | `general` o `declaraciones_pagos`; con otra autoridad da 400 |
 | `desde` | sí | Fecha real con formato `AAAA-MM-DD` |
 | `dias` | sí | Entero de 1 a 3650, sin ceros a la izquierda |
 | `permitir_incompleto` | no | `true` o `false` |
 
-Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año. `inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
+Cada autoridad tiene su calendario de días inhábiles, además de los sábados y domingos:
+
+| `autoridad` | Días inhábiles | Años que cubre |
+| --- | --- | --- |
+| `lft` | Los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año | 2007 a 2100 |
+| `cnbv` | Los días en que las entidades financieras cierran, según las disposiciones que la CNBV publica en el DOF cada año ([detalle](../datos/dias-inhabiles-cnbv.md)) | 2025 y 2026 |
+| `sat` | Los del artículo 12 del Código Fiscal de la Federación y los periodos de vacaciones de la regla 2.1.6 de la RMF ([detalle](../datos/dias-inhabiles-sat.md)) | 2026, con el límite que se explica abajo |
+
+Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. `inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
 
 ```json
 {
@@ -258,6 +271,72 @@ Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligat
 
 El `fragmento` real trae el artículo completo; aquí se acortó con "…".
 
+### CNBV
+
+Con `autoridad=cnbv` se descuentan los días que las disposiciones de la CNBV mandan cerrar a las entidades financieras (por ejemplo, el 12 y el 25 de diciembre), además de sábados y domingos. Del miércoles 23 de diciembre de 2026, 3 días hábiles caen el martes 29:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=cnbv&desde=2026-12-23&dias=3"
+```
+
+```json
+{
+  "autoridad": "cnbv",
+  "desde": "2026-12-23",
+  "dias": 3,
+  "resultado": "2026-12-29",
+  "inhabiles_saltados": [
+    {
+      "fecha": "2026-12-25",
+      "motivo": "25 de diciembre",
+      "tipo": "descanso",
+      "fuente": {
+        "nombre": "Disposiciones de carácter general que señalan los días del año 2026 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender sus operaciones",
+        "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775684&fecha=10/12/2025",
+        "fecha_publicacion": "2025-12-10",
+        "fragmento": "Artículo 1.- Las instituciones de crédito, casas de bolsa, … VIII. El 12 y 25 de diciembre. IX. Los sábados y domingos."
+      }
+    }
+  ],
+  "advertencias": []
+}
+```
+
+El `fragmento` real trae el artículo completo. La `meta` de estas respuestas es la del calendario de la autoridad (`dataset: "dias-inhabiles.cnbv"`) y lista en `sources` cada publicación del DOF que respalda un día.
+
+### SAT y tipo de plazo
+
+Con `autoridad=sat`, `tipo_plazo` es obligatorio. El artículo 12 del Código Fiscal de la Federación dice que en los plazos para presentar declaraciones y pagar contribuciones los periodos generales de vacaciones de las autoridades fiscales se consideran hábiles. En los demás plazos no cuentan.
+
+| `tipo_plazo` | Vacaciones del SAT | Descanso (artículo 12) |
+| --- | --- | --- |
+| `general` | Inhábiles | Inhábiles |
+| `declaraciones_pagos` | Hábiles | Inhábiles |
+
+Del viernes 17 de julio de 2026, 3 días hábiles dan resultados distintos porque el primer periodo general de vacaciones de 2026 va del 20 al 31 de julio:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-17&dias=3"
+curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-07-17&dias=3"
+```
+
+Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` trae los 12 días de vacaciones (del 2026-07-20 al 2026-07-31, con `tipo: "vacaciones"`). Con `declaraciones_pagos` el resultado es el miércoles 2026-07-22 y `inhabiles_saltados` queda vacío:
+
+```json
+{
+  "autoridad": "sat",
+  "desde": "2026-07-17",
+  "dias": 3,
+  "resultado": "2026-07-22",
+  "inhabiles_saltados": [],
+  "advertencias": []
+}
+```
+
+Sin `tipo_plazo` responde 400 `parametro-faltante`; con `lft` o `cnbv` y `tipo_plazo`, 400 `parametro-invalido`.
+
+El 2 y 3 de abril de 2026 (regla 2.1.6, fracción II) no son vacaciones generales, sino días inhábiles para el SAT. Aquí se tratan como vacaciones: en un plazo de declaraciones y pagos cuentan como hábiles y el plazo vence antes, no después. Es el lado seguro para el contribuyente.
+
 ### Cobertura del calendario
 
 El calendario `lft` cubre del 2007-01-01 al 2100-12-31. Si el cálculo cruza esos límites, responde 422 `calendario-incompleto` y nombra la fecha que falta:
@@ -279,7 +358,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
 }
 ```
 
-Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo los fines de semana, y lo avisa en `advertencias`:
+Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo los fines de semana, y lo avisa en `advertencias` con la autoridad en mayúsculas:
 
 ```json
 {
@@ -288,11 +367,70 @@ Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo lo
   "dias": 3,
   "resultado": "2101-01-04",
   "inhabiles_saltados": [],
-  "advertencias": ["Calendario incompleto: lft 2101; solo se descontaron fines de semana."]
+  "advertencias": ["Calendario incompleto: LFT 2101; solo se descontaron fines de semana."]
 }
 ```
 
 Un plazo legal equivocado sin aviso es peor que un error: usa `permitir_incompleto` solo si sabes lo que haces. Con `permitir_incompleto=true`, si el resultado pasara del año 9999, responde 400 sobre `desde`.
+
+#### Cobertura de la CNBV y el SAT
+
+La CNBV publica su calendario año con año y el SAT publica sus periodos de vacaciones cuando los fija, así que la cobertura de estos calendarios es corta y crece con cada publicación. Hoy:
+
+| Calendario | Cobertura |
+| --- | --- |
+| `cnbv` | del 2025-01-01 al 2026-12-31 |
+| `sat`, `tipo_plazo=declaraciones_pagos` | del 2026-01-01 al 2026-12-31 |
+| `sat`, `tipo_plazo=general` | del 2026-01-01 al 2026-11-30 |
+
+El plazo `general` del SAT termina el 30 de noviembre de 2026 porque el segundo periodo general de vacaciones de 2026 todavía no se publica, y sin él no se sabe qué días de diciembre son inhábiles. Los días de descanso del artículo 12 sí están completos todo el año, y por eso `declaraciones_pagos`, que no cuenta las vacaciones, llega al 31 de diciembre. Cada calendario se amplía cuando se captura la publicación correspondiente ([cómo se hace](../operacion/datos-curados.md)).
+
+Fuera de la cobertura responde 422 `calendario-incompleto`. Cuando otro `tipo_plazo` sí cubre la fecha, el `detail` lo dice:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=5"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
+  "title": "Calendario incompleto",
+  "status": 422,
+  "detail": "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.",
+  "instance": "/v1/dias-habiles",
+  "autoridad": "sat",
+  "fecha": "2026-12-01",
+  "cobertura": { "desde": "2026-01-01", "hasta": "2026-11-30" }
+}
+```
+
+Con `permitir_incompleto=true`, un plazo que tiene calendario de respaldo no se limita a los fines de semana: sigue descontando los días ya publicados (el 25 de diciembre, que el artículo 12 fija) y avisa de lo que puede faltar. Del 27 de noviembre de 2026, 20 días hábiles con `tipo_plazo=general`:
+
+```bash
+curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=20&permitir_incompleto=true"
+```
+
+```json
+{
+  "autoridad": "sat",
+  "desde": "2026-11-27",
+  "dias": 20,
+  "resultado": "2026-12-28",
+  "inhabiles_saltados": [
+    {
+      "fecha": "2026-12-25",
+      "motivo": "25 de diciembre",
+      "tipo": "descanso",
+      "fuente": { "nombre": "Código Fiscal de la Federación, artículo 12", "…": "…" }
+    }
+  ],
+  "advertencias": [
+    "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana."
+  ]
+}
+```
+
+El resultado puede cambiar cuando se publique el periodo de vacaciones faltante. Si el cálculo sigue más allá de la cobertura más amplia del calendario (para el SAT, el 31 de diciembre de 2026), se suma el aviso de solo fines de semana de arriba, con la autoridad en mayúsculas (`Calendario incompleto: SAT 2027; …`). Si el cálculo no entra en la zona incompleta, no hay aviso.
 
 Esta ruta es una calculadora, no asesoría legal. Para un plazo procesal o fiscal, confirma el calendario de la autoridad que corresponde.
 
@@ -300,9 +438,19 @@ Esta ruta es una calculadora, no asesoría legal. Para un plazo procesal o fisca
 
 ```bash
 curl "https://<base>/v1/dias-inhabiles?autoridad=lft&anio=2026"
+curl "https://<base>/v1/dias-inhabiles?autoridad=cnbv&anio=2026"
+curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
-Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. Los parámetros son `autoridad` (`lft`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. Para 2026 devuelve 7 fechas: 01-01, 02-02, 03-16, 05-01, 09-16, 11-16 y 12-25. Cada elemento trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`). Un año fuera de 2007 a 2100 da 422 `calendario-incompleto`.
+Lista los días inhábiles de un año, sin sábados ni domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
+
+| `autoridad` | Para 2026 devuelve |
+| --- | --- |
+| `lft` | 7 fechas: 01-01, 02-02, 03-16, 05-01, 09-16, 11-16 y 12-25 |
+| `cnbv` | 11 fechas: 01-01, 02-02, 03-16, 04-02, 04-03, 05-01, 09-16, 11-02, 11-16, 12-12 y 12-25 |
+| `sat` | 23 fechas, entre días de descanso del artículo 12 y días de vacaciones |
+
+`tipo` es `descanso` para los días que no cuentan en ningún plazo y `vacaciones` para los periodos de vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles ([SAT y tipo de plazo](#sat-y-tipo-de-plazo)). La LFT y la CNBV solo tienen `descanso`.
 
 ```json
 {
@@ -314,6 +462,43 @@ Lista los días de descanso obligatorio del artículo 74 de la LFT en un año. L
     "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf",
     "fragmento": "Artículo 74. Son días de descanso obligatorio: …"
   }
+}
+```
+
+Un año que la cobertura del calendario no alcanza da 422 `calendario-incompleto`: fuera de 2007 a 2100 con `lft`, de 2025 a 2026 con `cnbv` y fuera de 2026 con `sat`.
+
+### Advertencias de la lista
+
+`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo. Es `[]` cuando la lista está completa, como en `lft` y `cnbv`.
+
+El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha publicado, y la lista de vacaciones solo está completa hasta el 30 de noviembre. La lista de 2026 se responde igual, con los 23 días publicados, y la advertencia dice qué puede faltar:
+
+```json
+{
+  "data": [ "…23 días…" ],
+  "advertencias": [
+    "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa."
+  ],
+  "meta": { "dataset": "dias-inhabiles.sat", "…": "…" }
+}
+```
+
+Para un plazo de declaraciones y pagos la lista de 2026 está completa; para un plazo general falta lo que el SAT publique para diciembre. Cuando se capture ese periodo, la advertencia desaparece. Un año que ni siquiera tiene la cobertura de descanso, como 2027, no se responde: da 422.
+
+```bash
+curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2027"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
+  "title": "Calendario incompleto",
+  "status": 422,
+  "detail": "El calendario del SAT no cubre el año 2027; cubre del 2026-01-01 al 2026-12-31.",
+  "instance": "/v1/dias-inhabiles",
+  "autoridad": "sat",
+  "fecha": "2027-01-01",
+  "cobertura": { "desde": "2026-01-01", "hasta": "2026-12-31" }
 }
 ```
 
@@ -470,12 +655,134 @@ curl "https://<base>/v1/udis?fecha=2026-12-01"
 
 ## Constantes
 
-Valores publicados en el DOF, con la cita de cada uno en `fuente`:
+Valores que el DOF publica y que otros cálculos necesitan: la UMA, el salario mínimo y las tarifas de ISR. Cada valor trae su `fuente` (nombre, `url` de la nota del DOF, `fecha_publicacion` y el `fragmento` citado tal cual), para que se pueda comprobar contra la publicación.
 
-- `GET /v1/constantes/uma?fecha=AAAA-MM-DD`: la UMA vigente ese día. Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero responde la del año anterior.
-- `GET /v1/constantes/uma/{anio}`, `GET /v1/constantes/salario-minimo/{anio}` y `GET /v1/isr/tarifa/{periodo}/{anio}` (`periodo` es `mensual` o `anual`): los valores de ese año.
+| Ruta | Qué devuelve |
+| --- | --- |
+| `GET /v1/constantes/uma?fecha=AAAA-MM-DD` | La UMA vigente ese día |
+| `GET /v1/constantes/uma/{anio}` | La UMA de ese año |
+| `GET /v1/constantes/salario-minimo/{anio}` | El salario mínimo de ese año: una lista con la zona `general` y la `zlfn` |
+| `GET /v1/isr/tarifa/{periodo}/{anio}` | La tarifa de ISR de ese año; `periodo` es `mensual` o `anual` |
 
-Un año anterior a los datos cargados da 404 `no-encontrado`; uno posterior al último cargado da 404 `dato-no-disponible`, porque puede llegar con la siguiente actualización.
+Los montos son texto con dos decimales, sin separador de miles, para no perder precisión. Los campos están en [UMA](../datos/constantes-uma.md), [salario mínimo](../datos/constantes-salario-minimo.md) y [tarifas de ISR](../datos/isr-tarifas.md).
+
+### UMA
+
+Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero `fecha` responde la UMA del año anterior:
+
+```bash
+curl "https://<base>/v1/constantes/uma?fecha=2026-01-15"
+```
+
+```json
+{
+  "data": {
+    "anio": 2025,
+    "diaria": "113.14",
+    "mensual": "3439.46",
+    "anual": "41273.52",
+    "vigencia_desde": "2025-02-01",
+    "fuente": {
+      "nombre": "INEGI. Unidad de medida y actualización",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5746930&fecha=10/01/2025",
+      "fecha_publicacion": "2025-01-10",
+      "fragmento": "[...] es de $113.14 pesos mexicanos, el mensual es de $3,439.46 pesos mexicanos y el valor anual $41,273.52 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2025."
+    }
+  },
+  "meta": {
+    "dataset": "constantes.uma",
+    "as_of": "2026-01-09",
+    "sources": [ "…una por cada año publicado…" ],
+    "docs": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#constantes"
+  }
+}
+```
+
+`meta.sources` lista todas las publicaciones del dataset, no solo la del registro; la del registro está en `data.fuente`. Con `/v1/constantes/uma/2026` la respuesta tiene la misma forma y `data` es la UMA de 2026 (`diaria` 117.31, vigente desde el 2026-02-01). Si falta `fecha`, responde 400 `parametro-faltante`.
+
+### Salario mínimo
+
+```bash
+curl https://<base>/v1/constantes/salario-minimo/2026
+```
+
+`data` es una lista con un elemento por zona (`general` y `zlfn`, la Zona Libre de la Frontera Norte). Cada elemento trae `anio`, `zona`, `diario`, `vigencia_desde` y `fuente`:
+
+```json
+{
+  "data": [
+    { "anio": 2026, "zona": "general", "diario": "315.04", "vigencia_desde": "2026-01-01", "fuente": { "nombre": "CONASAMI. Resolución que fija los salarios mínimos a partir del 1 de enero de 2026", "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775534&fecha=09/12/2025", "…": "…" } },
+    { "anio": 2026, "zona": "zlfn", "diario": "440.87", "vigencia_desde": "2026-01-01", "fuente": { "…": "igual que arriba" } }
+  ],
+  "meta": { "dataset": "constantes.salario-minimo", "…": "…" }
+}
+```
+
+### Tarifas de ISR
+
+```bash
+curl https://<base>/v1/isr/tarifa/mensual/2026
+```
+
+`data` trae `anio`, `periodo`, `tramos` y `fuente`. Cada tramo es `limite_inferior`, `limite_superior` (`null` en el último), `cuota_fija` y `tasa_excedente`, en pesos y por ciento. Dos de los tramos de la mensual de 2026 (la respuesta real trae todos):
+
+```json
+{
+  "data": {
+    "anio": 2026,
+    "periodo": "mensual",
+    "tramos": [
+      { "limite_inferior": "0.01", "limite_superior": "844.59", "cuota_fija": "0.00", "tasa_excedente": "1.92" },
+      { "limite_inferior": "844.60", "limite_superior": "7168.51", "cuota_fija": "16.22", "tasa_excedente": "6.40" }
+    ],
+    "fuente": {
+      "nombre": "Anexo 8 de la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5777219&fecha=28/12/2025",
+      "fecha_publicacion": "2025-12-28",
+      "fragmento": "V. Tarifa aplicable durante 2026 para el cálculo de los pagos provisionales mensuales a que se refieren los artículos 96 de la Ley del ISR y 175 de su Reglamento, así como la regla 3.12.2."
+    }
+  },
+  "meta": { "dataset": "isr.tarifas", "…": "…" }
+}
+```
+
+Hay tarifa mensual de 2026 y anuales de 2025 y 2026. Un `periodo` distinto de `mensual` o `anual` da 400 `parametro-invalido`.
+
+### Años que no están
+
+Un año que no está cargado da 404, y el `type` dice cuál de los dos casos es:
+
+| `type` | Cuándo | Ejemplo |
+| --- | --- | --- |
+| [`no-encontrado`](problemas.md#no-encontrado) | El año es anterior al primero cargado. Los datos no lo tienen y no lo tendrán | `/v1/constantes/uma/2016` |
+| [`dato-no-disponible`](problemas.md#dato-no-disponible) | El año es posterior al último cargado. Puede llegar cuando el DOF lo publique | `/v1/constantes/uma/2030` |
+
+```bash
+curl https://<base>/v1/constantes/uma/2016
+curl https://<base>/v1/constantes/uma/2030
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
+  "title": "Recurso no encontrado",
+  "status": 404,
+  "detail": "No existe la UMA de 2016 en los datos; los años cargados van de 2017 a 2026.",
+  "instance": "/v1/constantes/uma/2016"
+}
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#dato-no-disponible",
+  "title": "Dato todavía no disponible",
+  "status": 404,
+  "detail": "Todavía no se carga la UMA de 2030; los años cargados van de 2017 a 2026.",
+  "instance": "/v1/constantes/uma/2030"
+}
+```
+
+Las rutas por año no traen `fecha` ni `cobertura`; el rango de años cargados va en el `detail`. Con `/v1/constantes/uma?fecha=` el 404 sí trae `fecha` y `cobertura` (de la primera vigencia al 31 de enero siguiente a la última UMA cargada). Una fecha anterior al 2017-02-01 da `no-encontrado`; una posterior a la cobertura, como 2028-01-01, da `dato-no-disponible`.
 
 ## status
 
@@ -595,6 +902,11 @@ Los datos completos están en `/descargas/`:
 | `bancos.json`, `.csv`, `.manifest.json` | Bancos |
 | `tipo-cambio-fix.json`, `.csv`, `.manifest.json` | Tipo de cambio FIX |
 | `udis.json`, `.csv`, `.manifest.json` | UDIS |
+| `dias-inhabiles-cnbv.json`, `.csv`, `.manifest.json` | Días inhábiles de la CNBV |
+| `dias-inhabiles-sat.json`, `.csv`, `.manifest.json` | Días inhábiles del SAT |
+| `constantes-uma.json`, `.csv`, `.manifest.json` | UMA |
+| `constantes-salario-minimo.json`, `.csv`, `.manifest.json` | Salario mínimo |
+| `isr-tarifas.json`, `.csv`, `.manifest.json` | Tarifas de ISR |
 | `bancos-historial.csv` | Un renglón por periodo de cada banco |
 | `mexicoapi.sqlite` | Todo junto en SQLite |
 | `SHA256SUMS` | Hash SHA-256 de cada archivo |
@@ -610,7 +922,7 @@ Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la f
 
 Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
-`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
+`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis`, `dias_inhabiles` (CNBV y SAT), `uma`, `salario_minimo`, `isr_tramos` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
 
 ## Privacidad
 
