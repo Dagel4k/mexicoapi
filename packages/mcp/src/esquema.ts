@@ -5,9 +5,11 @@
  * de validar algo en silencio.
  *
  * Soportado: type (uno o varios de object, array, string, number, integer, boolean, null),
- * properties, required, additionalProperties (true o false), items, enum (valores simples),
- * pattern, minLength, maxLength, minimum y maximum. Las anotaciones (title, description,
- * default, examples, format, etc.) se aceptan y no se validan, como manda 2020-12.
+ * properties, required, additionalProperties (true o false), items, minItems, maxItems, enum y
+ * const (valores simples), pattern, minLength, maxLength, minimum, maximum y format (solo `date`
+ * y `date-time`, que sí se validan). Las anotaciones (title, description, default, examples,
+ * etc.) se aceptan y no se validan. No hay combinadores (oneOf, anyOf, allOf, not) ni $ref:
+ * tampoco en la raíz de un inputSchema.
  */
 
 export type EsquemaJson = { readonly [clave: string]: unknown };
@@ -36,7 +38,6 @@ const ANOTACIONES = new Set([
   "description",
   "default",
   "examples",
-  "format",
   "deprecated",
   "readOnly",
   "writeOnly",
@@ -107,6 +108,48 @@ function compilarPatron(patron: string): RegExp | undefined {
   } catch {
     return undefined;
   }
+}
+
+function esBisiesto(anio: number): boolean {
+  return (anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0;
+}
+
+/** `full-date` de RFC 3339: AAAA-MM-DD con dígitos ASCII y una fecha que existe. */
+function esFecha(texto: string): boolean {
+  const partes = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(texto);
+  if (partes === null) return false;
+  const [anio, mes, dia] = partes.slice(1).map(Number) as [number, number, number];
+  const dias = [31, esBisiesto(anio) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return mes >= 1 && mes <= 12 && dia >= 1 && dia <= (dias[mes - 1] as number);
+}
+
+const FECHA_HORA =
+  /^([0-9]{4}-[0-9]{2}-[0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:[Zz]|[+-]([0-9]{2}):([0-9]{2}))$/;
+
+/**
+ * `date-time` de RFC 3339, con T y zona obligatorias. No acepta el segundo intercalar (60): los
+ * datos de este servidor no lo usan y validarlo bien pide saber la hora UTC.
+ */
+function esFechaHora(texto: string): boolean {
+  const partes = FECHA_HORA.exec(texto);
+  if (partes === null || !esFecha(partes[1] as string)) return false;
+  const [hora, minuto, segundo] = partes.slice(2, 5).map(Number) as [number, number, number];
+  if (hora > 23 || minuto > 59 || segundo > 59) return false;
+  return partes[5] === undefined || (Number(partes[5]) <= 23 && Number(partes[6]) <= 59);
+}
+
+interface Formato {
+  revisar: (texto: string) => boolean;
+  descripcion: string;
+}
+
+const FORMATOS: Readonly<Record<string, Formato>> = {
+  date: { revisar: esFecha, descripcion: "una fecha AAAA-MM-DD válida" },
+  "date-time": { revisar: esFechaHora, descripcion: "una fecha y hora RFC 3339 válida" },
+};
+
+function esValorSimple(valor: unknown): boolean {
+  return valor === null || ["string", "number", "boolean"].includes(typeof valor);
 }
 
 /** Largo en caracteres (puntos de código), como lo cuenta JSON Schema. */
@@ -211,15 +254,46 @@ function compilarNodo(esquema: unknown, donde: string): Revision {
         break;
       }
       case "enum": {
-        const simples = (x: unknown) =>
-          x === null || ["string", "number", "boolean"].includes(typeof x);
-        if (!Array.isArray(valor) || valor.length === 0 || !valor.every(simples)) {
+        if (!Array.isArray(valor) || valor.length === 0 || !valor.every(esValorSimple)) {
           falla(clave, "debe ser una lista no vacía de textos, números, booleanos o null");
         }
         const opciones = valor as unknown[];
         const lista = opciones.map((o) => JSON.stringify(o)).join(", ");
         revisiones.push((v, ruta, errores) => {
           if (!opciones.includes(v)) errores.push(`${etiqueta(ruta)} debe ser uno de: ${lista}`);
+        });
+        break;
+      }
+      case "const": {
+        if (!esValorSimple(valor)) falla(clave, "debe ser texto, número, booleano o null");
+        revisiones.push((v, ruta, errores) => {
+          if (v !== valor) errores.push(`${etiqueta(ruta)} debe ser ${JSON.stringify(valor)}`);
+        });
+        break;
+      }
+      case "format": {
+        const formato = typeof valor === "string" && Object.hasOwn(FORMATOS, valor) ? valor : null;
+        if (formato === null) falla(clave, "solo se admiten date y date-time");
+        const { revisar, descripcion } = FORMATOS[formato as string] as Formato;
+        revisiones.push((v, ruta, errores) => {
+          if (typeof v === "string" && !revisar(v)) {
+            errores.push(`${etiqueta(ruta)} debe ser ${descripcion}`);
+          }
+        });
+        break;
+      }
+      case "minItems":
+      case "maxItems": {
+        if (!esEnteroNoNegativo(valor)) falla(clave, "debe ser un entero mayor o igual a 0");
+        const limite = valor as number;
+        const minimo = clave === "minItems";
+        revisiones.push((v, ruta, errores) => {
+          if (!Array.isArray(v)) return;
+          if (minimo && v.length < limite) {
+            errores.push(`${etiqueta(ruta)} debe tener al menos ${limite} elementos`);
+          } else if (!minimo && v.length > limite) {
+            errores.push(`${etiqueta(ruta)} debe tener como máximo ${limite} elementos`);
+          }
         });
         break;
       }
