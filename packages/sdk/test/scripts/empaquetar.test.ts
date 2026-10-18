@@ -235,6 +235,16 @@ describe("reescribirImports", () => {
       reescribirImports(join(dir, "dist"), join(dir, "dist/nucleo/index.js")),
     ).rejects.toThrow(/sub\.js.*@mexicoapi\/core/);
   });
+
+  it("un comentario que nombra el núcleo también falla, y el mensaje lo dice", async () => {
+    await escribir("dist/nucleo/index.js", "export {};\n");
+    await escribir("dist/nota.js", "// Viene de @mexicoapi/core.\nexport const a = 1;\n");
+    await expect(
+      reescribirImports(join(dir, "dist"), join(dir, "dist/nucleo/index.js")),
+    ).rejects.toThrow(
+      "nota.js todavía menciona @mexicoapi/core después de reescribir sus imports: una subruta que el núcleo no exporta o un comentario que lo nombra (la revisión no distingue comentarios).",
+    );
+  });
 });
 
 describe("principal", () => {
