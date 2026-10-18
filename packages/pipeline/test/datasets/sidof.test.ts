@@ -957,7 +957,8 @@ describe("revisar", () => {
       "el FIX de 2026-10-16 (18.9999) se aleja más de 5 % de la publicación anterior (2026-10-15: 20.0000)",
     ]);
     // La publicación anterior puede ser de varios días antes (fin de semana o feriado).
-    const lunes = revisarFix(antes, [...antes, fix("2026-10-12", "21.0000")]);
+    const viernes = [fix("2026-10-09", "19.0000")];
+    const lunes = revisarFix(viernes, [...viernes, fix("2026-10-12", "21.0000")]);
     expect(lunes.motivos).toEqual([
       "el FIX de 2026-10-12 (21.0000) se aleja más de 5 % de la publicación anterior (2026-10-09: 19.0000)",
     ]);
@@ -971,11 +972,56 @@ describe("revisar", () => {
     expect(revisarFix(antes, fuera).motivos).toEqual([
       "el FIX de 2026-10-16 (22.0501) se aleja más de 5 % de la publicación anterior (2026-10-15: 21.0000)",
     ]);
-    // Sin publicación anterior no hay con qué comparar.
+    // Sin publicación anterior no hay con qué comparar: solo cuenta como relleno.
     expect(revisarFix(antes, [fix("2026-10-13", "30.0000"), ...antes])).toEqual({
-      requiereRevision: false,
-      motivos: [],
+      requiereRevision: true,
+      motivos: ["alta dentro de la serie ya publicada: 2026-10-13 30.0000"],
     });
+  });
+
+  it("un alta antes de la última fecha ya publicada es un relleno y pide revisión", () => {
+    // La API pudo haber respondido antes que ese día no hubo publicación, o otro FIX para una
+    // operación.
+    const antes = [fix("2026-10-14", "18.4000"), fix("2026-10-16", "18.4250")];
+    const relleno = [antes[0] as TipoCambioFix, fix("2026-10-15", "18.4100"), ...antes.slice(1)];
+    expect(revisarFix(antes, relleno)).toEqual({
+      requiereRevision: true,
+      motivos: ["alta dentro de la serie ya publicada: 2026-10-15 18.4100"],
+    });
+    const u = [udi("2026-10-14", "8.000000"), udi("2026-10-16", "8.000100")];
+    expect(revisarUdis(u, [u[0] as Udi, udi("2026-10-15", "8.000050"), ...u.slice(1)])).toEqual({
+      requiereRevision: true,
+      motivos: ["alta dentro de la serie ya publicada: 2026-10-15 8.000050"],
+    });
+  });
+
+  it("un FIX nuevo en sábado o domingo pide revisión; una UDI no", () => {
+    const antes = [fix("2026-10-16", "18.4250")];
+    expect(revisarFix(antes, [...antes, fix("2026-10-17", "18.4300")])).toEqual({
+      requiereRevision: true,
+      motivos: ["FIX publicado en fin de semana: 2026-10-17"],
+    });
+    expect(
+      revisarFix(antes, [...antes, fix("2026-10-18", "18.4300"), fix("2026-10-19", "18.4400")]),
+    ).toEqual({
+      requiereRevision: true,
+      motivos: ["FIX publicado en fin de semana: 2026-10-18"],
+    });
+    const u = [udi("2026-10-16", "8.000000")];
+    const finDeSemana = [...u, udi("2026-10-17", "8.000100"), udi("2026-10-18", "8.000200")];
+    expect(revisarUdis(u, finDeSemana)).toEqual({ requiereRevision: false, motivos: [] });
+  });
+
+  it("las altas al final de la serie, entre semana, no son relleno ni fin de semana", () => {
+    const antes = [fix("2026-10-15", "18.4888"), fix("2026-10-16", "18.4250")];
+    const semana = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23"];
+    const despues = [...antes, ...semana.map((f) => fix(f, "18.4300"))];
+    expect(revisarFix(antes, despues)).toEqual({ requiereRevision: false, motivos: [] });
+    // Un relleno en fin de semana da los dos motivos.
+    expect(revisarFix(antes, [fix("2026-10-11", "18.4300"), ...antes]).motivos).toEqual([
+      "alta dentro de la serie ya publicada: 2026-10-11 18.4300",
+      "FIX publicado en fin de semana: 2026-10-11",
+    ]);
   });
 
   it("una UDI nueva que se aleja más de 0.5 % del día anterior pide revisión", () => {
