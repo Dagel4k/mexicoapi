@@ -29,6 +29,7 @@ import type {
   OpcionesDirectorio,
   OpcionesGuardado,
   OpcionesSync,
+  RespuestaFetchSepomex,
 } from "./tipos.js";
 import { leerTxt } from "./txt.js";
 import { esZip, LIMITE_TXT, LIMITE_ZIP, leerZip } from "./zip.js";
@@ -42,6 +43,8 @@ export const LIMITES: Readonly<{ pagina: number; zip: number; txt: number }> = O
 
 /** Tiempo sin recibir nada antes de rendirse con el transporte por omisión. */
 const ESPERA_MS = 60_000;
+/** Tiempo máximo de toda la descarga (página y archivo), con cualquier `fetch`. */
+const DURACION_MAXIMA_MS = 5 * 60_000;
 
 const latin1 = (bytes: Uint8Array) =>
   Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString("latin1");
@@ -66,33 +69,74 @@ const escribirAviso = (texto: string): void => {
 
 const directorioDe = (opciones: OpcionesDirectorio) => resolve(opciones.dir ?? directorioCache());
 
-/** Pide `url` y devuelve el cuerpo; traduce los fallos y los estados HTTP a SepomexError. */
+const sinRespuesta = (que: string, error: unknown) =>
+  new SepomexError(
+    "sin-respuesta",
+    `${que} (${mensajeDe(error)}). Intenta más tarde. ${DESCARGA_MANUAL}`,
+    { cause: error },
+  );
+
+const pasaDelLimite = (limite: number) =>
+  archivoInvalido(`La respuesta pasa de ${tamanoLegible(limite)}.`);
+
+/**
+ * El cuerpo de la respuesta, cortado al pasar de `limite`: por partes si trae `body` (un
+ * ReadableStream), entero con `arrayBuffer()` si no.
+ */
+async function leerCuerpo(
+  respuesta: RespuestaFetchSepomex,
+  limite: number,
+  vencido: Promise<never>,
+): Promise<Uint8Array> {
+  const cuerpo = respuesta.body;
+  if (!cuerpo) {
+    const datos = await Promise.race([respuesta.arrayBuffer(), vencido]);
+    if (datos.byteLength > limite) throw pasaDelLimite(limite);
+    return new Uint8Array(datos);
+  }
+  const lector = cuerpo.getReader();
+  const trozos: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([lector.read(), vencido]);
+      if (done) break;
+      if (value === undefined) continue;
+      total += value.byteLength;
+      if (total > limite) throw pasaDelLimite(limite);
+      trozos.push(value);
+    }
+  } catch (error) {
+    lector.cancel(error).catch(() => undefined);
+    throw error;
+  }
+  const bytes = new Uint8Array(total);
+  let desde = 0;
+  for (const trozo of trozos) {
+    bytes.set(trozo, desde);
+    desde += trozo.byteLength;
+  }
+  return bytes;
+}
+
+/**
+ * Pide `url` y devuelve el cuerpo, cortado al pasar de `limite` mientras llega; traduce los
+ * fallos y los estados HTTP a SepomexError. `vencido` rechaza cuando se acaba el tiempo total,
+ * aunque el `fetch` ignore la señal.
+ */
 async function pedirBytes(
   pedir: FetchSepomex,
   url: string,
   init: InitFetchSepomex,
   limite: number,
+  vencido: Promise<never>,
 ): Promise<Uint8Array> {
-  let respuesta: Awaited<ReturnType<FetchSepomex>>;
-  let cuerpo: ArrayBuffer | undefined;
+  let respuesta: RespuestaFetchSepomex;
   try {
-    respuesta = await pedir(url, init);
-    if (respuesta.status === 200) {
-      const largo = Number(respuesta.headers.get("content-length"));
-      if (largo > limite) {
-        throw archivoInvalido(
-          `La respuesta pesa ${tamanoLegible(largo)} y el límite es ${tamanoLegible(limite)}.`,
-        );
-      }
-      cuerpo = await respuesta.arrayBuffer();
-    }
+    respuesta = await Promise.race([pedir(url, init), vencido]);
   } catch (error) {
     if (error instanceof SepomexError) throw error;
-    throw new SepomexError(
-      "sin-respuesta",
-      `No se pudo conectar con Correos de México (${mensajeDe(error)}). Intenta más tarde. ${DESCARGA_MANUAL}`,
-      { cause: error },
-    );
+    throw sinRespuesta("No se pudo conectar con Correos de México", error);
   }
   const { status } = respuesta;
   if (status === 401 || status === 403 || status === 429) {
@@ -107,59 +151,85 @@ async function pedirBytes(
       `Correos de México respondió con un error (HTTP ${status}). Intenta más tarde. ${DESCARGA_MANUAL}`,
     );
   }
-  if (cuerpo === undefined) {
+  if (status !== 200) {
     const destino = respuesta.headers.get("location");
     throw new SepomexError(
       "pagina-inesperada",
       `Correos de México respondió HTTP ${status}${destino ? ` (redirige a ${destino})` : ""}. ${DESCARGA_MANUAL}`,
     );
   }
-  if (cuerpo.byteLength > limite) {
+  const largo = Number(respuesta.headers.get("content-length"));
+  if (largo > limite) {
     throw archivoInvalido(
-      `La respuesta pesa ${tamanoLegible(cuerpo.byteLength)} y el límite es ${tamanoLegible(limite)}.`,
+      `La respuesta pesa ${tamanoLegible(largo)} y el límite es ${tamanoLegible(limite)}.`,
     );
   }
-  return new Uint8Array(cuerpo);
+  try {
+    return await leerCuerpo(respuesta, limite, vencido);
+  } catch (error) {
+    if (error instanceof SepomexError) throw error;
+    throw sinRespuesta("Se cortó la descarga de Correos de México", error);
+  }
 }
 
 /**
  * Lo que hace una persona en la página: la abre (GET), toma los campos ocultos del formulario y
- * lo envía (POST) con todo el país y el formato TXT.
+ * lo envía (POST) con todo el país y el formato TXT. Todo junto tiene 5 minutos.
  */
 async function descargar(
   pedir: FetchSepomex,
 ): Promise<{ bytes: Uint8Array; as_of: string | null }> {
-  const encabezados = { "User-Agent": USER_AGENT, "Accept-Encoding": "identity" };
-  const pagina = await pedirBytes(
-    pedir,
-    URL_DESCARGA,
-    { method: "GET", headers: encabezados, redirect: "manual" },
-    LIMITES.pagina,
-  );
-  const formulario = leerFormulario(latin1(pagina), URL_DESCARGA);
-  const bytes = await pedirBytes(
-    pedir,
-    formulario.accion,
-    {
-      method: "POST",
-      headers: {
-        ...encabezados,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Referer: URL_DESCARGA,
-      },
-      body: cuerpoDeDescarga(formulario),
-      redirect: "manual",
-    },
-    LIMITES.zip,
-  );
-  if (!esZip(bytes) && pareceHtml(bytes)) {
-    if (pideCaptcha(latin1(bytes))) throw errorCaptcha();
-    throw new SepomexError(
-      "pagina-inesperada",
-      `Correos de México respondió una página en vez del archivo. ${DESCARGA_MANUAL}`,
+  const controlador = new AbortController();
+  const vencido = new Promise<never>((_, rechazar) => {
+    controlador.signal.addEventListener("abort", () => rechazar(controlador.signal.reason));
+  });
+  vencido.catch(() => undefined);
+  const temporizador = setTimeout(() => {
+    controlador.abort(
+      new SepomexError(
+        "sin-respuesta",
+        `La descarga de Correos de México pasó de ${DURACION_MAXIMA_MS / 60_000} min. Intenta más tarde. ${DESCARGA_MANUAL}`,
+      ),
     );
+  }, DURACION_MAXIMA_MS);
+  try {
+    const encabezados = { "User-Agent": USER_AGENT, "Accept-Encoding": "identity" };
+    const pagina = await pedirBytes(
+      pedir,
+      URL_DESCARGA,
+      { method: "GET", headers: encabezados, redirect: "manual", signal: controlador.signal },
+      LIMITES.pagina,
+      vencido,
+    );
+    const formulario = leerFormulario(latin1(pagina), URL_DESCARGA);
+    const bytes = await pedirBytes(
+      pedir,
+      formulario.accion,
+      {
+        method: "POST",
+        headers: {
+          ...encabezados,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Referer: URL_DESCARGA,
+        },
+        body: cuerpoDeDescarga(formulario),
+        redirect: "manual",
+        signal: controlador.signal,
+      },
+      LIMITES.zip,
+      vencido,
+    );
+    if (!esZip(bytes) && pareceHtml(bytes)) {
+      if (pideCaptcha(latin1(bytes))) throw errorCaptcha();
+      throw new SepomexError(
+        "pagina-inesperada",
+        `Correos de México respondió una página en vez del archivo. ${DESCARGA_MANUAL}`,
+      );
+    }
+    return { bytes, as_of: formulario.as_of };
+  } finally {
+    clearTimeout(temporizador);
   }
-  return { bytes, as_of: formulario.as_of };
 }
 
 /** El TXT dentro de un ZIP, o el TXT tal cual. */
@@ -244,7 +314,7 @@ export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> 
   const dir = directorioDe(opciones);
   return conCandado(dir, async () => {
     (opciones.aviso ?? escribirAviso)(textoAviso(dir));
-    const pedir = opciones.fetch ?? crearTransporte({ maxBytes: LIMITE_ZIP, esperaMs: ESPERA_MS });
+    const pedir = opciones.fetch ?? crearTransporte({ esperaMs: ESPERA_MS });
     const { bytes, as_of } = await descargar(pedir);
     return guardarCatalogo(bytes, dir, "descarga", as_of, opciones.sqlite ?? true);
   });

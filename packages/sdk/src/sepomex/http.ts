@@ -1,37 +1,54 @@
-// Transporte por omisión de `sync`, con node:http(s) en vez del fetch global: permite pedir las
-// direcciones IPv4 primero (el sitio de Correos de México corta el TLS por IPv6) y cortar una
-// respuesta que pasa del límite sin guardarla entera.
+// Transporte por omisión de `sync`, con node:http(s) en vez del fetch global: pide las
+// direcciones IPv4 primero (el sitio de Correos de México corta el TLS por IPv6) y entrega el
+// cuerpo por partes, para que quien lee lo corte al pasar del límite.
 import dns from "node:dns";
 import http from "node:http";
 import https from "node:https";
-import { SepomexError, tamanoLegible } from "./error.js";
-import type { FetchSepomex } from "./tipos.js";
+import { Readable } from "node:stream";
+import type { FetchSepomex, LectorCuerpo } from "./tipos.js";
+
+type Listo = (
+  error: NodeJS.ErrnoException | null,
+  direccion: string | dns.LookupAddress[],
+  familia?: number,
+) => void;
 
 /**
- * `lookup` para node:net que ordena las direcciones con las IPv4 primero. Con la selección
- * automática de familia de Node, si la IPv4 no conecta se intenta la IPv6.
+ * `lookup` para node:net con las direcciones IPv4 primero. Pide todas y las ordena aquí (la
+ * opción `order` de dns.lookup no existe antes de Node 20.13). Con la selección automática de
+ * familia de Node, si la IPv4 no conecta se intenta la IPv6.
  */
-export function buscarIpv4Primero(
-  host: string,
-  opciones: dns.LookupOptions,
-  listo: (
-    error: NodeJS.ErrnoException | null,
-    direccion: string | dns.LookupAddress[],
-    familia?: number,
-  ) => void,
-): void {
-  dns.lookup(host, { ...opciones, order: "ipv4first" }, listo);
+export function buscarIpv4Primero(host: string, opciones: dns.LookupOptions, listo: Listo): void {
+  dns.lookup(host, { ...opciones, all: true }, (error, direcciones) => {
+    if (error) {
+      listo(error, opciones.all ? [] : "");
+      return;
+    }
+    const ordenadas = [...direcciones].sort((a, b) => a.family - b.family);
+    if (opciones.all) {
+      listo(null, ordenadas);
+      return;
+    }
+    const primera = ordenadas[0];
+    if (primera === undefined) {
+      listo(Object.assign(new Error(`getaddrinfo ENOTFOUND ${host}`), { code: "ENOTFOUND" }), "");
+      return;
+    }
+    listo(null, primera.address, primera.family);
+  });
 }
 
 export interface OpcionesTransporte {
-  /** Bytes máximos de una respuesta: al pasarlos se corta la conexión. */
-  maxBytes: number;
-  /** Milisegundos sin recibir nada antes de rendirse. */
+  /** Milisegundos sin recibir nada (antes o durante el cuerpo) antes de rendirse. */
   esperaMs: number;
 }
 
-/** Un `fetch` mínimo sobre node:http y node:https: sin redirecciones, cookies ni compresión. */
-export function crearTransporte({ maxBytes, esperaMs }: OpcionesTransporte): FetchSepomex {
+/**
+ * Un `fetch` mínimo sobre node:http y node:https: sin redirecciones, cookies ni compresión.
+ * Responde al llegar los encabezados; el cuerpo es un ReadableStream y cancelarlo corta la
+ * conexión.
+ */
+export function crearTransporte({ esperaMs }: OpcionesTransporte): FetchSepomex {
   return (url, init) =>
     new Promise((resolver, rechazar) => {
       const destino = new URL(url);
@@ -41,6 +58,7 @@ export function crearTransporte({ maxBytes, esperaMs }: OpcionesTransporte): Fet
         rechazar(new TypeError(`Solo se descarga por http o https, no por ${destino.protocol}`));
         return;
       }
+      let enCurso: http.IncomingMessage | undefined;
       const peticion = modulo.request(
         destino,
         {
@@ -49,45 +67,31 @@ export function crearTransporte({ maxBytes, esperaMs }: OpcionesTransporte): Fet
           agent: false,
           lookup: buscarIpv4Primero,
           timeout: esperaMs,
+          ...(init.signal ? { signal: init.signal } : {}),
         },
         (respuesta) => {
-          const trozos: Buffer[] = [];
-          let total = 0;
-          respuesta.on("data", (trozo: Buffer) => {
-            total += trozo.length;
-            if (total > maxBytes) {
-              rechazar(
-                new SepomexError(
-                  "archivo-invalido",
-                  `La respuesta de ${destino.host} pasa de ${tamanoLegible(maxBytes)}.`,
-                ),
-              );
-              peticion.destroy();
-              return;
-            }
-            trozos.push(trozo);
-          });
-          respuesta.on("end", () => {
-            const cuerpo = Buffer.concat(trozos);
-            resolver({
-              status: respuesta.statusCode ?? 0,
-              headers: {
-                get(nombre) {
-                  const valor = respuesta.headers[nombre.toLowerCase()];
-                  if (valor === undefined) return null;
-                  return Array.isArray(valor) ? valor.join(", ") : valor;
-                },
+          enCurso = respuesta;
+          const cuerpo = Readable.toWeb(respuesta) as unknown as ReadableStream<Uint8Array>;
+          resolver({
+            status: respuesta.statusCode ?? 0,
+            headers: {
+              get(nombre) {
+                const valor = respuesta.headers[nombre.toLowerCase()];
+                if (valor === undefined) return null;
+                return Array.isArray(valor) ? valor.join(", ") : valor;
               },
-              arrayBuffer: async () =>
-                cuerpo.buffer.slice(cuerpo.byteOffset, cuerpo.byteOffset + cuerpo.byteLength),
-            });
+            },
+            body: { getReader: () => cuerpo.getReader() as LectorCuerpo },
+            arrayBuffer: () => new Response(cuerpo).arrayBuffer(),
           });
-          respuesta.on("error", rechazar);
         },
       );
       peticion.on("timeout", () => {
-        rechazar(new Error(`${destino.host} no respondió en ${esperaMs / 1000} s.`));
-        peticion.destroy();
+        const error = new Error(`${destino.host} no respondió en ${esperaMs / 1000} s.`);
+        rechazar(error);
+        // A mitad del cuerpo, el error llega a quien lo está leyendo.
+        enCurso?.destroy(error);
+        peticion.destroy(error);
       });
       peticion.on("error", rechazar);
       peticion.end(init.body);

@@ -220,7 +220,7 @@ describe("caché", () => {
     await rechazo(
       sync({ dir, aviso, fetch: enorme }),
       "archivo-invalido",
-      /pesa 1\.0 MB y el límite es 1\.0 MB/,
+      /La respuesta pasa de 1\.0 MB/,
     );
   });
 

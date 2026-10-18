@@ -26,11 +26,11 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true, maxRetries: 3 });
 });
 
-it("sin fetch usa el transporte de node:https con el límite del ZIP y sin node:sqlite guarda solo el JSON", async () => {
+it("sin fetch usa el transporte de node:https y sin node:sqlite guarda solo el JSON", async () => {
   const { sync } = await import("../../src/sepomex/index.js");
   const { crearTransporte } = await import("../../src/sepomex/http.js");
   const estado = await sync({ dir, aviso: () => {} });
-  expect(crearTransporte).toHaveBeenCalledWith({ maxBytes: 20 * 1_048_576, esperaMs: 60_000 });
+  expect(crearTransporte).toHaveBeenCalledWith({ esperaMs: 60_000 });
   expect(falso.llamadas).toHaveLength(2);
   expect(estado.sqlite).toBeNull();
   expect((await readdir(dir)).sort()).toEqual(
