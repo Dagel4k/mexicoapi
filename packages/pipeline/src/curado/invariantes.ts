@@ -8,7 +8,7 @@ import type {
   TarifaIsr,
   Uma,
 } from "@mexicoapi/core";
-import { enesimoDiaDeSemana } from "@mexicoapi/core";
+import { enesimoDiaDeSemana, esFechaIsoValida } from "@mexicoapi/core";
 import { aCentavos, conMiles, deCentavos, dividirRedondeando } from "./decimal.js";
 import type { ExcepcionCuotaFija } from "./esquemas.js";
 import { PLAZOS, revisarPlazos } from "./plazos.js";
@@ -305,6 +305,32 @@ function revisarReglas(dia: DiaInhabilCurado): string[] {
   return fallas;
 }
 
+const DIA_DEL_MES = String.raw`\d{1,2}(?:o\.|[º°])?`;
+/** Motivo que empieza con uno o más días de un mes: "16 de septiembre", "El 17 y 18 de abril". */
+const FECHA_FIJA = new RegExp(
+  String.raw`^(?:el\s+)?(${DIA_DEL_MES}(?:(?:\s*,\s*|\s+y\s+)${DIA_DEL_MES})*)\s+de\s+(${MESES.join("|")})(?!\p{L})`,
+  "u",
+);
+
+/**
+ * Si el motivo empieza con una fecha fija ("1o. de enero", "17 y 18 de abril"), la fecha del
+ * registro debe ser ese día (o uno de ellos). Una fecha a mitad del motivo es la conmemoración
+ * de una regla ("en conmemoración del 5 de febrero") y no se revisa aquí.
+ */
+function revisarFechaFija(dia: DiaInhabilCurado): string[] {
+  const m = FECHA_FIJA.exec(dia.motivo.toLowerCase());
+  if (m === null) return [];
+  const [texto, dias = "", mes = ""] = m;
+  const anio = dia.fecha.slice(0, 4);
+  const numeroMes = String(MESES.indexOf(mes) + 1).padStart(2, "0");
+  const fechas = [...dias.matchAll(/\d+/g)]
+    .map(([d]) => `${anio}-${numeroMes}-${d.padStart(2, "0")}`)
+    .filter(esFechaIsoValida);
+  if (fechas.length === 0) return [`el motivo dice ${texto}, que no existe en ${anio}`];
+  if (fechas.includes(dia.fecha)) return [];
+  return [`el motivo dice ${texto}, que en ${anio} es ${fechas.join(" o ")}`];
+}
+
 /**
  * Cada día cae en la cobertura de su tipo y en la de algún tipo de plazo: el Worker rechaza el
  * calendario completo si no (ver `revisarPlazos`).
@@ -327,6 +353,7 @@ export function invariantesDias(autoridad: AutoridadCurada) {
         enSuTipo.push(dia);
       }
       for (const f of revisarReglas(dia)) falla(f);
+      for (const f of revisarFechaFija(dia)) falla(f);
     }
     if (cobertura !== null) {
       fallas.push(...revisarPlazos(PLAZOS[autoridad], cobertura, enSuTipo).fallas);
