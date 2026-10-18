@@ -2,6 +2,12 @@ import type { FechaISO } from "../fechas.js";
 
 export type Autoridad = "lft" | "cnbv" | "sat";
 
+/**
+ * Tipos de plazo de un calendario curado. En el SAT, `declaraciones_pagos` no cuenta las
+ * vacaciones generales como inhábiles (CFF art. 12, segundo párrafo).
+ */
+export type TipoPlazo = "general" | "declaraciones_pagos";
+
 export interface Fuente {
   nombre: string;
   url: string;

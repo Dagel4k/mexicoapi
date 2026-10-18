@@ -6,10 +6,9 @@ import type {
   FechaISO,
   FuenteDof,
   TipoDiaCurado,
+  TipoPlazo,
 } from "@mexicoapi/core";
 import { ErrorDatos } from "../errores.js";
-
-export type TipoPlazo = "general" | "declaraciones_pagos";
 
 export interface PlazoCalendario {
   /** Rango en que la lista está completa para este tipo de plazo. */

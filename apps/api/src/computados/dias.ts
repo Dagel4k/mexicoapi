@@ -13,6 +13,7 @@ import {
   sumarDias,
   sumarDiasHabiles,
   type TipoDiaCurado,
+  type TipoPlazo,
   VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import {
@@ -22,7 +23,6 @@ import {
   type Meta,
   metaInterna,
   type PlazoCurado,
-  type TipoPlazo,
 } from "../cargas.js";
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";

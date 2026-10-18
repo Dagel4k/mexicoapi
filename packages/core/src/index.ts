@@ -28,7 +28,7 @@ export {
 } from "./dias-habiles/lft.js";
 export type { ResultadoDiasHabiles } from "./dias-habiles/sumar.js";
 export { sumarDiasHabiles } from "./dias-habiles/sumar.js";
-export type { Autoridad, DiaInhabil, Fuente } from "./dias-habiles/tipos.js";
+export type { Autoridad, DiaInhabil, Fuente, TipoPlazo } from "./dias-habiles/tipos.js";
 export {
   CalendarioIncompletoError,
   FechaFueraDeRangoError,
