@@ -1,9 +1,16 @@
 import {
+  type AutoridadCurada,
+  type Calendario,
   type CoberturaSerie,
+  crearCalendario,
+  type DiaInhabil,
   esFechaIsoValida,
   type FechaISO,
+  type FuenteDof,
   type TipoCambioFix,
+  type TipoDiaCurado,
   type Udi,
+  type Uma,
 } from "@mexicoapi/core";
 import type { Entorno } from "./entorno.js";
 import { descartar, pedirAsset } from "./estaticos.js";
@@ -33,8 +40,17 @@ export interface DatasetInterno {
   cobertura?: CoberturaSerie;
 }
 
+/** Un dataset curado: lo capturan personas desde el DOF, así que no tiene frescura. */
+export interface DatasetCurado {
+  meta: Meta;
+  records: number;
+  data_sha256: string;
+}
+
 export interface MetaInterna {
   datasets: Record<string, DatasetInterno>;
+  /** Por id (`dias-inhabiles.sat`); quien lo necesita falla si falta. */
+  curados?: Record<string, DatasetCurado>;
 }
 
 export interface BancoCatalogo {
@@ -65,11 +81,14 @@ const esFecha = (v: unknown): v is FechaISO => typeof v === "string" && esFechaI
 const esRango = (v: unknown): v is CoberturaSerie =>
   esObjeto(v) && esFecha(v.desde) && esFecha(v.hasta) && v.desde <= v.hasta;
 
-const esDatasetInterno = (v: unknown): boolean =>
+const esDatasetCurado = (v: unknown): v is Objeto =>
   esObjeto(v) &&
   esMeta(v.meta) &&
   typeof v.records === "number" &&
-  typeof v.data_sha256 === "string" &&
+  typeof v.data_sha256 === "string";
+
+const esDatasetInterno = (v: unknown): boolean =>
+  esDatasetCurado(v) &&
   typeof v.frescura_horas === "number" &&
   (v.cobertura === undefined || esRango(v.cobertura));
 
@@ -88,6 +107,13 @@ function aMetaInterna(valor: unknown): MetaInterna {
   }
   if (!Object.values(valor.datasets).every(esDatasetInterno)) {
     throw new Error("El meta interno tiene un dataset con forma inesperada.");
+  }
+  const { curados } = valor;
+  if (
+    curados !== undefined &&
+    !(esObjeto(curados) && Object.values(curados).every(esDatasetCurado))
+  ) {
+    throw new Error("El meta interno tiene un dataset curado con forma inesperada.");
   }
   return congelar(valor) as unknown as MetaInterna;
 }
@@ -235,6 +261,197 @@ function aShard<T>(valor: unknown, anio: string, serie: DefinicionSerie<T>): Sha
 /** Año de una fecha ISO, como número. */
 export const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 
+/** Cita de un valor curado: los cuatro campos, con una fecha de publicación que existe. */
+function aFuenteDof(v: unknown): FuenteDof | undefined {
+  if (
+    !esObjeto(v) ||
+    !sonTextos(v, ["nombre", "url", "fragmento"]) ||
+    !esFecha(v.fecha_publicacion)
+  ) {
+    return undefined;
+  }
+  const { nombre, url, fecha_publicacion, fragmento } = v as unknown as FuenteDof;
+  return Object.freeze({ nombre, url, fecha_publicacion, fragmento });
+}
+
+/** El SAT distingue los plazos de declaraciones y pagos (CFF art. 12, segundo párrafo). */
+export type TipoPlazo = "general" | "declaraciones_pagos";
+
+export interface PlazoCurado {
+  readonly cobertura: CoberturaSerie;
+  /** Tipos de día que no son inhábiles en este plazo. */
+  readonly excluirTipos: readonly TipoDiaCurado[];
+  readonly calendario: Calendario;
+}
+
+/** El calendario de una autoridad como lo escribe el build, ya revisado. */
+export interface CalendarioCurado {
+  readonly autoridad: AutoridadCurada;
+  readonly plazos: ReadonlyMap<TipoPlazo, PlazoCurado>;
+  /** Cuenta todos los tipos de día: en su cobertura la lista está completa. */
+  readonly general: PlazoCurado;
+  /** La cobertura del plazo que contiene a las de los demás. */
+  readonly amplia: CoberturaSerie;
+  /** Todos los días del shard, en orden. */
+  readonly dias: readonly DiaInhabil[];
+}
+
+const TIPOS_PLAZO: ReadonlySet<string> = new Set(["general", "declaraciones_pagos"]);
+const TIPOS_DIA: ReadonlySet<unknown> = new Set(["descanso", "vacaciones"]);
+
+const contiene = (a: CoberturaSerie, b: CoberturaSerie): boolean =>
+  a.desde <= b.desde && b.hasta <= a.hasta;
+const dentro = (fecha: FechaISO, { desde, hasta }: CoberturaSerie): boolean =>
+  fecha >= desde && fecha <= hasta;
+
+function aDiaCurado(v: unknown): DiaInhabil | undefined {
+  if (!esObjeto(v) || !esFecha(v.fecha) || typeof v.motivo !== "string" || !TIPOS_DIA.has(v.tipo)) {
+    return undefined;
+  }
+  const fuente = aFuenteDof(v.fuente);
+  if (fuente === undefined) return undefined;
+  return Object.freeze({ fecha: v.fecha, motivo: v.motivo, tipo: v.tipo as TipoDiaCurado, fuente });
+}
+
+type PlazoLeido = Omit<PlazoCurado, "calendario">;
+
+function aPlazo(v: unknown): PlazoLeido | undefined {
+  if (
+    !esObjeto(v) ||
+    !esRango(v.cobertura) ||
+    !Array.isArray(v.excluir_tipos) ||
+    !v.excluir_tipos.every((tipo) => TIPOS_DIA.has(tipo))
+  ) {
+    return undefined;
+  }
+  const { desde, hasta } = v.cobertura;
+  return {
+    cobertura: Object.freeze({ desde, hasta }),
+    excluirTipos: Object.freeze([...(v.excluir_tipos as TipoDiaCurado[])]),
+  };
+}
+
+/**
+ * Revisa el calendario de una autoridad y arma un `Calendario` por tipo de plazo con los días
+ * de su cobertura. `general` cuenta todos los tipos de día y un plazo contiene las coberturas de
+ * los demás; los días van en orden estricto y dentro de esa cobertura. Lo que no cumple falla en
+ * vez de llegar a un plazo legal.
+ */
+function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): CalendarioCurado {
+  const nombre = `calendarios/${autoridad}`;
+  if (
+    !esObjeto(valor) ||
+    valor.autoridad !== autoridad ||
+    !esObjeto(valor.plazos) ||
+    !Array.isArray(valor.dias)
+  ) {
+    throw new Error(`El shard ${nombre} no tiene autoridad, plazos y días.`);
+  }
+  const fuenteFinDeSemana = aFuenteDof(valor.fuente_fin_de_semana);
+  if (fuenteFinDeSemana === undefined) {
+    throw new Error(`El shard ${nombre} no cita la regla de los fines de semana.`);
+  }
+  const leidos = new Map<TipoPlazo, PlazoLeido>();
+  for (const [tipo, v] of Object.entries(valor.plazos)) {
+    const plazo = TIPOS_PLAZO.has(tipo) ? aPlazo(v) : undefined;
+    if (plazo === undefined) throw new Error(`El shard ${nombre} tiene un plazo inesperado.`);
+    leidos.set(tipo as TipoPlazo, plazo);
+  }
+  const general = leidos.get("general");
+  if (general === undefined || general.excluirTipos.length > 0) {
+    throw new Error(`El shard ${nombre} no tiene un plazo general que cuente todos los días.`);
+  }
+  const coberturas = [...leidos.values()].map((p) => p.cobertura);
+  const amplia = coberturas.find((c) => coberturas.every((otra) => contiene(c, otra)));
+  if (amplia === undefined) {
+    throw new Error(`Ningún plazo del shard ${nombre} contiene a los demás.`);
+  }
+  const dias: DiaInhabil[] = [];
+  let anterior = "";
+  for (const v of valor.dias as unknown[]) {
+    const dia = aDiaCurado(v);
+    if (dia === undefined || dia.fecha <= anterior || !dentro(dia.fecha, amplia)) {
+      throw new Error(`El shard ${nombre} tiene un día inesperado, repetido o fuera de orden.`);
+    }
+    anterior = dia.fecha;
+    dias.push(dia);
+  }
+  const plazos = new Map<TipoPlazo, PlazoCurado>();
+  for (const [tipo, { cobertura, excluirTipos }] of leidos) {
+    const calendario = crearCalendario({
+      autoridad,
+      cobertura,
+      dias: dias.filter((d) => dentro(d.fecha, cobertura)),
+      fuenteFinDeSemana,
+      excluirTipos,
+    });
+    plazos.set(tipo, Object.freeze({ cobertura, excluirTipos, calendario }));
+  }
+  return Object.freeze({
+    autoridad,
+    plazos: new MapaCongelado(plazos),
+    general: plazos.get("general") as PlazoCurado,
+    amplia,
+    dias: Object.freeze(dias),
+  });
+}
+
+/** La UMA de cada año, en años consecutivos, con la meta del dataset. */
+export interface ListaUma {
+  readonly umas: readonly Uma[];
+  readonly meta: Meta;
+}
+
+const MONTO = /^(?:0|[1-9]\d*)\.\d{2}$/;
+const esMonto = (v: unknown): v is string => typeof v === "string" && MONTO.test(v);
+
+/** Una UMA con solo sus campos; rige desde el 1 de febrero de su año. */
+function aUma(v: unknown): Uma | undefined {
+  if (!esObjeto(v)) return undefined;
+  const { anio, diaria, mensual, anual, vigencia_desde } = v;
+  const fuente = aFuenteDof(v.fuente);
+  if (
+    typeof anio !== "number" ||
+    !Number.isInteger(anio) ||
+    anio < 1900 ||
+    anio > 2100 ||
+    !esMonto(diaria) ||
+    !esMonto(mensual) ||
+    !esMonto(anual) ||
+    typeof vigencia_desde !== "string" ||
+    vigencia_desde !== `${anio}-02-01` ||
+    fuente === undefined
+  ) {
+    return undefined;
+  }
+  return Object.freeze({ anio, diaria, mensual, anual, vigencia_desde, fuente });
+}
+
+/** Un hueco entre años haría responder una UMA que ya no regía: falla en vez de eso. */
+function aListaUma(valor: unknown): ListaUma {
+  if (
+    !esObjeto(valor) ||
+    !Array.isArray(valor.data) ||
+    valor.data.length === 0 ||
+    !esMeta(valor.meta)
+  ) {
+    throw new Error("La lista de la UMA no tiene data y meta.");
+  }
+  const umas: Uma[] = [];
+  for (const v of valor.data as unknown[]) {
+    const uma = aUma(v);
+    const anterior = umas[umas.length - 1];
+    if (uma === undefined || (anterior !== undefined && uma.anio !== anterior.anio + 1)) {
+      throw new Error("La lista de la UMA tiene un registro inesperado o años no consecutivos.");
+    }
+    umas.push(uma);
+  }
+  return Object.freeze({
+    umas: Object.freeze(umas),
+    meta: congelar(valor.meta) as unknown as Meta,
+  });
+}
+
 // Se guarda el valor y no la promesa: en workerd, una promesa iniciada por una petición que
 // se cancela puede no resolverse nunca para las demás. Una falla no se recuerda.
 let meta: MetaInterna | undefined;
@@ -242,6 +459,8 @@ let bancos: ReadonlyMap<string, BancoCatalogo> | undefined;
 // `carpeta/anio` → shard. Solo se piden años dentro de la cobertura, así que a lo más guarda
 // los años de cada serie.
 const shards = new Map<string, ShardSerie<unknown>>();
+const calendarios = new Map<AutoridadCurada, CalendarioCurado>();
+let umas: ListaUma | undefined;
 
 /** `v1/_internos/meta.json`, leído una vez por isolate. */
 export async function metaInterna(entorno: Entorno): Promise<MetaInterna> {
@@ -294,8 +513,30 @@ export function shardUdis(
   return shardDe(entorno, SERIE_UDIS, anio, cobertura);
 }
 
+/** `v1/_internos/calendarios/{autoridad}.json`, leído una vez por isolate. */
+export async function calendarioCurado(
+  entorno: Entorno,
+  autoridad: AutoridadCurada,
+): Promise<CalendarioCurado> {
+  let calendario = calendarios.get(autoridad);
+  if (calendario === undefined) {
+    const valor = await leerJson(entorno, `/v1/_internos/calendarios/${autoridad}.json`);
+    calendario = aCalendarioCurado(valor, autoridad);
+    calendarios.set(autoridad, calendario);
+  }
+  return calendario;
+}
+
+/** `v1/constantes/uma.json` (todas las UMA con su meta), leído una vez por isolate. */
+export async function listaUma(entorno: Entorno): Promise<ListaUma> {
+  umas ??= aListaUma(await leerJson(entorno, "/v1/constantes/uma.json"));
+  return umas;
+}
+
 export function reiniciarCargas(): void {
   meta = undefined;
   bancos = undefined;
   shards.clear();
+  calendarios.clear();
+  umas = undefined;
 }

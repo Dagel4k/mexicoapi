@@ -458,3 +458,221 @@ describe("prueba de humo", () => {
     expect(resultado.ok).toBe(true);
   });
 });
+
+interface DiaReal {
+  fecha: string;
+  autoridad: string;
+  motivo: string;
+  tipo: string;
+  fuente: Obj;
+}
+
+const DIAS_SAT = await datosDe<DiaReal>("dias-inhabiles-sat");
+const DIAS_CNBV = await datosDe<DiaReal>("dias-inhabiles-cnbv");
+const UMAS = await datosDe<Obj>("constantes-uma");
+const SALARIOS = await datosDe<Obj>("constantes-salario-minimo");
+const TARIFAS = await datosDe<Obj>("isr-tarifas");
+
+/** Un día del dataset como lo responde la API: sin `autoridad`. */
+const comoApi = ({ autoridad: _, ...dia }: DiaReal) => dia;
+
+const INTERNA = JSON.parse((await leerPublico("v1/_internos/meta.json")).toString("utf8")) as {
+  curados: Record<string, { meta: Obj }>;
+};
+
+const DOCS_API = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md";
+
+async function calendarioIncompleto(ruta: string, esperado: Obj): Promise<Obj> {
+  const { respuesta, cuerpo } = await pedirJson(ruta);
+  expect(respuesta.status, ruta).toBe(422);
+  expect(respuesta.headers.get("Cache-Control")).toBe("no-store");
+  expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}calendario-incompleto`, ...esperado });
+  return cuerpo as Obj;
+}
+
+describe("calendarios de la CNBV y el SAT con los datos reales", () => {
+  const sat = (tipo: string, desde: string, dias: number, extra = "") =>
+    `/v1/dias-habiles?autoridad=sat&tipo_plazo=${tipo}&desde=${desde}&dias=${dias}${extra}`;
+  const primerPeriodo = DIAS_SAT.filter((d) => d.fecha >= "2026-07-20" && d.fecha <= "2026-07-31");
+
+  it("los datos tienen los casos que se prueban", () => {
+    expect(primerPeriodo.map((d) => d.fecha)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `2026-07-${20 + i}`),
+    );
+    expect(primerPeriodo.every((d) => d.tipo === "vacaciones")).toBe(true);
+    expect(DIAS_SAT.find((d) => d.fecha === "2026-12-25")?.tipo).toBe("descanso");
+    expect(DIAS_SAT.some((d) => d.tipo === "vacaciones" && d.fecha > "2026-11-30")).toBe(false);
+    expect(DIAS_CNBV.map((d) => d.fecha)).toEqual(
+      expect.arrayContaining(["2025-12-12", "2026-11-02"]),
+    );
+  });
+
+  it("un plazo que cruza el 20 al 31 de julio: general salta las vacaciones, declaraciones_pagos no", async () => {
+    const general = await datos(sat("general", "2026-07-15", 10));
+    expect(general.data).toMatchObject({
+      autoridad: "sat",
+      resultado: "2026-08-12",
+      advertencias: [],
+    });
+    expect(general.data.inhabiles_saltados).toEqual(primerPeriodo.map(comoApi));
+    expect(general.meta).toEqual({
+      ...INTERNA.curados["dias-inhabiles.sat"]?.meta,
+      docs: `${DOCS_API}#dias-habiles`,
+    });
+    const declaraciones = await datos(sat("declaraciones_pagos", "2026-07-15", 10));
+    expect(declaraciones.data).toMatchObject({
+      resultado: "2026-07-29",
+      inhabiles_saltados: [],
+      advertencias: [],
+    });
+    expect((await datos(sat("general", "2026-07-17", 1))).data.resultado).toBe("2026-08-03");
+    expect((await datos(sat("declaraciones_pagos", "2026-07-17", 1))).data.resultado).toBe(
+      "2026-07-20",
+    );
+  });
+
+  it("general cruza el 30 de noviembre: 422 con autoridad, fecha y cobertura; con permitir_incompleto, 200 con advertencia", async () => {
+    await calendarioIncompleto(sat("general", "2026-11-27", 2), {
+      autoridad: "sat",
+      fecha: "2026-12-01",
+      cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
+    });
+    const { data } = await datos(sat("general", "2026-11-27", 2, "&permitir_incompleto=true"));
+    expect(data).toMatchObject({
+      resultado: "2026-12-01",
+      advertencias: ["Calendario incompleto: sat 2026; solo se descontaron fines de semana."],
+    });
+  });
+
+  it("declaraciones_pagos llega al 31 de diciembre, salta el 25, y después da 422", async () => {
+    const { data } = await datos(sat("declaraciones_pagos", "2026-12-24", 1));
+    expect(data.resultado).toBe("2026-12-28");
+    expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toEqual(["2026-12-25"]);
+    await calendarioIncompleto(sat("declaraciones_pagos", "2026-12-31", 1), {
+      autoridad: "sat",
+      fecha: "2027-01-01",
+      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+    });
+  });
+
+  it("la CNBV salta sus días de 2025 y 2026 y no cubre 2027", async () => {
+    const cnbv = (desde: string) => `/v1/dias-habiles?autoridad=cnbv&desde=${desde}&dias=1`;
+    const noviembre = await datos(cnbv("2026-10-30"));
+    expect(noviembre.data.resultado).toBe("2026-11-03");
+    expect(noviembre.meta.dataset).toBe("dias-inhabiles.cnbv");
+    expect((await datos(cnbv("2025-12-11"))).data.resultado).toBe("2025-12-15");
+    await calendarioIncompleto(cnbv("2026-12-31"), {
+      autoridad: "cnbv",
+      fecha: "2027-01-01",
+      cobertura: { desde: "2025-01-01", hasta: "2026-12-31" },
+    });
+  });
+
+  it("con sat, sin tipo_plazo: 400 parametro-faltante", async () => {
+    const { respuesta, cuerpo } = await pedirJson(
+      "/v1/dias-habiles?autoridad=sat&desde=2026-07-15&dias=10",
+    );
+    expect(respuesta.status).toBe(400);
+    expect(cuerpo).toMatchObject({
+      type: `${BASE_PROBLEMAS}parametro-faltante`,
+      parametro: "tipo_plazo",
+    });
+  });
+
+  it("dias-inhabiles del SAT 2026: la lista publicada, con la advertencia de las vacaciones", async () => {
+    const cuerpo = await datos("/v1/dias-inhabiles?autoridad=sat&anio=2026");
+    expect(cuerpo.data).toEqual(DIAS_SAT.filter((d) => d.fecha.startsWith("2026-")).map(comoApi));
+    expect(cuerpo.advertencias).toEqual([
+      "Los días de tipo vacaciones del sat solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.",
+    ]);
+    expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
+    await calendarioIncompleto("/v1/dias-inhabiles?autoridad=sat&anio=2027", {
+      autoridad: "sat",
+      fecha: "2027-01-01",
+      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+    });
+  });
+
+  it("dias-inhabiles de la CNBV: cada año completo, sin advertencias", async () => {
+    for (const anio of ["2025", "2026"]) {
+      const cuerpo = await datos(`/v1/dias-inhabiles?autoridad=cnbv&anio=${anio}`);
+      expect(cuerpo.data).toEqual(
+        DIAS_CNBV.filter((d) => d.fecha.startsWith(`${anio}-`)).map(comoApi),
+      );
+      expect(cuerpo.advertencias).toEqual([]);
+    }
+  });
+});
+
+describe("constantes con los datos reales", () => {
+  const umaDe = (anio: number) => UMAS.find((u) => u.anio === anio);
+  const ultima = UMAS.at(-1) as Obj;
+
+  it("la UMA vigente en enero es la del año anterior", async () => {
+    for (const [fecha, anio] of [
+      ["2026-01-31", 2025],
+      ["2026-02-01", 2026],
+      ["2018-01-15", 2017],
+      ["2017-02-01", 2017],
+    ] as const) {
+      const { data, meta } = await datos(`/v1/constantes/uma?fecha=${fecha}`);
+      expect(data, fecha).toEqual(umaDe(anio));
+      expect(meta.dataset).toBe("constantes.uma");
+    }
+  });
+
+  it("antes de la primera UMA y después de la vigencia de la última: 404 con la cobertura", async () => {
+    const cobertura = { desde: "2017-02-01", hasta: `${ultima.anio + 1}-01-31` };
+    for (const [fecha, tipo] of [
+      ["2017-01-31", "no-encontrado"],
+      [`${ultima.anio + 1}-02-01`, "dato-no-disponible"],
+    ] as const) {
+      const { respuesta, cuerpo } = await pedirJson(`/v1/constantes/uma?fecha=${fecha}`);
+      expect(respuesta.status, fecha).toBe(404);
+      expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}${tipo}`, fecha, cobertura });
+    }
+  });
+
+  it("/v1/constantes/uma/{anio}: cada UMA del dataset", async () => {
+    for (const uma of UMAS) {
+      const { data, meta } = await datos(`/v1/constantes/uma/${uma.anio}`);
+      expect(data).toEqual(uma);
+      expect(meta.dataset).toBe("constantes.uma");
+    }
+  });
+
+  it("/v1/constantes/salario-minimo/{anio}: las dos zonas de cada año", async () => {
+    const anios = [...new Set(SALARIOS.map((s) => s.anio as number))];
+    expect(anios.length).toBeGreaterThan(0);
+    for (const anio of anios) {
+      const { data } = await datos(`/v1/constantes/salario-minimo/${anio}`);
+      expect(data).toEqual(SALARIOS.filter((s) => s.anio === anio));
+      expect(data.map((s: Obj) => s.zona)).toEqual(["general", "zlfn"]);
+    }
+  });
+
+  it("/v1/isr/tarifa/{periodo}/{anio}: cada tarifa del dataset", async () => {
+    for (const tarifa of TARIFAS) {
+      const { data, meta } = await datos(`/v1/isr/tarifa/${tarifa.periodo}/${tarifa.anio}`);
+      expect(data).toEqual(tarifa);
+      expect(data.tramos.at(-1).limite_superior).toBeNull();
+      expect(meta.dataset).toBe("isr.tarifas");
+    }
+  });
+
+  it.each([
+    ["/v1/constantes/uma/2016", "No existe la UMA de 2016 en los datos cargados."],
+    [
+      "/v1/constantes/salario-minimo/2018",
+      "No existe el salario mínimo de 2018 en los datos cargados.",
+    ],
+    [
+      "/v1/isr/tarifa/mensual/2025",
+      "No existe la tarifa mensual de ISR de 2025 en los datos cargados.",
+    ],
+  ])("%s → 404 problem+json", async (ruta, detalle) => {
+    const { respuesta, cuerpo } = await pedirJson(ruta);
+    expect(respuesta.status).toBe(404);
+    expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}no-encontrado`, detail: detalle });
+  });
+});

@@ -1,5 +1,6 @@
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { clabe } from "./computados/clabe.js";
+import { consultarUma } from "./computados/constantes.js";
 import { diasHabiles, diasInhabiles } from "./computados/dias.js";
 import { consultarFix, consultarUdi, ultimoFix } from "./computados/indicadores.js";
 import { status } from "./computados/status.js";
@@ -162,9 +163,14 @@ const CODIGO_BANCO: Regla = {
 const CLABE: Regla = { patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." };
 
 const AUTORIDAD: ReglaConsulta = {
-  patron: /^lft$/,
-  detalle: "Autoridades disponibles: lft.",
+  patron: /^(?:lft|cnbv|sat)$/,
+  detalle: "Autoridades disponibles: lft, cnbv y sat.",
   obligatorio: true,
+};
+// El manejador lo exige con sat y lo rechaza con las demás autoridades.
+const TIPO_PLAZO: ReglaConsulta = {
+  patron: /^(?:general|declaraciones_pagos)$/,
+  detalle: "El tipo de plazo (tipo_plazo) debe ser general o declaraciones_pagos.",
 };
 /** Una fecha real con formato AAAA-MM-DD. */
 const fecha = (detalle: string, obligatorio: boolean): ReglaConsulta => ({
@@ -201,13 +207,21 @@ const PERMITIR_INCOMPLETO: ReglaConsulta = {
   patron: /^(?:true|false)$/,
   detalle: "El parámetro permitir_incompleto debe ser true o false.",
 };
-const ANIO: ReglaConsulta = {
+const ANIO_RUTA: Regla = {
   patron: /^\d{4}$/,
   // No hay año 0000: las fechas van de 0001 a 9999.
   cumple: (valor) => valor !== "0000",
   detalle: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
-  obligatorio: true,
 };
+const ANIO: ReglaConsulta = { ...ANIO_RUTA, obligatorio: true };
+const PERIODO_ISR: Regla = {
+  patron: /^(?:mensual|anual)$/,
+  detalle: "El periodo de la tarifa debe ser mensual o anual.",
+};
+const FECHA_UMA = fecha(
+  "La fecha que se consulta (fecha) debe ser una fecha válida con formato AAAA-MM-DD.",
+  true,
+);
 
 /**
  * Manejador de un shard. `destino` arma la ruta del asset y el nombre del recurso (para el
@@ -275,6 +289,7 @@ export const RUTAS: readonly Ruta[] = [
     patron: /^\/v1\/dias-habiles$/,
     consulta: {
       autoridad: AUTORIDAD,
+      tipo_plazo: TIPO_PLAZO,
       desde: DESDE,
       dias: DIAS,
       permitir_incompleto: PERMITIR_INCOMPLETO,
@@ -303,6 +318,39 @@ export const RUTAS: readonly Ruta[] = [
     patron: /^\/v1\/udis$/,
     consulta: { fecha: FECHA_UDI },
     manejar: consultarUdi,
+  },
+  {
+    plantilla: "/v1/constantes/uma",
+    patron: /^\/v1\/constantes\/uma$/,
+    consulta: { fecha: FECHA_UMA },
+    manejar: consultarUma,
+  },
+  {
+    plantilla: "/v1/constantes/uma/{anio}",
+    patron: /^\/v1\/constantes\/uma\/(?<anio>[^/]+)$/,
+    parametros: { anio: ANIO_RUTA },
+    manejar: shard((p) => [
+      `/v1/constantes/uma/${p.anio}.json`,
+      `la UMA de ${p.anio} en los datos cargados`,
+    ]),
+  },
+  {
+    plantilla: "/v1/constantes/salario-minimo/{anio}",
+    patron: /^\/v1\/constantes\/salario-minimo\/(?<anio>[^/]+)$/,
+    parametros: { anio: ANIO_RUTA },
+    manejar: shard((p) => [
+      `/v1/constantes/salario-minimo/${p.anio}.json`,
+      `el salario mínimo de ${p.anio} en los datos cargados`,
+    ]),
+  },
+  {
+    plantilla: "/v1/isr/tarifa/{periodo}/{anio}",
+    patron: /^\/v1\/isr\/tarifa\/(?<periodo>[^/]+)\/(?<anio>[^/]+)$/,
+    parametros: { periodo: PERIODO_ISR, anio: ANIO_RUTA },
+    manejar: shard((p) => [
+      `/v1/isr/tarifa/${p.periodo}/${p.anio}.json`,
+      `la tarifa ${p.periodo} de ISR de ${p.anio} en los datos cargados`,
+    ]),
   },
   { plantilla: "/v1/status", patron: /^\/v1\/status$/, manejar: status },
   {

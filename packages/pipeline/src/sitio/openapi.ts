@@ -134,16 +134,16 @@ function sustituirDias(esquema: Json): Json {
 
 const ref = (nombre: string): Json => ({ $ref: `#/components/schemas/${nombre}` });
 
-/** Respuesta 200 de datos: `{ data, meta }`. */
-function respuestaDatos(descripcion: string, data: Json): Json {
+/** Respuesta 200 de datos: `{ data, meta }`, con `extra` (obligatorios) entre los dos. */
+function respuestaDatos(descripcion: string, data: Json, extra: Record<string, Json> = {}): Json {
   return {
     description: descripcion,
     content: {
       "application/json": {
         schema: {
           type: "object",
-          required: ["data", "meta"],
-          properties: { data, meta: ref("Meta") },
+          required: ["data", ...Object.keys(extra), "meta"],
+          properties: { data, ...extra, meta: ref("Meta") },
         },
       },
     },
@@ -414,6 +414,8 @@ function operaciones(): Operacion[] {
       ruta: "/v1/dias-inhabiles",
       operationId: "listarDiasInhabiles",
       summary: "Lista los días inhábiles de un año",
+      description:
+        "Lista los días inhábiles publicados del año, sin los fines de semana, cada uno con su tipo y su fuente. Si la lista solo está completa para algunos tipos de plazo, la respuesta lo dice en advertencias. Es el caso del SAT 2026 mientras no se publique su segundo periodo de vacaciones: la lista está completa para tipo_plazo=declaraciones_pagos, que no cuenta las vacaciones, pero no para general. Un año fuera de la cobertura del calendario da 422 calendario-incompleto.",
       tag: "Cálculos",
       parametros: [
         AUTORIDAD,
@@ -426,7 +428,14 @@ function operaciones(): Operacion[] {
           example: "2026",
         },
       ],
-      ok: respuestaDatos("Los días inhábiles del año.", lista("DiaInhabil")),
+      ok: respuestaDatos("Los días inhábiles del año.", lista("DiaInhabil"), {
+        advertencias: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Avisos sobre lo que puede faltar en la lista, como días de un tipo que solo están completos en parte del año y los tipo_plazo para los que la lista sí está completa. Vacía si la lista está completa.",
+        },
+      }),
       errores: [422],
     },
     {

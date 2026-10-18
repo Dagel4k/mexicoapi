@@ -183,6 +183,36 @@ const CASOS: Caso[] = [
   },
   { ruta: "/v1/dias-habiles?autoridad=lft&desde=2100-12-20&dias=30", estado: 422 },
   { ruta: "/v1/dias-habiles?autoridad=lft&desde=2006-12-29&dias=1", estado: 422 },
+  // CNBV y SAT: el 2 de noviembre bancario, el primer periodo de vacaciones del SAT con los dos
+  // tipos de plazo, y el fin de cada cobertura.
+  { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-10-30&dias=1", estado: 200 },
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10",
+    estado: 200,
+  },
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-07-15&dias=10",
+    estado: 200,
+  },
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=2&permitir_incompleto=true",
+    estado: 200,
+  },
+  {
+    ruta: "/v1/dias-habiles?autoridad=lft&tipo_plazo=general&desde=2026-01-05&dias=10",
+    estado: 400,
+  },
+  { ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=anual&desde=2026-01-05&dias=10", estado: 400 },
+  { ruta: "/v1/dias-habiles?autoridad=banxico&desde=2026-01-05&dias=10", estado: 400 },
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=2",
+    estado: 422,
+  },
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-12-31&dias=1",
+    estado: 422,
+  },
+  { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-12-31&dias=1", estado: 422 },
 
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2026", estado: 200 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2030", estado: 200 },
@@ -192,6 +222,12 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=0000", estado: 400 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2006", estado: 422 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2101", estado: 422 },
+  { ruta: "/v1/dias-inhabiles?autoridad=cnbv&anio=2025", estado: 200 },
+  // La lista conocida, con la advertencia de las vacaciones que faltan.
+  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026", estado: 200 },
+  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026&tipo_plazo=general", estado: 400 },
+  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2027", estado: 422 },
+  { ruta: "/v1/dias-inhabiles?autoridad=cnbv&anio=2024", estado: 422 },
 
   // Lunes tras un viernes con publicación; cambio de año (sin publicación en 2021 antes del 4).
   { ruta: "/v1/tipo-cambio/fix?publicado=2026-10-16", estado: 200 },
@@ -219,6 +255,31 @@ const CASOS: Caso[] = [
   { ruta: "/v1/udis?fecha=2026-13-01", estado: 400 },
   { ruta: "/v1/udis?fecha=2019-12-31", estado: 404 },
   { ruta: "/v1/udis?fecha=2099-01-01", estado: 404 },
+
+  // En enero rige la UMA del año anterior.
+  { ruta: "/v1/constantes/uma?fecha=2026-01-31", estado: 200 },
+  { ruta: "/v1/constantes/uma?fecha=2026-02-01", estado: 200 },
+  { ruta: "/v1/constantes/uma", estado: 400 },
+  { ruta: "/v1/constantes/uma?fecha=2026-02-30", estado: 400 },
+  { ruta: "/v1/constantes/uma?fecha=2017-01-31", estado: 404 },
+  { ruta: "/v1/constantes/uma?fecha=2099-02-01", estado: 404 },
+
+  { ruta: "/v1/constantes/uma/2017", estado: 200 },
+  { ruta: "/v1/constantes/uma/2026", estado: 200 },
+  { ruta: "/v1/constantes/uma/26", estado: 400 },
+  { ruta: "/v1/constantes/uma/2026?campos=diaria", estado: 400 },
+  { ruta: "/v1/constantes/uma/2016", estado: 404 },
+
+  { ruta: "/v1/constantes/salario-minimo/2019", estado: 200 },
+  { ruta: "/v1/constantes/salario-minimo/0000", estado: 400 },
+  { ruta: "/v1/constantes/salario-minimo/2018", estado: 404 },
+
+  { ruta: "/v1/isr/tarifa/mensual/2026", estado: 200 },
+  { ruta: "/v1/isr/tarifa/anual/2025", estado: 200 },
+  { ruta: "/v1/isr/tarifa/anual/2026", estado: 200 },
+  { ruta: "/v1/isr/tarifa/semanal/2026", estado: 400 },
+  { ruta: "/v1/isr/tarifa/mensual/26", estado: 400 },
+  { ruta: "/v1/isr/tarifa/mensual/2025", estado: 404 },
 
   { ruta: "/v1/status", estado: 200 },
   { ruta: "/v1/status?dataset=bancos", estado: 400 },
@@ -541,6 +602,12 @@ describe("rutas del Worker y del documento", () => {
     "/v1/tipo-cambio",
     "/v1/tipo-cambio/fix/2026-10-16",
     "/v1/udis/2026-01-05",
+    "/v1/_internos/calendarios/sat.json",
+    "/v1/constantes",
+    "/v1/constantes/uma.json",
+    "/v1/constantes/salario-minimo",
+    "/v1/isr/tarifa/mensual",
+    "/v1/isr/tarifa/mensual/2026/1",
     "/v1/openapi",
     "/v2",
     "/descargas",

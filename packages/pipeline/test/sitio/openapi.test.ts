@@ -331,6 +331,25 @@ describe("documento OpenAPI", () => {
     expect(uma.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
   });
 
+  it("listarDiasInhabiles responde la lista con advertencias y dice cuándo las hay", () => {
+    const schema = esquema200("/v1/dias-inhabiles");
+    expect(schema.required).toEqual(["data", "advertencias", "meta"]);
+    expect(Object.keys(schema.properties)).toEqual(["data", "advertencias", "meta"]);
+    expect(schema.properties.data).toEqual({
+      type: "array",
+      items: { $ref: "#/components/schemas/DiaInhabil" },
+    });
+    expect(schema.properties.advertencias).toMatchObject({
+      type: "array",
+      items: { type: "string" },
+    });
+    expect(schema.properties.advertencias.description).toContain("tipo_plazo");
+    const op = operaciones.find((o) => o.ruta === "/v1/dias-inhabiles")?.op as Obj;
+    expect(op.description).toContain("advertencias");
+    expect(op.description).toContain("calendario-incompleto");
+    expect(op.description).toContain("vacaciones");
+  });
+
   it("sumarDiasHabiles explica tipo_plazo: obligatorio con sat y no aceptado con las demás", () => {
     const op = operaciones.find((o) => o.ruta === "/v1/dias-habiles")?.op as Obj;
     expect(op.description).toContain("tipo_plazo");

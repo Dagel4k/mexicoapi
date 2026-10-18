@@ -242,6 +242,7 @@ describe("RUTAS", () => {
       /^\/v1\/tipo-cambio\/fix$/,
       /^\/v1\/tipo-cambio\/fix\/ultimo$/,
       /^\/v1\/udis$/,
+      /^\/v1\/constantes\/uma$/,
       /^\/v1\/status$/,
     ]) {
       expect(fuentes).toContain(patron.source);
