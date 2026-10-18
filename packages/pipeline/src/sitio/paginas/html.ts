@@ -1,7 +1,3 @@
-/** El repositorio, para enlazar los documentos que viven en GitHub. */
-export const URL_REPO = "https://github.com/Dagel4k/mexicoapi";
-export const URL_ARCHIVOS = `${URL_REPO}/blob/main`;
-
 const ENTIDADES: Readonly<Record<string, string>> = {
   "&": "&amp;",
   "<": "&lt;",

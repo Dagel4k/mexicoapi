@@ -3,8 +3,9 @@ import { fileURLToPath } from "node:url";
 import { validarClabe } from "@mexicoapi/core";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
-import { enlaceSeguro, URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/paginas/html.js";
+import { enlaceSeguro } from "../../../src/sitio/paginas/html.js";
 import {
   type DatasetInicio,
   formatearEntero,
