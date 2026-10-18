@@ -1,6 +1,7 @@
 import { CalendarioIncompletoError } from "@mexicoapi/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  aniosConstantes,
   calendarioCurado,
   catalogoBancos,
   listaUma,
@@ -444,6 +445,21 @@ describe("calendarios curados", () => {
     );
   });
 
+  it("un plazo más corto que la cobertura amplia trae un respaldo con lo publicado hasta ella", async () => {
+    const { entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT, [RUTA_CNBV]: SHARD_CNBV });
+    const { general, plazos } = await calendarioCurado(entorno, "sat");
+    const respaldo = general.respaldo;
+    expect(respaldo?.cobertura).toEqual({ desde: "2026-01-01", hasta: "2026-12-31" });
+    // Cuenta lo mismo que general (también las vacaciones) y llega a diciembre.
+    expect(respaldo?.inhabil("2026-07-20")?.tipo).toBe("vacaciones");
+    expect(respaldo?.inhabil("2026-12-25")).toMatchObject({ tipo: "descanso", fuente: FUENTE_CFF });
+    expect(respaldo?.inhabil("2026-12-01")).toBeNull();
+    expect(Object.isFrozen(respaldo)).toBe(true);
+    // El plazo que ya tiene la cobertura amplia no lo necesita.
+    expect(plazos.get("declaraciones_pagos")?.respaldo).toBeUndefined();
+    expect((await calendarioCurado(entorno, "cnbv")).general.respaldo).toBeUndefined();
+  });
+
   it("la CNBV sale de su archivo y no comparte memoria con el SAT", async () => {
     const { assets, entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT, [RUTA_CNBV]: SHARD_CNBV });
     const cnbv = await calendarioCurado(entorno, "cnbv");
@@ -626,6 +642,52 @@ describe("lista de la UMA", () => {
     it(`rechaza una lista de la UMA con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ [RUTA_UMA]: valor });
       await expect(listaUma(entorno)).rejects.toThrow();
+    });
+  }
+});
+
+describe("años de las constantes", () => {
+  const RUTA = "/v1/_internos/constantes.json";
+  const INDICE = {
+    "constantes/salario-minimo": [2019, 2020],
+    "constantes/uma": [2017, 2018, 2019],
+    "isr/tarifa/mensual": [2026],
+  };
+
+  it("lee el índice una vez por isolate y no se puede alterar", async () => {
+    const { assets, entorno } = conAssets({ [RUTA]: INDICE });
+    const anios = await aniosConstantes(entorno);
+    expect([...anios]).toEqual(Object.entries(INDICE));
+    expect(Object.isFrozen(anios.get("constantes/uma"))).toBe(true);
+    expect(() => (anios as unknown as Map<string, unknown>).set("x", [])).toThrow(TypeError);
+    expect(await aniosConstantes(entorno)).toBe(anios);
+    expect(assets.pedidas).toEqual([RUTA]);
+  });
+
+  it("una carga fallida no se recuerda; reiniciarCargas obliga a leer de nuevo", async () => {
+    await expect(aniosConstantes(conAssets({}).entorno)).rejects.toThrow();
+    const { assets, entorno } = conAssets({ [RUTA]: INDICE });
+    await aniosConstantes(entorno);
+    reiniciarCargas();
+    await aniosConstantes(entorno);
+    expect(assets.pedidas).toEqual([RUTA, RUTA]);
+  });
+
+  for (const [caso, valor] of [
+    ["JSON roto", "{"],
+    ["no es objeto", [2026]],
+    ["lista vacía", { "constantes/uma": [] }],
+    ["años no lista", { "constantes/uma": 2026 }],
+    ["año como texto", { "constantes/uma": ["2026"] }],
+    ["año no entero", { "constantes/uma": [2026.5] }],
+    ["año antes de 1900", { "constantes/uma": [1899] }],
+    ["año después de 2100", { "constantes/uma": [2101] }],
+    ["años desordenados", { "constantes/uma": [2026, 2025] }],
+    ["años repetidos", { "constantes/uma": [2026, 2026] }],
+  ] as const) {
+    it(`rechaza un índice de años con forma inesperada: ${caso}`, async () => {
+      const { entorno } = conAssets({ [RUTA]: valor });
+      await expect(aniosConstantes(entorno)).rejects.toThrow();
     });
   }
 });

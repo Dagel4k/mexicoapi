@@ -402,7 +402,7 @@ function operaciones(): Operacion[] {
           in: "query",
           required: false,
           description:
-            "Con true, un calendario que no cubre el periodo solo descuenta fines de semana y agrega una advertencia.",
+            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días de descanso del SAT después del último periodo de vacaciones capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana.",
           schema: { type: "string", enum: ["true", "false"] },
           example: "false",
         },
@@ -506,6 +506,7 @@ function operaciones(): Operacion[] {
         ref("Uma"),
       ),
       errores: [404],
+      respuestas: { 404: "SinAnio" },
       shard: true,
     },
     {
@@ -519,6 +520,7 @@ function operaciones(): Operacion[] {
         lista("SalarioMinimo"),
       ),
       errores: [404],
+      respuestas: { 404: "SinAnio" },
       shard: true,
     },
     {
@@ -539,6 +541,7 @@ function operaciones(): Operacion[] {
       ],
       ok: respuestaDatos("La tarifa con sus tramos.", ref("TarifaIsr")),
       errores: [404],
+      respuestas: { 404: "SinAnio" },
       shard: true,
     },
     {
@@ -611,6 +614,9 @@ export function documentoOpenApi(): Record<string, unknown> {
         NoEncontrado: respuestaProblema("El recurso o la ruta no existe."),
         SinDato: respuestaProblema(
           "No hay dato para la fecha pedida. El tipo no-encontrado es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. El tipo dato-no-disponible puede cambiar: todavía no se cargan los datos necesarios para responder con certeza, y se puede reintentar después de la siguiente actualización.",
+        ),
+        SinAnio: respuestaProblema(
+          "No hay datos del año pedido. El tipo no-encontrado es definitivo: el año es anterior a los datos cargados o no tiene publicación. El tipo dato-no-disponible puede cambiar: el año es posterior al último cargado, y se puede reintentar cuando se carguen sus valores.",
         ),
         MetodoNoPermitido: respuestaProblema("Métodos permitidos: GET, HEAD y OPTIONS.", {
           Allow: {

@@ -21,6 +21,7 @@ import {
   congelar,
   type Meta,
   metaInterna,
+  type PlazoCurado,
   type TipoPlazo,
 } from "../cargas.js";
 import type { Entorno } from "../entorno.js";
@@ -84,6 +85,33 @@ async function cargarCurado(
 }
 
 const cubre = ({ desde, hasta }: Cobertura): string => `cubre del ${desde} al ${hasta}`;
+const dentro = (fecha: FechaISO, { desde, hasta }: Cobertura): boolean =>
+  fecha >= desde && fecha <= hasta;
+
+/** Cómo se nombra cada autoridad en los textos: "Calendario incompleto: SAT", "del SAT". */
+const NOMBRE: Readonly<Record<Autoridad, string>> = { lft: "LFT", cnbv: "CNBV", sat: "SAT" };
+const DE: Readonly<Record<Autoridad, string>> = {
+  lft: "de la LFT",
+  cnbv: "de la CNBV",
+  sat: "del SAT",
+};
+
+const TIPOS_DIA: readonly TipoDiaCurado[] = ["descanso", "vacaciones"];
+
+/**
+ * Los tipos de día que cuenta `plazo` y que excluyen todos los plazos que cumplen `cubre`: los
+ * que pueden faltar donde solo esos plazos están completos.
+ */
+function faltan(
+  calendario: CalendarioCurado,
+  plazo: PlazoCurado,
+  cubre: (p: PlazoCurado) => boolean,
+): TipoDiaCurado[] {
+  const cubren = [...calendario.plazos.values()].filter(cubre);
+  return TIPOS_DIA.filter(
+    (t) => !plazo.excluirTipos.includes(t) && cubren.every((p) => p.excluirTipos.includes(t)),
+  );
+}
 
 /** 422 con la autoridad, la fecha que falta y la cobertura. */
 function calendarioIncompleto(
@@ -99,11 +127,42 @@ function calendarioIncompleto(
   );
 }
 
-/** Suma con la consulta, que ya pasó sus reglas (fecha real, 1-3650). */
-function sumar(c: Contexto, calendario: Calendario, meta: Meta): Response {
-  let data: ResultadoDiasHabiles;
+type Detalle = (error: CalendarioIncompletoError) => string;
+
+const detalleSimple: Detalle = ({ autoridad, fecha, cobertura }) =>
+  `El calendario ${DE[autoridad]} no cubre ${fecha}; ${cubre(cobertura)}.`;
+
+/**
+ * El 422 de un plazo curado. Si otro plazo sí cubre la fecha, dice por qué este no (qué tipos de
+ * día faltan) y hasta dónde llega el otro: con el SAT 2026, general termina el 30 de noviembre
+ * porque falta el segundo periodo de vacaciones, y declaraciones_pagos llega al 31 de diciembre.
+ */
+function detalleCurado(calendario: CalendarioCurado, tipo: TipoPlazo, plazo: PlazoCurado): Detalle {
+  return ({ fecha, cobertura }) => {
+    const cual = calendario.plazos.size > 1 ? ` para tipo_plazo=${tipo}` : "";
+    const base = `El calendario ${DE[calendario.autoridad]}${cual} no cubre ${fecha}; ${cubre(cobertura)}`;
+    const otros = [...calendario.plazos].filter(([, p]) => dentro(fecha, p.cobertura));
+    const tipos = faltan(calendario, plazo, (p) => dentro(fecha, p.cobertura));
+    if (otros.length === 0 || tipos.length === 0) return `${base}.`;
+    const lado = fecha > cobertura.hasta ? "posteriores" : "anteriores";
+    return [
+      `${base} porque los días de tipo ${tipos.join(" y ")} ${lado} no están publicados o no se han cargado.`,
+      ...otros.map(([t, p]) => `Con tipo_plazo=${t}, que no los cuenta, ${cubre(p.cobertura)}.`),
+    ].join(" ");
+  };
+}
+
+/**
+ * Suma con la consulta, que ya pasó sus reglas (fecha real, 1-3650). Devuelve el resultado o la
+ * respuesta de error que le toca a la consulta.
+ */
+function sumar(
+  c: Contexto,
+  calendario: Calendario,
+  detalle: Detalle,
+): ResultadoDiasHabiles | Response {
   try {
-    data = sumarDiasHabiles({
+    return sumarDiasHabiles({
       calendario,
       desde: requerido(c.consulta, "desde"),
       dias: Number(requerido(c.consulta, "dias")),
@@ -111,11 +170,7 @@ function sumar(c: Contexto, calendario: Calendario, meta: Meta): Response {
     });
   } catch (error) {
     if (error instanceof CalendarioIncompletoError) {
-      return calendarioIncompleto(
-        c,
-        error,
-        `El calendario de ${error.autoridad} no cubre ${error.fecha}; ${cubre(error.cobertura)}.`,
-      );
+      return calendarioIncompleto(c, error, detalle(error));
     }
     // Solo el resultado fuera de 0001-9999 es culpa de la consulta; cualquier otro error es 500.
     if (error instanceof FechaFueraDeRangoError) {
@@ -128,7 +183,54 @@ function sumar(c: Contexto, calendario: Calendario, meta: Meta): Response {
     }
     throw error;
   }
-  return respuestaJson({ data, meta }, { cache: CACHE_DATOS });
+}
+
+const responderSuma = (resultado: ResultadoDiasHabiles | Response, meta: Meta): Response =>
+  resultado instanceof Response
+    ? resultado
+    : respuestaJson({ data: resultado, meta }, { cache: CACHE_DATOS });
+
+const mayor = (a: FechaISO, b: FechaISO): FechaISO => (a > b ? a : b);
+const menor = (a: FechaISO, b: FechaISO): FechaISO => (a < b ? a : b);
+
+/**
+ * El primer día contado (de `desde` + 1 a `resultado`) que cae en la cobertura amplia pero fuera
+ * de la del plazo, o undefined si el cálculo no pasó por ahí.
+ */
+function primerDiaFueraDelPlazo(
+  { desde, resultado }: ResultadoDiasHabiles,
+  plazo: Cobertura,
+  amplia: Cobertura,
+): FechaISO | undefined {
+  const inicio = mayor(sumarDias(desde, 1), amplia.desde);
+  const fin = menor(resultado, amplia.hasta);
+  if (inicio > fin) return undefined;
+  if (!dentro(inicio, plazo)) return inicio;
+  return fin > plazo.hasta ? sumarDias(plazo.hasta, 1) : undefined;
+}
+
+/**
+ * Con `permitir_incompleto=true`, un plazo más corto que la cobertura amplia calcula con su
+ * respaldo: fuera de su cobertura descuenta los días publicados (el 25 de diciembre del SAT) y
+ * no solo los fines de semana, para que el resultado sea un día hábil según lo que se conoce. Si
+ * el cálculo pasa por ahí, lo advierte; después de la cobertura amplia sigue la advertencia del
+ * núcleo.
+ */
+function sumarConRespaldo(
+  c: Contexto,
+  calendario: CalendarioCurado,
+  tipo: TipoPlazo,
+  plazo: PlazoCurado,
+  respaldo: Calendario,
+): ResultadoDiasHabiles | Response {
+  const resultado = sumar(c, respaldo, detalleCurado(calendario, tipo, plazo));
+  if (resultado instanceof Response) return resultado;
+  const fuera = primerDiaFueraDelPlazo(resultado, plazo.cobertura, calendario.amplia);
+  if (fuera === undefined) return resultado;
+  const tipos = faltan(calendario, plazo, (p) => dentro(fuera, p.cobertura));
+  if (tipos.length === 0) return resultado;
+  const aviso = `Calendario incompleto: ${NOMBRE[calendario.autoridad]} con tipo_plazo=${tipo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
+  return { ...resultado, advertencias: [aviso, ...resultado.advertencias] };
 }
 
 async function diasHabilesCurados(
@@ -141,7 +243,12 @@ async function diasHabilesCurados(
   if (plazo === undefined) {
     throw new Error(`El calendario de ${autoridad} no tiene el tipo de plazo ${tipo}.`);
   }
-  return sumar(c, plazo.calendario, meta);
+  const { respaldo } = plazo;
+  const resultado =
+    c.consulta.permitir_incompleto === "true" && respaldo !== undefined
+      ? sumarConRespaldo(c, calendario, tipo, plazo, respaldo)
+      : sumar(c, plazo.calendario, detalleCurado(calendario, tipo, plazo));
+  return responderSuma(resultado, meta);
 }
 
 /**
@@ -169,7 +276,9 @@ export function diasHabiles(c: Contexto): Response | Promise<Response> {
       c.url.pathname,
     );
   }
-  if (autoridad === "lft") return sumar(c, CALENDARIO, META_DIAS_HABILES);
+  if (autoridad === "lft") {
+    return responderSuma(sumar(c, CALENDARIO, detalleSimple), META_DIAS_HABILES);
+  }
   return diasHabilesCurados(c, autoridad, tipo ?? "general");
 }
 
@@ -186,15 +295,13 @@ function anioIncompleto(c: Contexto, autoridad: Autoridad, anio: string, cobertu
   return calendarioIncompleto(
     c,
     error,
-    `El calendario de ${autoridad} no cubre el año ${anio}; ${cubre(cobertura)}.`,
+    `El calendario ${DE[autoridad]} no cubre el año ${anio}; ${cubre(cobertura)}.`,
   );
 }
 
 /** `{ data, advertencias, meta }`: la lista puede estar completa solo para algunos plazos. */
 const respuestaInhabiles = (data: readonly DiaInhabil[], advertencias: string[], meta: Meta) =>
   respuestaJson({ data, advertencias, meta }, { cache: CACHE_DATOS });
-
-const TIPOS_DIA: readonly TipoDiaCurado[] = ["descanso", "vacaciones"];
 
 /**
  * Qué puede faltar en la lista de `anio` cuando el plazo general no cubre todo el año. Un tipo de
@@ -204,16 +311,17 @@ const TIPOS_DIA: readonly TipoDiaCurado[] = ["descanso", "vacaciones"];
 function advertencias(calendario: CalendarioCurado, anio: string): string[] {
   const { autoridad, general, plazos } = calendario;
   if (cubreAnio(anio, general.cobertura)) return [];
-  const cubren = [...plazos].filter(([, p]) => cubreAnio(anio, p.cobertura));
-  const faltan = TIPOS_DIA.filter((t) => cubren.every(([, p]) => p.excluirTipos.includes(t)));
-  if (faltan.length === 0) return [];
+  const tipos = faltan(calendario, general, (p) => cubreAnio(anio, p.cobertura));
+  if (tipos.length === 0) return [];
   const { desde, hasta } = general.cobertura;
-  const completas = cubren.map(
-    ([tipo]) => `Para tipo_plazo=${tipo}, que no los cuenta, la lista de ${anio} está completa.`,
-  );
+  const completas = [...plazos]
+    .filter(([, p]) => cubreAnio(anio, p.cobertura))
+    .map(
+      ([tipo]) => `Para tipo_plazo=${tipo}, que no los cuenta, la lista de ${anio} está completa.`,
+    );
   return [
     [
-      `Los días de tipo ${faltan.join(" y ")} del ${autoridad} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
+      `Los días de tipo ${tipos.join(" y ")} ${DE[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
       ...completas,
     ].join(" "),
   ];

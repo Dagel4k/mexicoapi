@@ -39,7 +39,7 @@ describe("GET /v1/dias-habiles con un error del núcleo", () => {
       type: `${TIPO}calendario-incompleto`,
       title: "Calendario incompleto",
       status: 422,
-      detail: "El calendario de sat no cubre 2031-02-03; cubre del 2030-01-01 al 2031-01-31.",
+      detail: "El calendario del SAT no cubre 2031-02-03; cubre del 2030-01-01 al 2031-01-31.",
       instance: "/v1/dias-habiles",
       autoridad: "sat",
       fecha: "2031-02-03",

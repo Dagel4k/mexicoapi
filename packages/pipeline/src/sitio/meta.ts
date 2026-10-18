@@ -40,6 +40,12 @@ export interface MetaInterna {
   curados: Record<string, DatasetCurado>;
 }
 
+/**
+ * `v1/_internos/constantes.json`: los años con shard de cada carpeta de constantes
+ * (`constantes/uma`, `isr/tarifa/mensual`...), en orden.
+ */
+export type AniosConstantes = Record<string, number[]>;
+
 /** Horas que un dataset puede pasar sin actualizarse antes de considerarse rancio. */
 export const FRESCURA_HORAS: Readonly<Record<string, number>> = {
   "inegi.estados": 216,

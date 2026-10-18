@@ -1,6 +1,6 @@
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { clabe } from "./computados/clabe.js";
-import { consultarUma } from "./computados/constantes.js";
+import { consultarUma, shardConstante } from "./computados/constantes.js";
 import { diasHabiles, diasInhabiles } from "./computados/dias.js";
 import { consultarFix, consultarUdi, ultimoFix } from "./computados/indicadores.js";
 import { status } from "./computados/status.js";
@@ -329,28 +329,25 @@ export const RUTAS: readonly Ruta[] = [
     plantilla: "/v1/constantes/uma/{anio}",
     patron: /^\/v1\/constantes\/uma\/(?<anio>[^/]+)$/,
     parametros: { anio: ANIO_RUTA },
-    manejar: shard((p) => [
-      `/v1/constantes/uma/${p.anio}.json`,
-      `la UMA de ${p.anio} en los datos cargados`,
-    ]),
+    manejar: shardConstante(() => ({ carpeta: "constantes/uma", nombre: "la UMA" })),
   },
   {
     plantilla: "/v1/constantes/salario-minimo/{anio}",
     patron: /^\/v1\/constantes\/salario-minimo\/(?<anio>[^/]+)$/,
     parametros: { anio: ANIO_RUTA },
-    manejar: shard((p) => [
-      `/v1/constantes/salario-minimo/${p.anio}.json`,
-      `el salario mínimo de ${p.anio} en los datos cargados`,
-    ]),
+    manejar: shardConstante(() => ({
+      carpeta: "constantes/salario-minimo",
+      nombre: "el salario mínimo",
+    })),
   },
   {
     plantilla: "/v1/isr/tarifa/{periodo}/{anio}",
     patron: /^\/v1\/isr\/tarifa\/(?<periodo>[^/]+)\/(?<anio>[^/]+)$/,
     parametros: { periodo: PERIODO_ISR, anio: ANIO_RUTA },
-    manejar: shard((p) => [
-      `/v1/isr/tarifa/${p.periodo}/${p.anio}.json`,
-      `la tarifa ${p.periodo} de ISR de ${p.anio} en los datos cargados`,
-    ]),
+    manejar: shardConstante((p) => ({
+      carpeta: `isr/tarifa/${p.periodo}`,
+      nombre: `la tarifa ${p.periodo} de ISR`,
+    })),
   },
   { plantilla: "/v1/status", patron: /^\/v1\/status$/, manejar: status },
   {

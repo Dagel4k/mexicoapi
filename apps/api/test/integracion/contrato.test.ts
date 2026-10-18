@@ -199,6 +199,11 @@ const CASOS: Caso[] = [
     estado: 200,
   },
   {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-12-24&dias=5&permitir_incompleto=true",
+    estado: 200,
+  },
+  { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-12-11&dias=1", estado: 200 },
+  {
     ruta: "/v1/dias-habiles?autoridad=lft&tipo_plazo=general&desde=2026-01-05&dias=10",
     estado: 400,
   },
@@ -269,10 +274,12 @@ const CASOS: Caso[] = [
   { ruta: "/v1/constantes/uma/26", estado: 400 },
   { ruta: "/v1/constantes/uma/2026?campos=diaria", estado: 400 },
   { ruta: "/v1/constantes/uma/2016", estado: 404 },
+  { ruta: "/v1/constantes/uma/2099", estado: 404 },
 
   { ruta: "/v1/constantes/salario-minimo/2019", estado: 200 },
   { ruta: "/v1/constantes/salario-minimo/0000", estado: 400 },
   { ruta: "/v1/constantes/salario-minimo/2018", estado: 404 },
+  { ruta: "/v1/constantes/salario-minimo/2099", estado: 404 },
 
   { ruta: "/v1/isr/tarifa/mensual/2026", estado: 200 },
   { ruta: "/v1/isr/tarifa/anual/2025", estado: 200 },
@@ -280,6 +287,7 @@ const CASOS: Caso[] = [
   { ruta: "/v1/isr/tarifa/semanal/2026", estado: 400 },
   { ruta: "/v1/isr/tarifa/mensual/26", estado: 400 },
   { ruta: "/v1/isr/tarifa/mensual/2025", estado: 404 },
+  { ruta: "/v1/isr/tarifa/anual/2099", estado: 404 },
 
   { ruta: "/v1/status", estado: 200 },
   { ruta: "/v1/status?dataset=bancos", estado: 400 },

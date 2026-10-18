@@ -199,7 +199,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
   "title": "Calendario incompleto",
   "status": 422,
-  "detail": "El calendario de lft no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+  "detail": "El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
   "instance": "/v1/dias-habiles",
   "autoridad": "lft",
   "fecha": "2101-01-01",
