@@ -256,6 +256,9 @@ export async function consultar<T>(signal: AbortSignal, consulta: () => Promise<
   }
 }
 
-/** Anotaciones de las herramientas de solo lectura; `openWorldHint` si pueden usar la API. */
+/**
+ * Anotaciones de las herramientas de solo lectura. `openWorldHint` solo si la herramienta puede
+ * usar la red: las de datos que caducan con MEXICOAPI_BASE; sin ella ninguna sale del equipo.
+ */
 export const anotaciones = (openWorldHint: boolean) =>
   ({ readOnlyHint: true, openWorldHint, idempotentHint: true }) as const;

@@ -6,6 +6,8 @@ import { herramientasSinRed } from "./ayudas-herramientas.js";
 import { COLONIAS_FIXTURE } from "./ayudas-sepomex.js";
 
 const herramientas = herramientasSinRed();
+/** Las mismas, como si hubiera MEXICOAPI_BASE: las de datos que caducan pueden usar la red. */
+const conApi = herramientasSinRed({ conApi: true });
 
 /** Lo que se publica de cada herramienta en tools/list. */
 const definicion = ({ ejecutar: _, ...resto }: Herramienta) => resto;
@@ -41,14 +43,24 @@ describe("catálogo de herramientas", () => {
     expect([...crearRegistro(herramientas).keys()]).toEqual(NOMBRES);
   });
 
-  it("todas son de solo lectura e idempotentes; solo las de datos que caducan usan la API", () => {
+  it("todas son de solo lectura e idempotentes; sin MEXICOAPI_BASE ninguna usa la red", () => {
     for (const h of herramientas) {
+      expect(h.annotations, h.name).toEqual({
+        readOnlyHint: true,
+        openWorldHint: false,
+        idempotentHint: true,
+      });
+      expect(h.outputSchema, h.name).toBeDefined();
+    }
+  });
+
+  it("con MEXICOAPI_BASE, solo las de datos que caducan pueden usar la red", () => {
+    for (const h of conApi) {
       expect(h.annotations, h.name).toEqual({
         readOnlyHint: true,
         openWorldHint: CON_API.has(h.name),
         idempotentHint: true,
       });
-      expect(h.outputSchema, h.name).toBeDefined();
     }
   });
 
@@ -58,8 +70,22 @@ describe("catálogo de herramientas", () => {
     expect(herramientas.map(definicion)).toMatchSnapshot();
   });
 
-  it("las definiciones no dependen del cliente ni del entorno", () => {
-    const otras = herramientasSinRed({ conApi: true, dirSepomex: "otro" });
+  it("fija las anotaciones de cada herramienta sin y con MEXICOAPI_BASE", () => {
+    const anotaciones = Object.fromEntries(
+      herramientas.map((h, i) => [
+        h.name,
+        { sinApi: h.annotations, conApi: conApi[i]?.annotations },
+      ]),
+    );
+    expect(anotaciones).toMatchSnapshot();
+  });
+
+  it("con MEXICOAPI_BASE solo cambia openWorldHint; el cliente y dirSepomex no cambian nada", () => {
+    const sinAnotaciones = ({ annotations: _, ...resto }: ReturnType<typeof definicion>) => resto;
+    expect(conApi.map(definicion).map(sinAnotaciones)).toEqual(
+      herramientas.map(definicion).map(sinAnotaciones),
+    );
+    const otras = herramientasSinRed({ dirSepomex: "otro" });
     expect(otras.map(definicion)).toEqual(herramientas.map(definicion));
   });
 

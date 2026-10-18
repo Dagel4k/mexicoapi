@@ -73,7 +73,7 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
       additionalProperties: false,
     },
     outputSchema: esquemaSalida(FIX, { origenes: ["api", "paquete"] }),
-    annotations: anotaciones(true),
+    annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { publicado, operacion } = args as { publicado?: string; operacion?: string };
       if (publicado !== undefined && operacion !== undefined) {
@@ -129,7 +129,7 @@ export function udisHerramienta({ cliente, conApi }: OpcionesHerramientas): Herr
       },
       { origenes: ["api", "paquete"] },
     ),
-    annotations: anotaciones(true),
+    annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const r = await consultar(signal, () => cliente.udi(args.fecha as string, { signal }));
       const udi = r.data;
