@@ -198,6 +198,23 @@ describe("revisarHistorial", () => {
     await expect(revisarHistorial(carpeta)).rejects.toThrow(/1\.2\.2.*1\.2\.3/s);
   });
 
+  it("acepta una pre-versión y no la confunde con su versión final", async () => {
+    await escribir("pkg/package.json", '{ "name": "mexicoapi", "version": "0.1.0-rc.1" }\n');
+    await escribir("pkg/CHANGELOG.md", "# Cambios\n\n## 0.1.0-rc.1 (sin publicar)\n");
+    await expect(revisarHistorial(join(dir, "pkg"))).resolves.toBeUndefined();
+    await escribir("pkg/CHANGELOG.md", "# Cambios\n\n## 0.1.0 (sin publicar)\n");
+    await expect(revisarHistorial(join(dir, "pkg"))).rejects.toThrow(/0\.1\.0-rc\.1/);
+  });
+
+  it("acepta un CHANGELOG.md con CRLF y no deja el retorno de carro en el error", async () => {
+    const crlf = await conHistorial("# Cambios\r\n\r\n## 1.2.3 (sin publicar)\r\n\r\n- algo\r\n");
+    await expect(revisarHistorial(crlf)).resolves.toBeUndefined();
+    const soloVersion = await conHistorial("# Cambios\r\n\r\n## 1.2.3\r\n");
+    await expect(revisarHistorial(soloVersion)).resolves.toBeUndefined();
+    const otra = await conHistorial("# Cambios\r\n\r\n## 1.2.2 (2026-01-01)\r\n");
+    await expect(revisarHistorial(otra)).rejects.toThrow('es "## 1.2.2 (2026-01-01)", pero');
+  });
+
   it("no confunde 1.2.30 con 1.2.3 y falla sin encabezados", async () => {
     const otra = await conHistorial("# Cambios\n\n## 1.2.30 (x)\n");
     await expect(revisarHistorial(otra)).rejects.toThrow();
