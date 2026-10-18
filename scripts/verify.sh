@@ -36,6 +36,9 @@ pnpm --filter mexicoapi test:integracion
 echo "verify: integración del servidor MCP"
 pnpm --filter mexicoapi-mcp test:integracion
 
+echo "verify: paquete mexicoapi-mcp"
+pnpm --filter mexicoapi-mcp test:paquete
+
 echo "verify: datos"
 pnpm datos:verificar
 
