@@ -518,7 +518,7 @@ describe("siguienteEstado", () => {
   it.each(["sin_cambios", "actualizado"] as const)(
     "%s mueve last_attempt y last_success a ahora",
     (resultado) => {
-      expect(siguienteEstado(PREVIO, resultado, AHORA)).toStrictEqual({
+      expect(siguienteEstado(PREVIO, resultado, true, AHORA)).toStrictEqual({
         last_attempt: "2026-10-18T12:00:00.000Z",
         last_success: "2026-10-18T12:00:00.000Z",
         last_result: resultado,
@@ -529,7 +529,7 @@ describe("siguienteEstado", () => {
   it.each(["requiere_revision", "error"] as const)(
     "%s mueve last_attempt y conserva el last_success previo",
     (resultado) => {
-      expect(siguienteEstado(PREVIO, resultado, AHORA)).toStrictEqual({
+      expect(siguienteEstado(PREVIO, resultado, true, AHORA)).toStrictEqual({
         last_attempt: "2026-10-18T12:00:00.000Z",
         last_success: "2026-10-16T06:00:00Z",
         last_result: resultado,
@@ -537,14 +537,32 @@ describe("siguienteEstado", () => {
     },
   );
 
+  it("actualizado sin publicar conserva el last_success previo", () => {
+    expect(siguienteEstado(PREVIO, "actualizado", false, AHORA)).toStrictEqual({
+      last_attempt: "2026-10-18T12:00:00.000Z",
+      last_success: "2026-10-16T06:00:00Z",
+      last_result: "actualizado",
+    });
+  });
+
+  it("actualizado sin publicar y sin previo deja last_success en null", () => {
+    expect(siguienteEstado(undefined, "actualizado", false, AHORA).last_success).toBeNull();
+  });
+
+  it("sin_cambios mueve last_success aunque no se publique nada", () => {
+    expect(siguienteEstado(PREVIO, "sin_cambios", false, AHORA).last_success).toBe(
+      "2026-10-18T12:00:00.000Z",
+    );
+  });
+
   it("sin previo, sin_cambios ya tiene last_success", () => {
-    expect(siguienteEstado(undefined, "sin_cambios", AHORA).last_success).toBe(
+    expect(siguienteEstado(undefined, "sin_cambios", true, AHORA).last_success).toBe(
       "2026-10-18T12:00:00.000Z",
     );
   });
 
   it.each([undefined, null])("sin previo (%s), un error deja last_success en null", (previo) => {
-    expect(siguienteEstado(previo, "error", AHORA)).toStrictEqual({
+    expect(siguienteEstado(previo, "error", true, AHORA)).toStrictEqual({
       last_attempt: "2026-10-18T12:00:00.000Z",
       last_success: null,
       last_result: "error",
@@ -566,12 +584,12 @@ describe("siguienteEstado", () => {
     ["hora 24", { ...PREVIO, last_success: "2026-10-16T24:00:00Z" }],
     ["año 0000", { ...PREVIO, last_success: "0000-01-01T00:00:00Z" }],
   ])("previo malformado (%s): requiere_revision deja last_success en null", (_, previo) => {
-    expect(siguienteEstado(previo, "requiere_revision", AHORA).last_success).toBeNull();
+    expect(siguienteEstado(previo, "requiere_revision", true, AHORA).last_success).toBeNull();
   });
 
   it("conserva un last_success válido aunque el resto del previo no tenga forma", () => {
     const previo = { last_success: "2024-02-29T23:59:59.123Z", last_result: "otro" };
-    expect(siguienteEstado(previo, "error", AHORA)).toStrictEqual({
+    expect(siguienteEstado(previo, "error", true, AHORA)).toStrictEqual({
       last_attempt: "2026-10-18T12:00:00.000Z",
       last_success: "2024-02-29T23:59:59.123Z",
       last_result: "error",
@@ -594,7 +612,7 @@ describe("escribirEstados", () => {
       errores: [],
     };
     const { fetch, peticiones } = fetchFalso(sinClave(), ok(), guardado(PREVIO), ok());
-    const escritos = await escribirEstados(cliente(fetch), KV, resumen, 0, AHORA);
+    const escritos = await escribirEstados(cliente(fetch), KV, resumen, 0, true, AHORA);
     expect(escritos).toEqual(["inegi.estados", "bancos"]);
     expect(peticiones.map(ruta)).toEqual([
       `GET ${valor("estado:inegi.estados")}`,
@@ -628,7 +646,7 @@ describe("escribirEstados", () => {
       errores: [],
     };
     const { fetch, peticiones } = fetchFalso(guardado(PREVIO), ok());
-    expect(await escribirEstados(cliente(fetch), KV, resumen, 3, AHORA)).toEqual(["bancos"]);
+    expect(await escribirEstados(cliente(fetch), KV, resumen, 3, true, AHORA)).toEqual(["bancos"]);
     expect(JSON.parse(peticiones[1]?.cuerpo ?? "")).toEqual({
       last_attempt: "2026-10-18T12:00:00.000Z",
       last_success: "2026-10-16T06:00:00Z",
@@ -652,7 +670,7 @@ describe("escribirEstados", () => {
       guardado(PREVIO),
       ok(),
     );
-    const escritos = await escribirEstados(cliente(fetch), KV, resumen, 1, AHORA);
+    const escritos = await escribirEstados(cliente(fetch), KV, resumen, 1, false, AHORA);
     expect(escritos).toEqual(["inegi.estados", "bancos", "inegi.municipios"]);
     const cuerpos = peticiones
       .filter((p) => p.metodo === "PUT")
@@ -681,10 +699,64 @@ describe("escribirEstados", () => {
     ]);
   });
 
+  it("sin publicar: actualizado conserva el último éxito y sin_cambios avanza", async () => {
+    const resumen = {
+      resultados: [
+        { dataset: "bancos", estado: "actualizado" },
+        { dataset: "inegi.estados", estado: "sin_cambios" },
+      ],
+      errores: [],
+    };
+    const { fetch, peticiones } = fetchFalso(guardado(PREVIO), ok(), guardado(PREVIO), ok());
+    await escribirEstados(cliente(fetch), KV, resumen, 0, false, AHORA);
+    const cuerpos = peticiones
+      .filter((p) => p.metodo === "PUT")
+      .map((p) => JSON.parse(p.cuerpo ?? ""));
+    expect(cuerpos).toEqual([
+      {
+        last_attempt: "2026-10-18T12:00:00.000Z",
+        last_success: "2026-10-16T06:00:00Z",
+        last_result: "actualizado",
+      },
+      {
+        last_attempt: "2026-10-18T12:00:00.000Z",
+        last_success: "2026-10-18T12:00:00.000Z",
+        last_result: "sin_cambios",
+      },
+    ]);
+  });
+
+  it("código 1 con publicado se rechaza sin peticiones: con error no se publica nada", async () => {
+    const resumen = {
+      resultados: [{ dataset: "bancos", estado: "actualizado" }],
+      errores: [{ dataset: "inegi.estados", mensaje: "HTTP 500" }],
+    };
+    const { fetch, peticiones } = fetchFalso();
+    await expect(escribirEstados(cliente(fetch), KV, resumen, 1, true, AHORA)).rejects.toThrow(
+      /código 1/,
+    );
+    expect(peticiones).toEqual([]);
+  });
+
+  it("descarta el cuerpo de un 404 en vez de dejarlo colgado", async () => {
+    const ausente = sinClave();
+    const { fetch } = fetchFalso(ausente, ok());
+    const resumen = { resultados: [{ dataset: "bancos", estado: "sin_cambios" }], errores: [] };
+    await escribirEstados(cliente(fetch), KV, resumen, 0, true, AHORA);
+    expect(ausente.bodyUsed).toBe(true);
+  });
+
+  it("un 404 con el cuerpo roto sigue contando como ausente", async () => {
+    const { fetch, peticiones } = fetchFalso(cortada(404), ok());
+    const resumen = { resultados: [{ dataset: "bancos", estado: "sin_cambios" }], errores: [] };
+    expect(await escribirEstados(cliente(fetch), KV, resumen, 0, true, AHORA)).toEqual(["bancos"]);
+    expect(peticiones.map((p) => p.metodo)).toEqual(["GET", "PUT"]);
+  });
+
   it("un resumen sin datasets no hace peticiones", async () => {
     const { fetch, peticiones } = fetchFalso();
     expect(
-      await escribirEstados(cliente(fetch), KV, { resultados: [], errores: [] }, 0, AHORA),
+      await escribirEstados(cliente(fetch), KV, { resultados: [], errores: [] }, 0, true, AHORA),
     ).toEqual([]);
     expect(peticiones).toEqual([]);
   });
@@ -712,9 +784,9 @@ describe("escribirEstados", () => {
     ["resultado que no es objeto", { resultados: ["bancos"], errores: [] }, 0, /resumen/],
   ])("rechaza %s sin hacer peticiones", async (_, resumen, codigo, mensaje) => {
     const { fetch, peticiones } = fetchFalso();
-    await expect(escribirEstados(cliente(fetch), KV, resumen, codigo, AHORA)).rejects.toThrow(
-      mensaje,
-    );
+    await expect(
+      escribirEstados(cliente(fetch), KV, resumen, codigo, false, AHORA),
+    ).rejects.toThrow(mensaje);
     expect(peticiones).toEqual([]);
   });
 
@@ -747,7 +819,7 @@ describe("escribirEstados", () => {
       sinClave(),
       ok(),
     );
-    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, AHORA));
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, true, AHORA));
     expect(error.escritos).toEqual(["inegi.estados", "bancos"]);
     expect(error.fallas.map((f) => f.dataset)).toEqual(["inegi.municipios"]);
     expect(error.fallas[0]?.mensaje).toContain("500");
@@ -768,7 +840,7 @@ describe("escribirEstados", () => {
       errores: [],
     };
     const { fetch, peticiones } = fetchFalso(cortada(200));
-    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 3, AHORA));
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 3, true, AHORA));
     expect(error.escritos).toEqual([]);
     expect(error.fallas[0]?.mensaje).toMatch(/no se pudo leer la respuesta/);
     expect(error.message).toMatch(/escritos: ninguno/);
@@ -784,7 +856,7 @@ describe("escribirEstados", () => {
       sinClave(),
       new TypeError("fetch failed"),
     );
-    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, AHORA));
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, TRES, 0, true, AHORA));
     expect(error.escritos).toEqual(["inegi.municipios"]);
     expect(error.fallas.map((f) => f.dataset)).toEqual(["inegi.estados", "bancos"]);
     expect(error.fallas[0]?.mensaje).toContain("403");
@@ -797,7 +869,7 @@ describe("escribirEstados", () => {
     // Una fecha inválida hace fallar toISOString después de leer el valor previo.
     const ahora = new Date(Number.NaN);
     const { fetch } = fetchFalso(sinClave());
-    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 0, ahora));
+    const error = await fallaEstados(escribirEstados(cliente(fetch), KV, resumen, 0, true, ahora));
     expect(error.fallas[0]?.dataset).toBe("bancos");
     expect(error.fallas[0]?.mensaje).toMatch(/Invalid time value/);
   });
@@ -844,7 +916,18 @@ describe("CLI", () => {
 
   it.each([
     ["configurar", () => configurar()],
-    ["estado", () => ["estado", "--resumen", join(raiz, "resumen.json"), "--codigo", "0"]],
+    [
+      "estado",
+      () => [
+        "estado",
+        "--resumen",
+        join(raiz, "resumen.json"),
+        "--codigo",
+        "0",
+        "--publicado",
+        "si",
+      ],
+    ],
   ])("%s sin variables sale con 2 y lo dice", async (_, argumentos) => {
     const { fetch, peticiones } = fetchFalso();
     const c = cli({}, fetch);
@@ -995,9 +1078,12 @@ describe("CLI", () => {
       ok(),
     );
     const c = cli(VARIABLES, fetch);
-    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "1"], c.entorno)).toBe(
-      0,
-    );
+    expect(
+      await principal(
+        ["estado", "--resumen", rutaResumen, "--codigo", "1", "--publicado", "no"],
+        c.entorno,
+      ),
+    ).toBe(0);
     expect(c.salida).toEqual(["estado: bancos, inegi.estados\n"]);
     expect(peticiones.map(ruta)).toEqual([
       LISTA_1,
@@ -1006,11 +1092,30 @@ describe("CLI", () => {
       `GET ${valor("estado:inegi.estados")}`,
       `PUT ${valor("estado:inegi.estados")}`,
     ]);
+    expect(JSON.parse(peticiones[2]?.cuerpo ?? "")).toEqual({
+      last_attempt: "2026-10-18T12:00:00.000Z",
+      last_success: null,
+      last_result: "actualizado",
+    });
     expect(JSON.parse(peticiones[4]?.cuerpo ?? "")).toEqual({
       last_attempt: "2026-10-18T12:00:00.000Z",
       last_success: "2026-10-16T06:00:00Z",
       last_result: "error",
     });
+  });
+
+  it("estado con --codigo 1 y --publicado si sale con 1 sin hablar con Cloudflare", async () => {
+    const rutaResumen = join(raiz, "resumen.json");
+    await writeFile(
+      rutaResumen,
+      JSON.stringify({ resultados: [], errores: [{ dataset: "bancos", mensaje: "x" }] }),
+    );
+    const { fetch, peticiones } = fetchFalso();
+    const c = cli(VARIABLES, fetch);
+    const argumentos = ["estado", "--resumen", rutaResumen, "--codigo", "1", "--publicado", "si"];
+    expect(await principal(argumentos, c.entorno)).toBe(1);
+    expect(c.errores.join("")).toMatch(/código 1/);
+    expect(peticiones).toEqual([]);
   });
 
   it("estado con una escritura fallida intenta todas, sale con 1 y dice cuáles", async () => {
@@ -1033,9 +1138,12 @@ describe("CLI", () => {
       ok(),
     );
     const c = cli(VARIABLES, fetch);
-    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "0"], c.entorno)).toBe(
-      1,
-    );
+    expect(
+      await principal(
+        ["estado", "--resumen", rutaResumen, "--codigo", "0", "--publicado", "si"],
+        c.entorno,
+      ),
+    ).toBe(1);
     expect(peticiones).toHaveLength(5);
     const errores = c.errores.join("");
     expect(errores).toContain("escritos: inegi.estados");
@@ -1048,9 +1156,12 @@ describe("CLI", () => {
     const rutaResumen = join(raiz, "resumen.json");
     await writeFile(rutaResumen, JSON.stringify({ resultados: [], errores: [] }));
     const c = cli(VARIABLES, fetchFalso(pagina(1, 1, [{ id: KV, title: TITULO_KV }])).fetch);
-    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "0"], c.entorno)).toBe(
-      0,
-    );
+    expect(
+      await principal(
+        ["estado", "--resumen", rutaResumen, "--codigo", "0", "--publicado", "si"],
+        c.entorno,
+      ),
+    ).toBe(0);
     expect(c.salida).toEqual(["estado: el resumen no trae datasets\n"]);
   });
 
@@ -1059,9 +1170,12 @@ describe("CLI", () => {
     await writeFile(rutaResumen, JSON.stringify({ resultados: [] }));
     const { fetch, peticiones } = fetchFalso();
     const c = cli(VARIABLES, fetch);
-    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "0"], c.entorno)).toBe(
-      1,
-    );
+    expect(
+      await principal(
+        ["estado", "--resumen", rutaResumen, "--codigo", "0", "--publicado", "si"],
+        c.entorno,
+      ),
+    ).toBe(1);
     expect(c.errores.join("")).toMatch(/resumen/);
     expect(peticiones).toEqual([]);
   });
@@ -1074,9 +1188,12 @@ describe("CLI", () => {
     if (contenido !== null) await writeFile(rutaResumen, contenido);
     const { fetch, peticiones } = fetchFalso();
     const c = cli(VARIABLES, fetch);
-    expect(await principal(["estado", "--resumen", rutaResumen, "--codigo", "0"], c.entorno)).toBe(
-      1,
-    );
+    expect(
+      await principal(
+        ["estado", "--resumen", rutaResumen, "--codigo", "0", "--publicado", "si"],
+        c.entorno,
+      ),
+    ).toBe(1);
     expect(c.errores.join("")).toContain("resumen.json");
     expect(peticiones).toEqual([]);
   });
@@ -1085,12 +1202,26 @@ describe("CLI", () => {
     ["sin comando", []],
     ["comando desconocido", ["desplegar"]],
     ["opción desconocida", ["configurar", "--entorno", "staging", "--salida", "x", "--zona", "y"]],
-    ["opción de otro comando", ["estado", "--resumen", "r.json", "--codigo", "0", "--salida", "x"]],
-    ["argumento de más", ["estado", "extra", "--resumen", "r.json", "--codigo", "0"]],
+    [
+      "opción de otro comando",
+      ["estado", "--resumen", "r.json", "--codigo", "0", "--publicado", "si", "--salida", "x"],
+    ],
+    [
+      "argumento de más",
+      ["estado", "extra", "--resumen", "r.json", "--codigo", "0", "--publicado", "si"],
+    ],
     ["falta --salida", ["configurar", "--entorno", "staging"]],
-    ["falta --codigo", ["estado", "--resumen", "r.json"]],
-    ["código no entero", ["estado", "--resumen", "r.json", "--codigo", "uno"]],
-    ["código negativo", ["estado", "--resumen", "r.json", "--codigo", "-1"]],
+    ["falta --codigo", ["estado", "--resumen", "r.json", "--publicado", "si"]],
+    ["falta --publicado", ["estado", "--resumen", "r.json", "--codigo", "0"]],
+    [
+      "--publicado inválido",
+      ["estado", "--resumen", "r.json", "--codigo", "0", "--publicado", "tal vez"],
+    ],
+    ["comando heredado de Object", ["constructor"]],
+    ["otro comando heredado", ["toString", "--entorno", "staging"]],
+    ["__proto__ como comando", ["__proto__"]],
+    ["código no entero", ["estado", "--resumen", "r.json", "--codigo", "uno", "--publicado", "si"]],
+    ["código negativo", ["estado", "--resumen", "r.json", "--codigo", "-1", "--publicado", "si"]],
   ])("%s sale con 1 y muestra el uso", async (_, argumentos) => {
     const { fetch, peticiones } = fetchFalso();
     const c = cli(VARIABLES, fetch);

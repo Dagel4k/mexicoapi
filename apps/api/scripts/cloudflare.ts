@@ -331,14 +331,19 @@ function esInstante(valor: unknown): valor is string {
   );
 }
 
-/** Estado que sigue a una corrida. `previo` es lo que había en KV, con cualquier forma. */
+/**
+ * Estado que sigue a una corrida. `previo` es lo que había en KV, con cualquier forma.
+ * `last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida
+ * publicó el cambio: si no, lo que sirve la API sigue siendo lo anterior.
+ */
 export function siguienteEstado(
   previo: unknown,
   resultado: EstadoKv["last_result"],
+  publicado: boolean,
   ahora: Date,
 ): EstadoKv {
   const instante = ahora.toISOString();
-  const exito = resultado === "sin_cambios" || resultado === "actualizado";
+  const exito = resultado === "sin_cambios" || (resultado === "actualizado" && publicado);
   const anterior = esObjeto(previo) && esInstante(previo.last_success) ? previo.last_success : null;
   return {
     last_attempt: instante,
@@ -358,9 +363,16 @@ function esDataset(valor: unknown): valor is string {
 }
 
 /** Pares dataset → resultado del `resumen.json` del CLI de datos y su código de salida. */
-function leerResumen(resumen: unknown, codigo: number): Array<[string, EstadoKv["last_result"]]> {
+function leerResumen(
+  resumen: unknown,
+  codigo: number,
+  publicado: boolean,
+): Array<[string, EstadoKv["last_result"]]> {
   if (codigo !== 0 && codigo !== 1 && codigo !== 3) {
     throw new Error(`código de salida inesperado: ${codigo} (se espera 0, 1 o 3)`);
+  }
+  if (codigo === 1 && publicado) {
+    throw new Error("con código 1 la corrida no publica nada: --publicado debe ser no");
   }
   if (!esObjeto(resumen) || !Array.isArray(resumen.resultados) || !Array.isArray(resumen.errores)) {
     throw new Error("el resumen no trae resultados[] y errores[]");
@@ -394,7 +406,11 @@ const rutaValor = (kvId: string, clave: string) =>
 async function leerValor(c: ClienteCloudflare, kvId: string, clave: string): Promise<unknown> {
   const operacion = `leer ${clave}`;
   const respuesta = await pedir(c, operacion, "GET", rutaValor(kvId, clave));
-  if (respuesta.status === 404) return undefined;
+  if (respuesta.status === 404) {
+    // El cuerpo no sirve, pero se descarta para no dejar la conexión ocupada.
+    await respuesta.body?.cancel().catch(() => undefined);
+    return undefined;
+  }
   const texto = await leerTexto(c, respuesta, operacion);
   if (!respuesta.ok) throw errorDe(c, operacion, respuesta.status, jsonDe(texto));
   return jsonDe(texto);
@@ -416,22 +432,25 @@ export class ErrorEstados extends Error {
 
 /**
  * Escribe `estado:<dataset>` de cada dataset del resumen y devuelve los escritos, en orden.
- * Intenta todos aunque alguno falle; si hubo fallas, al final lanza `ErrorEstados`.
+ * `publicado` dice si la corrida publicó sus cambios (ver `siguienteEstado`). Intenta todos
+ * aunque alguno falle; si hubo fallas, al final lanza `ErrorEstados`.
  */
 export async function escribirEstados(
   c: ClienteCloudflare,
   kvId: string,
   resumen: unknown,
   codigo: number,
+  publicado: boolean,
   ahora: Date,
 ): Promise<string[]> {
-  const pares = leerResumen(resumen, codigo);
+  const pares = leerResumen(resumen, codigo, publicado);
   const escritos: string[] = [];
   const fallas: { dataset: string; mensaje: string }[] = [];
   for (const [dataset, resultado] of pares) {
     const clave = `estado:${dataset}`;
     try {
-      const siguiente = siguienteEstado(await leerValor(c, kvId, clave), resultado, ahora);
+      const previo = await leerValor(c, kvId, clave);
+      const siguiente = siguienteEstado(previo, resultado, publicado, ahora);
       await llamar(c, `escribir ${clave}`, "PUT", rutaValor(kvId, clave), {
         tipo: "application/octet-stream",
         texto: JSON.stringify(siguiente),
@@ -458,12 +477,13 @@ export interface EntornoCli {
 const USO = `Uso:
   configurar --entorno <staging|produccion> --salida <ruta del JSON de wrangler>
   estado --resumen <ruta de resumen.json> --codigo <código de salida del CLI de datos>
+         --publicado <si|no>   (si la corrida publicó sus cambios)
 Lee CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID (ver docs/operacion/cloudflare.md).
 `;
 
 const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   configurar: ["entorno", "salida"],
-  estado: ["resumen", "codigo"],
+  estado: ["resumen", "codigo", "publicado"],
 };
 
 function leer(argumentos: readonly string[]) {
@@ -475,6 +495,7 @@ function leer(argumentos: readonly string[]) {
       salida: { type: "string" },
       resumen: { type: "string" },
       codigo: { type: "string" },
+      publicado: { type: "string" },
     },
   });
 }
@@ -525,6 +546,7 @@ async function estado(
   c: ClienteCloudflare,
   rutaResumen: string,
   codigo: number,
+  publicado: boolean,
   entorno: EntornoCli,
 ): Promise<void> {
   const texto = await readFile(rutaResumen, "utf8");
@@ -535,9 +557,9 @@ async function estado(
     throw new Error(`${rutaResumen} no es JSON válido`);
   }
   // Un resumen inválido se rechaza antes de crear o tocar nada en Cloudflare.
-  leerResumen(resumen, codigo);
+  leerResumen(resumen, codigo, publicado);
   const kvId = await resolverNamespace(c);
-  const escritos = await escribirEstados(c, kvId, resumen, codigo, entorno.ahora());
+  const escritos = await escribirEstados(c, kvId, resumen, codigo, publicado, entorno.ahora());
   entorno.escribir(
     escritos.length === 0
       ? "estado: el resumen no trae datasets\n"
@@ -561,7 +583,11 @@ export async function principal(
   }
   const { values, positionals } = parseado;
   const [comando, ...resto] = positionals;
-  const permitidas = comando === undefined ? undefined : OPCIONES_POR_COMANDO[comando];
+  // Object.hasOwn: un comando como `constructor` no debe encontrar lo heredado de Object.
+  const permitidas =
+    comando !== undefined && Object.hasOwn(OPCIONES_POR_COMANDO, comando)
+      ? OPCIONES_POR_COMANDO[comando]
+      : undefined;
   if (permitidas === undefined) return usar("Comando desconocido o ausente.");
   const sobran = Object.keys(values).filter((k) => !permitidas.includes(k));
   if (sobran.length > 0) {
@@ -587,8 +613,13 @@ export async function principal(
     accion = (c) => configurar(c, destino, salida, entorno);
   } else {
     const codigo = values.codigo as string;
+    const publicado = values.publicado as string;
     if (!/^\d+$/.test(codigo)) return usar(`--codigo inválido: ${codigo}`);
-    accion = (c) => estado(c, values.resumen as string, Number(codigo), entorno);
+    if (publicado !== "si" && publicado !== "no") {
+      return usar(`--publicado inválido: ${publicado} (si o no)`);
+    }
+    accion = (c) =>
+      estado(c, values.resumen as string, Number(codigo), publicado === "si", entorno);
   }
 
   const cliente = clienteDesde(entorno);
