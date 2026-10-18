@@ -1,5 +1,6 @@
 import { type CoberturaSerie, esFechaIsoValida, type FechaISO } from "@mexicoapi/core";
 import { ErrorDatos } from "../errores.js";
+import { anioDe } from "../fecha.js";
 
 /** Registros de un año de una serie y las fechas que cubren. */
 export interface ShardAnual<T> {
@@ -7,8 +8,6 @@ export interface ShardAnual<T> {
   tramo: CoberturaSerie;
   datos: T[];
 }
-
-const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 
 /**
  * Parte una serie en un shard por año, del año del primer registro al del último. La cobertura

@@ -232,7 +232,8 @@ function aShard<T>(valor: unknown, anio: string, serie: DefinicionSerie<T>): Sha
   });
 }
 
-const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
+/** Año de una fecha ISO, como número. */
+export const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 
 // Se guarda el valor y no la promesa: en workerd, una promesa iniciada por una petición que
 // se cancela puede no resolverse nunca para las demás. Una falla no se recuerda.
