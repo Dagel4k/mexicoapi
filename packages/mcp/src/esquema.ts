@@ -152,6 +152,9 @@ function esValorSimple(valor: unknown): boolean {
   return valor === null || ["string", "number", "boolean"].includes(typeof valor);
 }
 
+/** "1 carácter", "2 caracteres". */
+const contar = (n: number, uno: string, varios: string): string => `${n} ${n === 1 ? uno : varios}`;
+
 /** Largo en caracteres (puntos de código), como lo cuenta JSON Schema. */
 function largo(texto: string): number {
   let n = 0;
@@ -287,12 +290,13 @@ function compilarNodo(esquema: unknown, donde: string): Revision {
         if (!esEnteroNoNegativo(valor)) falla(clave, "debe ser un entero mayor o igual a 0");
         const limite = valor as number;
         const minimo = clave === "minItems";
+        const cuantos = contar(limite, "elemento", "elementos");
         revisiones.push((v, ruta, errores) => {
           if (!Array.isArray(v)) return;
           if (minimo && v.length < limite) {
-            errores.push(`${etiqueta(ruta)} debe tener al menos ${limite} elementos`);
+            errores.push(`${etiqueta(ruta)} debe tener al menos ${cuantos}`);
           } else if (!minimo && v.length > limite) {
-            errores.push(`${etiqueta(ruta)} debe tener como máximo ${limite} elementos`);
+            errores.push(`${etiqueta(ruta)} debe tener como máximo ${cuantos}`);
           }
         });
         break;
@@ -313,13 +317,14 @@ function compilarNodo(esquema: unknown, donde: string): Revision {
         if (!esEnteroNoNegativo(valor)) falla(clave, "debe ser un entero mayor o igual a 0");
         const limite = valor as number;
         const minimo = clave === "minLength";
+        const cuantos = contar(limite, "carácter", "caracteres");
         revisiones.push((v, ruta, errores) => {
           if (typeof v !== "string") return;
           const n = largo(v);
           if (minimo && n < limite) {
-            errores.push(`${etiqueta(ruta)} debe tener al menos ${limite} caracteres`);
+            errores.push(`${etiqueta(ruta)} debe tener al menos ${cuantos}`);
           } else if (!minimo && n > limite) {
-            errores.push(`${etiqueta(ruta)} debe tener como máximo ${limite} caracteres`);
+            errores.push(`${etiqueta(ruta)} debe tener como máximo ${cuantos}`);
           }
         });
         break;

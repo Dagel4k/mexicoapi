@@ -115,6 +115,14 @@ describe("compilarEsquema: objetos", () => {
     expect(corto("😀😀😀")).toEqual(["el valor debe tener como máximo 2 caracteres"]);
   });
 
+  it("usa el singular cuando el límite es 1", () => {
+    const uno = compilarEsquema({ type: "string", minLength: 1, maxLength: 1 });
+    expect(uno("")).toEqual(["el valor debe tener al menos 1 carácter"]);
+    expect(uno("ab")).toEqual(["el valor debe tener como máximo 1 carácter"]);
+    const lista = compilarEsquema({ type: "array", maxItems: 1 });
+    expect(lista([1, 2])).toEqual(["el valor debe tener como máximo 1 elemento"]);
+  });
+
   it("una propiedad presente con valor undefined no pasa como texto", () => {
     expect(validar({ clabe: undefined })).toEqual(['"clabe" debe ser texto']);
   });
@@ -284,7 +292,7 @@ describe("compilarEsquema: format, const, minItems y maxItems", () => {
   it("minItems y maxItems cuentan elementos de listas", () => {
     const validar = compilarEsquema({ type: "array", minItems: 1, maxItems: 2 });
     expect(validar([1])).toEqual([]);
-    expect(validar([])).toEqual(["el valor debe tener al menos 1 elementos"]);
+    expect(validar([])).toEqual(["el valor debe tener al menos 1 elemento"]);
     expect(validar([1, 2, 3])).toEqual(["el valor debe tener como máximo 2 elementos"]);
     expect(compilarEsquema({ minItems: 1 })("texto")).toEqual([]);
   });
