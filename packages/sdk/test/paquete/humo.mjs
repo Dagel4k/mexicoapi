@@ -1,6 +1,7 @@
 // Prueba de humo del paquete instalado desde su .tgz, en JavaScript sin Vitest para que corra igual
-// en cada Node que soporta el paquete (22.13 o posterior). Va en la carpeta del proyecto que instaló el paquete (importa `mexicoapi`
-// por su nombre) y se corre con `node humo.mjs`; termina con código distinto de 0 si algo falla.
+// en cada Node que soporta el paquete (22.13 o posterior). Va en la carpeta del proyecto que
+// instaló el paquete (importa `mexicoapi` por su nombre) y se corre con `node humo.mjs`; termina
+// con código distinto de 0 si algo falla.
 // No usa la red: los datos salen del paquete y SEPOMEX se importa de un archivo armado aquí.
 import { deepEqual, equal, ok, rejects, throws } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
