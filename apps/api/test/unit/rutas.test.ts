@@ -1,3 +1,4 @@
+import { CONSULTAS, REGLAS_RUTA } from "@mexicoapi/core/rutas";
 import { describe, expect, it } from "vitest";
 import { RUTAS, type Ruta, resolver } from "../../src/rutas.js";
 
@@ -231,6 +232,20 @@ describe("RUTAS", () => {
       expect(ruta.patron.test(ruta.plantilla.replace(/\{\w+\}/g, "x")), ruta.plantilla).toBe(true);
     }
     expect(new Set(RUTAS.map((r) => r.plantilla)).size).toBe(RUTAS.length);
+  });
+
+  it("las reglas de cada ruta son las del núcleo, las mismas del paquete y el OpenAPI", () => {
+    const consultas = CONSULTAS as Readonly<Record<string, unknown>>;
+    for (const ruta of RUTAS) {
+      for (const [nombre, regla] of Object.entries(ruta.parametros ?? {})) {
+        expect(regla, `${ruta.plantilla} ${nombre}`).toBe(
+          (REGLAS_RUTA as Readonly<Record<string, unknown>>)[nombre],
+        );
+      }
+      expect(ruta.consulta, ruta.plantilla).toBe(consultas[ruta.plantilla]);
+    }
+    const conQuery = RUTAS.filter((r) => r.consulta !== undefined).map((r) => r.plantilla);
+    expect(conQuery.sort()).toEqual(Object.keys(CONSULTAS).sort());
   });
 
   it("tiene las rutas calculadas", () => {

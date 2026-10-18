@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { FUENTE_CFF_20 } from "@mexicoapi/core";
 import { PROBLEMAS } from "@mexicoapi/core/problemas";
+import {
+  CONSULTAS,
+  REGLAS_RUTA,
+  type ReglaConsulta,
+  type ReglaParametro,
+} from "@mexicoapi/core/rutas";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import {
@@ -826,5 +832,61 @@ describe("documento OpenAPI", () => {
     // `fecha` y `cobertura` sirven también para las series (FIX y UDIS).
     expect(p.properties.fecha.description).toContain("la serie");
     expect(p.properties.cobertura.description).toContain("la serie");
+  });
+});
+
+// Las reglas de los parámetros son las del núcleo, las que aplican la API y el paquete: el
+// documento no puede declarar un parámetro sin regla ni dejar fuera uno que la API revisa.
+describe("parámetros y reglas del núcleo", () => {
+  const consultas = CONSULTAS as Readonly<Record<string, Readonly<Record<string, ReglaConsulta>>>>;
+  const delDocumento = (op: Obj, donde: "path" | "query"): Obj[] =>
+    ((op.parameters ?? []) as Obj[]).filter((p) => p.in === donde);
+  const comoEsquema = (regla: ReglaParametro): Obj =>
+    regla.valores === undefined ? { pattern: regla.patron.source } : { enum: [...regla.valores] };
+
+  it("cada parámetro de ruta tiene la regla del núcleo de su nombre", () => {
+    for (const { ruta, op } of operaciones) {
+      const nombres = [...ruta.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+      const declarados = delDocumento(op, "path");
+      expect(declarados.map((p) => p.name).sort(), ruta).toEqual([...nombres].sort());
+      for (const p of declarados) {
+        const regla = (REGLAS_RUTA as Readonly<Record<string, ReglaParametro>>)[p.name];
+        expect(regla, `${ruta} ${p.name}`).toBeDefined();
+        expect(p.required).toBe(true);
+        expect(p.schema).toMatchObject({ type: "string", ...comoEsquema(regla as ReglaParametro) });
+      }
+    }
+  });
+
+  it("la query de cada ruta es la del núcleo, con su regla y si es obligatoria", () => {
+    for (const { ruta, op } of operaciones) {
+      const reglas = consultas[ruta] ?? {};
+      const declarados = delDocumento(op, "query");
+      expect(
+        declarados.map((p) => p.name),
+        ruta,
+      ).toEqual(Object.keys(reglas));
+      for (const p of declarados) {
+        const regla = reglas[p.name] as ReglaConsulta;
+        expect(p.required, `${ruta} ${p.name}`).toBe(regla.obligatorio === true);
+        expect(p.schema, `${ruta} ${p.name}`).toMatchObject({
+          type: "string",
+          ...comoEsquema(regla),
+        });
+      }
+    }
+    // Ninguna ruta del núcleo con query queda fuera del documento.
+    const conQuery = operaciones.filter(({ op }) => delDocumento(op, "query").length > 0);
+    expect(conQuery.map((o) => o.ruta).sort()).toEqual(Object.keys(consultas).sort());
+  });
+
+  it("las fechas se publican con format date además del patrón", () => {
+    for (const { ruta, op } of operaciones) {
+      for (const p of delDocumento(op, "query")) {
+        const regla = consultas[ruta]?.[p.name] as ReglaConsulta;
+        const esFecha = regla.patron.source === /^\d{4}-\d{2}-\d{2}$/.source;
+        expect(p.schema.format === "date", `${ruta} ${p.name}`).toBe(esFecha);
+      }
+    }
   });
 });
