@@ -6,6 +6,7 @@ Funciones puras en TypeScript, sin dependencias de runtime. Por ahora el paquete
 
 - Validadores: `validarClabe`, `validarRfc`, `validarCurp` y `validarNss`, más los cálculos de dígito verificador (`digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp`, `digitoVerificadorNss`).
 - Días hábiles: `sumarDiasHabiles`, `calendarioLft`, `crearCalendario`, `diasDescansoLft`, `CalendarioIncompletoError` y `FechaFueraDeRangoError`.
+- Tipo de cambio FIX y UDIS: `fixPublicado` (el publicado en el DOF ese día), `fixParaOperacion` (el aplicable a una operación según el CFF art. 20, con `FUENTE_CFF_20`) y `udiDeFecha`. Responden `encontrado`, `sin_dato` (definitivo) o `no_disponible` (falta cargar la publicación que decide la respuesta).
 - Fechas `YYYY-MM-DD`: `esFechaIsoValida`, `sumarDias`, `diaDeLaSemana`, `enesimoDiaDeSemana`, `esBisiesto` y `fechaValida`.
 - Constantes y tipos: `NOTA_VALIDACION`, `ResultadoValidacion`, `Calendario`, `DiaInhabil`, `Fuente`, entre otros.
 
