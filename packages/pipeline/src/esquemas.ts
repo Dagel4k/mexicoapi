@@ -29,8 +29,8 @@ const codigoSpei = z.string().regex(/^\d{4,5}$/);
 const esquemaPeriodoBanco: z.ZodType<PeriodoBanco> = z.object({
   codigo_spei: codigoSpei,
   nombre_corto: z.string().min(1),
-  visto_desde: fechaIso,
-  visto_hasta: fechaIso,
+  desde: fechaIso,
+  hasta: fechaIso.nullable(),
 });
 
 export const esquemaBanco: z.ZodType<Banco> = z.object({

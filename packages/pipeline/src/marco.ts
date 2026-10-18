@@ -65,6 +65,8 @@ export interface ResultadoCorrida {
   cambios: number;
   motivos: string[];
   registros: number;
+  /** Verdadero solo si la corrida escribió archivos. */
+  escrito: boolean;
 }
 
 export interface OpcionesCorrida<T> {
@@ -169,7 +171,19 @@ export async function ejecutarDataset<T extends object>(
     registros: registros.length,
   };
   if (!hayDiferencias(diferencias)) {
-    return { resultado: { ...base, estado: "sin_cambios", motivos: [] }, diferencias };
+    if (construccion.avisos.length > 0) {
+      const resultado: ResultadoCorrida = {
+        ...base,
+        estado: "requiere_revision",
+        motivos: [...construccion.avisos],
+        escrito: false,
+      };
+      return { resultado, diferencias };
+    }
+    return {
+      resultado: { ...base, estado: "sin_cambios", motivos: [], escrito: false },
+      diferencias,
+    };
   }
 
   const motivos: string[] = [];
@@ -191,6 +205,7 @@ export async function ejecutarDataset<T extends object>(
     ...base,
     estado: requiere ? "requiere_revision" : "actualizado",
     motivos,
+    escrito: !opciones.seco,
   };
 
   if (!opciones.seco) await escribir(def, ctx, fuentes, registros);

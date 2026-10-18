@@ -10,6 +10,7 @@ const base: ResultadoCorrida = {
   cambios: 0,
   motivos: [],
   registros: 3,
+  escrito: true,
 };
 
 describe("resumenMarkdown", () => {

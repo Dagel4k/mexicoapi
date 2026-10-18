@@ -145,6 +145,21 @@ describe("ejecutarDataset", () => {
     const antes = await foto(join(raiz, "toy"));
     const { resultado } = await ejecutarDataset(def(), ctx());
     expect(resultado.estado).toBe("sin_cambios");
+    expect(resultado.escrito).toBe(false);
+    expect(await foto(join(raiz, "toy"))).toEqual(antes);
+  });
+
+  it("sin diferencias pero con avisos: requiere revisión y no escribe", async () => {
+    const primera = await ejecutarDataset(def(), ctx());
+    expect(primera.resultado.escrito).toBe(true);
+    const antes = await foto(join(raiz, "toy"));
+    avisos = ["algo raro"];
+    const { resultado } = await ejecutarDataset(def(), ctx());
+    expect(resultado).toMatchObject({
+      estado: "requiere_revision",
+      motivos: ["algo raro"],
+      escrito: false,
+    });
     expect(await foto(join(raiz, "toy"))).toEqual(antes);
   });
 
@@ -209,6 +224,7 @@ describe("ejecutarDataset", () => {
   it("seco no escribe", async () => {
     const { resultado } = await ejecutarDataset(def(), ctx(), { seco: true });
     expect(resultado.estado).toBe("actualizado");
+    expect(resultado.escrito).toBe(false);
     await expect(stat(join(raiz, "toy"))).rejects.toThrow();
   });
 

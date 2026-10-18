@@ -102,8 +102,8 @@ describe("tipos de registros y manifiesto", () => {
     const periodo: PeriodoBanco = {
       codigo_spei: "002",
       nombre_corto: "BANAMEX",
-      visto_desde: "2024-01-01",
-      visto_hasta: "2026-10-01",
+      desde: "2024-01-01",
+      hasta: "2026-10-01",
     };
     const banco: Banco = {
       codigo: "002",

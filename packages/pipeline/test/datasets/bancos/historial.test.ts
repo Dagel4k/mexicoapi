@@ -5,7 +5,7 @@ import type { PeriodoBanco } from "@mexicoapi/core";
 import { describe, expect, it } from "vitest";
 import { type EntradaCep, interpretarCep } from "../../../src/datasets/bancos/cep.js";
 import {
-  extenderHistorial,
+  actualizarHistorial,
   historialesDesdeObservaciones,
   type Observacion,
   observacionesCompactas,
@@ -19,39 +19,47 @@ const observaciones: Observacion[] = [
   { fecha: "2019-01-02", entradas: cep("cep-2019-01-02.json") },
   { fecha: "2026-10-17", entradas: cep("cep-2026-10-17.json") },
 ];
-const p = (s: string, n: string, d: string, h: string): PeriodoBanco => ({
+const p = (s: string, n: string, d: string, h: string | null): PeriodoBanco => ({
   codigo_spei: s,
   nombre_corto: n,
-  visto_desde: d as PeriodoBanco["visto_desde"],
-  visto_hasta: h as PeriodoBanco["visto_hasta"],
+  desde: d,
+  hasta: h,
 });
 
 describe("historialesDesdeObservaciones con CEP reales", () => {
   const h = historialesDesdeObservaciones(observaciones);
 
-  it("102: The Royal Bank pasa a Accendo", () => {
+  it("102: The Royal Bank pasa a Accendo y desaparece en 2026", () => {
     expect(h.get("102")).toEqual([
-      p("40102", "THE ROYAL BANK", "2012-01-03", "2012-01-03"),
-      p("40102", "ACCENDO BANCO", "2019-01-02", "2019-01-02"),
+      p("40102", "THE ROYAL BANK", "2012-01-03", "2019-01-02"),
+      p("40102", "ACCENDO BANCO", "2019-01-02", "2026-10-17"),
     ]);
   });
 
   it("012: cambio de nombre", () => {
     expect(h.get("012")).toEqual([
-      p("40012", "BBVA BANCOMER", "2012-01-03", "2019-01-02"),
-      p("40012", "BBVA MEXICO", "2026-10-17", "2026-10-17"),
+      p("40012", "BBVA BANCOMER", "2012-01-03", "2026-10-17"),
+      p("40012", "BBVA MEXICO", "2026-10-17", null),
     ]);
   });
 
   it("638: cambia el código SPEI", () => {
     expect(h.get("638")).toEqual([
-      p("90638", "AKALA", "2012-01-03", "2019-01-02"),
-      p("40638", "NUBANK", "2026-10-17", "2026-10-17"),
+      p("90638", "AKALA", "2012-01-03", "2026-10-17"),
+      p("40638", "NUBANK", "2026-10-17", null),
     ]);
   });
 
   it("072: tres periodos", () => {
-    expect(h.get("072")?.map((x) => x.nombre_corto)).toEqual(["BANORTE", "BANORTE/IXE", "BANORTE"]);
+    expect(h.get("072")).toEqual([
+      p("40072", "BANORTE", "2012-01-03", "2019-01-02"),
+      p("40072", "BANORTE/IXE", "2019-01-02", "2026-10-17"),
+      p("40072", "BANORTE", "2026-10-17", null),
+    ]);
+  });
+
+  it("134: WAL-MART desaparece en 2019", () => {
+    expect(h.get("134")).toEqual([p("40134", "WAL-MART", "2012-01-03", "2019-01-02")]);
   });
 
   it("no depende del orden de entrada", () => {
@@ -70,69 +78,107 @@ describe("historialesDesdeObservaciones con CEP reales", () => {
   });
 });
 
-describe("extenderHistorial", () => {
+describe("actualizarHistorial", () => {
   const e: EntradaCep = ["40012", "BBVA"];
 
-  it("extiende visto_hasta con la misma entrada", () => {
-    const base = [p("40012", "BBVA", "2020-01-01", "2020-01-01")];
-    const r = extenderHistorial(base, "2021-01-01", e);
-    expect(r).toEqual([p("40012", "BBVA", "2020-01-01", "2021-01-01")]);
-    expect(base[0]?.visto_hasta).toBe("2020-01-01");
-  });
-
-  it("abre un periodo si cambia el nombre", () => {
-    const base = [p("40012", "OTRO", "2020-01-01", "2020-01-01")];
-    const r = extenderHistorial(base, "2021-01-01", e);
-    expect(r).toHaveLength(2);
-    expect(r[1]).toEqual(p("40012", "BBVA", "2021-01-01", "2021-01-01"));
-    expect(base).toHaveLength(1);
-  });
-
-  it("empieza desde un historial vacío", () => {
-    expect(extenderHistorial([], "2021-01-01", e)).toEqual([
-      p("40012", "BBVA", "2021-01-01", "2021-01-01"),
+  it("1: sin entrada cierra el periodo abierto; si no, no cambia", () => {
+    const base = [p("40012", "BBVA", "2020-01-01", null)];
+    expect(actualizarHistorial(base, "2021-01-01", null)).toEqual([
+      p("40012", "BBVA", "2020-01-01", "2021-01-01"),
     ]);
+    expect(base[0]?.hasta).toBeNull();
+    const cerrado = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
+    expect(actualizarHistorial(cerrado, "2022-01-01", null)).toEqual(cerrado);
+    expect(actualizarHistorial([], "2022-01-01", null)).toEqual([]);
   });
 
-  it("no retrocede en el tiempo", () => {
-    const base = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
-    expect(() => extenderHistorial(base, "2020-06-01", e)).toThrow(RangeError);
+  it("1: sin entrada el mismo día en que se abrió descarta el periodo vacío", () => {
+    const base = [p("40012", "BBVA", "2021-01-01", null)];
+    expect(actualizarHistorial(base, "2021-01-01", null)).toEqual([]);
   });
 
-  it("la misma entrada el mismo día no cambia nada", () => {
-    const base = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
-    expect(extenderHistorial(base, "2021-01-01", e)).toEqual(base);
+  it("2: el mismo par que el abierto no cambia nada", () => {
+    const base = [p("40012", "BBVA", "2020-01-01", null)];
+    expect(actualizarHistorial(base, "2025-05-05", e)).toEqual(base);
   });
 
-  it("otra entrada el mismo día abre un periodo y deja intacto el anterior", () => {
-    const base = [p("40012", "OTRO", "2020-01-01", "2021-01-01")];
-    const r = extenderHistorial(base, "2021-01-01", e);
-    expect(r).toEqual([
+  it("3: otro par cierra el abierto y abre uno nuevo", () => {
+    const base = [p("40012", "OTRO", "2020-01-01", null)];
+    expect(actualizarHistorial(base, "2021-01-01", e)).toEqual([
       p("40012", "OTRO", "2020-01-01", "2021-01-01"),
-      p("40012", "BBVA", "2021-01-01", "2021-01-01"),
+      p("40012", "BBVA", "2021-01-01", null),
     ]);
+    expect(base).toEqual([p("40012", "OTRO", "2020-01-01", null)]);
+  });
+
+  it("3: si el abierto nació ese mismo día, se reemplaza", () => {
+    const base = [p("40012", "OTRO", "2021-01-01", null)];
+    expect(actualizarHistorial(base, "2021-01-01", e)).toEqual([
+      p("40012", "BBVA", "2021-01-01", null),
+    ]);
+  });
+
+  it("4: sin historial abre un periodo", () => {
+    expect(actualizarHistorial([], "2021-01-01", e)).toEqual([
+      p("40012", "BBVA", "2021-01-01", null),
+    ]);
+  });
+
+  it("4: tras una ausencia real abre un periodo nuevo", () => {
+    const base = [p("40012", "BBVA", "2020-01-01", "2020-06-01")];
+    expect(actualizarHistorial(base, "2021-01-01", e)).toEqual([
+      p("40012", "BBVA", "2020-01-01", "2020-06-01"),
+      p("40012", "BBVA", "2021-01-01", null),
+    ]);
+  });
+
+  it("4: cerrado ese mismo día con el mismo par, se reabre", () => {
+    const base = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
+    expect(actualizarHistorial(base, "2021-01-01", e)).toEqual([
+      p("40012", "BBVA", "2020-01-01", null),
+    ]);
+  });
+
+  it("4: cerrado ese día con otro par, abre uno nuevo", () => {
+    const base = [p("40012", "OTRO", "2020-01-01", "2021-01-01")];
+    expect(actualizarHistorial(base, "2021-01-01", e)).toHaveLength(2);
+  });
+
+  it("5: no retrocede", () => {
+    const abierto = [p("40012", "BBVA", "2020-01-01", null)];
+    expect(() => actualizarHistorial(abierto, "2019-01-01", e)).toThrow(RangeError);
+    const cerrado = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
+    expect(() => actualizarHistorial(cerrado, "2020-06-01", null)).toThrow(RangeError);
   });
 });
 
 describe("historialesDesdeObservaciones, casos de borde", () => {
-  it("dos observaciones del mismo día conservan su orden de entrada", () => {
+  it("dos observaciones del mismo día: la última prevalece sin intervalos vacíos", () => {
     const h = historialesDesdeObservaciones([
       { fecha: "2020-01-01", entradas: [["40012", "A"]] },
       { fecha: "2020-01-01", entradas: [["40012", "B"]] },
     ]);
-    expect(h.get("012")).toEqual([
-      p("40012", "A", "2020-01-01", "2020-01-01"),
-      p("40012", "B", "2020-01-01", "2020-01-01"),
-    ]);
+    expect(h.get("012")).toEqual([p("40012", "B", "2020-01-01", null)]);
   });
 
-  it("un código que desaparece y vuelve con el mismo nombre es un solo periodo", () => {
+  it("un código que desaparece y vuelve abre un periodo nuevo", () => {
     const h = historialesDesdeObservaciones([
       { fecha: "2020-01-01", entradas: [["40012", "A"]] },
       { fecha: "2020-02-01", entradas: [["40014", "X"]] },
       { fecha: "2020-03-01", entradas: [["40012", "A"]] },
     ]);
-    expect(h.get("012")).toEqual([p("40012", "A", "2020-01-01", "2020-03-01")]);
+    expect(h.get("012")).toEqual([
+      p("40012", "A", "2020-01-01", "2020-02-01"),
+      p("40012", "A", "2020-03-01", null),
+    ]);
+  });
+
+  it("un código visto y borrado el mismo día no deja historial", () => {
+    const h = historialesDesdeObservaciones([
+      { fecha: "2020-01-01", entradas: [["40012", "A"]] },
+      { fecha: "2020-01-01", entradas: [["40014", "X"]] },
+    ]);
+    expect(h.has("012")).toBe(false);
   });
 });
 

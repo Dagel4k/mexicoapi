@@ -14,7 +14,7 @@ import type {
 } from "../../marco.js";
 import { codigoClabe, type EntradaCep, interpretarCep, tipoBanco, urlCep } from "./cep.js";
 import {
-  extenderHistorial,
+  actualizarHistorial,
   historialesDesdeObservaciones,
   type Observacion,
   observacionesCompactas,
@@ -26,6 +26,7 @@ import {
 } from "./participantes-pdf.js";
 
 const ID = "bancos";
+const DIRECTORIO = "bancos";
 const URL_INFO = "https://www.banxico.org.mx/servicios/spei_-informacion-banco-mex.html";
 const URL_CEP_HISTORICO = "https://www.banxico.org.mx/cep/instituciones.do";
 const ARCHIVO_CEP = "raw/cep-instituciones.json";
@@ -45,7 +46,7 @@ async function pedir(ctx: Contexto, file: string, url: string): Promise<CrudoCap
 
 async function leerHistoricoDisco(raizDatos: string): Promise<Uint8Array | null> {
   try {
-    return new Uint8Array(await readFile(join(raizDatos, "bancos", ARCHIVO_HISTORICO)));
+    return new Uint8Array(await readFile(join(raizDatos, DIRECTORIO, ARCHIVO_HISTORICO)));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw error;
@@ -76,52 +77,46 @@ function ultimo(historial: readonly PeriodoBanco[]): PeriodoBanco {
   return historial[historial.length - 1] as PeriodoBanco;
 }
 
-/** Registros que salen solo del historial de observaciones. */
-export function registrosDesdeHistorico(observaciones: readonly Observacion[]): Banco[] {
-  const orden = [...observaciones].sort((a, b) =>
-    a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0,
-  );
-  const finalObs = orden[orden.length - 1];
-  const activos = new Set((finalObs?.entradas ?? []).map((e) => codigoClabe(e[0])));
-  const registros: Banco[] = [];
-  for (const [codigo, historial] of historialesDesdeObservaciones(observaciones)) {
-    const fin = ultimo(historial);
-    const activo = activos.has(codigo);
-    const baja = activo ? null : (orden.find((o) => o.fecha > fin.visto_hasta)?.fecha ?? null);
-    registros.push({
-      codigo,
-      codigo_spei: fin.codigo_spei,
-      nombre_corto: fin.nombre_corto,
-      razon_social: null,
-      sector: null,
-      tipo: conTipo(fin.codigo_spei).tipo,
-      participacion: "no_confirmada",
-      activo,
-      baja_detectada: baja,
-      historial,
-    });
-  }
-  return registros;
+interface Complemento {
+  razon_social: string | null;
+  sector: string | null;
+  participacion: Banco["participacion"];
 }
 
-function registroDeHoy(
-  entrada: EntradaCep,
-  fila: FilaParticipante | undefined,
+const SIN_PDF: Complemento = { razon_social: null, sector: null, participacion: "no_confirmada" };
+
+/** Registro a partir de su historial; el estado sale del último periodo. */
+function registroDesdeHistorial(
+  codigo: string,
   historial: PeriodoBanco[],
+  complemento: Complemento,
 ): Banco {
-  const { codigo, tipo } = conTipo(entrada[0]);
+  const fin = ultimo(historial);
+  const activo = fin.hasta === null;
   return {
     codigo,
-    codigo_spei: entrada[0],
-    nombre_corto: entrada[1],
-    razon_social: fila?.razon_social ?? null,
-    sector: fila?.sector ?? null,
-    tipo,
-    participacion: fila === undefined ? "no_confirmada" : "directa",
-    activo: true,
-    baja_detectada: null,
+    codigo_spei: fin.codigo_spei,
+    nombre_corto: fin.nombre_corto,
+    razon_social: complemento.razon_social,
+    sector: complemento.sector,
+    tipo: conTipo(fin.codigo_spei).tipo,
+    participacion: complemento.participacion,
+    activo,
+    baja_detectada: fin.hasta,
     historial,
   };
+}
+
+/** Registros que salen solo del historial de observaciones. */
+export function registrosDesdeHistorico(observaciones: readonly Observacion[]): Banco[] {
+  try {
+    return [...historialesDesdeObservaciones(observaciones)].map(([codigo, historial]) =>
+      registroDesdeHistorial(codigo, historial, SIN_PDF),
+    );
+  } catch (error) {
+    if (error instanceof RangeError) throw new ErrorDatos(error.message, ID);
+    throw error;
+  }
 }
 
 function invariantesBanco(b: Banco): string[] {
@@ -130,22 +125,21 @@ function invariantesBanco(b: Banco): string[] {
   if (!b.codigo_spei.endsWith(b.codigo)) p(`codigo_spei ${b.codigo_spei} no termina en el código`);
   if (b.historial.length === 0) {
     p("historial vacío");
-  } else {
-    let previo: PeriodoBanco | undefined;
-    for (const per of b.historial) {
-      if (per.visto_desde > per.visto_hasta) p(`periodo invertido desde ${per.visto_desde}`);
-      if (previo !== undefined && per.visto_desde < previo.visto_desde) {
-        p("historial fuera de orden");
-      }
-      previo = per;
-    }
-    const fin = ultimo(b.historial);
-    if (fin.codigo_spei !== b.codigo_spei || fin.nombre_corto !== b.nombre_corto) {
-      p("el último periodo no coincide con el registro");
-    }
+    return f;
   }
-  if (b.activo && b.baja_detectada !== null) p("activo con baja_detectada");
-  if (!b.activo && b.baja_detectada === null) p("inactivo sin baja_detectada");
+  b.historial.forEach((per, i) => {
+    const previo = b.historial[i - 1];
+    if (per.hasta !== null && per.desde >= per.hasta)
+      p(`periodo vacío o invertido desde ${per.desde}`);
+    if (previo !== undefined && per.desde < previo.desde) p("historial fuera de orden");
+    if (per.hasta === null && i < b.historial.length - 1) p("periodo abierto que no es el último");
+  });
+  const fin = ultimo(b.historial);
+  if (fin.codigo_spei !== b.codigo_spei || fin.nombre_corto !== b.nombre_corto) {
+    p("el último periodo no coincide con el registro");
+  }
+  if (b.activo !== (fin.hasta === null)) p("activo no coincide con el último periodo");
+  if (b.baja_detectada !== fin.hasta) p("baja_detectada no coincide con el último periodo");
   return f;
 }
 
@@ -154,7 +148,7 @@ export function crearBancos(
 ): DefinicionDataset<Banco> {
   const def: DefinicionDataset<Banco> = {
     id: ID,
-    directorio: "bancos",
+    directorio: DIRECTORIO,
     archivo: "bancos.json",
     esquema: esquemaBanco,
     clave: (b) => b.codigo,
@@ -211,42 +205,60 @@ export function crearBancos(
     async construir(fuentes, anterior, ctx): Promise<Construccion<Banco>> {
       const entradas = interpretarCep(crudoDe(fuentes, ARCHIVO_CEP).bytes);
       const listado = await interpretarParticipantesPdf(crudoDe(fuentes, ARCHIVO_PDF).bytes);
-      const filas = new Map(listado.filas.map((f) => [normalizarNombre(f.nombre_corto), f]));
+      const avisos: string[] = [];
+      const filas = new Map<string, FilaParticipante>();
+      for (const f of listado.filas) {
+        const clave = normalizarNombre(f.nombre_corto);
+        const otra = filas.get(clave);
+        if (otra === undefined) filas.set(clave, f);
+        else
+          avisos.push(
+            `en el PDF dos filas con el mismo nombre: ${otra.nombre_corto} y ${f.nombre_corto}`,
+          );
+      }
       const previos = new Map((anterior ?? []).map((b) => [b.codigo, b]));
 
-      const hoy = new Map<string, Banco>();
-      const usadas = new Set<string>();
+      const hoy = new Map<string, EntradaCep>();
       for (const entrada of entradas) {
         const { codigo } = conTipo(entrada[0]);
         if (hoy.has(codigo)) {
           throw new ErrorDatos(`El código ${codigo} aparece más de una vez en el CEP`, ID);
         }
-        const clave = normalizarNombre(entrada[1]);
-        const fila = filas.get(clave);
-        if (fila !== undefined) usadas.add(clave);
+        hoy.set(codigo, entrada);
+      }
+
+      const usadas = new Set<string>();
+      const registros: Banco[] = [];
+      for (const codigo of new Set([...previos.keys(), ...hoy.keys()])) {
+        const previo = previos.get(codigo);
+        const entrada = hoy.get(codigo) ?? null;
         let historial: PeriodoBanco[];
         try {
-          historial = extenderHistorial(previos.get(codigo)?.historial ?? [], ctx.fecha, entrada);
+          historial = actualizarHistorial(previo?.historial ?? [], ctx.fecha, entrada);
         } catch (error) {
           if (error instanceof RangeError) throw new ErrorDatos(error.message, ID);
           throw error;
         }
-        hoy.set(codigo, registroDeHoy(entrada, fila, historial));
+        if (historial.length === 0) continue;
+        let complemento: Complemento;
+        if (entrada !== null) {
+          const clave = normalizarNombre(entrada[1]);
+          const fila = filas.get(clave);
+          if (fila !== undefined) usadas.add(clave);
+          complemento =
+            fila === undefined
+              ? SIN_PDF
+              : { razon_social: fila.razon_social, sector: fila.sector, participacion: "directa" };
+        } else {
+          // Un código inactivo conserva lo que se supo de él cuando estuvo activo.
+          complemento = previo ?? SIN_PDF;
+        }
+        registros.push(registroDesdeHistorial(codigo, historial, complemento));
       }
 
-      const registros = [...hoy.values()];
-      for (const [codigo, previo] of previos) {
-        if (hoy.has(codigo)) continue;
-        registros.push({
-          ...previo,
-          activo: false,
-          baja_detectada: previo.baja_detectada ?? ctx.fecha,
-        });
+      for (const [clave, f] of filas) {
+        if (!usadas.has(clave)) avisos.push(`en el PDF y no en el CEP: ${f.nombre_corto}`);
       }
-
-      const avisos = listado.filas
-        .filter((f) => !usadas.has(normalizarNombre(f.nombre_corto)))
-        .map((f) => `en el PDF y no en el CEP: ${f.nombre_corto}`);
       return { registros, avisos };
     },
 
