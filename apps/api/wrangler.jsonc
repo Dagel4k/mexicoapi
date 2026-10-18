@@ -8,7 +8,9 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/v1", "/v1/*"]
+    "run_worker_first": ["/v1", "/v1/*"],
+    // Fuera de /v1, lo que no es un asset lo responde 404.html sin invocar al Worker.
+    "not_found_handling": "404-page"
   },
   // No se guardan consultas ni se envían métricas de uso de wrangler.
   "observability": { "enabled": false },

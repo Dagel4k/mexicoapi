@@ -467,7 +467,7 @@ describe("encabezados de seguridad", () => {
     ["GET", "/v1/estados?x=1", 400],
     ["GET", "/v1/tipo-cambio/fix?publicado=2099-01-02", 404],
     ["GET", "/v1/estados/33", 404],
-    ["GET", "/no-existe", 404],
+    ["GET", "/v1/no-existe", 404],
     ["POST", "/v1/estados", 405],
     ["OPTIONS", "/v1/estados", 204],
     ["GET", "/v1/estados/", 308],

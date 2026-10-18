@@ -109,6 +109,26 @@ describe("documento OpenAPI", () => {
     });
   });
 
+  it("el índice de /v1 enlaza la página de inicio y llms.txt", () => {
+    expect(esquema200("/v1")).toEqual({ $ref: "#/components/schemas/Indice" });
+    const indice = doc.components.schemas.Indice;
+    expect(Object.keys(indice.properties)).toEqual([
+      "nombre",
+      "version",
+      "documentacion",
+      "openapi",
+      "status",
+      "descargas",
+      "sitio",
+      "llms",
+    ]);
+    expect(indice.required).toEqual(Object.keys(indice.properties));
+    expect(indice.properties.sitio.description).toBe("Ruta de la página de inicio del sitio.");
+    expect(indice.properties.llms.description).toBe(
+      "Ruta del resumen para herramientas que leen llms.txt.",
+    );
+  });
+
   it("EstadoDataset declara la cobertura de las series como opcional", () => {
     const estado = doc.components.schemas.EstadoDataset;
     expect(estado.required).not.toContain("cobertura");

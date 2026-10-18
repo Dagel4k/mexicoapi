@@ -1,6 +1,7 @@
-// Prueba de humo de una API desplegada: pide las rutas principales y comprueba estado, tipo de
-// contenido, forma mínima del cuerpo y los encabezados de seguridad. Lo usa el flujo de despliegue
-// tras cada publicación y las pruebas de integración contra el Worker local.
+// Prueba de humo de una API desplegada: pide las rutas principales y las páginas del sitio y
+// comprueba estado, tipo de contenido, forma mínima del cuerpo y los encabezados de seguridad. Lo
+// usa el flujo de despliegue tras cada publicación y las pruebas de integración contra el Worker
+// local.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,14 +19,21 @@ export interface OpcionesHumo {
   timeoutMs?: number;
 }
 
-type Tipo = "json" | "problema" | "texto";
+type Tipo = "json" | "problema" | "texto" | "html";
+
+type Encabezados = readonly (readonly [string, string])[];
 
 interface Comprobacion {
   ruta: string;
   estado: number;
   tipo: Tipo;
-  /** Devuelve el motivo de la falla, o `undefined` si el cuerpo es el esperado. */
+  /**
+   * Devuelve el motivo de la falla, o `undefined` si el cuerpo es el esperado. En `texto` y `html`
+   * recibe el texto del cuerpo.
+   */
   validar?: (cuerpo: unknown) => string | undefined;
+  /** Los encabezados que debe traer; por omisión, CORS y nosniff. */
+  encabezados?: Encabezados;
 }
 
 const TIEMPO_MAXIMO_MS = 10_000;
@@ -173,15 +181,42 @@ const COMPROBACIONES: readonly Comprobacion[] = [
   },
   { ruta: "/v1/openapi.json", estado: 200, tipo: "json" },
   { ruta: "/descargas/SHA256SUMS", estado: 200, tipo: "texto" },
+  // El sitio lo sirven los assets: la página de inicio no lleva CORS.
+  {
+    ruta: "/",
+    estado: 200,
+    tipo: "html",
+    encabezados: [["x-content-type-options", "nosniff"]],
+    validar: (cuerpo) =>
+      String(cuerpo).includes("<h1>MéxicoAPI</h1>") ? undefined : "no es la página de inicio",
+  },
+  {
+    ruta: "/llms.txt",
+    estado: 200,
+    tipo: "texto",
+    validar: (cuerpo) =>
+      String(cuerpo).startsWith("# MéxicoAPI\n") ? undefined : "no empieza con # MéxicoAPI",
+  },
+  {
+    // Fuera de /v1, lo que no existe es 404.html de los assets, sin reglas de _headers. Si lo
+    // respondiera el Worker (problem+json), el despliegue habría perdido `not_found_handling`.
+    ruta: "/v2",
+    estado: 404,
+    tipo: "html",
+    encabezados: [],
+    validar: (cuerpo) =>
+      String(cuerpo).includes("<h1>No existe esta página</h1>") ? undefined : "no es 404.html",
+  },
 ];
 
 const TIPOS: Record<Tipo, string> = {
   json: "application/json",
   problema: "application/problem+json",
   texto: "text/plain",
+  html: "text/html",
 };
 
-const ENCABEZADOS: readonly (readonly [string, string])[] = [
+const ENCABEZADOS: Encabezados = [
   ["access-control-allow-origin", "*"],
   ["x-content-type-options", "nosniff"],
 ];
@@ -217,12 +252,14 @@ async function revisar(respuesta: Response, caso: Comprobacion): Promise<string 
   if (medio.toLowerCase() !== TIPOS[caso.tipo]) {
     return `tipo de contenido ${medio || "ausente"}, se esperaba ${TIPOS[caso.tipo]}`;
   }
-  for (const [nombre, valor] of ENCABEZADOS) {
+  for (const [nombre, valor] of caso.encabezados ?? ENCABEZADOS) {
     const actual = respuesta.headers.get(nombre);
     if (actual !== valor) return `${nombre}: ${actual ?? "ausente"}, se esperaba ${valor}`;
   }
-  if (caso.tipo === "texto") {
-    return (await respuesta.text()).trim() === "" ? "cuerpo vacío" : undefined;
+  if (caso.tipo === "texto" || caso.tipo === "html") {
+    const texto = await respuesta.text();
+    if (texto.trim() === "") return "cuerpo vacío";
+    return caso.validar?.(texto);
   }
   let cuerpo: unknown;
   try {

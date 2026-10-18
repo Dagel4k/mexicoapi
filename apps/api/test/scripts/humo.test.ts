@@ -17,6 +17,8 @@ interface Ruta {
   estado?: number;
   tipo?: string;
   cuerpo: unknown;
+  /** Como el 404 de los assets: sin ninguna regla de `_headers`. */
+  sinSeguridad?: boolean;
 }
 
 const ESTADOS = Array.from({ length: 32 }, (_, i) => ({ cve_ent: String(i + 1).padStart(2, "0") }));
@@ -47,6 +49,14 @@ function rutasBuenas(): Record<string, Ruta> {
     "/v1/status": { cuerpo: { data: [{ dataset: "bancos", status: "ok" }] } },
     "/v1/openapi.json": { cuerpo: { openapi: "3.1.0" } },
     "/descargas/SHA256SUMS": { tipo: "text/plain; charset=utf-8", cuerpo: "abc  bancos.json\n" },
+    "/": { tipo: "text/html; charset=utf-8", cuerpo: "<!doctype html><h1>MéxicoAPI</h1>" },
+    "/llms.txt": { tipo: "text/plain; charset=utf-8", cuerpo: "# MéxicoAPI\n\n> Datos\n" },
+    "/v2": {
+      estado: 404,
+      tipo: "text/html; charset=utf-8",
+      cuerpo: "<h1>No existe esta página</h1>",
+      sinSeguridad: true,
+    },
   };
 }
 
@@ -63,7 +73,10 @@ function falso(
     const texto = typeof r.cuerpo === "string" ? r.cuerpo : JSON.stringify(r.cuerpo);
     return new Response(texto, {
       status: r.estado ?? 200,
-      headers: { "content-type": r.tipo ?? "application/json; charset=utf-8", ...SEGURIDAD },
+      headers: {
+        "content-type": r.tipo ?? "application/json; charset=utf-8",
+        ...(r.sinSeguridad === true ? {} : SEGURIDAD),
+      },
     });
   }) as typeof fetch;
 }
@@ -73,7 +86,7 @@ describe("probarHumo", () => {
     const r = await probarHumo(`${BASE}/`, { fetch: falso(rutasBuenas()) });
     expect(r.fallas).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(Object.keys(r.tiempos)).toHaveLength(14);
+    expect(Object.keys(r.tiempos)).toHaveLength(17);
   });
 
   it("un 200 con HTML es una falla", async () => {
@@ -124,7 +137,7 @@ describe("probarHumo", () => {
   it("un fetch que ignora la señal también vence", async () => {
     const mudo = (() => new Promise(() => {})) as typeof fetch;
     const r = await probarHumo(BASE, { fetch: mudo, timeoutMs: 5 });
-    expect(r.fallas).toHaveLength(14);
+    expect(r.fallas).toHaveLength(17);
   });
 
   it("un error de red es una falla con su mensaje", async () => {
@@ -206,13 +219,77 @@ describe("probarHumo", () => {
   });
 });
 
+describe("el sitio de los assets", () => {
+  it("/ debe ser la página de inicio en HTML, con nosniff", async () => {
+    const casos: [Ruta, string][] = [
+      [{ tipo: "text/html", cuerpo: "<h1>Otra</h1>" }, "/: no es la página de inicio"],
+      [{ cuerpo: { nombre: "MéxicoAPI" } }, "/: tipo de contenido application/json"],
+      [{ estado: 404, tipo: "text/html", cuerpo: "<h1>MéxicoAPI</h1>" }, "/: estado 404"],
+      [
+        { tipo: "text/html", cuerpo: "<h1>MéxicoAPI</h1>", sinSeguridad: true },
+        "/: x-content-type-options: ausente",
+      ],
+    ];
+    for (const [ruta, falla] of casos) {
+      const rutas = rutasBuenas();
+      rutas["/"] = ruta;
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas, falla).toHaveLength(1);
+      expect(r.fallas[0]).toContain(falla);
+    }
+  });
+
+  it("/llms.txt debe ser texto con CORS que empieza con el título", async () => {
+    const casos: [Ruta, string][] = [
+      [{ tipo: "text/plain", cuerpo: "<html>" }, "/llms.txt: no empieza con # MéxicoAPI"],
+      [{ tipo: "text/html", cuerpo: "# MéxicoAPI" }, "/llms.txt: tipo de contenido text/html"],
+      [
+        { tipo: "text/plain", cuerpo: "# MéxicoAPI", sinSeguridad: true },
+        "/llms.txt: access-control-allow-origin: ausente",
+      ],
+    ];
+    for (const [ruta, falla] of casos) {
+      const rutas = rutasBuenas();
+      rutas["/llms.txt"] = ruta;
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas).toEqual([expect.stringContaining(falla)]);
+    }
+  });
+
+  // Fuera de /v1, lo que no existe lo responde 404.html de los assets: si llega al Worker, el
+  // despliegue perdió `not_found_handling`.
+  it("/v2 debe ser el 404 de los assets y no el del Worker", async () => {
+    const casos: [Ruta, string][] = [
+      [
+        {
+          estado: 404,
+          tipo: "application/problem+json; charset=utf-8",
+          cuerpo: { status: 404 },
+        },
+        "/v2: tipo de contenido application/problem+json, se esperaba text/html",
+      ],
+      [{ estado: 200, tipo: "text/html", cuerpo: "<h1>MéxicoAPI</h1>" }, "/v2: estado 200"],
+      [{ estado: 404, tipo: "text/html", cuerpo: "<h1>Otra</h1>" }, "/v2: no es 404.html"],
+    ];
+    for (const [ruta, falla] of casos) {
+      const rutas = rutasBuenas();
+      rutas["/v2"] = ruta;
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas).toEqual([expect.stringContaining(falla)]);
+    }
+    // El 404 de los assets no recibe reglas de _headers: no se le exigen CORS ni nosniff.
+    const r = await probarHumo(BASE, { fetch: falso(rutasBuenas()) });
+    expect(r.fallas).toEqual([]);
+  });
+});
+
 describe("principal", () => {
   it("imprime un renglón por ruta y sale con 0", async () => {
     const salida: string[] = [];
     const codigo = await principal([BASE], (t) => salida.push(t), { fetch: falso(rutasBuenas()) });
     expect(codigo).toBe(0);
     const texto = salida.join("");
-    expect(texto.match(/^ok /gm)).toHaveLength(14);
+    expect(texto.match(/^ok /gm)).toHaveLength(17);
     expect(texto).toContain("Prueba de humo correcta.");
   });
 
