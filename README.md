@@ -12,13 +12,13 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 
 Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, y los mantiene al día de forma automática.
 
-> En desarrollo. Los primeros datos ya están en [`data/`](data/), la API v1 está construida y documentada pero todavía no está desplegada, y el paquete de npm está listo pero sin publicar. No hay versión publicada.
+> En desarrollo. Los primeros datos ya están en [`data/`](data/), la API v1 está construida y documentada pero todavía no está desplegada, y los paquetes de npm (`mexicoapi` y el servidor MCP `mexicoapi-mcp`) están listos pero sin publicar. No hay versión publicada.
 
 ## Qué va a incluir
 
 - **API pública** de solo lectura: rápida (archivos estáticos en el borde) y gratuita.
 - **Paquete de npm** (`mexicoapi`) con cliente, validadores y datos para usar sin conexión.
-- **Servidor MCP** (`mexicoapi-mcp`) para que los asistentes de IA consulten el dato oficial en vez de inventarlo.
+- **Servidor MCP** ([`mexicoapi-mcp`](packages/mcp/README.md)) para que los asistentes de IA consulten el dato oficial en vez de inventarlo.
 - **Descargas completas** en JSON, CSV y SQLite.
 
 Cada respuesta indica de dónde salió el dato, su licencia y la fecha en que se verificó.
@@ -67,10 +67,11 @@ curl https://<base>/v1/clabe/002010077777777771
 
 - [API v1](docs/api/README.md) y [errores](docs/api/problemas.md)
 - [Paquete `mexicoapi`](packages/sdk/README.md): validadores, datos sin red, cliente, SEPOMEX y CLI
+- [Servidor MCP `mexicoapi-mcp`](packages/mcp/README.md): herramientas, configuración del cliente y `MEXICOAPI_BASE`
 - [Diseño técnico v1](docs/diseno/arquitectura-v1.md)
 - [Bot de datos](docs/operacion/bot-de-datos.md)
 - [Datos curados](docs/operacion/datos-curados.md): cómo se transcriben del DOF los calendarios y las constantes
-- [Publicación en npm](docs/operacion/publicacion-npm.md): cómo se arma y se publica el paquete
+- [Publicación en npm](docs/operacion/publicacion-npm.md): cómo se arman y se publican los paquetes
 
 ## Licencia
 

@@ -444,22 +444,16 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
 ## 11. Servidor MCP (`mexicoapi-mcp`)
 
-- **Transporte:** stdio (`npx -y mexicoapi-mcp`). Usa el SDK, ya sea con datos offline o con la API.
-- **Herramientas:** todas con `readOnlyHint: true`.
-  - Las de datos que caducan (FIX, UDIS, días inhábiles, constantes) consultan la API por defecto (`openWorldHint: true`). Sin red, responden con los datos del paquete y una advertencia de antigüedad.
-  - Las de datos estables y validación funcionan sin red (`openWorldHint: false`).
-  - Lista de herramientas:
-    - `buscar_municipio`
-    - `validar_clabe`
-    - `banco_por_codigo`
-    - `tipo_de_cambio_fix`
-    - `udis`
-    - `dias_inhabiles`
-    - `sumar_dias_habiles`
-    - `constantes`
-    - `codigo_postal` (solo si el usuario ya hizo `sepomex sync`)
-- **Respuestas:** siempre incluyen `as_of` y la fuente con URL, para que el agente pueda citar.
-- **Seguridad:** las descripciones de las herramientas son constantes del código, versionadas y probadas. No hay herramientas que escriban ni que hagan peticiones arbitrarias.
+- **Transporte:** stdio (`npx -y mexicoapi-mcp`), un mensaje JSON-RPC por línea. Pide Node 22.13 o posterior.
+- **Protocolo propio:** JSON-RPC, ciclo de vida, negociación, cancelación y validación de esquemas están en el paquete. Su única dependencia de ejecución es `mexicoapi`; el SDK oficial de MCP (`@modelcontextprotocol/sdk`) solo se usa en las pruebas, como cliente.
+- **Versiones de MCP:** 2025-11-25, 2025-06-18, 2025-03-26 y 2024-11-05. A un cliente que pide otra se le responde con 2025-11-25. En las dos más viejas no se envían los campos que no tienen (`title`, `outputSchema`, `structuredContent`), y solo 2025-03-26 acepta lotes.
+- **Datos:** salen del paquete `mexicoapi`, que se publica como dependencia con `^` para que los datos nuevos (versiones *patch*) lleguen a las instalaciones nuevas sin publicar otra vez el servidor. Sin `MEXICOAPI_BASE` responde todo con los datos del paquete, sin red. Con ella, las herramientas de datos que caducan consultan esa API y, si no responde, usan el paquete y lo advierten.
+- **Herramientas (13):** todas con `readOnlyHint: true`, `inputSchema` estricto (`additionalProperties: false`) y `outputSchema`.
+  - Datos que caducan (`openWorldHint: true`): `tipo_de_cambio_fix`, `udis`, `dias_inhabiles`, `sumar_dias_habiles` y `constantes` (UMA, salario mínimo e ISR). Sin API, el FIX más reciente y el FIX o las UDIS a 7 días o menos del final de la serie del paquete advierten que pueden faltar publicaciones; los calendarios y las constantes responden con error fuera de lo que cubre el paquete, nunca con un valor anterior.
+  - Sin red (`openWorldHint: false`): `buscar_municipio`, `municipio`, `validar_clabe`, `banco_por_codigo`, `validar_rfc`, `validar_curp`, `validar_nss` y `codigo_postal`, que lee el catálogo que el usuario descargó con `sepomex sync` y, sin él, responde con error y el comando.
+- **Respuestas:** `structuredContent` con `datos`, `as_of` (la fecha de corte del dataset), la fuente con URL, `origen` (`api`, `paquete` o `cache_local`) y `advertencias`, para que el agente pueda citar; el texto dice lo mismo en español.
+- **Seguridad:** las descripciones de las herramientas son constantes del código, versionadas y probadas. No hay herramientas que escriban ni que hagan peticiones arbitrarias. Una CLABE, un RFC, una CURP o un NSS nunca salen del equipo, y los registros (en stderr) no traen argumentos.
+- **Pruebas:** unidad sobre flujos en memoria; integración con el binario compilado por stdio, también con el cliente oficial, que valida cada resultado contra su `outputSchema`; y el `.tgz` instalado con el de `mexicoapi` en un proyecto nuevo, con una prueba de humo en Node 22 y 24 en CI.
 - **v1.1:** MCP remoto sin estado en Cloudflare (`createMcpHandler`), registro oficial de MCP y directorios de conectores de los asistentes.
 
 ## 12. Seguridad
@@ -492,20 +486,20 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   2. `tsc --noEmit`;
   3. Vitest con umbrales de cobertura, y las pruebas en varias zonas horarias;
   4. build de paquetes y API (shards, descargas y OpenAPI);
-  5. integración y contrato de la API en workerd;
+  5. integración y contrato de la API en workerd, el servidor MCP por stdio (también con el cliente oficial de MCP) y los paquetes instalados desde su `.tgz`;
   6. validación de todos los `data/*/manifest.json` y snapshots;
   7. gitleaks.
 
   El build del sitio de docs se suma cuando exista el sitio.
 - **Workflows:**
-  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26) y `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador). El check `verify`, el que exige la protección de `main`, pasa solo si los cuatro terminan bien;
+  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador) y `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22 y 24). El check `verify`, el que exige la protección de `main`, pasa solo si los cinco terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
   - `seguridad.yml` (cada PR, cada push a `main`, cada semana y a mano): CodeQL y osv-scanner sobre `pnpm-lock.yaml`; OpenSSF Scorecard en los push a `main` y en la corrida semanal;
   - `publicacion.yml`, pendiente: correrá con la etiqueta `mexicoapi@<versión>` de una versión ya integrada, en el Environment `npm`, y publicará con procedencia la carpeta que arma `packages/sdk/scripts/publicable.ts`, sin changesets. Mientras tanto se publica a mano desde esa carpeta ([publicacion-npm.md](../operacion/publicacion-npm.md)).
 - **Ramas:** una por tarea, PR a `main` con CI verde. `main` siempre desplegable.
-- **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk`. Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
+- **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk` (solo en las pruebas del servidor MCP). Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
 
 ## 14. Decisiones y pendientes
 
@@ -522,6 +516,7 @@ Tomadas:
 | Días hábiles | Conteo desde el día hábil siguiente, `tipo_plazo` para el SAT y 422 con calendario incompleto (sección 8.1) |
 | FIX | Dos modos: por publicación y por operación (sección 8.1) |
 | SDK | Datos que caducan desde la API con respaldo en el paquete; Node ≥ 20 y runtimes web (sección 10) |
+| MCP | Protocolo propio por stdio, sin SDK de MCP en ejecución; `mexicoapi` como dependencia con `^`; API solo con `MEXICOAPI_BASE`; Node ≥ 22.13 (sección 11) |
 
 Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas:
 
