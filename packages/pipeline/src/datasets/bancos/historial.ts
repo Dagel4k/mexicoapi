@@ -29,6 +29,8 @@ export function extenderHistorial(
   ) {
     ultimo.visto_hasta = fecha;
   } else {
+    // Si cambia el día de la última observación, el día queda en ambos periodos:
+    // los dos se observaron ese día y el anterior no se toca.
     copia.push({ codigo_spei, nombre_corto, visto_desde: fecha, visto_hasta: fecha });
   }
   return copia;
@@ -57,7 +59,7 @@ export function historialesDesdeObservaciones(
 }
 
 const firma = (entradas: readonly EntradaCep[]): string =>
-  JSON.stringify([...entradas].sort((a, b) => (a[0] + a[1] < b[0] + b[1] ? -1 : 1)));
+  JSON.stringify([...entradas].sort((a, b) => (a[0] + a[1]).localeCompare(b[0] + b[1])));
 
 /** Conserva la primera, la última y cada observación cuya lista cambia. */
 export function observacionesCompactas(observaciones: readonly Observacion[]): Observacion[] {
