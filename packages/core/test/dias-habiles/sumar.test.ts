@@ -58,7 +58,7 @@ describe("sumarDiasHabiles", () => {
       expect.unreachable();
     } catch (e) {
       expect(e).toBeInstanceOf(CalendarioIncompletoError);
-      expect((e as CalendarioIncompletoError).codigo).toBe("calendario-incompleto");
+      expect((e as CalendarioIncompletoError).tipo).toBe("calendario-incompleto");
       expect((e as CalendarioIncompletoError).fecha.startsWith("2027")).toBe(true);
     }
   });

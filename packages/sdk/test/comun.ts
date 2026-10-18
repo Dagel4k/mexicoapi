@@ -155,7 +155,9 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
     it("distingue FechaFueraDeRangoError de otros RangeError", () => {
       const error = new m.FechaFueraDeRangoError();
       expect(error).toBeInstanceOf(RangeError);
-      expect(error.codigo).toBe("fecha-fuera-de-rango");
+      // Se llamaba `codigo`; ahora es `tipo`, como en MexicoApiError.
+      expect(error.tipo).toBe("fecha-fuera-de-rango");
+      expect("codigo" in error).toBe(false);
     });
 
     it("revisa fechas ISO", () => {

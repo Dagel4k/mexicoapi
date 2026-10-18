@@ -283,7 +283,7 @@ describe("fixParaOperacion (CFF art. 20)", () => {
       const error = errorDeSerie(() =>
         fixParaOperacion([ENE_02, ENE_05], TRAMO_2026, HASTA_LUNES, "2026-01-02"),
       );
-      expect(error.codigo).toBe("serie-incompleta");
+      expect(error.tipo).toBe("serie-incompleta");
       expect(error.fecha).toBe("2026-01-02");
       expect(error.tramo).toEqual(TRAMO_2026);
       expect(error.message).toContain("anterior");
@@ -706,7 +706,7 @@ describe("SerieIncompletaError", () => {
     expect(error).toBeInstanceOf(Error);
     expect(error).not.toBeInstanceOf(RangeError);
     expect(error.name).toBe("SerieIncompletaError");
-    expect(error.codigo).toBe("serie-incompleta");
+    expect(error.tipo).toBe("serie-incompleta");
     expect(error.fecha).toBe("2026-01-02");
     expect(error.tramo).toEqual(tramo);
     expect(error.tramo).not.toBe(tramo);

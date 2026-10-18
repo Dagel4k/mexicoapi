@@ -84,7 +84,7 @@ describe("sumarDias", () => {
       expect(lanzado).toBeInstanceOf(RangeError);
       expect(lanzado).toMatchObject({
         name: "FechaFueraDeRangoError",
-        codigo: "fecha-fuera-de-rango",
+        tipo: "fecha-fuera-de-rango",
         message: "La fecha resultante sale del rango 0001-9999",
       });
     }
