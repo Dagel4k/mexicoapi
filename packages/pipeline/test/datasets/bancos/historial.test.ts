@@ -98,6 +98,42 @@ describe("extenderHistorial", () => {
     const base = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
     expect(() => extenderHistorial(base, "2020-06-01", e)).toThrow(RangeError);
   });
+
+  it("la misma entrada el mismo día no cambia nada", () => {
+    const base = [p("40012", "BBVA", "2020-01-01", "2021-01-01")];
+    expect(extenderHistorial(base, "2021-01-01", e)).toEqual(base);
+  });
+
+  it("otra entrada el mismo día abre un periodo y deja intacto el anterior", () => {
+    const base = [p("40012", "OTRO", "2020-01-01", "2021-01-01")];
+    const r = extenderHistorial(base, "2021-01-01", e);
+    expect(r).toEqual([
+      p("40012", "OTRO", "2020-01-01", "2021-01-01"),
+      p("40012", "BBVA", "2021-01-01", "2021-01-01"),
+    ]);
+  });
+});
+
+describe("historialesDesdeObservaciones, casos de borde", () => {
+  it("dos observaciones del mismo día conservan su orden de entrada", () => {
+    const h = historialesDesdeObservaciones([
+      { fecha: "2020-01-01", entradas: [["40012", "A"]] },
+      { fecha: "2020-01-01", entradas: [["40012", "B"]] },
+    ]);
+    expect(h.get("012")).toEqual([
+      p("40012", "A", "2020-01-01", "2020-01-01"),
+      p("40012", "B", "2020-01-01", "2020-01-01"),
+    ]);
+  });
+
+  it("un código que desaparece y vuelve con el mismo nombre es un solo periodo", () => {
+    const h = historialesDesdeObservaciones([
+      { fecha: "2020-01-01", entradas: [["40012", "A"]] },
+      { fecha: "2020-02-01", entradas: [["40014", "X"]] },
+      { fecha: "2020-03-01", entradas: [["40012", "A"]] },
+    ]);
+    expect(h.get("012")).toEqual([p("40012", "A", "2020-01-01", "2020-03-01")]);
+  });
 });
 
 describe("observacionesCompactas", () => {
@@ -125,6 +161,11 @@ describe("observacionesCompactas", () => {
   it("ignora el orden de las entradas y de las fechas", () => {
     const r = observacionesCompactas([o("2020-01-03", A), o("2020-01-01", Ar), o("2020-01-02", A)]);
     expect(r.map((x) => x.fecha)).toEqual(["2020-01-01", "2020-01-03"]);
+  });
+
+  it("conserva un cambio que vuelve al estado anterior", () => {
+    const r = observacionesCompactas([o("2020-01-01", A), o("2020-01-02", B), o("2020-01-03", A)]);
+    expect(r.map((x) => x.fecha)).toEqual(["2020-01-01", "2020-01-02", "2020-01-03"]);
   });
 
   it("maneja listas vacías y de un elemento", () => {
