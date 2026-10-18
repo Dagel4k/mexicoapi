@@ -1,10 +1,8 @@
-// Reglas de los parámetros de la API: las de los valores de la ruta y, de combinaciones.ts, las
-// que relacionan dos parámetros de la query. Las usan la API, el cliente del paquete, el OpenAPI,
-// la CLI y el MCP. Tiene su propia subruta del núcleo (parametros) y solo importa los catálogos:
-// el cliente lo carga al importarse.
+// Reglas de los valores de la ruta de la API y la forma de sus reglas y problemas. Las usan la API,
+// el cliente del paquete y el OpenAPI; las que relacionan dos parámetros de la query están en
+// combinaciones.ts. Tiene su propia subruta del núcleo (parametros) y no importa nada: el cliente
+// lo carga al importarse.
 import type { TipoProblema } from "./problemas.js";
-
-export { type NombresTipoPlazo, revisarFix, revisarTipoPlazo } from "./combinaciones.js";
 
 /** La regla de un parámetro y el texto de la API cuando no la cumple. */
 export interface ReglaParametro {

@@ -29,6 +29,11 @@
       "types": "./dist/rutas/parametros.d.ts",
       "import": "./dist/rutas/parametros.js"
     },
+    "./combinaciones": {
+      "@mexicoapi/source": "./src/rutas/combinaciones.ts",
+      "types": "./dist/rutas/combinaciones.d.ts",
+      "import": "./dist/rutas/combinaciones.js"
+    },
     "./rutas": {
       "@mexicoapi/source": "./src/rutas/index.ts",
       "types": "./dist/rutas/index.d.ts",

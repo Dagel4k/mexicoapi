@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as core from "../../src/index.js";
-import {
-  cumpleRegla,
-  REGLAS_RUTA,
-  type ReglaParametro,
-  revisarFix,
-  revisarTipoPlazo,
-} from "../../src/rutas/parametros.js";
+import { revisarFix, revisarTipoPlazo } from "../../src/rutas/combinaciones.js";
+import { cumpleRegla, REGLAS_RUTA, type ReglaParametro } from "../../src/rutas/parametros.js";
 
 describe("cumpleRegla", () => {
   const regla: ReglaParametro = {
