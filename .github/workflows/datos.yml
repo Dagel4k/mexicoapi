@@ -94,7 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
-          pnpm -r build
+          pnpm --filter "@mexicoapi/pipeline..." build
 
       - name: Actualizar datos
         id: cli
