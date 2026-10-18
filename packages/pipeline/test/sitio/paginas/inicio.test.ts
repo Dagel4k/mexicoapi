@@ -224,10 +224,26 @@ describe("página de inicio", () => {
     expect(origenes.length).toBeGreaterThanOrEqual(2);
     for (const texto of origenes) expect(texto).toBe("https://&lt;base&gt;");
     const codigo = bloquesDeCodigo(html);
-    expect(codigo).toContain("curl https://<base>/v1/estados/25");
+    expect(codigo).toContain(
+      "curl https://<base>/v1/estados/25\ncurl https://<base>/v1/clabe/002010077777777771",
+    );
     expect(codigo).toContain(
       "curl -O https://<base>/descargas/SHA256SUMS\nsha256sum -c SHA256SUMS --ignore-missing",
     );
+  });
+
+  it("Empieza muestra una consulta, una CLABE y cómo sumar días hábiles, con tipo_plazo en el SAT", () => {
+    const api = html.slice(html.indexOf("<h3>API</h3>"), html.indexOf("<h3>Paquete de npm</h3>"));
+    expect(bloquesDeCodigo(api)).toEqual([
+      "curl https://<base>/v1/estados/25\ncurl https://<base>/v1/clabe/002010077777777771",
+    ]);
+    expect(validarClabe("002010077777777771").valido).toBe(true);
+    expect(api).toContain(
+      "<code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>",
+    );
+    expect(api).toContain("con <code>sat</code>, agrega <code>tipo_plazo=general</code>");
+    expect(api).toContain("<code>tipo_plazo=declaraciones_pagos</code>");
+    expect(api).toContain("<code>AAAA-MM-DD</code>");
   });
 
   it("ya publicados, trae el ejemplo del paquete y la configuración del servidor MCP", () => {

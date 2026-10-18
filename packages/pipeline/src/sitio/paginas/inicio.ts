@@ -95,7 +95,9 @@ function empieza(publicado: boolean): string {
 <div class="bloque">
 <h3>API</h3>
 <p>Sin llave ni cuenta. Cada respuesta trae el dato en <code>data</code> y su fuente, licencia y fecha en <code>meta</code>.</p>
-<pre tabindex="0"><code>curl ${ORIGEN}/v1/estados/25</code></pre>
+<pre tabindex="0"><code>curl ${ORIGEN}/v1/estados/25
+curl ${ORIGEN}/v1/clabe/002010077777777771</code></pre>
+<p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code>.</p>
 <noscript><p>Cambia <code>https://&lt;base&gt;</code> por la dirección de este sitio.</p></noscript>
 </div>
 <div class="bloque">
