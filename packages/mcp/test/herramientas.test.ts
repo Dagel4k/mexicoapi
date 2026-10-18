@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { crearRegistro, type Herramienta, resultadoError } from "../src/herramientas.js";
+import {
+  crearRegistro,
+  ErrorHerramienta,
+  type Herramienta,
+  resultadoError,
+} from "../src/herramientas.js";
 import { eco, rechaza } from "./ayudas.js";
 
 function variante(cambios: Record<string, unknown>): Herramienta {
@@ -60,6 +65,15 @@ describe("crearRegistro", () => {
 
   it("rechaza nombres repetidos", () => {
     expect(() => crearRegistro([eco, eco])).toThrow("herramienta repetida: eco");
+  });
+});
+
+describe("ErrorHerramienta", () => {
+  it("es un Error con nombre propio y el mensaje tal cual", () => {
+    const error = new ErrorHerramienta("CLABE con letras.");
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe("ErrorHerramienta");
+    expect(error.message).toBe("CLABE con letras.");
   });
 });
 
