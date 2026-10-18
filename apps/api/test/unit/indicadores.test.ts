@@ -11,6 +11,7 @@ import {
   SEGURIDAD_ESPERADA,
   seguridadDe,
 } from "./ayudas.js";
+import { DIAS_CNBV, FUENTE_CNBV, RUTA_CNBV, SHARD_CNBV } from "./curados.js";
 
 const TIPO = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
 const DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
@@ -106,16 +107,40 @@ const RUTA_META = "/v1/_internos/meta.json";
 const rutaFix = (anio: string) => `/v1/_internos/fix/${anio}.json`;
 const rutaUdis = (anio: string) => `/v1/_internos/udis/${anio}.json`;
 
+// El calendario de la CNBV (2025 y 2026) con el lunes 16 de noviembre de 2026.
+const CNBV = {
+  ...SHARD_CNBV,
+  dias: [
+    ...DIAS_CNBV.filter((d) => d.fecha < "2026-11-16"),
+    {
+      fecha: "2026-11-16",
+      motivo: "Tercer lunes de noviembre, en conmemoración del 20 de noviembre",
+      tipo: "descanso",
+      fuente: FUENTE_CNBV,
+    },
+    ...DIAS_CNBV.filter((d) => d.fecha > "2026-11-16"),
+  ],
+};
+
 interface Datos {
   interna?: unknown;
   fix?: Shards;
   udis?: Shards;
+  /** El shard del calendario de la CNBV; con null, la ruta responde 404. */
+  cnbv?: unknown;
   /** Rutas que responden con este estado en lugar de su cuerpo. */
   estados?: Record<string, number>;
 }
 
-function mapaDe({ interna: i = interna(), fix: f = FIX, udis: u = UDIS, estados = {} }: Datos) {
+function mapaDe({
+  interna: i = interna(),
+  fix: f = FIX,
+  udis: u = UDIS,
+  cnbv = CNBV,
+  estados = {},
+}: Datos) {
   const mapa: Record<string, AssetFalso> = { [RUTA_META]: { cuerpo: JSON.stringify(i) } };
+  if (cnbv !== null) mapa[RUTA_CNBV] = { cuerpo: JSON.stringify(cnbv) };
   for (const [anio, s] of Object.entries(f)) mapa[rutaFix(anio)] = { cuerpo: JSON.stringify(s) };
   for (const [anio, s] of Object.entries(u)) mapa[rutaUdis(anio)] = { cuerpo: JSON.stringify(s) };
   for (const [ruta, status] of Object.entries(estados)) {
@@ -276,7 +301,8 @@ describe("GET /v1/tipo-cambio/fix?publicado=", () => {
         COBERTURA_FIX,
       );
       expect(texto).not.toContain("18.4250");
-      expect(pedidas).toEqual([RUTA_META, rutaFix("2026")]);
+      // Antes de responder dato-no-disponible revisa el calendario de la CNBV.
+      expect(pedidas).toEqual([RUTA_META, rutaFix("2026"), RUTA_CNBV]);
     },
   );
 });
@@ -319,7 +345,7 @@ describe("GET /v1/tipo-cambio/fix?operacion=", () => {
         COBERTURA_FIX,
       );
       expect(texto).not.toContain("18.4250");
-      expect(pedidas).toEqual([RUTA_META, rutaFix("2026")]);
+      expect(pedidas).toEqual([RUTA_META, rutaFix("2026"), RUTA_CNBV]);
     },
   );
 
@@ -433,6 +459,134 @@ describe("GET /v1/tipo-cambio/fix?operacion=", () => {
     });
   });
 });
+
+describe("GET /v1/tipo-cambio/fix con los feriados bancarios de la CNBV", () => {
+  const operacion = (fecha_operacion: string, fecha_publicacion: string, valor: string) => ({
+    data: { fecha_operacion, fecha_publicacion, valor, fundamento: FUENTE_CFF_20 },
+    meta: META_FIX_API,
+  });
+
+  /** Datos con la serie cargada hasta `hasta`, cuya última publicación vale `valor`. */
+  const cargadoHasta = (hasta: string, valor: string): Datos => ({
+    interna: interna({ desde: "2020-01-02", hasta }),
+    fix: {
+      ...FIX,
+      "2026": shard("2026-01-01", hasta, [fix("2026-01-02", "18.0012"), fix(hasta, valor)]),
+    },
+  });
+  const noDisponible = (fecha: string, hasta: string) =>
+    `Todavía no está cargado el FIX que aplica a una operación del ${fecha}; la última publicación cargada es del ${hasta}.`;
+
+  // Lo cargado termina el viernes 13 de noviembre de 2026; el lunes 16 es feriado bancario.
+  const HASTA_13 = cargadoHasta("2026-11-13", "18.3100");
+  const COBERTURA_13: Rango = { desde: "2020-01-02", hasta: "2026-11-13" };
+
+  it("martes 17 por la mañana: la operación usa el FIX del viernes 13", async () => {
+    const { cuerpo, pedidas } = await datos(fixOperacion("2026-11-17"), HASTA_13);
+    expect(cuerpo).toEqual(operacion("2026-11-17", "2026-11-13", "18.3100"));
+    expect(pedidas).toEqual([RUTA_META, rutaFix("2026"), RUTA_CNBV]);
+  });
+
+  it("publicado el lunes 16: 404 no-encontrado definitivo", async () => {
+    const { texto } = await sinDato(
+      fixPublicado("2026-11-16"),
+      "no-encontrado",
+      "No hubo publicación del FIX en el DOF el 2026-11-16.",
+      COBERTURA_13,
+      HASTA_13,
+    );
+    expect(texto).not.toContain("18.3100");
+  });
+
+  it("si con los fines de semana basta, no pide el calendario", async () => {
+    const { cuerpo, pedidas } = await datos(fixOperacion("2026-11-16"), HASTA_13);
+    expect(cuerpo).toEqual(operacion("2026-11-16", "2026-11-13", "18.3100"));
+    expect(pedidas).toEqual([RUTA_META, rutaFix("2026")]);
+  });
+
+  it("el martes 17 no es feriado: sin cargarlo, dato-no-disponible, nunca un valor viejo", async () => {
+    const { texto } = await sinDato(
+      fixOperacion("2026-11-18"),
+      "dato-no-disponible",
+      noDisponible("2026-11-18", "2026-11-13"),
+      COBERTURA_13,
+      HASTA_13,
+    );
+    expect(texto).not.toContain("18.3100");
+    await sinDato(
+      fixPublicado("2026-11-17"),
+      "dato-no-disponible",
+      "El FIX del 2026-11-17 todavía no está cargado; la última publicación cargada es del 2026-11-13.",
+      COBERTURA_13,
+      HASTA_13,
+    );
+  });
+
+  it("lunes 2 de noviembre, con lo cargado hasta el viernes 30 de octubre", async () => {
+    const hasta30 = cargadoHasta("2026-10-30", "18.5000");
+    const { cuerpo } = await datos(fixOperacion("2026-11-03"), hasta30);
+    expect(cuerpo).toEqual(operacion("2026-11-03", "2026-10-30", "18.5000"));
+    await sinDato(
+      fixPublicado("2026-11-02"),
+      "no-encontrado",
+      "No hubo publicación del FIX en el DOF el 2026-11-02.",
+      { desde: "2020-01-02", hasta: "2026-10-30" },
+      hasta30,
+    );
+  });
+
+  it("fuera de la cobertura de la CNBV solo cuentan los fines de semana", async () => {
+    // El calendario llega al 2026-12-31: el 1 de enero de 2027 todavía no está publicado.
+    const hasta31 = cargadoHasta("2026-12-31", "18.6000");
+    const cobertura = { desde: "2020-01-02", hasta: "2026-12-31" };
+    const { texto } = await sinDato(
+      fixOperacion("2027-01-04"),
+      "dato-no-disponible",
+      noDisponible("2027-01-04", "2026-12-31"),
+      cobertura,
+      hasta31,
+    );
+    expect(texto).not.toContain("18.6000");
+    await sinDato(
+      fixPublicado("2027-01-01"),
+      "dato-no-disponible",
+      "El FIX del 2027-01-01 todavía no está cargado; la última publicación cargada es del 2026-12-31.",
+      cobertura,
+      hasta31,
+    );
+  });
+
+  it.each([
+    ["no existe", { cnbv: null }],
+    ["responde 503", { estados: { [RUTA_CNBV]: 503 } }],
+    ["tiene otra forma", { cnbv: { autoridad: "cnbv", plazos: {}, dias: [] } }],
+  ])(
+    "si el calendario %s: solo cuentan los fines de semana, nunca un 500, y la falla no se recuerda",
+    async (_, falla) => {
+      const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+      await sinDato(
+        fixOperacion("2026-11-17"),
+        "dato-no-disponible",
+        noDisponible("2026-11-17", "2026-11-13"),
+        COBERTURA_13,
+        { ...HASTA_13, ...falla },
+      );
+      await sinDato(
+        fixPublicado("2026-11-16"),
+        "dato-no-disponible",
+        "El FIX del 2026-11-16 todavía no está cargado; la última publicación cargada es del 2026-11-13.",
+        COBERTURA_13,
+        { ...HASTA_13, ...falla },
+      );
+      expect(aviso.mock.calls).toEqual([[AVISO_SIN_CNBV], [AVISO_SIN_CNBV]]);
+      const { cuerpo } = await datos(fixOperacion("2026-11-17"), HASTA_13);
+      expect(cuerpo.data.fecha_publicacion).toBe("2026-11-13");
+    },
+  );
+});
+
+const AVISO_SIN_CNBV =
+  "mexicoapi: aviso: el calendario de la CNBV no cargó; el FIX solo salta fines de semana";
 
 describe("GET /v1/tipo-cambio/fix: parámetros", () => {
   it("sin publicado ni operacion: 400 parametro-faltante", async () => {
@@ -590,17 +744,18 @@ describe("GET /v1/udis", () => {
 });
 
 describe("carga de las series", () => {
-  it("cada año se lee una vez por isolate, para cualquier ruta de la serie", async () => {
+  it("cada año y el calendario de la CNBV se leen una vez por isolate, para cualquier ruta de la serie", async () => {
     const assets = crearAssets(mapaDe({}));
     for (const ruta of [
       fixPublicado("2026-10-16"),
       fixOperacion("2026-10-19"),
       "/v1/tipo-cambio/fix/ultimo",
       fixPublicado("2027-01-04"),
+      fixOperacion("2026-10-21"),
     ]) {
       await manejar(peticion(ruta), entornoDe(assets));
     }
-    expect(assets.pedidas).toEqual([RUTA_META, rutaFix("2026")]);
+    expect(assets.pedidas).toEqual([RUTA_META, rutaFix("2026"), RUTA_CNBV]);
   });
 
   it("una falla al leer un año da 500 y no se recuerda", async () => {

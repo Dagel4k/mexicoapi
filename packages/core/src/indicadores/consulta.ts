@@ -106,22 +106,49 @@ function registroDelDia<T>(
 const fechaFix = (registro: TipoCambioFix) => registro.fecha_publicacion;
 const fechaUdi = (registro: Udi) => registro.fecha;
 
+/** Opciones de `fixPublicado` y `fixParaOperacion`. */
+export interface OpcionesFix {
+  /**
+   * Días entre semana en que se sabe que el DOF no publica el FIX, como los días de descanso
+   * de la CNBV dentro de su calendario. Solo se pregunta por días posteriores a
+   * `cobertura.hasta` y solo cuenta un `true`. Sin esta opción, solo los sábados y domingos
+   * cuentan como días sin publicación.
+   */
+  sinPublicacion?: ((fecha: FechaISO) => boolean) | undefined;
+}
+
+type SinPublicacion = OpcionesFix["sinPublicacion"];
+
+function leerOpciones(opciones: OpcionesFix | null | undefined): SinPublicacion {
+  const sinPublicacion = opciones?.sinPublicacion;
+  if (sinPublicacion !== undefined && typeof sinPublicacion !== "function") {
+    throw new TypeError("sinPublicacion debe ser una función");
+  }
+  return sinPublicacion;
+}
+
 /**
  * FIX publicado en el DOF exactamente en `fecha`. `serie` es un tramo ordenado de la serie y
  * `tramo` las fechas que cubre, dentro de `cobertura`. Si la fecha cae en la cobertura pero no
  * en el tramo, lanza SerieIncompletaError.
  *
- * Después de `cobertura.hasta`, un sábado o domingo sin días entre semana de por medio da
- * `sin_dato`: el DOF no publica el FIX en fin de semana (el mismo supuesto de `fixParaOperacion`).
+ * Después de `cobertura.hasta`, una fecha sin publicación (sábado, domingo o un día que marque
+ * `opciones.sinPublicacion`) con solo días sin publicación de por medio da `sin_dato`: el mismo
+ * supuesto de `fixParaOperacion`.
  */
 export function fixPublicado(
   serie: readonly TipoCambioFix[],
   tramo: CoberturaSerie,
   cobertura: CoberturaSerie,
   fecha: FechaISO,
+  opciones?: OpcionesFix,
 ): Consulta<TipoCambioFix> {
   validarEntrada(serie, fechaFix, tramo, cobertura, fecha);
-  if (fecha > cobertura.hasta && soloFinDeSemana(aDias(cobertura.hasta), aDias(fecha) + 1)) {
+  const sinPublicacion = leerOpciones(opciones);
+  if (
+    fecha > cobertura.hasta &&
+    sinPublicacionEntre(aDias(cobertura.hasta), aDias(fecha) + 1, sinPublicacion)
+  ) {
     return SIN_DATO;
   }
   return registroDelDia(serie, fechaFix, tramo, cobertura, fecha);
@@ -131,7 +158,8 @@ export function fixPublicado(
  * FIX aplicable a una operación del día `fecha` (CFF art. 20): el publicado el día anterior
  * o, si ese día no hubo, el último publicado antes. Solo responde si es seguro que no falta
  * una publicación posterior: si la víspera pasa de `cobertura.hasta` y el hueco tiene un día
- * entre semana, da `no_disponible` en vez de un valor viejo.
+ * entre semana que `opciones.sinPublicacion` no marca, da `no_disponible` en vez de un valor
+ * viejo.
  *
  * `tramo` debe llegar a la víspera (o a `cobertura.hasta`, si la serie termina antes) y
  * empezar antes de la publicación aplicable. Con shards por año basta el de la víspera y, si
@@ -143,11 +171,13 @@ export function fixParaOperacion(
   tramo: CoberturaSerie,
   cobertura: CoberturaSerie,
   fecha: FechaISO,
+  opciones?: OpcionesFix,
 ): Consulta<TipoCambioFix> {
   validarEntrada(serie, fechaFix, tramo, cobertura, fecha);
+  const sinPublicacion = leerOpciones(opciones);
   if (fecha <= cobertura.desde) return SIN_DATO;
   const dia = aDias(fecha);
-  if (!soloFinDeSemana(aDias(cobertura.hasta), dia)) return NO_DISPONIBLE;
+  if (!sinPublicacionEntre(aDias(cobertura.hasta), dia, sinPublicacion)) return NO_DISPONIBLE;
   const vispera = deDias(dia - 1);
   const necesario = vispera < cobertura.hasta ? vispera : cobertura.hasta;
   if (tramo.hasta < necesario) {
@@ -166,12 +196,15 @@ export function fixParaOperacion(
   return SIN_DATO;
 }
 
-// El DOF no publica el FIX en sábado ni en domingo: un hueco de solo fin de semana después
-// del último dato no cambia la respuesta. Revisa los días de (ultimo, fin) y a lo más tres.
-function soloFinDeSemana(ultimo: number, fin: number): boolean {
+// El DOF no publica el FIX en sábado ni en domingo, ni en los días que marque `sinPublicacion`:
+// un hueco de solo esos días después del último dato no cambia la respuesta. Revisa los días de
+// (ultimo, fin) y se detiene en el primero que pudo tener publicación; sin `sinPublicacion`, a
+// lo más tres.
+function sinPublicacionEntre(ultimo: number, fin: number, sinPublicacion: SinPublicacion): boolean {
   for (let d = ultimo + 1; d < fin; d++) {
     const semana = diaSemanaDeDias(d);
-    if (semana !== 0 && semana !== 6) return false;
+    if (semana === 0 || semana === 6) continue;
+    if (sinPublicacion === undefined || sinPublicacion(deDias(d)) !== true) return false;
   }
   return true;
 }

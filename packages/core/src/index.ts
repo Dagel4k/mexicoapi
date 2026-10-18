@@ -43,7 +43,7 @@ export {
   fechaValida,
   sumarDias,
 } from "./fechas.js";
-export type { CoberturaSerie, Consulta } from "./indicadores/consulta.js";
+export type { CoberturaSerie, Consulta, OpcionesFix } from "./indicadores/consulta.js";
 export {
   FUENTE_CFF_20,
   fixParaOperacion,
