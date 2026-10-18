@@ -54,7 +54,7 @@ const RASGOS: Readonly<Record<VersionProtocolo, Rasgos>> = {
   "2024-11-05": { titulos: false, anotaciones: false, lotes: false, idNulo: true },
 };
 
-export const MAX_MENSAJES_LOTE = 50;
+const MAX_MENSAJES_LOTE = 50;
 
 export const INSTRUCCIONES =
   "Datos oficiales de México: municipios, bancos, CLABE, RFC, CURP, NSS, FIX, UDIS, días " +

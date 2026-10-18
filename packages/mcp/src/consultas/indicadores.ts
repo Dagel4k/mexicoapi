@@ -48,7 +48,7 @@ const revisarUdi = compilarEsquema(UDI);
  * hay, y una consulta por esos días suele buscar el valor vigente. Una fecha anterior es historia
  * publicada: no cambia y no se advierte.
  */
-export const DIAS_CERCA_DEL_FINAL = 7;
+const DIAS_CERCA_DEL_FINAL = 7;
 
 const MS_POR_DIA = 86_400_000;
 
