@@ -447,7 +447,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 - **Transporte:** stdio (`npx -y mexicoapi-mcp`), un mensaje JSON-RPC por línea. Pide Node 22.13 o posterior.
 - **Protocolo propio:** JSON-RPC, ciclo de vida, negociación, cancelación y validación de esquemas están en el paquete. Su única dependencia de ejecución es `mexicoapi`; el SDK oficial de MCP (`@modelcontextprotocol/sdk`) solo se usa en las pruebas, como cliente.
 - **Versiones de MCP:** 2025-11-25, 2025-06-18, 2025-03-26 y 2024-11-05. A un cliente que pide otra se le responde con 2025-11-25. En las dos más viejas no se envían los campos que no tienen (`title`, `outputSchema`, `structuredContent`), y solo 2025-03-26 acepta lotes.
-- **Datos:** salen del paquete `mexicoapi`, que se publica como dependencia con `^` para que los datos nuevos (versiones *patch*) lleguen a las instalaciones nuevas sin publicar otra vez el servidor. Sin `MEXICOAPI_BASE` responde todo con los datos del paquete, sin red. Con ella, las herramientas de datos que caducan consultan esa API y, si no responde, usan el paquete y lo advierten.
+- **Datos:** salen del paquete `mexicoapi`, que se publica como dependencia con `^<versión>`. Ese rango basta para las instalaciones nuevas, pero npx no actualiza las dependencias de un paquete que no cambió de versión. Por eso cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp` cuyo piso sube a la versión nueva: la instalación vieja ya no lo cumple y npx la reinstala ([publicacion-npm.md](../operacion/publicacion-npm.md)). Sin `MEXICOAPI_BASE` responde todo con los datos del paquete, sin red. Con ella, las herramientas de datos que caducan consultan esa API y, si no responde, usan el paquete y lo advierten.
 - **Herramientas (13):** todas con `readOnlyHint: true`, `inputSchema` estricto (`additionalProperties: false`) y `outputSchema`.
   - Datos que caducan (`openWorldHint: true`): `tipo_de_cambio_fix`, `udis`, `dias_inhabiles`, `sumar_dias_habiles` y `constantes` (UMA, salario mínimo e ISR). Sin API, el FIX más reciente y el FIX o las UDIS a 7 días o menos del final de la serie del paquete advierten que pueden faltar publicaciones; los calendarios y las constantes responden con error fuera de lo que cubre el paquete, nunca con un valor anterior.
   - Sin red (`openWorldHint: false`): `buscar_municipio`, `municipio`, `validar_clabe`, `banco_por_codigo`, `validar_rfc`, `validar_curp`, `validar_nss` y `codigo_postal`, que lee el catálogo que el usuario descargó con `sepomex sync` y, sin él, responde con error y el comando.
@@ -497,7 +497,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
   - `seguridad.yml` (cada PR, cada push a `main`, cada semana y a mano): CodeQL y osv-scanner sobre `pnpm-lock.yaml`; OpenSSF Scorecard en los push a `main` y en la corrida semanal;
-  - `publicacion.yml`, pendiente: correrá con la etiqueta `mexicoapi@<versión>` de una versión ya integrada, en el Environment `npm`, y publicará con procedencia la carpeta que arma `packages/sdk/scripts/publicable.ts`, sin changesets. Mientras tanto se publica a mano desde esa carpeta ([publicacion-npm.md](../operacion/publicacion-npm.md)).
+  - `publicacion.yml`, pendiente: correrá con las etiquetas `mexicoapi@<versión>` y `mexicoapi-mcp@<versión>` de versiones ya integradas, en el Environment `npm`, y publicará con procedencia la carpeta que arma el `publicable.ts` de cada paquete, sin changesets. Va en dos pasos y en ese orden: primero `mexicoapi` y después el *patch* de `mexicoapi-mcp` con el piso en la versión nueva (`publicable.ts --publicar` se niega si esa versión todavía no está en npm). Mientras tanto se publica a mano desde esas carpetas ([publicacion-npm.md](../operacion/publicacion-npm.md)).
 - **Ramas:** una por tarea, PR a `main` con CI verde. `main` siempre desplegable.
 - **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk` (solo en las pruebas del servidor MCP). Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.
 
@@ -516,7 +516,7 @@ Tomadas:
 | Días hábiles | Conteo desde el día hábil siguiente, `tipo_plazo` para el SAT y 422 con calendario incompleto (sección 8.1) |
 | FIX | Dos modos: por publicación y por operación (sección 8.1) |
 | SDK | Datos que caducan desde la API con respaldo en el paquete; Node ≥ 20 y runtimes web (sección 10) |
-| MCP | Protocolo propio por stdio, sin SDK de MCP en ejecución; `mexicoapi` como dependencia con `^`; API solo con `MEXICOAPI_BASE`; Node ≥ 22.13 (sección 11) |
+| MCP | Protocolo propio por stdio, sin SDK de MCP en ejecución; `mexicoapi` como dependencia con `^` y un *patch* del servidor tras cada versión de `mexicoapi`; API solo con `MEXICOAPI_BASE`; Node ≥ 22.13 (sección 11) |
 
 Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas:
 

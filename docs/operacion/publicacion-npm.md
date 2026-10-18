@@ -18,7 +18,7 @@ Hoy (0.1.0) el paquete tiene 145 archivos: unos 180 kB comprimido y 900 kB sin c
 
 ## Cómo se arma `mexicoapi-mcp`
 
-Igual que `mexicoapi`, y con el mismo código: `packages/mcp/scripts/publicable.ts` usa el de `packages/sdk`. La diferencia es la dependencia `mexicoapi`, que en el monorepo es `workspace:*` y se publica como `^<versión de packages/sdk>` (hoy `^0.1.0`). Los datos nuevos salen como versiones *patch* de `mexicoapi` y así llegan a las instalaciones nuevas del servidor sin publicarlo otra vez.
+Igual que `mexicoapi`, y con el mismo código: `packages/mcp/scripts/publicable.ts` usa el de `packages/sdk`. La diferencia es la dependencia `mexicoapi`, que en el monorepo es `workspace:*` y se publica como `^<versión de packages/sdk>` (hoy `^0.1.0`). Cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp` con ese piso (la regla está en "Cómo se corta una versión").
 
 1. `pnpm --filter "mexicoapi-mcp..." build` compila el núcleo, `mexicoapi` y el servidor.
 2. `node packages/mcp/scripts/publicable.ts <destino>` arma en `<destino>` (nuevo o vacío, fuera de `packages/mcp`) `dist`, `README.md`, `LICENSE` y el `package.json` sin `devDependencies` (el cliente oficial de MCP que usan las pruebas) ni `scripts`, con `mexicoapi` en `^` y la versión que lee de `packages/sdk/package.json`. Falla si queda un rango `workspace:` o un paquete `@mexicoapi/`, o si falta un archivo que declara `bin`. Con `--publicar` (`node packages/mcp/scripts/publicable.ts --publicar <destino>`) revisa además con `npm view` que `mexicoapi@<versión de packages/sdk>` ya esté en npm, y si no está (o npm no responde) se niega sin escribir nada: así ningún servidor sale con un piso que todavía no existe.
@@ -26,7 +26,7 @@ Igual que `mexicoapi`, y con el mismo código: `packages/mcp/scripts/publicable.
 
 Un `npm pack` o `npm publish` en `packages/mcp` también falla a propósito.
 
-En CI, el job `paquete-mcp` hace estos tres pasos con el Node de `.nvmrc` e instala el `.tgz` del servidor y el de `mexicoapi` (el artefacto del job `paquete`) en un proyecto nuevo con `npm install --offline`: la dependencia `mexicoapi@^0.1.0` la cumple el `.tgz` local, así que npm no consulta el registro, donde `mexicoapi` todavía no existe. Después, con Node 22.23.3 y 24.21.0, corre la prueba de humo (`packages/mcp/test/paquete/humo.mjs`, sin dependencias), que lanza el binario instalado (`node_modules/.bin/mexicoapi-mcp`) y le habla por stdio: `initialize`, `tools/list` y un `tools/call`. `paquete-mcp` es uno de los jobs que exige el check `verify`. `pnpm --filter mexicoapi-mcp test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y revisa además el `package.json` publicado y lo que lista `npm pack`.
+En CI, el job `paquete-mcp` hace estos tres pasos con el Node de `.nvmrc` e instala el `.tgz` del servidor y el de `mexicoapi` (el artefacto del job `paquete`) en un proyecto nuevo con `npm install --offline`: la dependencia `mexicoapi@^0.1.0` la cumple el `.tgz` local, así que npm no consulta el registro, donde `mexicoapi` todavía no existe. Después, con Node 22.23.3 y 24.21.0, corre la prueba de humo (`packages/mcp/test/paquete/humo.mjs`, sin dependencias), que lanza el binario instalado (`node_modules/.bin/mexicoapi-mcp`) y le habla por stdio: `initialize`, `tools/list` y tres `tools/call` (`validar_clabe`, `udis` y `codigo_postal` sin catálogo, que cargan los datos y `mexicoapi/sepomex` del paquete instalado). `paquete-mcp` es uno de los jobs que exige el check `verify`. `pnpm --filter mexicoapi-mcp test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y revisa además el `package.json` publicado y lo que lista `npm pack`.
 
 Hoy (0.1.0) el paquete tiene 19 archivos (solo JavaScript en `dist`: es un binario y no publica tipos): unos 30 kB comprimido y 108 kB sin comprimir.
 
@@ -106,7 +106,9 @@ Con el workflow de publicación (pendiente):
 
 Hasta que exista ese workflow, cada versión se publica a mano como la primera, sin procedencia.
 
-`mexicoapi-mcp` lleva su propia versión y su etiqueta `mexicoapi-mcp@<versión>`, y se publica después de la versión de `mexicoapi` de la que depende:
+`mexicoapi-mcp` lleva su propia versión y su etiqueta `mexicoapi-mcp@<versión>`. La regla: cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp`, en dos pasos y en este orden:
 
-- Datos nuevos (un *patch* de `mexicoapi`): las instalaciones nuevas del servidor los toman sin publicarlo otra vez. npx, en cambio, guarda lo que instaló y no actualiza las dependencias de un paquete que no cambió de versión: quien ya usó `npx -y mexicoapi-mcp` sigue con su `mexicoapi` hasta que sale otra versión del servidor. Un *patch* de `mexicoapi-mcp` armado después del de `mexicoapi` (su dependencia queda en `^` y la versión nueva, que la instalación vieja no cumple) hace que npx lo reinstale con esos datos.
-- Una versión menor de `mexicoapi` (0.2.0) queda fuera de `^0.1.0`: el servidor necesita una versión nueva, armada con `publicable.ts` después de cambiar la de `packages/sdk`.
+1. Se publica `mexicoapi@<versión>` (etiqueta `mexicoapi@<versión>`).
+2. Un PR sube la versión *patch* de `packages/mcp/package.json`. Con ese commit integrado se arma el servidor con `publicable.ts --publicar`, que pone la dependencia en `^<versión nueva>` y se niega si el paso 1 no está en npm, y se publica con la etiqueta `mexicoapi-mcp@<versión>`.
+
+El motivo: `^` basta para las instalaciones nuevas, pero npx guarda lo que instaló y no actualiza las dependencias de un paquete que no cambió de versión. Quien ya usó `npx -y mexicoapi-mcp` seguiría con los datos viejos. Con el *patch* del servidor, npx ve una versión nueva de `mexicoapi-mcp` cuyo piso ya no cumple la instalación vieja, y la reinstala con la `mexicoapi` nueva. Una versión menor de `mexicoapi` (0.2.0) queda fuera de `^0.1.0` y sigue la misma regla: el servidor sale con `^0.2.0`. `publicacion.yml`, cuando exista, hará los dos pasos.
