@@ -1,0 +1,81 @@
+name: Error en los datos
+description: Un valor de MéxicoAPI no coincide con el dato oficial.
+title: "Dato incorrecto: "
+labels: ["datos"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Solo se puede corregir un dato con su fuente oficial (una nota del Diario Oficial de la Federación, una publicación del INEGI, de Banxico, del SAT, etc.). Sin enlace a la fuente no hay forma de revisar el reporte y se cierra pidiéndola.
+  - type: dropdown
+    id: dataset
+    attributes:
+      label: Dataset
+      options:
+        - bancos
+        - constantes.salario-minimo
+        - constantes.uma
+        - dias-inhabiles.cnbv
+        - dias-inhabiles.sat
+        - inegi.estados
+        - inegi.municipios
+        - isr.tarifas
+        - tipo-cambio.fix
+        - udis
+        - Otro o no sé
+    validations:
+      required: true
+  - type: dropdown
+    id: donde
+    attributes:
+      label: Dónde viste el valor
+      options:
+        - API
+        - Paquete mexicoapi
+        - Descargas (JSON, CSV o SQLite)
+        - Archivos de data/ en el repositorio
+        - Otro
+    validations:
+      required: true
+  - type: input
+    id: ruta
+    attributes:
+      label: Ruta, función o archivo
+      description: La dirección que consultaste, la función del paquete o el archivo descargado.
+      placeholder: /v1/constantes/uma/2026
+    validations:
+      required: false
+  - type: textarea
+    id: valor-actual
+    attributes:
+      label: Valor que da MéxicoAPI
+    validations:
+      required: true
+  - type: textarea
+    id: valor-correcto
+    attributes:
+      label: Valor correcto
+    validations:
+      required: true
+  - type: input
+    id: fuente
+    attributes:
+      label: Enlace a la fuente oficial
+      description: Dirección de la publicación donde aparece el valor correcto.
+      placeholder: https://dof.gob.mx/nota_detalle.php?codigo=...
+    validations:
+      required: true
+  - type: input
+    id: fecha
+    attributes:
+      label: Fecha de publicación de la fuente
+      placeholder: AAAA-MM-DD
+    validations:
+      required: true
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas
+      description: Cualquier detalle que ayude a revisarlo, como el párrafo exacto de la fuente.
+    validations:
+      required: false
