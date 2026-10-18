@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Banco, Estado, Manifiesto, Municipio } from "@mexicoapi/core";
 import { sha256Hex } from "../canonico.js";
 import { ErrorDatos } from "../errores.js";
@@ -19,6 +19,7 @@ interface Cargado<T> {
   registros: T[];
   meta: Meta;
   manifiesto: Manifiesto;
+  bytesManifiesto: Uint8Array;
   textoManifiesto: string;
   bytesDatos: Uint8Array;
   directorio: string;
@@ -50,10 +51,10 @@ async function cargar<T>(raizDatos: string, id: string): Promise<Cargado<T>> {
   const def = DATASETS.get(id);
   if (def === undefined) throw new ErrorDatos(`dataset no registrado: ${id}`, id);
   const dir = join(raizDatos, def.directorio);
-  let textoManifiesto: string;
+  let bytesManifiesto: Buffer;
   let bytesDatos: Buffer;
   try {
-    textoManifiesto = await readFile(join(dir, "manifest.json"), "utf8");
+    bytesManifiesto = await readFile(join(dir, "manifest.json"));
     bytesDatos = await readFile(join(dir, def.archivo));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -61,15 +62,31 @@ async function cargar<T>(raizDatos: string, id: string): Promise<Cargado<T>> {
     }
     throw error;
   }
+  const textoManifiesto = bytesManifiesto.toString("utf8");
   const manifiesto = JSON.parse(textoManifiesto) as Manifiesto;
   return {
     registros: JSON.parse(bytesDatos.toString("utf8")) as T[],
     meta: metaDesdeManifiesto(manifiesto, def.directorio),
     manifiesto,
+    bytesManifiesto,
     textoManifiesto,
     bytesDatos,
     directorio: def.directorio,
   };
+}
+
+function frescura(id: string): number {
+  const horas = FRESCURA_HORAS[id];
+  if (horas === undefined) throw new ErrorDatos(`falta FRESCURA_HORAS para ${id}`, id);
+  return horas;
+}
+
+/** La salida no puede ser la raíz de los datos ni contenerla: se reemplaza por completo. */
+function validarSalida(raizDatos: string, salida: string): void {
+  const rel = relative(resolve(salida), resolve(raizDatos));
+  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) {
+    throw new ErrorDatos(`la salida (${salida}) no puede ser la carpeta de datos ni contenerla`);
+  }
 }
 
 const json = (valor: unknown): string => JSON.stringify(valor);
@@ -96,6 +113,7 @@ export async function construirSitio(opciones: {
   raizDatos: string;
   salida: string;
 }): Promise<ResultadoConstruccion> {
+  validarSalida(opciones.raizDatos, opciones.salida);
   const problemas = await verificarDatos(opciones.raizDatos);
   if (problemas.length > 0) {
     throw new ErrorDatos(`los datos no verifican: ${problemas.join("; ")}`);
@@ -127,28 +145,28 @@ export async function construirSitio(opciones: {
       meta: c.meta,
       records: c.manifiesto.records,
       data_sha256: c.manifiesto.data_sha256,
-      frescura_horas: FRESCURA_HORAS[c.manifiesto.dataset] ?? 0,
+      frescura_horas: frescura(c.manifiesto.dataset),
     };
   }
   archivos.set("v1/_internos/meta.json", json(interna));
 
   const descargas = new Map<string, Uint8Array | string>();
-  for (const [c, archivo] of [
-    [estados, "inegi-estados"],
-    [municipios, "inegi-municipios"],
-    [bancos, "bancos"],
-  ] as const) {
-    descargas.set(`${archivo}.json`, c.bytesDatos);
-    descargas.set(`${archivo}.manifest.json`, c.textoManifiesto);
+  for (const c of cargados) {
+    descargas.set(`${c.directorio}.json`, c.bytesDatos);
+    descargas.set(`${c.directorio}.manifest.json`, c.bytesManifiesto);
   }
-  descargas.set("inegi-estados.csv", aCsv(COLUMNAS_ESTADOS, estados.registros));
-  descargas.set("inegi-municipios.csv", aCsv(COLUMNAS_MUNICIPIOS, municipios.registros));
-  descargas.set("bancos.csv", aCsv(COLUMNAS_BANCOS, bancos.registros));
+  descargas.set("inegi-estados.csv", aCsv(COLUMNAS_ESTADOS, estados.registros, "inegi.estados"));
+  descargas.set(
+    "inegi-municipios.csv",
+    aCsv(COLUMNAS_MUNICIPIOS, municipios.registros, "inegi.municipios"),
+  );
+  descargas.set("bancos.csv", aCsv(COLUMNAS_BANCOS, bancos.registros, "bancos"));
   descargas.set(
     "bancos-historial.csv",
     aCsv(
       COLUMNAS_HISTORIAL,
       bancos.registros.flatMap((b) => b.historial.map((p) => ({ codigo: b.codigo, ...p }))),
+      "bancos",
     ),
   );
   const filas: FilaDataset[] = cargados.map((c) => ({

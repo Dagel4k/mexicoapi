@@ -6,8 +6,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
 import { ErrorDatos } from "../../src/errores.js";
+import { DATASETS } from "../../src/registro.js";
 import { construirSitio } from "../../src/sitio/construir.js";
-import type { Meta, MetaInterna } from "../../src/sitio/meta.js";
+import { FRESCURA_HORAS, type Meta, type MetaInterna } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
 
 const estados = [
@@ -336,6 +337,30 @@ describe("construirSitio", () => {
     await writeFile(join(datos, "inegi-estados/estados.json"), jsonCanonico(peligrosos));
     await expect(construirSitio({ raizDatos: datos, salida })).rejects.toThrow(ErrorDatos);
     await expect(readdir(salida)).rejects.toThrow();
+  });
+});
+
+describe("salida y frescura", () => {
+  it("rechaza una salida igual a los datos o que los contiene", async () => {
+    for (const mala of [datos, raiz, join(datos, "..", "..")]) {
+      await expect(construirSitio({ raizDatos: datos, salida: mala })).rejects.toThrow(
+        /no puede ser la carpeta de datos ni contenerla/,
+      );
+    }
+    expect((await listar(datos)).length).toBeGreaterThan(0);
+  });
+
+  it("todo dataset registrado tiene frescura", () => {
+    for (const id of DATASETS.keys()) expect(FRESCURA_HORAS[id]).toBeGreaterThan(0);
+  });
+
+  it("el error de inyección nombra dataset y columna", async () => {
+    const peligrosos = estados.map((e, i) => (i === 0 ? { ...e, nombre: "=CMD()" } : e));
+    await writeFile(join(datos, "inegi-estados/estados.json"), jsonCanonico(peligrosos));
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      dataset: "inegi.estados",
+      message: expect.stringContaining("columna nombre"),
+    });
   });
 });
 
