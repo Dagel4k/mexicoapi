@@ -1,9 +1,9 @@
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../../../src/sitio/meta.js";
 import { CATALOGO } from "../../../src/sitio/paginas/catalogo.js";
-import { PUBLICADO_EN_NPM } from "../../../src/sitio/paginas/inicio.js";
 import {
   archivoLlms,
   archivoLlmsCompleto,

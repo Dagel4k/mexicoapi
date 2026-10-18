@@ -1,9 +1,7 @@
+import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
 import { describir } from "./catalogo.js";
 import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
-
-/** Cambia a `true` con la primera publicación de `mexicoapi` y `mexicoapi-mcp` en npm. */
-export const PUBLICADO_EN_NPM = false;
 
 export interface FuenteInicio {
   name: string;
@@ -49,9 +47,6 @@ export function tamanoLegible(bytes: number): string {
 /** Miles con coma, como se escriben en México. */
 export const formatearEntero = (n: number): string =>
   String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-/** Orden por unidades de código UTF-16, igual que SHA256SUMS. */
-const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /** El ejemplo de `https://<base>`: `sitio.js` lo cambia por el origen de la página. */
 const ORIGEN = "<span data-origen>https://&lt;base&gt;</span>";
