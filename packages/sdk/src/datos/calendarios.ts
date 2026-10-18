@@ -2,6 +2,8 @@
 // trae el paquete, armados con las reglas del núcleo que usa la API (los mismos tipos de plazo,
 // coberturas y respaldo), listos para sumarDiasHabiles:
 // `sumarDiasHabiles({ calendario: calendario("sat", "general"), ... })`.
+
+import { revisarTipoPlazo } from "@mexicoapi/core/combinaciones";
 import {
   type CalendarioCurado as CalendarioDelNucleo,
   crearCalendarioCurado,
@@ -9,7 +11,6 @@ import {
   feriadosBancarios,
   plazoDe,
 } from "@mexicoapi/core/curados";
-import { revisarTipoPlazo } from "@mexicoapi/core/parametros";
 import * as cnbv from "./generados/dias-inhabiles-cnbv.js";
 import * as sat from "./generados/dias-inhabiles-sat.js";
 import type { AutoridadCurada, Calendario, FechaISO, MetaDatos, TipoPlazo } from "./tipos.js";
