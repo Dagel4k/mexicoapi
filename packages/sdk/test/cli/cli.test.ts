@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejecutar } from "../../src/cli/cli.js";
 import type { ModuloSepomexCli } from "../../src/cli/tipos.js";
 import type { EstadoSepomex } from "../../src/sepomex/index.js";
@@ -159,16 +159,27 @@ describe("CLI: errores inesperados", () => {
   });
 
   it("usa mexicoapi/sepomex si no se inyecta nada", async () => {
+    // La caché por omisión queda en el directorio temporal, sin tocar la del equipo.
+    vi.stubEnv("LOCALAPPDATA", dir);
+    vi.stubEnv("XDG_CACHE_HOME", dir);
     let salida = "";
-    const codigo = await ejecutar(["sepomex", "cp", "abc"], {
-      salida: (t) => {
-        salida += t;
-      },
-      errores: () => {},
-      env: {},
-      version: "0",
-    });
-    expect(codigo).toBe(1);
+    let errores = "";
+    try {
+      const codigo = await ejecutar(["sepomex", "cp", "80000"], {
+        salida: (t) => {
+          salida += t;
+        },
+        errores: (t) => {
+          errores += t;
+        },
+        env: {},
+        version: "0",
+      });
+      expect(codigo).toBe(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
     expect(salida).toBe("");
+    expect(errores).toContain("Corre `mexicoapi sepomex sync`");
   });
 });

@@ -2,7 +2,8 @@
 // No toca process; el binario (index.ts) le pasa stdout, stderr y el entorno reales.
 //
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
-// que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento).
+// que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento
+// u opción, como --tipo-plazo con el SAT, o uno mal formado, como un código postal de 4 dígitos).
 import { parseArgs } from "node:util";
 import type { ConsultaDiasHabiles } from "../cliente/index.js";
 import { type Autoridad, esFechaIsoValida, type TipoPlazo } from "../index.js";
@@ -76,7 +77,8 @@ const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
 
 const VALIDADORES = ["clabe", "rfc", "curp", "nss"] as const;
 const SUBCOMANDOS_SEPOMEX = ["sync", "importar", "cp", "estado"] as const;
-const CVEGEO = /^\d{5}$/;
+/** Una clave de municipio (cvegeo) o un código postal. */
+const CINCO_DIGITOS = /^\d{5}$/;
 const ENTERO = /^\d+$/;
 const MAXIMO_MUNICIPIOS = 20;
 const SIN_CATALOGO =
@@ -181,8 +183,11 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
     throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
   const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
+  if (autoridad === "sat" && tipoPlazo === undefined) {
+    throw new ErrorUso("Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos.");
+  }
   const cliente = await crearClienteCli(e, opciones);
-  // Van tal cual: la regla de la API rechaza sat sin --tipo-plazo y --tipo-plazo con otra.
+  // Van tal cual: la regla de la API rechaza un --tipo-plazo desconocido o con otra autoridad.
   const respuesta = await cliente.diasHabiles({
     desde,
     dias: Number(dias),
@@ -242,7 +247,7 @@ async function isr(posiciones: readonly string[], e: Entorno, opciones: Opciones
 
 async function municipio(valor: string, e: Entorno, opciones: Opciones): Promise<number> {
   const datos = await import("../datos/index.js");
-  if (CVEGEO.test(valor)) {
+  if (CINCO_DIGITOS.test(valor)) {
     const cliente = await crearClienteCli(e, opciones);
     const respuesta = await cliente.municipio(valor);
     if (opciones.json) json(e, respuesta);
@@ -311,6 +316,9 @@ async function sepomex(
     return estado === null ? 1 : 0;
   }
   const codigo = unValor(resto, "el código postal", "sepomex cp");
+  if (!CINCO_DIGITOS.test(codigo)) {
+    throw new ErrorUso(`El código postal debe tener 5 dígitos, como 01000; no "${codigo}".`);
+  }
   const encontrado = await lib.cp(codigo);
   if (opciones.json) json(e, encontrado);
   else if (encontrado === null) imprimir(e, `El código postal ${codigo} no está en el catálogo.`);

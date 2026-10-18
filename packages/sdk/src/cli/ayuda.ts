@@ -33,8 +33,8 @@ Códigos de salida:
   0   todo bien
   1   dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no
       existe) o error al ejecutar
-  2   uso incorrecto: comando desconocido, falta un argumento u opción con un valor
-      mal formado (--dias x, --desde 2026-13-01)
+  2   uso incorrecto: comando desconocido, falta un argumento u opción (--autoridad
+      sat sin --tipo-plazo) o tiene un valor mal formado (--dias x, sepomex cp 8000)
 
 Usa "mexicoapi <comando> --help" para el detalle de cada comando.`;
 
@@ -61,9 +61,9 @@ const COMANDOS: Readonly<Record<string, string>> = {
                              [--tipo-plazo general|declaraciones_pagos] [--json]
 
 Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad: la LFT (Ley
-Federal del Trabajo, por omisión), la CNBV o el SAT. Con el SAT, --tipo-plazo es obligatorio:
-en declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12). Fuera de la cobertura
-del calendario sale con 1.
+Federal del Trabajo, por omisión), la CNBV o el SAT. Con el SAT, --tipo-plazo es obligatorio
+(sin él sale con 2): en declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12).
+Fuera de la cobertura del calendario sale con 1.
 
 Opciones:
   --desde AAAA-MM-DD   fecha de partida
@@ -140,7 +140,7 @@ con las mismas revisiones que sync.`,
   "sepomex cp": `Uso: mexicoapi sepomex cp <cp> [--json]
 
 Consulta un código postal de 5 dígitos en el catálogo guardado. Sale con 1 si no existe o si
-todavía no hay catálogo.
+todavía no hay catálogo, y con 2 si no son 5 dígitos.
 
 Ejemplo: mexicoapi sepomex cp 80000`,
   "sepomex estado": `Uso: mexicoapi sepomex estado [--json]
