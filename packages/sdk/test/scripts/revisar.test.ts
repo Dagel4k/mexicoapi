@@ -60,6 +60,37 @@ describe("especificadores", () => {
     ]);
   });
 
+  it("encuentra imports compactos, sin espacios ni saltos de línea", () => {
+    const codigo = [
+      'import{a}from"./a.js";export*from"./b.js";',
+      "export*as ns from'./c.js';import d,{e as f}from\"./d.js\";",
+      'import"./efecto.js";import*as g from"./g.js";',
+      'export{h}from"./h.js";const i=()=>import("./i.js");',
+      'import{fromage}from"./j.js";',
+    ].join("");
+    expect(especificadores(codigo)).toEqual([
+      "./a.js",
+      "./b.js",
+      "./c.js",
+      "./d.js",
+      "./efecto.js",
+      "./g.js",
+      "./h.js",
+      "./i.js",
+      "./j.js",
+    ]);
+  });
+
+  it("encuentra imports después de un comentario o de otra sentencia en la misma línea", () => {
+    const codigo = [
+      '/* encabezado */ import { a } from "./a.js";',
+      '"use strict"; import "./b.js";',
+      'const c = 1; export { c as d } from "./d.js";',
+      '// línea\nexport * from "./e.js";',
+    ].join("\n");
+    expect(especificadores(codigo)).toEqual(["./a.js", "./b.js", "./d.js", "./e.js"]);
+  });
+
   it("ignora lo que no es un import", () => {
     const codigo = [
       'export const ruta = "./no.js";',
@@ -67,6 +98,9 @@ describe("especificadores", () => {
       "const url = new URL(import.meta.url);",
       'const texto = "import x from \\"./texto.js\\"";',
       "export function desde() { return Array.from([1]); }",
+      'module.exports = "./cjs.js"; const imports = "./variable.js";',
+      'objeto.import("./metodo.js"); const exportar = { from: "./clave.js" };',
+      'const $import = (x) => x; $import("./identificador.js");',
     ].join("\n");
     expect(especificadores(codigo)).toEqual([]);
   });

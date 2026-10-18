@@ -19,10 +19,12 @@ export const ENTRADAS_SOLO_NODE: ReadonlySet<string> = new Set(["./sepomex", "./
 /** Lo que devuelve `especificadores` por un import() que no es una cadena literal. */
 export const IMPORT_DINAMICO = "import(<expresión>)";
 
-// Sobre la salida de tsc: cada import o export ... from empieza su propia línea.
+// La palabra clave no puede ser parte de un identificador ni de un acceso a propiedad (`x.import`),
+// pero puede ir pegada a lo que sigue (`import{a}from"x"`, `export*from"x"`) y después de otra
+// sentencia o de un comentario en la misma línea, como en código compacto o generado.
 const ESTATICO =
-  /^[ \t]*(?:import|export)\s+(?:type\s+)?(?:[\w$*{},\s]+?\s*from\s*)?(["'])([^"'\n]+)\1/gm;
-const DINAMICO = /\bimport\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
+  /(?<![\w$.])(?:import|export)(?![\w$])\s*(?:[\w$*{},\s]+?\s*\bfrom\s*)?(["'])([^"'\n]+)\1/g;
+const DINAMICO = /(?<![\w$.])import\s*\(\s*(?:(["'])([^"'\n]+)\1\s*\))?/g;
 
 const NODE: ReadonlySet<string> = new Set(builtinModules);
 
