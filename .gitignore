@@ -11,5 +11,4 @@ apps/api/public/
 *.tmp-*
 *.bak-*
 # Configuración de wrangler que genera el despliegue en cada corrida.
-apps/api/wrangler.staging.json
-apps/api/wrangler.produccion.json
+apps/api/wrangler.*.json
