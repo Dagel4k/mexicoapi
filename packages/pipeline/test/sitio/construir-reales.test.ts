@@ -15,7 +15,7 @@ import {
 } from "@mexicoapi/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sha256Hex } from "../../src/canonico.js";
-import { shardCalendario } from "../../src/curado/calendario.js";
+import { coberturasDeLaLista, shardCalendario } from "../../src/curado/calendario.js";
 import { leerCurado } from "../../src/curado/leer.js";
 import {
   CURADOS,
@@ -149,16 +149,16 @@ describe("con los datos reales del repositorio", () => {
       [curadoDiasSat, "sat"],
     ] as const) {
       const lectura = await leerCurado(def, REAL);
-      const shard = shardCalendario(
-        autoridad,
-        await registrosDe<DiaInhabilCurado>(def),
-        lectura?.documento?.cobertura ?? null,
-      );
+      const registros = await registrosDe<DiaInhabilCurado>(def);
+      const cobertura = lectura?.documento?.cobertura ?? null;
+      const shard = shardCalendario(autoridad, registros, cobertura);
       expect(
         await leerJson(join(salida, `v1/_internos/calendarios/${autoridad}.json`)),
         autoridad,
       ).toEqual(shard);
-      coberturas.push(...coberturasDe(shard));
+      // Las descargas llevan la cobertura de la lista, no la del calendario del Worker.
+      const plazos = coberturasDeLaLista(autoridad, registros, cobertura);
+      coberturas.push(...coberturasDe({ autoridad, plazos }));
     }
     expect(await leerJson(join(salida, "descargas/dias-inhabiles-coberturas.json"))).toEqual(
       coberturas,

@@ -17,7 +17,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { jsonCanonico, sha256Hex } from "../canonico.js";
-import { shardCalendario } from "../curado/calendario.js";
+import { coberturasDeLaLista, shardCalendario } from "../curado/calendario.js";
 import { leerCurado } from "../curado/leer.js";
 import {
   curadoDiasCnbv,
@@ -272,16 +272,20 @@ export async function construirSitio(opciones: {
   porAnio("fix", fix, (r) => r.fecha_publicacion);
   porAnio("udis", udis, (r) => r.fecha);
 
-  // Los calendarios de la CNBV y el SAT los arma el Worker con crearCalendario. Las descargas
-  // llevan aparte la cobertura de cada plazo: la lista de días no dice hasta dónde está completa.
+  // Los calendarios de la CNBV y el SAT los arma el Worker con crearCalendarioCurado. Las
+  // descargas llevan aparte la cobertura de cada plazo en su lista: la lista de días no dice
+  // hasta dónde está completa, y la del SAT solo trae los días del art. 12 de los años que cubre
+  // su YAML (el Worker los calcula hasta 2100).
   const coberturasCalendario: CoberturaCalendario[] = [];
   for (const [c, def, autoridad] of [
     [diasCnbv, curadoDiasCnbv, "cnbv"],
     [diasSat, curadoDiasSat, "sat"],
   ] as const) {
-    const calendario = shardCalendario(autoridad, c.registros, await coberturaDe(raiz, def));
+    const cobertura = await coberturaDe(raiz, def);
+    const calendario = shardCalendario(autoridad, c.registros, cobertura);
     archivos.set(`v1/_internos/calendarios/${autoridad}.json`, json(calendario));
-    coberturasCalendario.push(...coberturasDe(calendario));
+    const plazos = coberturasDeLaLista(autoridad, c.registros, cobertura);
+    coberturasCalendario.push(...coberturasDe({ autoridad, plazos }));
   }
 
   // `uma.json` es la lista completa: con ella el Worker responde la UMA vigente en una fecha.

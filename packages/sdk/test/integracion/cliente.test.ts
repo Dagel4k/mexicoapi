@@ -107,9 +107,14 @@ const diasEntre = (desde: string, hasta: string): number =>
 /** Las consultas que el paquete también responde, por nombre. */
 function consultas(): Consulta[] {
   const { satGeneral, satPagos, satAmplia, cnbv } = bordes();
-  // Desde el fin de general hasta pasar la cobertura amplia: los días hábiles no son más que los
-  // naturales. La API acepta hasta 3650.
-  const masAllaDeAmplia = Math.min(diasEntre(satGeneral, satAmplia) + 5, 3650);
+  // Del respaldo de general hasta pasar la cobertura amplia: los días hábiles no son más que los
+  // naturales. Con la regla del art. 12 la amplia llega a 2100, más lejos de lo que la API acepta
+  // (3650 días), así que empieza a lo más 60 días antes de su fin, ya en el respaldo.
+  const antesDeAmplia = mover(satAmplia, -60);
+  const desdeRespaldo = satGeneral > antesDeAmplia ? satGeneral : antesDeAmplia;
+  const masAllaDeAmplia = diasEntre(desdeRespaldo, satAmplia) + 5;
+  // El primer año sin vacaciones publicadas (hoy 2027): la lista sale solo de la regla.
+  const sinVacaciones = Number(satGeneral.slice(0, 4)) + 1;
   const publicado = enMedio(fix.serie).fecha_publicacion;
   const primeraUma = constantes.anios.uma[0] as number;
   const ultimaUma = constantes.anios.uma.at(-1) as number;
@@ -185,7 +190,7 @@ function consultas(): Consulta[] {
           {
             autoridad: "sat",
             tipoPlazo: "general",
-            desde: satGeneral,
+            desde: desdeRespaldo,
             dias: masAllaDeAmplia,
             permitirIncompleto: true,
           },
@@ -238,6 +243,45 @@ function consultas(): Consulta[] {
       (api, op) => api.diasInhabiles({ autoridad: "cnbv", anio: 2025 }, op),
     ],
     ["días inhábiles SAT", (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2026 }, op)],
+    // Los días del art. 12 por regla: declaraciones_pagos pasa a 2027 sin permitir_incompleto, el
+    // primer año sin vacaciones publicadas se lista y 2030 avisa de la transmisión.
+    [
+      "días hábiles SAT declaraciones_pagos en 2027, sin permitir_incompleto",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-12-30", dias: 2 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT declaraciones_pagos de 30 días desde el 20 de noviembre",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-11-20", dias: 30 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT por el 1o. de octubre de 2030",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2030-09-30", dias: 1 },
+          op,
+        ),
+    ],
+    [
+      "días inhábiles SAT del primer año sin vacaciones publicadas",
+      (api, op) => api.diasInhabiles({ autoridad: "sat", anio: sinVacaciones }, op),
+    ],
+    [
+      "días inhábiles SAT 2030",
+      (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2030 }, op),
+    ],
+    // La LFT avisa en cada respuesta que no tiene las suspensiones de labores (art. 715).
+    [
+      "días hábiles LFT por el Viernes Santo",
+      (api, op) => api.diasHabiles({ desde: "2026-03-31", dias: 3 }, op),
+    ],
     ["UMA por año", (api, op) => api.uma(2026, op)],
     ["UMA vigente en enero", (api, op) => api.umaVigente("2026-01-15", op)],
     ["UMA vigente en febrero", (api, op) => api.umaVigente("2026-02-01", op)],
@@ -328,6 +372,7 @@ function problemas(): Consulta[] {
       (api, op) =>
         api.diasHabiles({ autoridad: "sat", tipoPlazo: "general", desde: satGeneral, dias: 5 }, op),
     ],
+    // Cambio: declaraciones_pagos llega a 2100 con la regla del art. 12 (antes, al 2026-12-31).
     [
       "SAT declaraciones_pagos fuera de su cobertura",
       (api, op) =>

@@ -2,6 +2,7 @@
 // corren igual sobre src y sobre dist. Se comparan con las entradas de datos del paquete y el
 // núcleo; los textos que dependen de la cobertura se arman con la cobertura de los datos.
 import { readFileSync } from "node:fs";
+import { diasDescansoCff } from "@mexicoapi/core";
 import { beforeAll, expect, it } from "vitest";
 import type { Cliente, ConsultaDiasHabiles, MexicoApiError } from "../../src/cliente/index.js";
 import type { CoberturaSerie } from "../../src/index.js";
@@ -9,7 +10,7 @@ import type { Modulo } from "../comun.js";
 import { esperarCongelado } from "../datos/comun.js";
 import type { ModuloCalendarios, ModuloConstantes } from "../datos/curados.js";
 import { PROBLEMAS, rechazo } from "./ayudas.js";
-import { AVISO_LFT, type ModuloCliente } from "./comun.js";
+import { AVISO_LFT, type ModuloCliente, mover } from "./comun.js";
 
 export interface ModulosCurados {
   cliente: ModuloCliente;
@@ -198,15 +199,36 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     expect(r.data.advertencias[0]).toBe(
       `Calendario incompleto: SAT con tipo_plazo=general ${cubre(general.cobertura)}; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
     );
-    const lejos = await api.diasHabiles({
+    // Cambio: 60 días ya no pasan de la cobertura amplia (la regla del art. 12 llega a 2100):
+    // solo el aviso del respaldo, y se descuentan los días publicados entre semana del tramo, que
+    // salen de los datos (hoy, el 25 de diciembre, el 1 de enero y el primer lunes de febrero).
+    const largo = await api.diasHabiles({
       autoridad: "sat",
       tipoPlazo: "general",
       desde: general.cobertura.hasta,
       dias: 60,
       permitirIncompleto: true,
     });
+    expect(largo.data.advertencias).toHaveLength(1);
+    const entreSemana = (fecha: string): boolean => ![0, 6].includes(new Date(fecha).getUTCDay());
+    expect(largo.data.inhabiles_saltados.map((d) => d.fecha).filter(entreSemana)).toEqual(
+      sat.dias
+        .map((d) => d.fecha)
+        .filter((f) => f > general.cobertura.hasta && f <= largo.data.resultado && entreSemana(f)),
+    );
+    // Más allá de la cobertura amplia se suma el aviso del núcleo.
+    const fuera = Number(sat.amplia.hasta.slice(0, 4)) + 1;
+    const lejos = await api.diasHabiles({
+      autoridad: "sat",
+      tipoPlazo: "general",
+      desde: mover(sat.amplia.hasta, -11),
+      dias: 20,
+      permitirIncompleto: true,
+    });
     expect(lejos.data.advertencias).toHaveLength(2);
-    expect(lejos.data.advertencias[1]).toMatch(/^Calendario incompleto: SAT \d{4}; solo se/);
+    expect(lejos.data.advertencias[1]).toMatch(
+      new RegExp(`^Calendario incompleto: SAT ${fuera}; solo se`),
+    );
     // Si el cálculo no entra en la zona incompleta, no hay aviso.
     const dentro = await api.diasHabiles({
       autoridad: "sat",
@@ -241,7 +263,20 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     const lft = await api.diasInhabiles({ anio: 2026 });
     // La lista de la LFT está completa, con el aviso fijo de lo que no incluye (art. 715).
     expect(lft.advertencias).toEqual([AVISO_LFT]);
-    // El año después de la cobertura amplia sale de los datos: cargar el SAT 2027 no lo vuelve 200.
+    // Cambio: el año después de las vacaciones publicadas (hoy 2027) ya se responde con los días
+    // del art. 12. Sale de los datos: capturar las vacaciones de 2027 lo mueve al siguiente.
+    const sinVacaciones = Number(general.cobertura.hasta.slice(0, 4)) + 1;
+    const regla = await api.diasInhabiles({ autoridad: "sat", anio: sinVacaciones });
+    expect(regla.data).toEqual(diasDescansoCff(sinVacaciones));
+    expect(regla.data).toEqual(
+      m.calendarios
+        .calendarioCurado("sat")
+        .dias.filter((d) => d.fecha.startsWith(`${sinVacaciones}-`)),
+    );
+    expect(regla.advertencias).toEqual([
+      `Los días de tipo vacaciones del SAT solo están completos del ${general.cobertura.desde} al ${general.cobertura.hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de ${sinVacaciones} está completa.`,
+    ]);
+    // El año después de la cobertura amplia sale de los datos (hoy 2101, por la regla).
     const fuera = Number(amplia.hasta.slice(0, 4)) + 1;
     const sinAnio = await problemaDe(
       api.diasInhabiles({ autoridad: "sat", anio: fuera }),

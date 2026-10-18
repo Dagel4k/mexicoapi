@@ -1,6 +1,8 @@
 // Datos curados de prueba con la forma que escribe el build: el meta interno con `curados`,
 // los calendarios de la CNBV y el SAT, y la lista de la UMA. Las fechas y los valores son los
-// publicados en el DOF; los fragmentos están recortados.
+// publicados en el DOF; los fragmentos de la RMF y la CNBV están recortados. Los días del art.
+// 12 del CFF que trae el shard del SAT son los de la regla del núcleo, tal cual.
+import { diasDescansoCff, FUENTE_CFF_12 } from "@mexicoapi/core";
 import type { AssetFalso } from "./ayudas.js";
 
 export const DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
@@ -85,12 +87,7 @@ const fuente = (nombre: string, url: string, fecha_publicacion: string, fragment
   fragmento,
 });
 
-export const FUENTE_CFF = fuente(
-  "Código Fiscal de la Federación, artículo 12",
-  "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
-  "2026-04-09",
-  "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; [...] y el 25 de diciembre.",
-);
+export const FUENTE_CFF = { ...FUENTE_CFF_12 };
 const FUENTE_RMF = fuente(
   "Resolución Miscelánea Fiscal para 2026",
   "https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
@@ -146,17 +143,32 @@ export const DIAS_SAT = [
   dia("2026-12-25", "25 de diciembre", "descanso", FUENTE_CFF),
 ];
 
-/** El SAT 2026: las vacaciones están completas hasta el 30 de noviembre. */
+/** Los días del art. 12 de los años de `desde` a `hasta`, como los da la regla, en JSON. */
+export const diasDelCff = (desde: number, hasta: number) =>
+  Array.from({ length: hasta - desde + 1 }, (_, i) => diasDescansoCff(desde + i))
+    .flat()
+    .map((d) => ({ ...d, fuente: { ...d.fuente } }));
+
+/** Lo que el calendario del SAT tiene en `dias`: la regla de 2026 a 2100 y las vacaciones. */
+export const DIAS_CALENDARIO_SAT = [
+  ...diasDelCff(2026, 2100),
+  ...DIAS_SAT.filter((d) => d.tipo === "vacaciones"),
+].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+
+/**
+ * El SAT 2026: las vacaciones están completas hasta el 30 de noviembre; los días del art. 12 los
+ * da la regla hasta 2100, y ella cita los fines de semana.
+ */
 export const SHARD_SAT = {
   autoridad: "sat",
   plazos: {
     general: { cobertura: { desde: "2026-01-01", hasta: "2026-11-30" }, excluir_tipos: [] },
     declaraciones_pagos: {
-      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+      cobertura: { desde: "2026-01-01", hasta: "2100-12-31" },
       excluir_tipos: ["vacaciones"],
     },
   },
-  fuentes_fin_de_semana: { 2026: FUENTE_CFF },
+  fuentes_fin_de_semana: {},
   dias: DIAS_SAT,
 };
 

@@ -11,19 +11,12 @@
     "declaraciones_pagos": {
       "cobertura": {
         "desde": "2026-01-01",
-        "hasta": "2026-12-31"
+        "hasta": "2100-12-31"
       },
       "excluir_tipos": [
         "vacaciones"
       ]
     }
   },
-  "fuentes_fin_de_semana": {
-    "2026": {
-      "nombre": "Código Fiscal de la Federación, artículo 12",
-      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
-      "fecha_publicacion": "2026-04-09",
-      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
-    }
-  }
+  "fuentes_fin_de_semana": {}
 }

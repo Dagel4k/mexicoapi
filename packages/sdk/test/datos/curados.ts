@@ -1,6 +1,7 @@
 // Pruebas de las entradas de datos curados (calendarios de la CNBV y el SAT, constantes) que corren
 // igual sobre src y sobre dist. Lo que depende de los datos se toma de data/.
 import { readFile } from "node:fs/promises";
+import { diasDescansoCff } from "@mexicoapi/core";
 import { beforeAll, expect, it } from "vitest";
 import type * as Calendarios from "../../src/datos/calendarios.js";
 import type * as Constantes from "../../src/datos/constantes.js";
@@ -66,11 +67,29 @@ export function probarCalendarios(
       ["sat", sat],
     ] as const) {
       const curado = m.calendarioCurado(autoridad);
-      expect(curado.dias).toEqual(d.registros.map(({ autoridad: _a, ...dia }) => dia));
+      const ultimo = d.registros.at(-1)?.fecha.slice(0, 4) ?? "";
+      // El SAT agrega después los días del art. 12 de los años siguientes, por regla.
+      expect(curado.dias.filter((x) => x.fecha.slice(0, 4) <= ultimo)).toEqual(
+        d.registros.map(({ autoridad: _a, ...dia }) => dia),
+      );
       expect(curado.meta).toEqual(metaEsperada(d));
       expect(m.meta[autoridad]).toBe(curado.meta);
       expect(m.calendarioCurado(autoridad)).toBe(curado);
     }
+    expect(m.calendarioCurado("cnbv").dias).toHaveLength(cnbv.registros.length);
+  });
+
+  it("el SAT calcula los días del art. 12 de cada año hasta 2100", () => {
+    const { dias, amplia } = m.calendarioCurado("sat");
+    expect(amplia.hasta).toBe("2100-12-31");
+    const ultimo = Number(sat.registros.at(-1)?.fecha.slice(0, 4));
+    const despues = dias.filter((d) => Number(d.fecha.slice(0, 4)) > ultimo);
+    expect(despues).toEqual(
+      Array.from({ length: 2100 - ultimo }, (_, i) => diasDescansoCff(ultimo + 1 + i)).flat(),
+    );
+    expect(despues.find((d) => d.fecha === "2027-01-01")?.fuente.nombre).toBe(
+      "Código Fiscal de la Federación, artículo 12",
+    );
   });
 
   it("arma los plazos de data/<carpeta>/calendario.json, como la API", async () => {

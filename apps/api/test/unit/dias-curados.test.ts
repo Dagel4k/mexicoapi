@@ -1,4 +1,4 @@
-import { crearCalendario, sumarDiasHabiles } from "@mexicoapi/core";
+import { crearCalendario, FUENTE_CFF_12, sumarDiasHabiles } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reiniciarCargas } from "../../src/cargas.js";
 import { manejar } from "../../src/index.js";
@@ -6,9 +6,11 @@ import { CACHE_DATOS } from "../../src/respuestas.js";
 import { crearAssets, entornoDe, peticion, SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
 import {
   assetsCurados,
+  DIAS_CALENDARIO_SAT,
   DIAS_CNBV,
   DIAS_SAT,
   DOCS,
+  diasDelCff,
   FUENTE_CFF,
   FUENTE_CNBV,
   INTERNA_CURADOS,
@@ -26,14 +28,15 @@ const DOCS_HABILES = `${DOCS}/api/README.md#dias-habiles`;
 const DOCS_INHABILES = `${DOCS}/api/README.md#dias-inhabiles`;
 
 const COBERTURA_GENERAL = { desde: "2026-01-01", hasta: "2026-11-30" };
-const COBERTURA_DECLARACIONES = { desde: "2026-01-01", hasta: "2026-12-31" };
+// Los días del art. 12 salen de la regla hasta 2100.
+const COBERTURA_DECLARACIONES = { desde: "2026-01-01", hasta: "2100-12-31" };
 const COBERTURA_CNBV = { desde: "2025-01-01", hasta: "2026-12-31" };
 
 const AVISO_GENERAL =
   "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.";
 
 const DETALLE_GENERAL = (fecha: string) =>
-  `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.`;
+  `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.`;
 
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
@@ -114,18 +117,30 @@ interface ShardDePrueba {
   dias: ReadonlyArray<{ fecha: string; motivo: string; tipo: string; fuente: typeof FUENTE_CFF }>;
 }
 
-/** El cálculo del núcleo con el calendario de prueba, como lo serializa la API. */
+/**
+ * El cálculo del núcleo con el calendario de prueba, como lo serializa la API. En el SAT, los días
+ * de descanso son los de la regla del art. 12 en la cobertura, que también cita los fines de semana.
+ */
 function delNucleo(shard: ShardDePrueba, tipo: string, desde: string, dias: number) {
   const plazo = shard.plazos[tipo];
   if (plazo === undefined) throw new Error(tipo);
   const { cobertura, excluir_tipos } = plazo;
+  const sat = shard.autoridad === "sat";
+  const anio = (fecha: string) => Number(fecha.slice(0, 4));
+  const todos = sat
+    ? [
+        ...diasDelCff(anio(cobertura.desde), anio(cobertura.hasta)),
+        ...shard.dias.filter((d) => d.tipo !== "descanso"),
+      ]
+    : shard.dias;
   const calendario = crearCalendario({
     autoridad: shard.autoridad as "sat" | "cnbv",
     cobertura,
-    dias: shard.dias
+    dias: todos
       .filter((d) => d.fecha >= cobertura.desde && d.fecha <= cobertura.hasta)
       .map((d) => ({ ...d, tipo: d.tipo as "descanso" | "vacaciones" })),
-    fuenteFinDeSemana: (anio) => shard.fuentes_fin_de_semana[String(anio)] as typeof FUENTE_CFF,
+    fuenteFinDeSemana: (a) =>
+      sat ? FUENTE_CFF_12 : (shard.fuentes_fin_de_semana[String(a)] as typeof FUENTE_CFF),
     excluirTipos: excluir_tipos as "vacaciones"[],
   });
   return JSON.parse(JSON.stringify(sumarDiasHabiles({ calendario, desde, dias })));
@@ -228,16 +243,11 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       });
     });
 
-    it("un rango que llega a 2027 lleva las dos advertencias", async () => {
+    it("un rango que llega a 2027 salta el 1 de enero con la regla, sin aviso de 2027", async () => {
+      // Cambio: antes daba 2027-01-01 con "Calendario incompleto: SAT 2027".
       const { cuerpo } = await datos(permitir("2026-12-24", 5));
-      expect(cuerpo.data).toMatchObject({
-        resultado: "2027-01-01",
-        advertencias: [
-          AVISO_GENERAL,
-          "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
-        ],
-      });
-      expect(fechas(cuerpo.data.inhabiles_saltados)).toEqual(["2026-12-25"]);
+      expect(cuerpo.data).toMatchObject({ resultado: "2027-01-04", advertencias: [AVISO_GENERAL] });
+      expect(fechas(cuerpo.data.inhabiles_saltados)).toEqual(["2026-12-25", "2027-01-01"]);
     });
 
     it("dentro de la cobertura de general no hay advertencias", async () => {
@@ -246,10 +256,11 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     });
 
     it("si empieza después de la cobertura amplia, solo queda la advertencia del núcleo", async () => {
-      const { cuerpo } = await datos(permitir("2026-12-31", 1));
+      // La cobertura amplia del SAT es la de la regla del art. 12: llega a 2100.
+      const { cuerpo } = await datos(permitir("2100-12-31", 1));
       expect(cuerpo.data).toMatchObject({
-        resultado: "2027-01-01",
-        advertencias: ["Calendario incompleto: SAT 2027; solo se descontaron fines de semana."],
+        resultado: "2101-01-03",
+        advertencias: ["Calendario incompleto: SAT 2101; solo se descontaron fines de semana."],
       });
     });
 
@@ -262,22 +273,33 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     });
   });
 
-  it("declaraciones_pagos cubre diciembre; después del 31, 422 con su cobertura", async () => {
+  it("declaraciones_pagos cruza a 2027 con los días del art. 12; después de 2100, 422", async () => {
     const { cuerpo } = await datos(sat("declaraciones_pagos", "2026-11-27", 2));
     expect(cuerpo.data).toMatchObject({ resultado: "2026-12-01", advertencias: [] });
-    await incompleto(sat("declaraciones_pagos", "2026-12-31", 1), {
+    // Los casos de la auditoría: antes, 422 desde el 2027-01-01.
+    for (const [desde, dias, resultado] of [
+      ["2026-12-30", 2, "2027-01-04"],
+      ["2026-11-20", 30, "2027-01-05"],
+      ["2026-12-15", 15, "2027-01-07"],
+    ] as const) {
+      const r = await datos(sat("declaraciones_pagos", desde, dias));
+      expect(r.cuerpo.data, desde).toMatchObject({ resultado, advertencias: [] });
+      expect(r.cuerpo.data).toEqual(delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias));
+      expect(fechas(r.cuerpo.data.inhabiles_saltados)).toContain("2027-01-01");
+    }
+    await incompleto(sat("declaraciones_pagos", "2100-12-31", 1), {
       autoridad: "sat",
-      fecha: "2027-01-01",
+      fecha: "2101-01-01",
       cobertura: COBERTURA_DECLARACIONES,
       detail:
-        "El calendario del SAT para tipo_plazo=declaraciones_pagos no cubre 2027-01-01; cubre del 2026-01-01 al 2026-12-31.",
+        "El calendario del SAT para tipo_plazo=declaraciones_pagos no cubre 2101-01-01; cubre del 2026-01-01 al 2100-12-31.",
     });
-    // Sin respaldo: con permitir_incompleto solo descuenta fines de semana después del 31.
+    // Sin respaldo: con permitir_incompleto solo descuenta fines de semana después de 2100.
     const permitido = await datos(
-      sat("declaraciones_pagos", "2026-12-31", 1, "&permitir_incompleto=true"),
+      sat("declaraciones_pagos", "2100-12-31", 1, "&permitir_incompleto=true"),
     );
     expect(permitido.cuerpo.data.advertencias).toEqual([
-      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2101; solo se descontaron fines de semana.",
     ]);
   });
 
@@ -331,7 +353,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
           fecha: "2026-01-06",
           cobertura: { desde: "2026-02-01", hasta: "2026-11-30" },
           detail:
-            "El calendario del SAT para tipo_plazo=general no cubre 2026-01-06; cubre del 2026-02-01 al 2026-11-30 porque los días de tipo vacaciones anteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.",
+            "El calendario del SAT para tipo_plazo=general no cubre 2026-01-06; cubre del 2026-02-01 al 2026-11-30 porque los días de tipo vacaciones anteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.",
         },
         desdeFebrero,
       );
@@ -511,10 +533,23 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
   });
 
   it("sat 2026: la lista conocida, con la advertencia de las vacaciones que pueden faltar", async () => {
+    // Los ocho días del art. 12 de 2026 salen de la regla aunque el shard traiga tres.
     const { cuerpo } = await datos(inhabiles("autoridad=sat&anio=2026"));
     expect(cuerpo).toEqual({
-      data: DIAS_SAT,
+      data: DIAS_CALENDARIO_SAT.filter((d) => d.fecha.startsWith("2026-")),
       advertencias: [ADVERTENCIA_SAT_2026],
+      meta: { ...META_SAT, docs: DOCS_INHABILES },
+    });
+  });
+
+  it("sat 2027: los días del art. 12, con la advertencia de las vacaciones que faltan", async () => {
+    // Cambio: antes, 422 desde 2027.
+    const { cuerpo } = await datos(inhabiles("autoridad=sat&anio=2027"));
+    expect(cuerpo).toEqual({
+      data: diasDelCff(2027, 2027),
+      advertencias: [
+        "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa.",
+      ],
       meta: { ...META_SAT, docs: DOCS_INHABILES },
     });
   });
@@ -548,7 +583,7 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
 
   it.each([
     ["sat", "2025", "2025-01-01", COBERTURA_DECLARACIONES],
-    ["sat", "2027", "2027-01-01", COBERTURA_DECLARACIONES],
+    ["sat", "2101", "2101-01-01", COBERTURA_DECLARACIONES],
     ["sat", "0001", "0001-01-01", COBERTURA_DECLARACIONES],
     ["cnbv", "2024", "2024-01-01", COBERTURA_CNBV],
     ["cnbv", "2027", "2027-01-01", COBERTURA_CNBV],

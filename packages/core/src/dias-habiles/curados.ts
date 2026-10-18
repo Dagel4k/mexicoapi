@@ -1,5 +1,6 @@
 // Reglas de los calendarios curados de la CNBV y el SAT: los tipos de plazo, la cobertura de
-// cada uno, el respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por
+// cada uno, los días que da una regla del núcleo (en el SAT, los del art. 12 del CFF), el
+// respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por
 // `@mexicoapi/core/curados` y no por el índice, para no pesar en quien solo valida.
 import type {
   AutoridadCurada,
@@ -11,6 +12,7 @@ import type {
 import { CalendarioIncompletoError, DEL_CALENDARIO } from "../errores.js";
 import { esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
 import { type Calendario, crearCalendario } from "./calendario.js";
+import { avisosTransmisionCff, COBERTURA_CFF, diasDescansoCff, FUENTE_CFF_12 } from "./cff.js";
 import { type ResultadoDiasHabiles, sumarDiasHabiles } from "./sumar.js";
 import type { Autoridad, DiaInhabil, TipoPlazo } from "./tipos.js";
 
@@ -31,6 +33,50 @@ export const PLAZOS: Readonly<Record<AutoridadCurada, TablaPlazos>> = Object.fre
     declaraciones_pagos: Object.freeze(["vacaciones"] as const),
   }),
 });
+
+/**
+ * Días que el núcleo calcula por regla en un calendario curado, en lugar de transcribirlos del
+ * DOF. Son de un tipo de día, tienen la cobertura de la regla y su fuente cita también los
+ * sábados y domingos.
+ */
+export interface ReglaCurada {
+  readonly tipo: TipoDiaCurado;
+  readonly cobertura: Rango;
+  /** Los días de un año de la cobertura, en orden; RangeError fuera de ella. */
+  readonly dias: (anio: number) => DiaInhabil[];
+  readonly fuente: FuenteDof;
+  /** Lo que la regla no resuelve en un cálculo de `desde` (sin contarlo) a `resultado`. */
+  readonly avisos: (desde: FechaISO, resultado: FechaISO) => string[];
+}
+
+/**
+ * Las reglas de cada autoridad. El SAT toma los días de descanso del primer párrafo del art. 12
+ * del CFF, que fija la ley y no una publicación anual: su YAML solo trae las vacaciones.
+ */
+export const REGLAS: Readonly<Partial<Record<AutoridadCurada, ReglaCurada>>> = Object.freeze({
+  sat: Object.freeze({
+    tipo: "descanso",
+    cobertura: COBERTURA_CFF,
+    dias: diasDescansoCff,
+    fuente: FUENTE_CFF_12,
+    avisos: avisosTransmisionCff,
+  }),
+});
+
+const reglaDe = (autoridad: string): ReglaCurada | undefined =>
+  Object.hasOwn(REGLAS, autoridad) ? REGLAS[autoridad as AutoridadCurada] : undefined;
+
+/**
+ * La cobertura por tipo de día con la de la regla de la autoridad, si tiene: con el SAT,
+ * `descanso` es la del art. 12 (hasta 2100). Es la que se pasa a `revisarPlazos`.
+ */
+export function coberturaConRegla(
+  autoridad: AutoridadCurada,
+  cobertura: CoberturaCurada,
+): CoberturaCurada {
+  const regla = reglaDe(autoridad);
+  return regla === undefined ? cobertura : { ...cobertura, [regla.tipo]: regla.cobertura };
+}
 
 /** Un tipo de plazo de un calendario curado, como lo escribe el build. */
 export interface PlazoCalendario {
@@ -114,9 +160,15 @@ export interface DatosCalendarioCurado {
   readonly autoridad: AutoridadCurada;
   /** `general` siempre; el SAT agrega `declaraciones_pagos`. */
   readonly plazos: Readonly<Partial<Record<TipoPlazo, PlazoCalendario>>>;
-  /** Por año de la cobertura amplia (`"2026"`), la publicación que cita sus sábados y domingos. */
+  /**
+   * Por año de la cobertura amplia (`"2026"`), la publicación que cita sus sábados y domingos.
+   * Vacío en una autoridad con regla (el SAT): los cita la fuente de la regla.
+   */
   readonly fuentes_fin_de_semana: Readonly<Record<string, FuenteDof>>;
-  /** Los días publicados, en orden de fecha, sin `autoridad`. */
+  /**
+   * Los días publicados, en orden de fecha, sin `autoridad`. Con regla, los días de su tipo son
+   * opcionales y deben ser iguales a los de la regla: el calendario los toma de ella.
+   */
   readonly dias: readonly Omit<DiaInhabilCurado, "autoridad">[];
 }
 
@@ -147,9 +199,15 @@ export interface CalendarioCurado {
   readonly general: PlazoCurado;
   /** La cobertura del plazo que contiene a las de los demás. */
   readonly amplia: Rango;
-  /** Los días publicados, en orden, sin los fines de semana. */
+  /**
+   * Los días inhábiles en la cobertura amplia, en orden, sin los fines de semana: los publicados
+   * y, con regla, los de la regla (en el SAT, los del art. 12 de cada año hasta 2100).
+   */
   readonly dias: readonly DiaInhabil[];
 }
+
+const mayor = (a: FechaISO, b: FechaISO): FechaISO => (a > b ? a : b);
+const menor = (a: FechaISO, b: FechaISO): FechaISO => (a < b ? a : b);
 
 /** Lo que usa `util.inspect` de Node; se pide por su nombre para no depender de `node:`. */
 const INSPECCIONAR: unique symbol = Symbol.for("nodejs.util.inspect.custom");
@@ -224,6 +282,25 @@ const copiarFuente = ({ nombre, url, fecha_publicacion, fragmento }: FuenteDof):
 const esRango = (r: Rango): boolean =>
   esFechaIsoValida(r.desde) && esFechaIsoValida(r.hasta) && r.desde <= r.hasta;
 
+const mismaFuente = (a: FuenteDof, b: FuenteDof): boolean =>
+  a.nombre === b.nombre &&
+  a.url === b.url &&
+  a.fecha_publicacion === b.fecha_publicacion &&
+  a.fragmento === b.fragmento;
+
+/** Los días de la regla dentro de `rango`, por fecha. */
+function diasDeRegla(regla: ReglaCurada, rango: Rango): Map<FechaISO, DiaInhabil> {
+  const dias = new Map<FechaISO, DiaInhabil>();
+  const desde = mayor(rango.desde, regla.cobertura.desde);
+  const hasta = menor(rango.hasta, regla.cobertura.hasta);
+  for (let anio = Number(desde.slice(0, 4)); anio <= Number(hasta.slice(0, 4)); anio++) {
+    for (const dia of regla.dias(anio)) {
+      if (dentro(dia.fecha, rango)) dias.set(dia.fecha, Object.freeze({ ...dia }));
+    }
+  }
+  return dias;
+}
+
 /**
  * Arma el calendario de una autoridad: un `Calendario` por tipo de plazo con los días de su
  * cobertura y, si el plazo es más corto que la cobertura amplia, su respaldo. Lanza RangeError si
@@ -231,12 +308,15 @@ const esRango = (r: Rango): boolean =>
  * `excluir_tipos` (si falta uno distinto de `general`, solo ese plazo no existe); `general`
  * cuenta todos los tipos de día, un plazo contiene las coberturas de los demás, cada año de esa
  * cobertura cita sus fines de semana (y ningún otro) y los días van en orden estricto y dentro de
- * ella. Copia y congela lo que recibe, con solo los campos de cada cita.
+ * ella. Con regla (`REGLAS`), los plazos que cuentan su tipo de día caen en su cobertura, los
+ * fines de semana los cita la regla, un día de su tipo debe ser igual al de la regla y un día de
+ * otro tipo no puede caer en uno de la regla. Copia y congela lo que recibe, con solo los campos
+ * de cada cita.
  */
 export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioCurado {
   const { autoridad } = datos;
-  const regla = Object.hasOwn(PLAZOS, autoridad) ? PLAZOS[autoridad] : undefined;
-  if (regla === undefined) {
+  const tabla = Object.hasOwn(PLAZOS, autoridad) ? PLAZOS[autoridad] : undefined;
+  if (tabla === undefined) {
     throw new RangeError(
       `No hay calendario curado de ${String(autoridad)}: solo de ${Object.keys(PLAZOS).join(" y ")}.`,
     );
@@ -262,10 +342,10 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
     throw falla("no tiene un plazo general que cuente todos los días");
   }
   for (const [tipo, , excluir] of leidos) {
-    const pide = regla[tipo];
+    const pide = tabla[tipo];
     if (pide === undefined) {
       throw falla(
-        `trae el tipo de plazo ${tipo}, que no es suyo (solo ${Object.keys(regla).join(" y ")})`,
+        `trae el tipo de plazo ${tipo}, que no es suyo (solo ${Object.keys(tabla).join(" y ")})`,
       );
     }
     if (!mismosTipos(excluir, pide)) {
@@ -279,20 +359,42 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
   const amplia = coberturas.find((c) => coberturas.every((otra) => contiene(c, otra)));
   if (amplia === undefined) throw falla("no tiene un plazo que contenga a los demás");
 
-  const fuentes = new Map<number, FuenteDof>();
-  const primero = Number(amplia.desde.slice(0, 4));
-  const ultimo = Number(amplia.hasta.slice(0, 4));
+  const regla = reglaDe(autoridad);
   const citadas = datos.fuentes_fin_de_semana;
-  for (let anio = primero; anio <= ultimo; anio++) {
-    const fuente = Object.hasOwn(citadas, String(anio)) ? citadas[String(anio)] : undefined;
-    if (fuente === undefined) throw falla(`no cita los fines de semana de ${anio}`);
-    fuentes.set(anio, copiarFuente(fuente));
-  }
-  if (Object.keys(citadas).length !== fuentes.size) {
-    throw falla("cita fines de semana de años fuera de su cobertura");
+  let fuenteFinDeSemana: (anio: number) => FuenteDof;
+  const nombreRegla = `la regla del núcleo (${regla?.fuente.nombre})`;
+  if (regla !== undefined) {
+    const { desde, hasta } = regla.cobertura;
+    for (const [tipo, cobertura, excluir] of leidos) {
+      if (!excluir.includes(regla.tipo) && !contiene(regla.cobertura, cobertura)) {
+        throw falla(
+          `tiene en ${tipo} una cobertura fuera de la de la regla del núcleo (del ${desde} al ${hasta})`,
+        );
+      }
+    }
+    if (Object.keys(citadas).length > 0) {
+      throw falla(`cita fines de semana, que cita ${nombreRegla}`);
+    }
+    fuenteFinDeSemana = () => regla.fuente;
+  } else {
+    const fuentes = new Map<number, FuenteDof>();
+    const primero = Number(amplia.desde.slice(0, 4));
+    const ultimo = Number(amplia.hasta.slice(0, 4));
+    for (let anio = primero; anio <= ultimo; anio++) {
+      const fuente = Object.hasOwn(citadas, String(anio)) ? citadas[String(anio)] : undefined;
+      if (fuente === undefined) throw falla(`no cita los fines de semana de ${anio}`);
+      fuentes.set(anio, copiarFuente(fuente));
+    }
+    if (Object.keys(citadas).length !== fuentes.size) {
+      throw falla("cita fines de semana de años fuera de su cobertura");
+    }
+    // La cobertura de cada plazo cae en la amplia: todos sus años tienen fuente.
+    fuenteFinDeSemana = (anio) => fuentes.get(anio) as FuenteDof;
   }
 
-  const dias: DiaInhabil[] = [];
+  const deRegla =
+    regla === undefined ? new Map<FechaISO, DiaInhabil>() : diasDeRegla(regla, amplia);
+  const publicados: DiaInhabil[] = [];
   let anterior = "";
   for (const { fecha, motivo, tipo, fuente } of datos.dias) {
     if (
@@ -304,17 +406,34 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
       throw falla(`tiene un día inesperado, repetido o fuera de orden: ${fecha}`);
     }
     anterior = fecha;
-    dias.push(Object.freeze({ fecha, motivo, tipo, fuente: copiarFuente(fuente) }));
+    const delaRegla = deRegla.get(fecha);
+    if (regla !== undefined && tipo === regla.tipo) {
+      if (delaRegla === undefined) {
+        throw falla(`trae el día de ${tipo} ${fecha}, que no da ${nombreRegla}`);
+      }
+      if (delaRegla.motivo !== motivo || !mismaFuente(delaRegla.fuente as FuenteDof, fuente)) {
+        throw falla(`trae el día de ${tipo} ${fecha} distinto del que da ${nombreRegla}`);
+      }
+      // El calendario lo toma de la regla.
+      continue;
+    }
+    if (delaRegla !== undefined) {
+      throw falla(
+        `trae como ${tipo} el ${fecha}, que ya es de ${delaRegla.tipo} por ${nombreRegla}`,
+      );
+    }
+    publicados.push(Object.freeze({ fecha, motivo, tipo, fuente: copiarFuente(fuente) }));
   }
+  const dias = [...deRegla.values(), ...publicados].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
 
   const armar = (cobertura: Rango, excluirTipos: readonly TipoDiaCurado[]) =>
     crearCalendario({
       autoridad,
       cobertura,
       dias: dias.filter((d) => dentro(d.fecha, cobertura)),
-      // La cobertura de cada plazo cae en la amplia: todos sus años tienen fuente.
-      fuenteFinDeSemana: (anio) => fuentes.get(anio) as FuenteDof,
+      fuenteFinDeSemana,
       excluirTipos,
+      avisos: regla?.avisos,
     });
   const plazos = new Map<TipoPlazo, PlazoCurado>();
   for (const [tipo, cobertura, excluirTipos] of leidos) {
@@ -375,9 +494,6 @@ function detalleCurado(
     ...otros.map(([t, p]) => `Con tipo_plazo=${t}, que no los cuenta, ${cubre(p.cobertura)}.`),
   ].join(" ");
 }
-
-const mayor = (a: FechaISO, b: FechaISO): FechaISO => (a > b ? a : b);
-const menor = (a: FechaISO, b: FechaISO): FechaISO => (a < b ? a : b);
 
 /**
  * El primer día contado (de `desde` + 1 a `resultado`) que cae en la cobertura amplia pero fuera
@@ -479,15 +595,19 @@ export function exigirAnio(autoridad: Autoridad, anio: number, cobertura: Rango)
 /**
  * Qué puede faltar en la lista de `anio` cuando el plazo general no cubre todo el año. Un tipo de
  * día está completo en el año si lo cuenta algún plazo que lo cubre; los que todos esos plazos
- * excluyen solo están completos en la cobertura de general.
+ * excluyen solo están completos en la cobertura de general. Al final, lo que la regla de la
+ * autoridad no resuelve en el año (en el SAT, la transmisión del Poder Ejecutivo).
  */
 function advertencias(calendario: CalendarioCurado, anio: string): string[] {
   const { autoridad, general, plazos } = calendario;
+  const regla = reglaDe(autoridad);
+  // El año ya está en la cobertura amplia: el día anterior a su 1 de enero existe.
+  const deRegla = regla?.avisos(sumarDias(`${anio}-01-01`, -1), `${anio}-12-31`) ?? [];
   // Con los plazos de PLAZOS, si general no cubre el año lo cubre un plazo que excluye algo.
   const tipos = cubreAnio(anio, general.cobertura)
     ? []
     : faltan(calendario, general, (p) => cubreAnio(anio, p.cobertura));
-  if (tipos.length === 0) return [];
+  if (tipos.length === 0) return deRegla;
   const { desde, hasta } = general.cobertura;
   const completas = [...plazos]
     .filter(([, p]) => cubreAnio(anio, p.cobertura))
@@ -499,6 +619,7 @@ function advertencias(calendario: CalendarioCurado, anio: string): string[] {
       `Los días de tipo ${tipos.join(" y ")} ${DEL_CALENDARIO[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
       ...completas,
     ].join(" "),
+    ...deRegla,
   ];
 }
 

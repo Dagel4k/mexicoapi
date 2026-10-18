@@ -12,8 +12,10 @@ export interface CoberturaCalendario {
   hasta: FechaISO;
 }
 
-/** Las coberturas de los plazos de un shard, en su orden (`general` primero). */
-export function coberturasDe(shard: ShardCalendario): CoberturaCalendario[] {
+/** Las coberturas de los plazos de un calendario, en su orden (`general` primero). */
+export function coberturasDe(
+  shard: Pick<ShardCalendario, "autoridad" | "plazos">,
+): CoberturaCalendario[] {
   return (Object.entries(shard.plazos) as [TipoPlazo, PlazoCalendario][]).map(
     ([tipo_plazo, { cobertura }]) => ({
       autoridad: shard.autoridad,

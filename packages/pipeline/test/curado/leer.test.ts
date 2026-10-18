@@ -216,13 +216,14 @@ describe("interpretarCurado", () => {
       interpretarCurado(curadoDiasCnbv, YAML_CNBV.replace(/cobertura:\n.*\n/, "cobertura: {}\n"))
         .problemas,
     ).toEqual(["cobertura: debe declarar al menos un tipo de día"]);
-    const soloVacaciones = YAML_SAT.replace(
-      "  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }\n",
-      "",
+    // Cambio: el SAT ya no declara la cobertura de descanso; la da la regla del art. 12.
+    const conDescanso = YAML_SAT.replace(
+      "cobertura:\n",
+      "cobertura:\n  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }\n",
     );
-    expect(interpretarCurado(curadoDiasSat, soloVacaciones).problemas).toContain(
-      "invariante: 2026-01-01: no hay cobertura para el tipo descanso",
-    );
+    expect(interpretarCurado(curadoDiasSat, conDescanso).problemas).toEqual([
+      "invariante: la cobertura declara descanso, que da la regla del núcleo (Código Fiscal de la Federación, artículo 12) del 2026-01-01 al 2100-12-31; no se declara",
+    ]);
   });
 
   it("valida las excepciones de cuota fija y solo las acepta en las tarifas de ISR", () => {

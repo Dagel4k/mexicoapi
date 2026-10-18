@@ -510,7 +510,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
 
     const sat = await renglones("dias-inhabiles-sat.csv");
     expect(sat[0]).toBe(`fecha,autoridad,motivo,tipo,${fuente}`);
-    expect(sat).toHaveLength(8 + 2);
+    // Las 4 vacaciones del YAML y los 8 días del art. 12 de 2026 que agrega la regla.
+    expect(sat).toHaveLength(12 + 2);
     expect(sat.at(-1)).toBe("");
     expect(sat[1]).toBe(
       '2026-01-01,sat,1o. de enero,descanso,"Código Fiscal de la Federación, artículo 12",' +
@@ -566,13 +567,19 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "sat,general,2026-01-01,2026-11-30\r\n" +
         "sat,declaraciones_pagos,2026-01-01,2026-12-31\r\n",
     );
-    // Es la misma cobertura que usa el Worker.
-    for (const autoridad of ["cnbv", "sat"] as const) {
-      const shard = (await leerJson(
-        join(salida, `v1/_internos/calendarios/${autoridad}.json`),
-      )) as ShardCalendario;
-      expect(esperadas.filter((c) => c.autoridad === autoridad)).toEqual(coberturasDe(shard));
-    }
+    // Es la cobertura de la lista descargable. En la CNBV es la misma que usa el Worker; en el
+    // SAT, el Worker calcula los días del art. 12 hasta 2100 y su declaraciones_pagos llega ahí.
+    const delWorker = async (autoridad: string) =>
+      coberturasDe(
+        (await leerJson(
+          join(salida, `v1/_internos/calendarios/${autoridad}.json`),
+        )) as ShardCalendario,
+      );
+    expect(await delWorker("cnbv")).toEqual(esperadas.slice(0, 1));
+    expect(await delWorker("sat")).toEqual([
+      esperadas[1],
+      { ...esperadas[2], hasta: "2100-12-31" },
+    ]);
     const db = new DatabaseSync(join(salida, "descargas/mexicoapi.sqlite"), { readOnly: true });
     expect(
       db.prepare("SELECT * FROM coberturas_calendario ORDER BY autoridad, tipo_plazo").all(),
@@ -680,7 +687,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       { dataset: "constantes.salario-minimo", records: 4 },
       { dataset: "constantes.uma", records: 2 },
       { dataset: "dias-inhabiles.cnbv", records: 11 },
-      { dataset: "dias-inhabiles.sat", records: 8 },
+      // Las 4 vacaciones del YAML y los 8 días del art. 12 de 2026.
+      { dataset: "dias-inhabiles.sat", records: 12 },
       { dataset: "inegi.estados", records: 2 },
       { dataset: "inegi.municipios", records: 3 },
       { dataset: "isr.tarifas", records: 3 },
@@ -689,8 +697,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     ]);
     const cuenta = (tabla: string) =>
       (db.prepare(`SELECT count(*) AS n FROM ${tabla}`).get() as { n: number }).n;
+    // 11 de la CNBV y 12 del SAT (sus 4 vacaciones y los 8 días del art. 12 de 2026).
     expect(["dias_inhabiles", "uma", "salario_minimo", "isr_tramos"].map(cuenta)).toEqual([
-      19, 2, 4, 33,
+      23, 2, 4, 33,
     ]);
     expect(
       db

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { z } from "zod";
 import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
-import { archivosCurado } from "./curado/generar.js";
+import { archivosCurado, registrosPublicados } from "./curado/generar.js";
 import { leerCurado } from "./curado/leer.js";
 import { CURADOS, type DefinicionCurado, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { ErrorDatos } from "./errores.js";
@@ -248,7 +248,8 @@ export async function revisarYamlCurados(
         problemas.push(`${DIRECTORIO_CURADO}/${def.yaml}: ${error.message}`);
         continue;
       }
-      listos.push({ def, archivos, registros: lectura.documento.registros.length, generado });
+      const registros = registrosPublicados(def, lectura.documento).length;
+      listos.push({ def, archivos, registros, generado });
     }
   }
   return { problemas, listos };
