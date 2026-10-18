@@ -175,6 +175,23 @@ describe("consultar", () => {
     expect(vacio.message).toBe("404 Falla:");
   });
 
+  it("antepone el tipo de problema de la API, para distinguirlo sin leer el texto", async () => {
+    const URL = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
+    const problema = (tipo: string, status: number) =>
+      new MexicoApiError(
+        { type: `${URL}${tipo}`, title: "T", status, detail: "Detalle." },
+        { url: "/v1/udis", origen: "api" },
+      );
+    const fallar = (e: MexicoApiError) =>
+      consultar(vivo(), () => Promise.reject(e)).catch((x) => x as Error);
+    expect((await fallar(problema("dato-no-disponible", 404))).message).toBe(
+      "[dato-no-disponible] Detalle.",
+    );
+    expect((await fallar(problema("no-encontrado", 404))).message).toBe("[no-encontrado] Detalle.");
+    // Un tipo con otra forma no se copia al texto.
+    expect((await fallar(problema("raro tipo]", 404))).message).toBe("Detalle.");
+  });
+
   // Con los argumentos ya validados, un TypeError o RangeError es un defecto: va por la ruta del
   // error interno (sin detalles para el modelo y con registro), no como error que el modelo corrige.
   it("deja pasar TypeError y RangeError tal cual", async () => {

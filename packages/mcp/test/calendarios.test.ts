@@ -105,7 +105,7 @@ describe("dias_inhabiles", () => {
     const fuera = Number(amplia.hasta.slice(0, 4)) + 1;
     esError(
       await llamar("dias_inhabiles", { autoridad: "sat", anio: fuera }),
-      `El calendario del SAT no cubre el año ${fuera}; cubre del ${amplia.desde} al ${amplia.hasta}.`,
+      `[calendario-incompleto] El calendario del SAT no cubre el año ${fuera}; cubre del ${amplia.desde} al ${amplia.hasta}.`,
     );
     for (const args of [
       { autoridad: "lft" },
@@ -216,7 +216,7 @@ describe("sumar_dias_habiles", () => {
     });
     esError(
       await llamar("sumar_dias_habiles", { autoridad: "sat", desde: "2026-07-17", dias: 3 }),
-      "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
+      "[parametro-faltante] Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
     );
     esError(
       await llamar("sumar_dias_habiles", {
@@ -225,7 +225,7 @@ describe("sumar_dias_habiles", () => {
         desde: "2026-07-17",
         dias: 3,
       }),
-      "El parámetro tipo_plazo solo se acepta con autoridad=sat.",
+      "[parametro-invalido] El parámetro tipo_plazo solo se acepta con autoridad=sat.",
     );
   });
 
@@ -234,7 +234,9 @@ describe("sumar_dias_habiles", () => {
     const args = { autoridad: "sat", tipo_plazo: "general", desde, dias: 20 };
     esError(
       await llamar("sumar_dias_habiles", args),
-      new RegExp(`^El calendario del SAT para tipo_plazo=general no cubre ${siguiente(desde)}; `),
+      new RegExp(
+        `^\\[calendario-incompleto\\] El calendario del SAT para tipo_plazo=general no cubre ${siguiente(desde)}; `,
+      ),
     );
     const r = await llamar("sumar_dias_habiles", { ...args, permitir_incompleto: true });
     const c = contenido(r);
@@ -255,7 +257,7 @@ describe("sumar_dias_habiles", () => {
     expect(texto(r)).toContain(`Advertencia: ${datos.advertencias[0]}`);
     esError(
       await llamar("sumar_dias_habiles", { autoridad: "lft", desde: "2100-12-30", dias: 3 }),
-      "El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+      "[calendario-incompleto] El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
     );
   });
 
@@ -311,7 +313,7 @@ describe("sumar_dias_habiles", () => {
         desde: "2026-12-30",
         dias: 3,
       }),
-      "El calendario de la CNBV no cubre 2027-01-01.",
+      "[calendario-incompleto] El calendario de la CNBV no cubre 2027-01-01.",
     );
   });
 });

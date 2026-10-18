@@ -1,10 +1,10 @@
 // Tipo de cambio FIX y UDIS: datos que caducan. Se piden a la API si hay MEXICOAPI_BASE; si no
 // responde, salen del paquete con la advertencia del cliente. Sin base salen del paquete, y se
 // advierte solo cuando la respuesta puede no estar al día (ver cercaDelFinal).
-import type { CoberturaSerie } from "mexicoapi";
+import { type CoberturaSerie, revisarFix } from "mexicoapi";
 import type { Respuesta } from "mexicoapi/cliente";
 import { compilarEsquema } from "../esquema.js";
-import { type Herramienta, resultadoError } from "../herramientas.js";
+import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
   consultar,
@@ -17,6 +17,7 @@ import {
   procedencia,
   RESPALDO_API,
   resultado,
+  resultadoProblema,
   TEXTO_NUMERICO,
 } from "../respuesta.js";
 
@@ -30,7 +31,7 @@ const FIX = {
   },
   required: ["fecha_publicacion", "valor"],
 } as const;
-const revisarFix = compilarEsquema(FIX);
+const revisarDatosFix = compilarEsquema(FIX);
 
 const UDI = {
   type: "object",
@@ -89,9 +90,9 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
     annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { publicado, operacion } = args as { publicado?: string; operacion?: string };
-      if (publicado !== undefined && operacion !== undefined) {
-        return resultadoError("Indica solo uno de publicado u operacion.");
-      }
+      // La regla de la API pide una de las dos fechas; sin ninguna, aquí es la más reciente.
+      const combinacion = revisarFix(publicado, operacion);
+      if (combinacion?.tipo === "parametro-invalido") return resultadoProblema(combinacion);
       const op = { signal };
       const r = await consultar(
         signal,
@@ -101,7 +102,7 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
             : operacion !== undefined
               ? cliente.fixParaOperacion(operacion, op)
               : cliente.fixUltimo(op),
-        revisarFix,
+        revisarDatosFix,
       );
       const fix = r.data;
       // Del paquete es la más reciente que trae, que puede no ser la última publicada.

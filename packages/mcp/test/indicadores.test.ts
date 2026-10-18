@@ -92,7 +92,7 @@ describe("tipo_de_cambio_fix sin API", () => {
   it("rechaza publicado y operacion juntos, fechas imposibles y días sin dato", async () => {
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-12", operacion: "2026-10-13" }),
-      "Indica solo uno de publicado u operacion.",
+      "[parametro-invalido] Indica solo uno de publicado u operacion.",
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-02-30" }),
@@ -104,11 +104,11 @@ describe("tipo_de_cambio_fix sin API", () => {
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-10" }),
-      "No hubo publicación del FIX en el DOF el 2026-10-10.",
+      "[no-encontrado] No hubo publicación del FIX en el DOF el 2026-10-10.",
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2099-01-05" }),
-      `El FIX del 2099-01-05 no está en los datos del paquete; la última publicación que traen es del ${fix.cobertura.hasta}.`,
+      `[dato-no-disponible] El FIX del 2099-01-05 no está en los datos del paquete; la última publicación que traen es del ${fix.cobertura.hasta}.`,
     );
   });
 });
@@ -204,7 +204,7 @@ describe("tipo_de_cambio_fix con la API", () => {
     );
     esError(
       await (await servidor(herramientas))("tipo_de_cambio_fix", { publicado: "2026-10-20" }),
-      detalle,
+      `[dato-no-disponible] ${detalle}`,
     );
   });
 
@@ -273,7 +273,7 @@ describe("udis", () => {
   it("antes de la serie o sin fecha es error", async () => {
     esError(
       await sinRed("udis", { fecha: "2019-12-31" }),
-      "La serie del paquete empieza el 2020-01-01; no incluye el 2019-12-31.",
+      "[no-encontrado] La serie del paquete empieza el 2020-01-01; no incluye el 2019-12-31.",
     );
     esError(await sinRed("udis", {}), 'Argumentos inválidos para udis: falta "fecha"');
   });

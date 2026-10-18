@@ -96,7 +96,8 @@ describe("validar_clabe", () => {
       const r = await llamar("validar_clabe", { clabe });
       esError(
         r,
-        "La CLABE debe tener 18 dígitos (sin letras); se aceptan espacios y guiones entre ellos.",
+        // La regla de la API, la misma del cliente (antes el MCP tenía su propio texto).
+        "[parametro-invalido] La CLABE debe tener 18 dígitos.",
       );
     }
     for (const args of [
@@ -139,7 +140,10 @@ describe("banco_por_codigo", () => {
   });
 
   it("un código que no existe es error; uno mal formado, de argumentos", async () => {
-    esError(await llamar("banco_por_codigo", { codigo: "999" }), "No existe el banco 999.");
+    esError(
+      await llamar("banco_por_codigo", { codigo: "999" }),
+      "[no-encontrado] No existe el banco 999.",
+    );
     for (const codigo of ["12", "0123", "abc"]) {
       esError(
         await llamar("banco_por_codigo", { codigo }),
