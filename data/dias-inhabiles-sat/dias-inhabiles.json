@@ -1,0 +1,278 @@
+[
+  {
+    "fecha": "2026-01-01",
+    "autoridad": "sat",
+    "motivo": "1o. de enero",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-01-02",
+    "autoridad": "sat",
+    "motivo": "Segundo periodo general de vacaciones de 2025",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
+      "fecha_publicacion": "2025-12-28",
+      "fragmento": "2.1.6. Para los efectos del artículo 12, primer y segundo párrafos del CFF, se estará a lo siguiente: I. El segundo periodo general de vacaciones de 2025, comprende del 18 de diciembre de 2025 al 2 de enero de 2026."
+    }
+  },
+  {
+    "fecha": "2026-02-02",
+    "autoridad": "sat",
+    "motivo": "Primer lunes de febrero, en conmemoración del 5 de febrero",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-03-16",
+    "autoridad": "sat",
+    "motivo": "Tercer lunes de marzo, en conmemoración del 21 de marzo",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-04-02",
+    "autoridad": "sat",
+    "motivo": "Día inhábil para el SAT",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
+      "fecha_publicacion": "2025-12-28",
+      "fragmento": "2.1.6. Para los efectos del artículo 12, primer y segundo párrafos del CFF, se estará a lo siguiente: [...] II. Son días inhábiles para el SAT el 2 y 3 de abril de 2026."
+    }
+  },
+  {
+    "fecha": "2026-04-03",
+    "autoridad": "sat",
+    "motivo": "Día inhábil para el SAT",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
+      "fecha_publicacion": "2025-12-28",
+      "fragmento": "2.1.6. Para los efectos del artículo 12, primer y segundo párrafos del CFF, se estará a lo siguiente: [...] II. Son días inhábiles para el SAT el 2 y 3 de abril de 2026."
+    }
+  },
+  {
+    "fecha": "2026-05-01",
+    "autoridad": "sat",
+    "motivo": "1o. de mayo",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-05-05",
+    "autoridad": "sat",
+    "motivo": "5 de mayo",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-07-20",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-21",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-22",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-23",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-24",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-25",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-26",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-27",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-28",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-29",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-30",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-07-31",
+    "autoridad": "sat",
+    "motivo": "Primer periodo general de vacaciones de 2026",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "fecha_publicacion": "2026-07-09",
+      "fragmento": "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
+    }
+  },
+  {
+    "fecha": "2026-09-16",
+    "autoridad": "sat",
+    "motivo": "16 de septiembre",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-11-16",
+    "autoridad": "sat",
+    "motivo": "Tercer lunes de noviembre, en conmemoración del 20 de noviembre",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  },
+  {
+    "fecha": "2026-12-25",
+    "autoridad": "sat",
+    "motivo": "25 de diciembre",
+    "tipo": "descanso",
+    "fuente": {
+      "nombre": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "fecha_publicacion": "2026-04-09",
+      "fragmento": "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
+    }
+  }
+]

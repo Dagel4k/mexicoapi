@@ -1,0 +1,29 @@
+{
+  "dataset": "dias-inhabiles.cnbv",
+  "schema_version": 1,
+  "as_of": "2025-12-10",
+  "fetched_at": "2025-12-10T00:00:00Z",
+  "data_file": "dias-inhabiles.json",
+  "data_sha256": "5c4f2a4b490577e64d5e6cccdbd45336e4357bfd4662efa7d9baa5d8cd3aa592",
+  "records": 22,
+  "sources": [
+    {
+      "name": "Disposiciones de carácter general que señalan los días del año 2025 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender operaciones",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5746258&fecha=27/12/2024",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "Disposiciones de carácter general que señalan los días del año 2025 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender operaciones. Diario Oficial de la Federación, 27/12/2024. https://dof.gob.mx/nota_detalle.php?codigo=5746258&fecha=27/12/2024",
+      "published_at": "2024-12-27",
+      "raw": []
+    },
+    {
+      "name": "Disposiciones de carácter general que señalan los días del año 2026 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender sus operaciones",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5775684&fecha=10/12/2025",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "Disposiciones de carácter general que señalan los días del año 2026 en que las entidades financieras sujetas a la supervisión de la Comisión Nacional Bancaria y de Valores deberán cerrar sus puertas y suspender sus operaciones. Diario Oficial de la Federación, 10/12/2025. https://dof.gob.mx/nota_detalle.php?codigo=5775684&fecha=10/12/2025",
+      "published_at": "2025-12-10",
+      "raw": []
+    }
+  ]
+}
