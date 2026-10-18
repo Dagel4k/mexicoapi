@@ -321,12 +321,17 @@ describe("límite de peticiones", () => {
     expect(claves).toEqual(["ip:2001:db8:1:2::/64", "ip:2001:db8:1:2::/64", "ip:203.0.113.7"]);
   });
 
-  it("si el binding lanza, deja pasar", async () => {
+  it("si el binding lanza, deja pasar y lo registra en una línea", async () => {
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { binding } = limite(async () => {
-      throw new Error("sin servicio");
+      throw new TypeError("sin servicio: /ruta/interna");
     });
     const { respuesta } = await pedir("/v1", {}, { LIMITE: binding });
     expect(respuesta.status).toBe(200);
+    expect(aviso.mock.calls).toEqual([
+      ["mexicoapi: aviso: el límite de peticiones falló (TypeError); la petición pasa sin límite"],
+    ]);
+    aviso.mockRestore();
   });
 });
 

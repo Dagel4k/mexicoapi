@@ -1,4 +1,5 @@
 import type { Entorno } from "./entorno.js";
+import { nombreDeError } from "./registro.js";
 
 const HEXTETO = /^[0-9a-f]{1,4}$/i;
 
@@ -32,14 +33,20 @@ export function claveLimite(ip: string): string {
   return `ip:${(ip.includes(":") ? prefijo64(ip) : null) ?? ip}`;
 }
 
-/** Con el binding LIMITE, una IP que lo rebasa recibe 429; si el binding falla, se deja pasar. */
+/**
+ * Con el binding LIMITE, una IP que lo rebasa recibe 429. Si el binding falla, se deja pasar y
+ * queda un aviso en el registro: una caída del límite no tumba la API.
+ */
 export async function dentroDelLimite(peticion: Request, entorno: Entorno): Promise<boolean> {
   if (entorno.LIMITE === undefined) return true;
   const ip = peticion.headers.get("CF-Connecting-IP") ?? "desconocida";
   try {
     const { success } = await entorno.LIMITE.limit({ key: claveLimite(ip) });
     return success !== false;
-  } catch {
+  } catch (error) {
+    console.warn(
+      `mexicoapi: aviso: el límite de peticiones falló (${nombreDeError(error)}); la petición pasa sin límite`,
+    );
     return true;
   }
 }

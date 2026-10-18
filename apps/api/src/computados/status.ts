@@ -1,5 +1,6 @@
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { metaInterna } from "../cargas.js";
+import { nombreDeError } from "../registro.js";
 import { CACHE_STATUS, respuestaJson } from "../respuestas.js";
 import type { Contexto } from "../rutas.js";
 
@@ -40,7 +41,7 @@ const MEMORIA_MS = 60_000;
 const MS_POR_HORA = 3_600_000;
 
 // Memoria por isolate: dataset → lectura revisada (null si no había valor o no tenía forma).
-// Una falla de KV no se recuerda.
+// Una falla de KV no se recuerda: deja un aviso en el registro y el dataset queda unknown.
 const memoria = new Map<string, { corrida: EstadoCorrida | null; hasta: number }>();
 
 async function leerCorrida(
@@ -53,7 +54,10 @@ async function leerCorrida(
   let corrida: EstadoCorrida | null;
   try {
     corrida = aEstadoCorrida(await kv.get(`estado:${dataset}`, { type: "json", cacheTtl: 60 }));
-  } catch {
+  } catch (error) {
+    console.warn(
+      `mexicoapi: aviso: KV no respondió el estado de ${dataset} (${nombreDeError(error)}); queda unknown`,
+    );
     return null;
   }
   memoria.set(dataset, { corrida, hasta: ahora + MEMORIA_MS });

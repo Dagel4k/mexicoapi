@@ -46,6 +46,10 @@ export async function servirShard(
   if (asset.status !== 200) {
     await descartar(asset);
     if (asset.status !== 404) {
+      // Lo que se lanza lo registra manejar(); este 500 se arma aquí, así que se registra aquí.
+      console.error(
+        `mexicoapi: error interno: el asset respondió ${asset.status} en ${c.plantilla}`,
+      );
       return respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, c.url.pathname);
     }
     return typeof siFalta === "string"

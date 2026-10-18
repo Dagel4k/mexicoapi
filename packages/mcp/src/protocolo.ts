@@ -444,11 +444,17 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     // Solo un pedido (method e id) espera respuesta; notificaciones y respuestas, nunca.
     const esPedido =
       esObjeto(mensaje) && Object.hasOwn(mensaje, "method") && Object.hasOwn(mensaje, "id");
-    const alFallar = (): RespuestaJsonRpc | null => (esPedido ? errorInterno(id) : null);
+    // Un defecto: se responde sin detalles y queda una línea en el registro, con la clase del
+    // error y sin su mensaje, que podría traer datos del mensaje.
+    const alFallar = (error: unknown): RespuestaJsonRpc | null => {
+      const clase = error instanceof Error ? error.name : typeof error;
+      registrar(`error interno al atender un mensaje (${clase})`);
+      return esPedido ? errorInterno(id) : null;
+    };
     try {
       return Promise.resolve(atenderMensaje(mensaje)).catch(alFallar);
-    } catch {
-      return Promise.resolve(alFallar());
+    } catch (error) {
+      return Promise.resolve(alFallar(error));
     }
   }
 

@@ -443,6 +443,32 @@ describe("mensajes malformados (Review Focus 1)", () => {
   });
 });
 
+describe("un defecto fuera de las herramientas", () => {
+  it("responde error interno y lo registra en una línea, sin el mensaje del error", async () => {
+    let romper = false;
+    const quebradiza: Herramienta = {
+      ...eco,
+      name: "quebradiza",
+      // Un defecto del servidor: leer las anotaciones lanza después de registrarla.
+      get annotations() {
+        if (romper) throw new TypeError("SECRETO");
+        return eco.annotations;
+      },
+    };
+    const cliente = conectar({ herramientas: [eco, quebradiza] });
+    await cliente.inicializar();
+    romper = true;
+    const llamada = { name: "quebradiza", arguments: { texto: "hola" } };
+    expect(await cliente.pedir("tools/call", llamada, "q")).toEqual(
+      error("q", ERROR_INTERNO, "Error interno"),
+    );
+    expect(cliente.registros).toContain(
+      "mexicoapi-mcp: error interno al atender un mensaje (TypeError)",
+    );
+    expect(cliente.registros.join("\n")).not.toContain("SECRETO");
+  });
+});
+
 describe("registro que falla", () => {
   const roto = (): void => {
     throw new Error("stderr roto");
