@@ -156,10 +156,19 @@ describe("construirSitio", () => {
         "v1/municipios/01001.json",
         "v1/municipios/01002.json",
         "v1/municipios/09002.json",
+        "v1/openapi.json",
       ].sort(),
     );
     expect(resultado.archivos).toBe(archivos.length);
     expect(resultado.bytes).toBeGreaterThan(0);
+  });
+
+  it("escribe el documento OpenAPI con sangría de 2 espacios", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const texto = await readFile(join(salida, "v1", "openapi.json"), "utf8");
+    expect(texto).toBe(`${JSON.stringify(JSON.parse(texto), null, 2)}
+`);
+    expect(JSON.parse(texto).openapi).toBe("3.1.0");
   });
 
   it("escribe shards minificados con data y meta", async () => {
