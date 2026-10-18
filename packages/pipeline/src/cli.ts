@@ -16,7 +16,7 @@ import {
   restringirCliente,
 } from "./marco.js";
 import { DATASETS } from "./registro.js";
-import { resumenMarkdown } from "./resumen.js";
+import { type ErrorDeDataset, resumenMarkdown } from "./resumen.js";
 import { construirSitio } from "./sitio/construir.js";
 import { verificarDatos } from "./verificar.js";
 
@@ -26,11 +26,6 @@ export interface Entorno {
   ahora: () => Date;
   escribir: (texto: string) => void;
   escribirError: (texto: string) => void;
-}
-
-interface ErrorDataset {
-  dataset: string;
-  mensaje: string;
 }
 
 const USO = `Uso:
@@ -123,7 +118,7 @@ async function actualizar(
   const ctx: Contexto = { cliente: entorno.crearCliente(1000), fecha, raizDatos };
   const resultados: ResultadoCorrida[] = [];
   const detalles = new Map<string, Diferencias<unknown>>();
-  const errores: ErrorDataset[] = [];
+  const errores: ErrorDeDataset[] = [];
 
   for (const id of ids) {
     const def = DATASETS.get(id);
@@ -148,11 +143,7 @@ async function actualizar(
   }
 
   if (valores.resumen !== undefined) {
-    let md = resumenMarkdown(resultados, detalles);
-    if (errores.length > 0) {
-      md += `\n## Errores\n\n${errores.map((e) => `- ${e.dataset}: ${e.mensaje}`).join("\n")}\n`;
-    }
-    await escribirArchivo(`${valores.resumen}.md`, md);
+    await escribirArchivo(`${valores.resumen}.md`, resumenMarkdown(resultados, detalles, errores));
     await escribirArchivo(
       `${valores.resumen}.json`,
       `${JSON.stringify({ resultados, errores }, null, 2)}\n`,
