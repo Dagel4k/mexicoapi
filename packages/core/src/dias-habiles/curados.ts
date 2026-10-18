@@ -10,7 +10,7 @@ import type {
   TipoDiaCurado,
 } from "../datos/curados.js";
 import { CalendarioIncompletoError, DEL_CALENDARIO } from "../errores.js";
-import { esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
+import { diaDeLaSemana, esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
 import { type Calendario, crearCalendario } from "./calendario.js";
 import { avisosTransmisionCff, COBERTURA_CFF, diasDescansoCff, FUENTE_CFF_12 } from "./cff.js";
 import { type ResultadoDiasHabiles, sumarDiasHabiles } from "./sumar.js";
@@ -531,13 +531,46 @@ export interface ConsultaDiasHabilesCurado {
    * allá de la cobertura amplia contando solo fines de semana.
    */
   permitirIncompleto?: boolean | undefined;
+  /**
+   * Si los bancos cierran ese día (`feriadosBancarios` del calendario de la CNBV). Con el SAT y
+   * `declaraciones_pagos`, la advertencia de la prórroga lo revisa en el resultado; sin él, esa
+   * parte no se revisa.
+   */
+  feriadoBancario?: ((fecha: FechaISO) => boolean) | undefined;
+}
+
+/** "a", "a y b", "a, b y c". */
+const enLista = (partes: readonly string[]): string =>
+  partes.length < 2 ? partes.join("") : `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}`;
+
+/**
+ * El aviso de la prórroga del quinto párrafo del art. 12 del CFF para un plazo de declaraciones y
+ * pagos que vence en viernes, en un día de vacaciones del SAT (hábil en este plazo) o en un día de
+ * cierre bancario: según dónde se haga el trámite, el plazo se corre al siguiente día hábil. El
+ * resultado no la aplica (es el lado seguro); undefined si no hay nada que avisar.
+ */
+function avisoProrroga(
+  calendario: CalendarioCurado,
+  resultado: FechaISO,
+  feriadoBancario: ((fecha: FechaISO) => boolean) | undefined,
+): string | undefined {
+  const hechos: string[] = [];
+  if (diaDeLaSemana(resultado) === 5) hechos.push("viernes");
+  if (calendario.dias.some((d) => d.fecha === resultado && d.tipo === "vacaciones")) {
+    hechos.push("día de vacaciones del SAT");
+  }
+  if (feriadoBancario?.(resultado) === true) hechos.push("día de cierre bancario según la CNBV");
+  if (hechos.length === 0) return undefined;
+  return `El resultado (${resultado}) es ${enLista(hechos)}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 }
 
 /**
  * Suma días hábiles con un tipo de plazo del calendario, como la API. Fuera de la cobertura del
  * plazo lanza CalendarioIncompletoError con un `detalle` que dice por qué no la cubre. Con
  * `permitirIncompleto`, un plazo con respaldo descuenta también los días publicados fuera de su
- * cobertura y, si el cálculo pasa por ahí, lo advierte antes que las advertencias del núcleo.
+ * cobertura y, si el cálculo pasa por ahí, lo advierte antes que las advertencias del núcleo. En
+ * el SAT con `declaraciones_pagos`, al final avisa de la prórroga del quinto párrafo del art. 12
+ * si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario.
  * Lanza RangeError si el calendario no tiene ese plazo o los parámetros no son válidos, y
  * FechaFueraDeRangoError si el resultado pasaría de 9999.
  */
@@ -567,13 +600,25 @@ export function sumarDiasHabilesCurado(
     const detalle = detalleCurado(calendario, tipoPlazo, plazo, error);
     throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);
   }
-  if (!permitirIncompleto || respaldo === undefined) return resultado;
-  const fuera = primerDiaFueraDelPlazo(resultado, plazo.cobertura, calendario.amplia);
-  if (fuera === undefined) return resultado;
-  const tipos = faltan(calendario, plazo, (p) => dentro(fuera, p.cobertura));
-  if (tipos.length === 0) return resultado;
-  const aviso = `Calendario incompleto: ${calendario.autoridad.toUpperCase()} con tipo_plazo=${tipoPlazo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
-  return { ...resultado, advertencias: [aviso, ...resultado.advertencias] };
+  const antes: string[] = [];
+  const fuera =
+    permitirIncompleto && respaldo !== undefined
+      ? primerDiaFueraDelPlazo(resultado, plazo.cobertura, calendario.amplia)
+      : undefined;
+  const tipos =
+    fuera === undefined ? [] : faltan(calendario, plazo, (p) => dentro(fuera, p.cobertura));
+  if (tipos.length > 0) {
+    antes.push(
+      `Calendario incompleto: ${calendario.autoridad.toUpperCase()} con tipo_plazo=${tipoPlazo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
+    );
+  }
+  const prorroga =
+    calendario.autoridad === "sat" && tipoPlazo === "declaraciones_pagos"
+      ? avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario)
+      : undefined;
+  const despues = prorroga === undefined ? [] : [prorroga];
+  if (antes.length === 0 && despues.length === 0) return resultado;
+  return { ...resultado, advertencias: [...antes, ...resultado.advertencias, ...despues] };
 }
 
 /** El año con 4 cifras (`"0001"`); lanza RangeError si no es un entero de 1 a 9999. */

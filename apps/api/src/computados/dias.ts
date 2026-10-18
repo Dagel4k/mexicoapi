@@ -18,7 +18,7 @@ import {
   exigirAnio,
   sumarDiasHabilesCurado,
 } from "@mexicoapi/core/curados";
-import { calendarioCurado, congelar, type Meta, metaInterna } from "../cargas.js";
+import { calendarioCurado, congelar, feriadosDeLaCnbv, type Meta, metaInterna } from "../cargas.js";
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
@@ -113,17 +113,42 @@ function conCalendario(c: Contexto, responder: () => Response): Response {
 const respuestaDatos = (data: unknown, meta: Meta): Response =>
   respuestaJson({ data, meta }, { cache: CACHE_DATOS });
 
+const AVISO_SIN_CNBV =
+  "mexicoapi: aviso: el calendario de la CNBV no cargó; la advertencia de la prórroga del art. 12 no revisa los cierres bancarios";
+
+/**
+ * Los feriados bancarios para la advertencia de la prórroga del art. 12 del CFF, que solo se da
+ * con el SAT y `declaraciones_pagos`. Si el calendario de la CNBV no carga, esa parte no se
+ * revisa y queda un aviso en el registro; la respuesta sigue, sin un 500.
+ */
+async function feriadosParaLaProrroga(
+  c: Contexto,
+  autoridad: AutoridadCurada,
+  consulta: ConsultaDiasHabilesCurado,
+): Promise<((fecha: string) => boolean) | undefined> {
+  if (autoridad !== "sat" || consulta.tipoPlazo !== "declaraciones_pagos") return undefined;
+  const feriados = await feriadosDeLaCnbv(c.entorno);
+  if (feriados === undefined) console.warn(AVISO_SIN_CNBV);
+  return feriados;
+}
+
 /**
  * Un calendario curado con el núcleo: cada tipo de plazo con su cobertura y, con
- * `permitir_incompleto=true`, su respaldo y sus advertencias.
+ * `permitir_incompleto=true`, su respaldo y sus advertencias. En el SAT con
+ * `declaraciones_pagos`, también la de la prórroga del art. 12 (con los cierres bancarios).
  */
 async function diasHabilesCurados(
   c: Contexto,
   autoridad: AutoridadCurada,
   consulta: ConsultaDiasHabilesCurado,
 ): Promise<Response> {
-  const [meta, calendario] = await cargarCurado(c, autoridad, DOCS_HABILES);
-  return conCalendario(c, () => respuestaDatos(sumarDiasHabilesCurado(calendario, consulta), meta));
+  const [[meta, calendario], feriadoBancario] = await Promise.all([
+    cargarCurado(c, autoridad, DOCS_HABILES),
+    feriadosParaLaProrroga(c, autoridad, consulta),
+  ]);
+  return conCalendario(c, () =>
+    respuestaDatos(sumarDiasHabilesCurado(calendario, { ...consulta, feriadoBancario }), meta),
+  );
 }
 
 /**

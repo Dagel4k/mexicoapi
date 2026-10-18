@@ -70,12 +70,22 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
       const consulta: ConsultaDiasHabiles =
         autoridad === "sat" ? { autoridad, tipoPlazo, desde, dias } : { autoridad, desde, dias };
       const r = await api.diasHabiles(consulta);
+      const nucleo = m.mexicoapi.sumarDiasHabiles({
+        calendario: m.calendarios.calendario(autoridad, tipoPlazo),
+        desde,
+        dias,
+      });
+      // Nuevo: declaraciones_pagos vence el 22 de julio, de vacaciones del SAT: avisa de la
+      // prórroga del art. 12, como la API. El resultado es el mismo.
       expect(r.data).toEqual(
-        m.mexicoapi.sumarDiasHabiles({
-          calendario: m.calendarios.calendario(autoridad, tipoPlazo),
-          desde,
-          dias,
-        }),
+        tipoPlazo === "declaraciones_pagos"
+          ? {
+              ...nucleo,
+              advertencias: [
+                `El resultado (${nucleo.resultado}) es día de vacaciones del SAT. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`,
+              ],
+            }
+          : nucleo,
       );
       expect(r.meta).toEqual({ ...m.calendarios.meta[autoridad], docs: `${DOCS_API}dias-habiles` });
       expect(r.origen).toBe("paquete");

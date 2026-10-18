@@ -101,11 +101,20 @@ export const DIAS_HABILES: RutaPaquete = {
         meta: metaLft(n, "dias-habiles"),
       };
     }
-    const curado = (await calendarios()).calendarioCurado(autoridad);
+    const cal = await calendarios();
+    const curado = cal.calendarioCurado(autoridad);
     const tipoPlazo = tipo ?? "general";
+    // Los cierres bancarios de la CNBV, para la prórroga del art. 12 en declaraciones_pagos.
+    const feriadoBancario = cal.feriadoBancario;
     return {
       data: conCalendario(c, () =>
-        sumarDiasHabilesCurado(curado, { tipoPlazo, desde, dias, permitirIncompleto }),
+        sumarDiasHabilesCurado(curado, {
+          tipoPlazo,
+          desde,
+          dias,
+          permitirIncompleto,
+          feriadoBancario,
+        }),
       ),
       meta: conDocs(curado.meta, "dias-habiles"),
     };

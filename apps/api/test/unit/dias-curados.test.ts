@@ -38,6 +38,10 @@ const AVISO_GENERAL =
 const DETALLE_GENERAL = (fecha: string) =>
   `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.`;
 
+/** El aviso de la prórroga del quinto párrafo del art. 12 del CFF para `fecha`. */
+const PRORROGA = (fecha: string, hechos: string) =>
+  `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
+
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
 
@@ -167,14 +171,18 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     expect(general.pedidas).toEqual([RUTA_META, RUTA_SAT]);
 
     const declaraciones = await datos(sat("declaraciones_pagos", "2026-07-15", 10));
-    expect(declaraciones.cuerpo.data).toEqual(
-      delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10),
-    );
+    // Nuevo: el 29 de julio es de vacaciones del SAT (hábil en este plazo): avisa de la prórroga.
+    expect(declaraciones.cuerpo.data).toEqual({
+      ...delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10),
+      advertencias: [PRORROGA("2026-07-29", "día de vacaciones del SAT")],
+    });
     expect(declaraciones.cuerpo.data).toMatchObject({
       resultado: "2026-07-29",
       inhabiles_saltados: [],
-      advertencias: [],
     });
+    // declaraciones_pagos lee también el calendario de la CNBV, para los cierres bancarios (el
+    // meta y el SAT ya estaban en memoria).
+    expect(declaraciones.pedidas).toEqual([RUTA_CNBV]);
   });
 
   it.each([
@@ -190,7 +198,48 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
   ] as const)("%s: %s más 1 día hábil es %s", async (tipo, desde, resultado) => {
     const { cuerpo } = await datos(sat(tipo, desde, 1));
     expect(cuerpo.data.resultado).toBe(resultado);
-    expect(cuerpo.data).toEqual(delNucleo(SHARD_SAT, tipo, desde, 1));
+    // Nuevo: en declaraciones_pagos, un resultado en vacaciones del SAT avisa de la prórroga.
+    const vacaciones =
+      tipo === "declaraciones_pagos" && ["2026-07-20", "2026-04-02"].includes(resultado);
+    const nucleo = delNucleo(SHARD_SAT, tipo, desde, 1);
+    expect(cuerpo.data).toEqual(
+      vacaciones
+        ? { ...nucleo, advertencias: [PRORROGA(resultado, "día de vacaciones del SAT")] }
+        : nucleo,
+    );
+  });
+
+  describe("declaraciones_pagos y la prórroga del quinto párrafo del art. 12", () => {
+    it("un viernes y un cierre bancario de la CNBV avisan; el resultado no cambia", async () => {
+      const viernes = await datos(sat("declaraciones_pagos", "2026-07-16", 1));
+      expect(viernes.cuerpo.data).toMatchObject({
+        resultado: "2026-07-17",
+        advertencias: [PRORROGA("2026-07-17", "viernes")],
+      });
+      const bancos = await datos(sat("declaraciones_pagos", "2026-10-30", 1));
+      expect(bancos.cuerpo.data).toMatchObject({
+        resultado: "2026-11-02",
+        advertencias: [PRORROGA("2026-11-02", "día de cierre bancario según la CNBV")],
+      });
+      // general no la avisa ni lee el calendario de la CNBV.
+      reiniciarCargas();
+      const general = await datos(sat("general", "2026-10-30", 1));
+      expect(general.cuerpo.data).toMatchObject({ resultado: "2026-11-02", advertencias: [] });
+      expect(general.pedidas).toEqual([RUTA_META, RUTA_SAT]);
+    });
+
+    it("si el calendario de la CNBV no carga, avisa sin los cierres bancarios y no da 500", async () => {
+      const consola = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const sinCnbv = { [RUTA_CNBV]: undefined };
+      const bancos = await datos(sat("declaraciones_pagos", "2026-10-30", 1), sinCnbv);
+      expect(bancos.cuerpo.data).toMatchObject({ resultado: "2026-11-02", advertencias: [] });
+      const viernes = await datos(sat("declaraciones_pagos", "2026-07-16", 1), sinCnbv);
+      expect(viernes.cuerpo.data.advertencias).toEqual([PRORROGA("2026-07-17", "viernes")]);
+      expect(consola.mock.calls.map((c) => String(c[0]))).toEqual([
+        "mexicoapi: aviso: el calendario de la CNBV no cargó; la advertencia de la prórroga del art. 12 no revisa los cierres bancarios",
+        "mexicoapi: aviso: el calendario de la CNBV no cargó; la advertencia de la prórroga del art. 12 no revisa los cierres bancarios",
+      ]);
+    });
   });
 
   it("el 25 de diciembre se salta con su cita del CFF", async () => {
