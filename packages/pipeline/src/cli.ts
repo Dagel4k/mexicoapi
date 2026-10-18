@@ -32,6 +32,12 @@ const USO = `Uso:
 Datasets: ${[...DATASETS.keys()].join(", ")}
 `;
 
+const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
+  actualizar: ["seco", "fecha", "resumen", "datos"],
+  "bancos-historico": ["desde", "fecha", "datos"],
+  verificar: ["datos"],
+};
+
 function leer(argumentos: readonly string[]) {
   return parseArgs({
     args: [...argumentos],
@@ -48,6 +54,25 @@ function leer(argumentos: readonly string[]) {
 
 function mensajeDe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Meses AAAA-MM de `desde` a `hasta`, ambos incluidos. */
+function mesesEntre(desde: string, hasta: string): string[] {
+  const meses: string[] = [];
+  let anio = Number(desde.slice(0, 4));
+  let mes = Number(desde.slice(5, 7));
+  let actual = desde;
+  while (actual <= hasta) {
+    meses.push(actual);
+    if (mes === 12) {
+      anio++;
+      mes = 1;
+    } else {
+      mes++;
+    }
+    actual = `${String(anio).padStart(4, "0")}-${String(mes).padStart(2, "0")}`;
+  }
+  return meses;
 }
 
 function resolverFecha(valor: string | undefined, entorno: Entorno): string | null {
@@ -97,6 +122,9 @@ async function actualizar(
       entorno.escribir(
         `${id}: ${resultado.estado} (${resultado.registros} registros, +${resultado.altas} -${resultado.bajas} ~${resultado.cambios})\n`,
       );
+      if (resultado.estado === "requiere_revision") {
+        for (const motivo of resultado.motivos) entorno.escribir(`  - ${motivo}\n`);
+      }
     } catch (error) {
       const mensaje = mensajeDe(error);
       errores.push({ dataset: id, mensaje });
@@ -141,19 +169,32 @@ async function bancosHistorico(
     );
     return 1;
   }
+  const desde = valores.desde ?? "2010-01";
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(desde)) {
+    entorno.escribirError(`Mes inválido: ${desde} (se espera AAAA-MM)\n`);
+    return 1;
+  }
+  if (desde > fecha.slice(0, 7)) {
+    entorno.escribirError(`--desde (${desde}) es posterior al mes de ${fecha}\n`);
+    return 1;
+  }
   try {
-    const historico = await capturarHistoricoCep(
-      entorno.cliente,
-      valores.desde ?? "2010-01",
-      fecha,
-      entorno.escribir,
+    const historico = await capturarHistoricoCep(entorno.cliente, desde, fecha, entorno.escribir);
+    const omitidos = mesesEntre(desde, fecha.slice(0, 7)).filter(
+      (mes) => !historico.some((o) => o.fecha.startsWith(mes)),
     );
+    for (const mes of omitidos) {
+      entorno.escribirError(`bancos: sin datos del CEP en ${mes}; el historial queda con hueco\n`);
+    }
     const ctx: Contexto = { cliente: entorno.cliente, fecha, raizDatos };
     const { resultado } = await ejecutarDataset(crearBancos({ historico }), ctx, {
       anteriorInicial: registrosDesdeHistorico(historico),
     });
     entorno.escribir(`bancos: ${resultado.estado} (${resultado.registros} registros)\n`);
-    return resultado.estado === "requiere_revision" ? 3 : 0;
+    if (resultado.estado === "requiere_revision") {
+      for (const motivo of resultado.motivos) entorno.escribir(`  - ${motivo}\n`);
+    }
+    return resultado.estado === "requiere_revision" || omitidos.length > 0 ? 3 : 0;
   } catch (error) {
     entorno.escribirError(`bancos: ${mensajeDe(error)}\n`);
     return 1;
@@ -171,6 +212,18 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
   const { values, positionals } = parseado;
   const [comando, ...resto] = positionals;
   const raizDatos = values.datos ?? entorno.raizDatos;
+  const permitidas = comando === undefined ? undefined : OPCIONES_POR_COMANDO[comando];
+  if (permitidas !== undefined) {
+    const sobran = Object.keys(values).filter((k) => !permitidas.includes(k));
+    if (sobran.length > 0 || (comando !== "actualizar" && resto.length > 0)) {
+      const motivo =
+        sobran.length > 0
+          ? `Opciones que no aplican a ${comando}: ${sobran.map((k) => `--${k}`).join(", ")}`
+          : `Argumentos de más para ${comando}: ${resto.join(" ")}`;
+      entorno.escribirError(`${motivo}\n${USO}`);
+      return 1;
+    }
+  }
 
   switch (comando) {
     case "actualizar":

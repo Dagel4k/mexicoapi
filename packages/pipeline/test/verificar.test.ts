@@ -133,4 +133,19 @@ describe("verificarDatos", () => {
       "ajeno: directorio sin dataset registrado",
     );
   });
+
+  it("detecta textos fuera de NFC y manifiestos con llaves de más o no canónicos", async () => {
+    await reescribirDatos((r) =>
+      r.map((x, i) => (i === 0 ? { ...x, nombre: "Aguascalientes\u0301" } : x)),
+    );
+    expect((await verificarDatos(raiz)).join("\n")).toContain("no están en NFC");
+    await reescribirDatos((r) => r);
+    const m = JSON.parse(await readFile(manifiesto(), "utf8"));
+    await writeFile(manifiesto(), `${JSON.stringify({ ...m, extra: 1 }, null, 2)}\n`);
+    expect((await verificarDatos(raiz)).join("\n")).toContain("manifest.json inválido");
+    await writeFile(manifiesto(), JSON.stringify(m));
+    expect((await verificarDatos(raiz)).join("\n")).toContain(
+      "manifest.json no está en forma canónica",
+    );
+  });
 });

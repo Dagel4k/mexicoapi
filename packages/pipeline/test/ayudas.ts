@@ -24,6 +24,10 @@ export interface Opciones {
   cep?: Uint8Array;
   /** Estado HTTP forzado para las URL que contengan este texto. */
   estados?: Record<string, number>;
+  /** Instante de la corrida; por defecto 2026-10-17T18:00:00Z. */
+  ahora?: Date;
+  /** Respuesta alterna del CEP según la fecha ISO pedida; `undefined` usa `cep`. */
+  cepPorFecha?: (fecha: string) => string | undefined;
 }
 
 /** Entorno con `fetch` falso que sirve los fixtures de INEGI y Banxico. */
@@ -51,7 +55,10 @@ export async function crearEntorno(
     if (url === `${BASE}mgee/`) return new Response(mgee);
     const m = /mgem\/(\d{2})$/.exec(url);
     if (m?.[1] !== undefined) return new Response(municipios.get(m[1]));
-    if (url.startsWith("https://www.banxico.org.mx/cep/instituciones.do")) return new Response(cep);
+    if (url.startsWith("https://www.banxico.org.mx/cep/instituciones.do")) {
+      const [, d, mes, a] = /fecha=(\d{2})-(\d{2})-(\d{4})/.exec(url) ?? [];
+      return new Response(opciones.cepPorFecha?.(`${a}-${mes}-${d}`) ?? cep);
+    }
     if (url === URL_INFO) return new Response(html);
     if (decodeURI(url) === URL_PDF) return new Response(pdf);
     return new Response("no", { status: 404 });
@@ -61,7 +68,7 @@ export async function crearEntorno(
   return {
     cliente: crearCliente({ fetch: fetchFalso, esperar: async () => {}, intervaloMinimoMs: 0 }),
     raizDatos,
-    ahora: () => new Date("2026-10-17T18:00:00Z"),
+    ahora: () => opciones.ahora ?? new Date("2026-10-17T18:00:00Z"),
     escribir: (t) => void salida.push(t),
     escribirError: (t) => void errores.push(t),
     salida,
