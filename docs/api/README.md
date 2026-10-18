@@ -904,6 +904,7 @@ Los datos completos están en `/descargas/`:
 | `udis.json`, `.csv`, `.manifest.json` | UDIS |
 | `dias-inhabiles-cnbv.json`, `.csv`, `.manifest.json` | Días inhábiles de la CNBV |
 | `dias-inhabiles-sat.json`, `.csv`, `.manifest.json` | Días inhábiles del SAT |
+| `dias-inhabiles-coberturas.json`, `.csv` | Hasta dónde está completa la lista de días inhábiles de cada autoridad, por tipo de plazo |
 | `constantes-uma.json`, `.csv`, `.manifest.json` | UMA |
 | `constantes-salario-minimo.json`, `.csv`, `.manifest.json` | Salario mínimo |
 | `isr-tarifas.json`, `.csv`, `.manifest.json` | Tarifas de ISR |
@@ -920,9 +921,11 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash. El manifiesto es el mismo archivo de `data/`, así que su `data_file` conserva el nombre original: `estados.json`, `municipios.json` y `fix.json`, que en `/descargas/` se llaman `inegi-estados.json`, `inegi-municipios.json` y `tipo-cambio-fix.json` (`bancos.json` y `udis.json` no cambian). El hash `data_sha256` es el del archivo descargado.
 
+Las listas de días inhábiles no dicen por sí solas hasta dónde están completas: un día que no aparece puede ser hábil o caer fuera de lo que se ha cargado. `dias-inhabiles-coberturas` trae un renglón por autoridad y tipo de plazo, con `autoridad`, `tipo_plazo`, `desde` y `hasta`: el rango en que la lista de esa autoridad está completa para ese plazo. Es la misma cobertura que usa `/v1/dias-habiles` (ver [Cobertura del calendario](#cobertura-del-calendario)).
+
 Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
-`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis`, `dias_inhabiles` (CNBV y SAT), `uma`, `salario_minimo`, `isr_tramos` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
+`mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis`, `dias_inhabiles` (CNBV y SAT), `coberturas_calendario` (la cobertura de cada autoridad y tipo de plazo, como `dias-inhabiles-coberturas`), `uma`, `salario_minimo`, `isr_tramos` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
 
 ## Privacidad
 

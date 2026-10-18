@@ -16,7 +16,7 @@ import type {
   Udi,
   Uma,
 } from "@mexicoapi/core";
-import { sha256Hex } from "../canonico.js";
+import { jsonCanonico, sha256Hex } from "../canonico.js";
 import { leerCurado } from "../curado/leer.js";
 import {
   curadoDiasCnbv,
@@ -31,7 +31,7 @@ import { ErrorDatos } from "../errores.js";
 import { escribirDirectorioAtomico } from "../escritura.js";
 import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
-import { shardCalendario } from "./calendarios.js";
+import { type CoberturaCalendario, coberturasDe, shardCalendario } from "./calendarios.js";
 import { aCsv } from "./csv.js";
 import {
   type AniosConstantes,
@@ -89,6 +89,7 @@ const COLUMNAS_FUENTE = [
   "fuente_fragmento",
 ];
 const COLUMNAS_DIAS = ["fecha", "autoridad", "motivo", "tipo", ...COLUMNAS_FUENTE];
+const COLUMNAS_COBERTURAS = ["autoridad", "tipo_plazo", "desde", "hasta"];
 const COLUMNAS_UMA = ["anio", "diaria", "mensual", "anual", "vigencia_desde", ...COLUMNAS_FUENTE];
 const COLUMNAS_SALARIO = ["anio", "zona", "diario", "vigencia_desde", ...COLUMNAS_FUENTE];
 // Un renglón por tramo, numerado desde 1.
@@ -261,13 +262,16 @@ export async function construirSitio(opciones: {
   porAnio("fix", fix, (r) => r.fecha_publicacion);
   porAnio("udis", udis, (r) => r.fecha);
 
-  // Los calendarios de la CNBV y el SAT los arma el Worker con crearCalendario.
+  // Los calendarios de la CNBV y el SAT los arma el Worker con crearCalendario. Las descargas
+  // llevan aparte la cobertura de cada plazo: la lista de días no dice hasta dónde está completa.
+  const coberturasCalendario: CoberturaCalendario[] = [];
   for (const [c, def, autoridad] of [
     [diasCnbv, curadoDiasCnbv, "cnbv"],
     [diasSat, curadoDiasSat, "sat"],
   ] as const) {
     const calendario = shardCalendario(autoridad, c.registros, await coberturaDe(raiz, def));
     archivos.set(`v1/_internos/calendarios/${autoridad}.json`, json(calendario));
+    coberturasCalendario.push(...coberturasDe(calendario));
   }
 
   // `uma.json` es la lista completa: con ella el Worker responde la UMA vigente en una fecha.
@@ -358,6 +362,8 @@ export async function construirSitio(opciones: {
   };
   csvCurado(COLUMNAS_DIAS, diasCnbv, diasCnbv.registros);
   csvCurado(COLUMNAS_DIAS, diasSat, diasSat.registros);
+  descargas.set("dias-inhabiles-coberturas.json", jsonCanonico(coberturasCalendario));
+  descargas.set("dias-inhabiles-coberturas.csv", aCsv(COLUMNAS_COBERTURAS, coberturasCalendario));
   csvCurado(COLUMNAS_UMA, uma, uma.registros);
   csvCurado(COLUMNAS_SALARIO, salario, salario.registros);
   const tramos = isr.registros.flatMap((t) =>
@@ -386,6 +392,7 @@ export async function construirSitio(opciones: {
       tipoCambioFix: fix.registros,
       udis: udis.registros,
       diasInhabiles: [...diasCnbv.registros, ...diasSat.registros],
+      coberturasCalendario,
       uma: uma.registros,
       salarioMinimo: salario.registros,
       tarifasIsr: isr.registros,

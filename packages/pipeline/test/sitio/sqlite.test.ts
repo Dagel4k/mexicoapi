@@ -103,6 +103,12 @@ const diasInhabiles: DiaInhabilCurado[] = [
   vacaciones,
 ];
 
+const coberturasCalendario: DatosSqlite["coberturasCalendario"] = [
+  { autoridad: "cnbv", tipo_plazo: "general", desde: "2025-01-01", hasta: "2026-12-31" },
+  { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
+  { autoridad: "sat", tipo_plazo: "declaraciones_pagos", desde: "2026-01-01", hasta: "2026-12-31" },
+];
+
 const base: DatosSqlite = {
   estados,
   municipios,
@@ -110,6 +116,7 @@ const base: DatosSqlite = {
   tipoCambioFix,
   udis,
   diasInhabiles,
+  coberturasCalendario,
   uma: UMA_OFICIALES,
   salarioMinimo: SALARIOS_OFICIALES,
   tarifasIsr: TARIFAS_OFICIALES,
@@ -142,11 +149,12 @@ describe("construirSqlite", () => {
       n("tipo_cambio_fix"),
       n("udis"),
       n("dias_inhabiles"),
+      n("coberturas_calendario"),
       n("uma"),
       n("salario_minimo"),
       n("isr_tramos"),
       n("datasets"),
-    ]).toEqual([2, 2, 2, 3, 2, 3, 24, 10, 16, 33, 1]);
+    ]).toEqual([2, 2, 2, 3, 2, 3, 24, 3, 10, 16, 33, 1]);
     db.close();
   });
 
@@ -204,6 +212,7 @@ describe("construirSqlite", () => {
       [
         "bancos",
         "bancos_historial",
+        "coberturas_calendario",
         "datasets",
         "dias_inhabiles",
         "estados",
@@ -241,6 +250,7 @@ describe("construirSqlite", () => {
   it("falla si un curado repite su llave", async () => {
     const repetidos: Partial<DatosSqlite>[] = [
       { diasInhabiles: [...diasInhabiles, vacaciones] },
+      { coberturasCalendario: [...coberturasCalendario, ...coberturasCalendario.slice(0, 1)] },
       { uma: [...UMA_OFICIALES, UMA_OFICIALES[0] as DatosSqlite["uma"][number]] },
       {
         salarioMinimo: [
@@ -282,6 +292,17 @@ describe("construirSqlite", () => {
       "tipo TEXT 1 0",
       ...fuente,
     ]);
+    expect(columnas("coberturas_calendario")).toEqual([
+      "autoridad TEXT 1 1",
+      "tipo_plazo TEXT 1 2",
+      "desde TEXT 1 0",
+      "hasta TEXT 1 0",
+    ]);
+    expect(
+      db
+        .prepare("SELECT * FROM coberturas_calendario WHERE autoridad = 'sat' ORDER BY tipo_plazo")
+        .all(),
+    ).toEqual([coberturasCalendario[2], coberturasCalendario[1]]);
     expect(columnas("uma")).toEqual([
       "anio INTEGER 0 1",
       "diaria TEXT 1 0",

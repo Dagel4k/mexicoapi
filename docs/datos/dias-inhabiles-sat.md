@@ -43,6 +43,15 @@ La cobertura se declara por tipo de día en el YAML (`cobertura.descanso` y `cob
 
 Para un plazo general cuentan los dos tipos, así que la lista está completa donde se cruzan ambas coberturas. Para un plazo de declaraciones y pagos las vacaciones no cuentan y basta la cobertura de `descanso`. Fuera de la cobertura no se puede saber si un día es inhábil.
 
+Hoy `descanso` va del 2026-01-01 al 2026-12-31 y `vacaciones` del 2026-01-01 al 2026-11-30, porque el segundo periodo de vacaciones de 2026 no se ha publicado. Por tipo de plazo:
+
+| Tipo de plazo | Cobertura |
+| --- | --- |
+| `general` | del 2026-01-01 al 2026-11-30 |
+| `declaraciones_pagos` | del 2026-01-01 al 2026-12-31 |
+
+La lista de días por sí sola no dice hasta dónde está completa: en diciembre de 2026 no hay vacaciones listadas, y eso no quiere decir que no las haya. La cobertura de cada tipo de plazo viene aparte en `/descargas/dias-inhabiles-coberturas.json` y `.csv` y en la tabla `coberturas_calendario` del SQLite (con `autoridad` igual a `sat`), y la API la manda en el 422 `calendario-incompleto` y en las advertencias de `/v1/dias-inhabiles`.
+
 ## Dónde consultarlo
 
 | Forma | Ruta |
