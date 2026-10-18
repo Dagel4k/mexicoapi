@@ -1,4 +1,3 @@
-import { sumarDiasHabiles } from "mexicoapi";
 import { calendarioCurado } from "mexicoapi/datos/calendarios";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
@@ -203,8 +202,7 @@ describe("sumar_dias_habiles", () => {
   });
 
   it("fuera de la cobertura es error, salvo con permitir_incompleto, que lo advierte", async () => {
-    const general = SAT.general;
-    const desde = general.cobertura.hasta;
+    const desde = SAT.general.cobertura.hasta;
     const args = { autoridad: "sat", tipo_plazo: "general", desde, dias: 20 };
     esError(
       await llamar("sumar_dias_habiles", args),
@@ -213,14 +211,17 @@ describe("sumar_dias_habiles", () => {
     const r = await llamar("sumar_dias_habiles", { ...args, permitir_incompleto: true });
     const c = contenido(r);
     const datos = c.datos as { resultado: string; advertencias: string[] };
-    // Con permitir_incompleto cuenta los días publicados después de la cobertura (el respaldo).
-    const esperado = sumarDiasHabiles({
-      calendario: general.respaldo ?? general.calendario,
-      desde,
-      dias: 20,
-      permitirIncompleto: true,
-    });
-    expect(datos.resultado).toBe(esperado.resultado);
+    // Con permitir_incompleto también descuenta los días publicados después de la cobertura (el
+    // respaldo). Lo esperado se cuenta aquí, sin el núcleo: 20 días después de `desde` que no son
+    // sábado, domingo ni un día publicado del SAT (general los cuenta todos).
+    const publicados = new Set(SAT.dias.map((d) => d.fecha));
+    let esperado = desde;
+    for (let contados = 0; contados < 20; ) {
+      esperado = siguiente(esperado);
+      const dia = new Date(`${esperado}T00:00:00Z`).getUTCDay();
+      if (dia !== 0 && dia !== 6 && !publicados.has(esperado)) contados++;
+    }
+    expect(datos.resultado).toBe(esperado);
     expect(datos.advertencias).toHaveLength(1);
     expect(c.advertencias).toEqual([datos.advertencias[0]]);
     expect(texto(r)).toContain(`Advertencia: ${datos.advertencias[0]}`);
