@@ -1,7 +1,7 @@
 import { PassThrough, Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { ERROR_PARSEO, SOLICITUD_INVALIDA } from "../src/protocolo.js";
-import { ejecutarStdio, MAX_BYTES_MENSAJE } from "../src/stdio.js";
+import { ejecutarStdio, MAX_BYTES_MENSAJE, MS_GRACIA_CIERRE } from "../src/stdio.js";
 import { conectar, crearLenta, INFO } from "./ayudas.js";
 
 const PING = '{"jsonrpc":"2.0","id":"p","method":"ping"}';
@@ -210,6 +210,40 @@ describe("fin de la entrada y cierre", () => {
       result: { content: [{ text: "listo" }] },
     });
     expect(lenta.senales[0]?.aborted).toBe(false);
+  });
+
+  it("con EOF espera a lo sumo la gracia y cancela lo que siga en curso", async () => {
+    expect(MS_GRACIA_CIERRE).toBe(5000);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const lenta = crearLenta();
+      const cliente = conectar({ herramientas: [lenta.herramienta], msGraciaCierre: 5000 });
+      await cliente.inicializar();
+      cliente.escribir(
+        '{"jsonrpc":"2.0","id":"l","method":"tools/call","params":{"name":"lenta"}}\n',
+      );
+      await cliente.sinRespuesta();
+      cliente.entrada.end();
+      let termino = false;
+      void cliente.conexion.terminado.then(() => {
+        termino = true;
+      });
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(termino).toBe(false);
+      expect(lenta.senales[0]?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(termino).toBe(true);
+      expect(lenta.senales[0]?.aborted).toBe(true);
+      // La herramienta ignora la cancelación y termina después: su respuesta ya no sale.
+      lenta.soltar();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(cliente.lineas.join("\n")).not.toContain('"l"');
+      expect(cliente.registros).toContain(
+        "mexicoapi-mcp: la entrada se cerró y lo pendiente no terminó en 5000 ms; se cancela",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("con EOF y solo espacios pendientes termina sin escribir", async () => {
