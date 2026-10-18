@@ -64,6 +64,7 @@ export type { DetalleRfc, TipoRfc } from "./rfc.js";
 export { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "./rfc.js";
 export { revisarFix, revisarTipoPlazo } from "./rutas/combinaciones.js";
 export type { ProblemaConsulta } from "./rutas/parametros.js";
+export type { TipoProblema } from "./rutas/problemas.js";
 export { aUnaLinea } from "./texto.js";
 export type { CodigoError, ResultadoValidacion } from "./validacion.js";
 export { NOTA_VALIDACION } from "./validacion.js";
