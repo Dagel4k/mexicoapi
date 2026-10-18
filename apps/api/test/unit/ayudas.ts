@@ -48,7 +48,9 @@ export function crearAssets(
     });
     const encabezados = new Headers({ "Content-Type": "application/json" });
     if (asset.etag !== undefined) encabezados.set("ETag", asset.etag);
-    return new Response(cuerpo, { status: asset.status ?? 200, headers: encabezados });
+    const status = asset.status ?? 200;
+    const sinCuerpo = status === 204 || status === 304;
+    return new Response(sinCuerpo ? null : cuerpo, { status, headers: encabezados });
   };
   return { binding: { fetch } as unknown as Fetcher, pedidas, canceladas };
 }

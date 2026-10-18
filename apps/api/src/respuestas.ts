@@ -34,6 +34,9 @@ export function respuestaJson(
   return new Response(JSON.stringify(cuerpo), { status: opciones.status ?? 200, headers: h });
 }
 
+/** Único `detail` de un 500: nunca se exponen trazas ni mensajes internos. */
+export const DETALLE_ERROR_INTERNO = "Ocurrió un error interno.";
+
 const CAMPOS_FIJOS = new Set(["type", "title", "status", "detail", "instance"]);
 
 /** Problem+json (RFC 9457). Nunca debe llevar trazas ni mensajes internos. */
