@@ -463,7 +463,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - Sin red (siempre `openWorldHint: false`): `buscar_municipio`, `municipio`, `validar_clabe`, `banco_por_codigo`, `validar_rfc`, `validar_curp`, `validar_nss` y `codigo_postal`, que lee el catálogo que el usuario descargó con `sepomex sync` y, sin él, responde con error y el comando.
 - **Respuestas:** `structuredContent` con `datos`, `as_of` (la fecha de corte del dataset), la fuente con URL, `origen` (`api`, `paquete` o `cache_local`) y `advertencias`, para que el agente pueda citar; el texto dice lo mismo en español.
 - **Seguridad:** las descripciones de las herramientas son constantes del código, versionadas y probadas. No hay herramientas que escriban ni que hagan peticiones arbitrarias. Una CLABE, un RFC, una CURP o un NSS nunca salen del equipo, y los registros (en stderr) no traen argumentos.
-- **Pruebas:** unidad sobre flujos en memoria; integración con el binario compilado por stdio, también con el cliente oficial, que valida cada resultado contra su `outputSchema`; y el `.tgz` instalado con el de `mexicoapi` en un proyecto nuevo, con una prueba de humo en Node 22 y 24 en CI.
+- **Pruebas:** unidad sobre flujos en memoria; integración con el binario compilado por stdio, también con el cliente oficial, que valida cada resultado contra su `outputSchema`; y el `.tgz` instalado con el de `mexicoapi` en un proyecto nuevo, con una prueba de humo en CI en Node 22.13.0 (el piso de `engines`), 22.23.3 y 24.21.0.
 - **v1.1:** MCP remoto sin estado en Cloudflare (`createMcpHandler`), registro oficial de MCP y directorios de conectores de los asistentes.
 
 ## 12. Seguridad
@@ -502,7 +502,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 
   El sitio es parte del build: el paso 4 lo genera y el 5 lo prueba en workerd (páginas, `llms.txt` y el 404 de los assets).
 - **Workflows:**
-  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador) y `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22 y 24). El check `verify`, el que exige la protección de `main`, pasa solo si los cinco terminan bien;
+  - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 20, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador) y `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22.13.0, 22.23.3 y 24.21.0). El check `verify`, el que exige la protección de `main`, pasa solo si los cinco terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
