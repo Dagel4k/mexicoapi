@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { armarPublicable, manifiestoPublicable, principal } from "../../scripts/publicable.ts";
+import {
+  armarPublicable,
+  manifiestoPublicable,
+  principal,
+  revisarHistorial,
+} from "../../scripts/publicable.ts";
 
 // cp de verdad, salvo cuando una prueba pide que falle después de `copiasBuenas` llamadas.
 const fallo = vi.hoisted(() => ({ copiasBuenas: Number.POSITIVE_INFINITY }));
@@ -63,7 +68,7 @@ const MANIFIESTO = {
     ".": { types: "./dist/index.d.ts", import: "./dist/index.js", default: "./dist/index.js" },
     "./package.json": "./package.json",
   },
-  files: ["dist", "README.md", "LICENSE"],
+  files: ["dist", "README.md", "CHANGELOG.md", "LICENSE"],
   scripts: { build: "tsc", prepack: "node scripts/publicable.ts" },
   dependencies: {},
   devDependencies: { "@mexicoapi/core": "workspace:*", wrangler: "4.149.0" },
@@ -77,6 +82,7 @@ async function paqueteFalso(manifiesto: object = MANIFIESTO): Promise<void> {
   await escribir("sdk/dist/cli/index.js", "#!/usr/bin/env node\n");
   await escribir("sdk/README.md", "# mexicoapi\n");
   await escribir("sdk/LICENSE", "MIT\n");
+  await escribir("sdk/CHANGELOG.md", "# Cambios\n\n## 1.2.3 (sin publicar)\n\n- primera versión\n");
   await escribir("sdk/src/index.ts", "export const a = 1;\n");
   await escribir("sdk/node_modules/x/index.js", "\n");
 }
@@ -159,12 +165,54 @@ describe("manifiestoPublicable", () => {
   });
 });
 
+describe("revisarHistorial", () => {
+  const conHistorial = async (changelog: string | null): Promise<string> => {
+    await escribir("pkg/package.json", '{ "name": "mexicoapi", "version": "1.2.3" }\n');
+    if (changelog !== null) await escribir("pkg/CHANGELOG.md", changelog);
+    return join(dir, "pkg");
+  };
+
+  it("acepta un primer encabezado que empieza con la versión", async () => {
+    const carpeta = await conHistorial(
+      "# Cambios\n\n## 1.2.3 (sin publicar)\n\n## 1.2.2 (2026-01-01)\n",
+    );
+    await expect(revisarHistorial(carpeta)).resolves.toBeUndefined();
+    const fechada = await conHistorial("# Cambios\n\n## 1.2.3 (2026-10-20)\n");
+    await expect(revisarHistorial(fechada)).resolves.toBeUndefined();
+  });
+
+  it("el de packages/sdk empieza con su versión", async () => {
+    await expect(
+      revisarHistorial(fileURLToPath(new URL("../../", import.meta.url))),
+    ).resolves.toBeUndefined();
+  });
+
+  it("falla si falta el archivo", async () => {
+    await expect(revisarHistorial(await conHistorial(null))).rejects.toThrow(/CHANGELOG\.md/);
+  });
+
+  it("falla si el primer encabezado es de otra versión", async () => {
+    const carpeta = await conHistorial(
+      "# Cambios\n\n## 1.2.2 (2026-01-01)\n\n## 1.2.3 (sin publicar)\n",
+    );
+    await expect(revisarHistorial(carpeta)).rejects.toThrow(/1\.2\.2.*1\.2\.3/s);
+  });
+
+  it("no confunde 1.2.30 con 1.2.3 y falla sin encabezados", async () => {
+    const otra = await conHistorial("# Cambios\n\n## 1.2.30 (x)\n");
+    await expect(revisarHistorial(otra)).rejects.toThrow();
+    const vacio = await conHistorial("# Cambios\n");
+    await expect(revisarHistorial(vacio)).rejects.toThrow(/encabezado/);
+  });
+});
+
 describe("armarPublicable", () => {
   it("copia lo que lista files y escribe el manifiesto publicable", async () => {
     await paqueteFalso();
     const destino = join(dir, "publicable");
     expect(await armarPublicable(join(dir, "sdk"), destino)).toEqual(MANIFIESTO.files);
     expect(await listar("publicable")).toEqual([
+      "CHANGELOG.md",
       "LICENSE",
       "README.md",
       "dist/cli/index.js",
@@ -178,6 +226,15 @@ describe("armarPublicable", () => {
     expect(await leer("publicable/package.json")).toMatch(/^\{\n {2}"name": "mexicoapi",.*\}\n$/s);
     // El de packages/sdk no se toca.
     expect(JSON.parse(await leer("sdk/package.json"))).toEqual(MANIFIESTO);
+  });
+
+  it("falla sin dejar nada si el historial no es de la versión", async () => {
+    await paqueteFalso();
+    await escribir("sdk/CHANGELOG.md", "# Cambios\n\n## 0.0.1 (sin publicar)\n");
+    await expect(armarPublicable(join(dir, "sdk"), join(dir, "publicable"))).rejects.toThrow(
+      /0\.0\.1/,
+    );
+    await expect(readdir(join(dir, "publicable"))).rejects.toThrow();
   });
 
   it("acepta un destino vacío que ya existe", async () => {

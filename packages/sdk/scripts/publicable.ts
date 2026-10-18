@@ -1,5 +1,5 @@
 // Arma en otra carpeta el paquete `mexicoapi` tal como se publica: lo que lista `files` (dist,
-// README.md, LICENSE) y un package.json sin `devDependencies` ni `scripts`, que solo sirven en el
+// README.md, CHANGELOG.md, LICENSE) y un package.json sin `devDependencies` ni `scripts`, que solo sirven en el
 // monorepo (el núcleo ya viaja en dist/nucleo). npm pack y npm publish se corren en esa carpeta:
 // así el .tgz y lo que npm registra de la versión salen del mismo manifiesto.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
@@ -109,6 +109,31 @@ async function revisar(raiz: string, manifiesto: Readonly<Manifiesto>): Promise<
 }
 
 /**
+ * Revisa que `carpeta` (el paquete o su copia publicable) traiga un CHANGELOG.md cuyo primer
+ * encabezado `## ` empiece con la versión de su package.json, por ejemplo `## 0.1.0 (sin publicar)`
+ * o `## 0.1.0 (2026-10-20)`. El workflow de publicación lo usa antes de `npm publish`.
+ */
+export async function revisarHistorial(carpeta: string): Promise<void> {
+  const { version } = JSON.parse(
+    await readFile(join(carpeta, "package.json"), "utf8"),
+  ) as Manifiesto;
+  let historial: string;
+  try {
+    historial = await readFile(join(carpeta, "CHANGELOG.md"), "utf8");
+  } catch {
+    throw new Error(`falta CHANGELOG.md en ${carpeta}`);
+  }
+  const encabezado = /^## (\S.*)$/m.exec(historial)?.[1];
+  if (encabezado === undefined) throw new Error("CHANGELOG.md no tiene ningún encabezado ##");
+  const versionDelHistorial = encabezado.split(/\s/)[0];
+  if (versionDelHistorial !== version) {
+    throw new Error(
+      `el primer encabezado de CHANGELOG.md es "## ${encabezado}", pero la versión es ${String(version)}`,
+    );
+  }
+}
+
+/**
  * Arma en `destino` (que no existe o está vacío, fuera de `raiz`) el paquete de `raiz` tal como se
  * publica, con las dependencias del workspace en `versiones` (ver manifiestoPublicable). Si algo
  * falla, no deja nada a medias. Devuelve lo que copió de `files`.
@@ -135,6 +160,7 @@ export async function armarPublicable(
       await cp(join(raiz, entrada), join(destino, entrada), { recursive: true });
     }
     await writeFile(join(destino, "package.json"), `${JSON.stringify(publicable, null, 2)}\n`);
+    await revisarHistorial(destino);
   } catch (error) {
     if (existia) {
       for (const nombre of await readdir(destino)) {

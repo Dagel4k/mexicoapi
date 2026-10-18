@@ -51,13 +51,14 @@ describe("el package.json publicado", () => {
 });
 
 describe("npm pack", () => {
-  it("publica solo dist, LICENSE, README y package.json", () => {
+  it("publica solo dist, LICENSE, README, CHANGELOG y package.json", () => {
     expect(empaquetado.name).toBe("mexicoapi");
     const rutas = empaquetado.files.map((f) => f.path);
     expect(rutas).toEqual(
       expect.arrayContaining([
         "LICENSE",
         "README.md",
+        "CHANGELOG.md",
         "package.json",
         "dist/index.js",
         "dist/index.d.ts",
@@ -80,7 +81,9 @@ describe("npm pack", () => {
       ]),
     );
     for (const ruta of rutas) {
-      expect(ruta).toMatch(/^(dist\/[\w/-]+\.(js|d\.ts)|LICENSE|README\.md|package\.json)$/);
+      expect(ruta).toMatch(
+        /^(dist\/[\w/-]+\.(js|d\.ts)|LICENSE|README\.md|CHANGELOG\.md|package\.json)$/,
+      );
     }
   });
 });
