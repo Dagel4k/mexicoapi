@@ -88,26 +88,31 @@ const ZONAS: Readonly<Record<string, string>> = {
 };
 
 /** El problema de una combinación de argumentos, con los textos de las reglas de la API. */
-function problema({ tipo, anio, fecha, periodo }: Argumentos): string | null {
+type Problema = { tipo: "parametro-invalido" | "parametro-faltante"; detalle: string };
+
+const invalido = (detalle: string): Problema => ({ tipo: "parametro-invalido", detalle });
+const falta = (detalle: string): Problema => ({ tipo: "parametro-faltante", detalle });
+
+function problema({ tipo, anio, fecha, periodo }: Argumentos): Problema | null {
   if (tipo !== "isr" && periodo !== undefined) {
-    return "El parámetro periodo solo se acepta con tipo=isr.";
+    return invalido("El parámetro periodo solo se acepta con tipo=isr.");
   }
   if (tipo !== "uma" && fecha !== undefined) {
-    return "El parámetro fecha solo se acepta con tipo=uma.";
+    return invalido("El parámetro fecha solo se acepta con tipo=uma.");
   }
   if (tipo === "uma") {
     if (anio !== undefined && fecha !== undefined) {
-      return "Con tipo=uma indica solo uno de anio o fecha.";
+      return invalido("Con tipo=uma indica solo uno de anio o fecha.");
     }
     if (anio === undefined && fecha === undefined) {
-      return "Con tipo=uma falta anio (la UMA de ese año) o fecha (la vigente ese día).";
+      return falta("Con tipo=uma falta anio (la UMA de ese año) o fecha (la vigente ese día).");
     }
     return null;
   }
   if (tipo === "isr" && periodo === undefined) {
-    return "Con tipo=isr falta el parámetro periodo: mensual o anual.";
+    return falta("Con tipo=isr falta el parámetro periodo: mensual o anual.");
   }
-  return anio === undefined ? `Con tipo=${tipo} falta el parámetro anio.` : null;
+  return anio === undefined ? falta(`Con tipo=${tipo} falta el parámetro anio.`) : null;
 }
 
 export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
@@ -149,7 +154,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
     async ejecutar(args, { signal }) {
       const a = args as unknown as Argumentos;
       const mal = problema(a);
-      if (mal !== null) return resultadoError(mal);
+      if (mal !== null) return resultadoError(mal.tipo, mal.detalle);
       const op = { signal };
       const extra = { tipo: a.tipo };
       if (a.tipo === "uma") {
@@ -180,7 +185,10 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
         const zonas = r.data;
         const primera = zonas[0];
         if (primera === undefined) {
-          return resultadoError(`La respuesta no trae el salario mínimo de ${a.anio}.`);
+          return resultadoError(
+            "error-interno",
+            `La respuesta no trae el salario mínimo de ${a.anio}.`,
+          );
         }
         const lineas = [
           `Salario mínimo diario de ${a.anio}, desde el ${primera.vigencia_desde}:`,

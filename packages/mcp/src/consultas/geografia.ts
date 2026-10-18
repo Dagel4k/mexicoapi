@@ -85,10 +85,13 @@ export function buscarMunicipioHerramienta(): Herramienta {
         limite?: number;
       };
       if (!/[\p{L}\p{N}]/u.test(texto)) {
-        return resultadoError("El texto no tiene letras ni números para buscar.");
+        return resultadoError(
+          "parametro-invalido",
+          "El texto no tiene letras ni números para buscar.",
+        );
       }
       if (cve_ent !== undefined && estado(cve_ent) === undefined) {
-        return resultadoError(`No existe el estado ${cve_ent}.`);
+        return resultadoError("no-encontrado", `No existe el estado ${cve_ent}.`);
       }
       const todos = buscarMunicipio(texto, { cve_ent });
       const datos = todos.slice(0, limite).map(conEstado);

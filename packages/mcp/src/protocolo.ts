@@ -338,7 +338,7 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     } catch (error) {
       if (control.signal.aborted) return null;
       if (error instanceof ErrorHerramienta) {
-        return exito(id, formaResultado(resultadoError(error.message), sesion));
+        return exito(id, formaResultado(resultadoError(error.tipo, error.detalle), sesion));
       }
       const clase = error instanceof Error ? error.name : typeof error;
       registrar(`error interno en la herramienta ${definicion.name} (${clase})`);
@@ -375,11 +375,11 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     const errores = herramienta.validarEntrada(args);
     if (errores.length > 0) {
       const mensaje = `Argumentos inválidos para ${params.name}: ${errores.join("; ")}`;
-      return exito(id, formaResultado(resultadoError(mensaje), sesion));
+      return exito(id, formaResultado(resultadoError("parametro-invalido", mensaje), sesion));
     }
     if (herramienta.definicion.annotations.openWorldHint && enRed >= maxEnCurso) {
       const mensaje = "Hay demasiadas llamadas en curso; intenta de nuevo cuando terminen.";
-      return exito(id, formaResultado(resultadoError(mensaje), sesion));
+      return exito(id, formaResultado(resultadoError("demasiadas-peticiones", mensaje), sesion));
     }
     return ejecutar(id, herramienta, args, sesion);
   }

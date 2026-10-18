@@ -106,7 +106,10 @@ describe("validar_clabe", () => {
       { clabe: 2010077777777771 },
       { clabe: "1".repeat(65) },
     ]) {
-      esError(await llamar("validar_clabe", args), /^Argumentos inválidos para validar_clabe: /);
+      esError(
+        await llamar("validar_clabe", args),
+        /^\[parametro-invalido\] Argumentos inválidos para validar_clabe: /,
+      );
     }
   });
 });
@@ -147,7 +150,7 @@ describe("banco_por_codigo", () => {
     for (const codigo of ["12", "0123", "abc"]) {
       esError(
         await llamar("banco_por_codigo", { codigo }),
-        /^Argumentos inválidos para banco_por_codigo: /,
+        /^\[parametro-invalido\] Argumentos inválidos para banco_por_codigo: /,
       );
     }
   });

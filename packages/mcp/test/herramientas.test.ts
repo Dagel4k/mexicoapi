@@ -4,6 +4,7 @@ import {
   ErrorHerramienta,
   type Herramienta,
   resultadoError,
+  textoDeError,
 } from "../src/herramientas.js";
 import { eco, rechaza } from "./ayudas.js";
 
@@ -80,20 +81,39 @@ describe("crearRegistro", () => {
   });
 });
 
+// Todo error de herramienta empieza con su tipo de problema, como los de la API: así el modelo
+// distingue sin leer el español un dato que llegará después de uno que no existe.
 describe("ErrorHerramienta", () => {
-  it("es un Error con nombre propio y el mensaje tal cual", () => {
-    const error = new ErrorHerramienta("CLABE con letras.");
+  it("es un Error con nombre propio, su tipo y el texto con el tipo al inicio", () => {
+    const error = new ErrorHerramienta("parametro-invalido", "CLABE con letras.");
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe("ErrorHerramienta");
-    expect(error.message).toBe("CLABE con letras.");
+    expect(error.tipo).toBe("parametro-invalido");
+    expect(error.detalle).toBe("CLABE con letras.");
+    expect(error.message).toBe("[parametro-invalido] CLABE con letras.");
   });
 });
 
 describe("resultadoError", () => {
-  it("arma un resultado de herramienta con isError", () => {
-    expect(resultadoError("Fecha imposible: 2024-02-30.")).toEqual({
-      content: [{ type: "text", text: "Fecha imposible: 2024-02-30." }],
+  it("arma un resultado de herramienta con isError y el tipo al inicio del texto", () => {
+    expect(resultadoError("parametro-invalido", "Fecha imposible: 2024-02-30.")).toEqual({
+      content: [{ type: "text", text: "[parametro-invalido] Fecha imposible: 2024-02-30." }],
       isError: true,
     });
+  });
+});
+
+describe("textoDeError", () => {
+  it("pone el detalle en una línea, después del tipo", () => {
+    expect(textoDeError("no-encontrado", "No existe\nel banco.")).toBe(
+      "[no-encontrado] No existe el banco.",
+    );
+  });
+
+  it("sin tipo, o con uno de otra forma, usa error-interno", () => {
+    expect(textoDeError(undefined, "No se pudo conectar con la API.")).toBe(
+      "[error-interno] No se pudo conectar con la API.",
+    );
+    expect(textoDeError("raro tipo]", "Detalle.")).toBe("[error-interno] Detalle.");
   });
 });

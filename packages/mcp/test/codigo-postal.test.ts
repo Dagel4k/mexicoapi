@@ -36,7 +36,9 @@ describe("codigo_postal sin catálogo", () => {
     const r = await llamar("codigo_postal", { cp: "80000" });
     esError(r, /npx mexicoapi sepomex sync/);
     expect(texto(r)).toContain(AVISO_SEPOMEX);
-    expect(texto(r)).toContain("No hay catálogo de códigos postales en este equipo.");
+    expect(texto(r)).toContain(
+      "[dato-no-disponible] No hay catálogo de códigos postales en este equipo.",
+    );
     expect(texto(r)).not.toContain(trabajo.trabajo);
   });
 });
@@ -141,10 +143,13 @@ describe("codigo_postal con catálogo", () => {
   it("un código que no existe es error; uno mal formado, de argumentos", async () => {
     esError(
       await llamar("codigo_postal", { cp: "99999" }),
-      "El código postal 99999 no está en el catálogo de Correos de México descargado en este equipo.",
+      "[no-encontrado] El código postal 99999 no está en el catálogo de Correos de México descargado en este equipo.",
     );
     for (const cp of ["8000", "800000", "8000a", ""]) {
-      esError(await llamar("codigo_postal", { cp }), /^Argumentos inválidos para codigo_postal: /);
+      esError(
+        await llamar("codigo_postal", { cp }),
+        /^\[parametro-invalido\] Argumentos inválidos para codigo_postal: /,
+      );
     }
   });
 });
@@ -159,7 +164,7 @@ describe("codigo_postal con un catálogo dañado", () => {
       const r = await llamar("codigo_postal", { cp: "80000" });
       esError(
         r,
-        "El catálogo de códigos postales guardado en este equipo está dañado. Vuelve a descargarlo con: npx mexicoapi sepomex sync",
+        "[dato-no-disponible] El catálogo de códigos postales guardado en este equipo está dañado. Vuelve a descargarlo con: npx mexicoapi sepomex sync",
       );
     } finally {
       await otro.borrar();

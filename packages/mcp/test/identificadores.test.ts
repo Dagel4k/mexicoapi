@@ -73,9 +73,15 @@ describe("validar_rfc", () => {
   });
 
   it("un RFC vacío o solo con espacios es error", async () => {
-    esError(await llamar("validar_rfc", { rfc: "   " }), "El RFC está vacío.");
-    esError(await llamar("validar_rfc", { rfc: "" }), /^Argumentos inválidos para validar_rfc: /);
-    esError(await llamar("validar_rfc", {}), /^Argumentos inválidos para validar_rfc: /);
+    esError(await llamar("validar_rfc", { rfc: "   " }), "[parametro-invalido] El RFC está vacío.");
+    esError(
+      await llamar("validar_rfc", { rfc: "" }),
+      /^\[parametro-invalido\] Argumentos inválidos para validar_rfc: /,
+    );
+    esError(
+      await llamar("validar_rfc", {}),
+      /^\[parametro-invalido\] Argumentos inválidos para validar_rfc: /,
+    );
   });
 });
 
@@ -107,7 +113,10 @@ describe("validar_curp", () => {
   });
 
   it("una CURP vacía es error", async () => {
-    esError(await llamar("validar_curp", { curp: " \t" }), "La CURP está vacía.");
+    esError(
+      await llamar("validar_curp", { curp: " \t" }),
+      "[parametro-invalido] La CURP está vacía.",
+    );
   });
 });
 
@@ -130,6 +139,6 @@ describe("validar_nss", () => {
   });
 
   it("un NSS vacío es error", async () => {
-    esError(await llamar("validar_nss", { nss: "--" }), "El NSS está vacío.");
+    esError(await llamar("validar_nss", { nss: "--" }), "[parametro-invalido] El NSS está vacío.");
   });
 });

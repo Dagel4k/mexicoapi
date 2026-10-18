@@ -111,7 +111,8 @@ function herramientaValidadora<D>(v: Validador<D>): Herramienta {
     async ejecutar(args) {
       const r = v.validar(args[v.argumento] as string);
       if (r.errores.includes("vacio")) {
-        return resultadoError(`${v.articulo} ${v.sigla} está ${femenino ? "vacía" : "vacío"}.`);
+        const vacio = `${v.articulo} ${v.sigla} está ${femenino ? "vacía" : "vacío"}.`;
+        return resultadoError("parametro-invalido", vacio);
       }
       const lineas = r.valido
         ? [`${v.sigla} ${femenino ? "válida" : "válido"}${v.valido(r.detalle as D)}`]

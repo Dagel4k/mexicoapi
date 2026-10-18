@@ -537,7 +537,12 @@ describe("lotes", () => {
         jsonrpc: "2.0",
         id: "b",
         result: {
-          content: [{ type: "text", text: 'Argumentos inválidos para eco: falta "texto"' }],
+          content: [
+            {
+              type: "text",
+              text: '[parametro-invalido] Argumentos inválidos para eco: falta "texto"',
+            },
+          ],
           isError: true,
         },
       },
@@ -717,7 +722,7 @@ describe("tools/call", () => {
         {
           type: "text",
           text:
-            'Argumentos inválidos para eco: "texto" debe tener al menos 1 carácter; ' +
+            '[parametro-invalido] Argumentos inválidos para eco: "texto" debe tener al menos 1 carácter; ' +
             '"veces" debe ser menor o igual a 3; ' +
             '"color" no está permitido (se aceptan: "texto", "veces", "modo")',
         },
@@ -731,7 +736,9 @@ describe("tools/call", () => {
     await cliente.inicializar();
     const respuesta = await cliente.pedir("tools/call", { name: "eco" });
     expect(respuesta.result).toEqual({
-      content: [{ type: "text", text: 'Argumentos inválidos para eco: falta "texto"' }],
+      content: [
+        { type: "text", text: '[parametro-invalido] Argumentos inválidos para eco: falta "texto"' },
+      ],
       isError: true,
     });
   });
@@ -772,7 +779,9 @@ describe("tools/call", () => {
       isError: true,
     });
     expect((await cliente.pedir("tools/call", { name: "eco", arguments: null })).result).toEqual({
-      content: [{ type: "text", text: 'Argumentos inválidos para eco: falta "texto"' }],
+      content: [
+        { type: "text", text: '[parametro-invalido] Argumentos inválidos para eco: falta "texto"' },
+      ],
       isError: true,
     });
   });
@@ -809,14 +818,14 @@ describe("tools/call", () => {
       inputSchema: { type: "object", additionalProperties: false },
       annotations: { readOnlyHint: true, openWorldHint: false },
       ejecutar: async () => {
-        throw new ErrorHerramienta("Fecha imposible: 2024-02-30.");
+        throw new ErrorHerramienta("parametro-invalido", "Fecha imposible: 2024-02-30.");
       },
     };
     const cliente = conectar({ herramientas: [fecha] });
     await cliente.inicializar();
     const registrosAntes = cliente.registros.length;
     expect((await cliente.pedir("tools/call", { name: "fecha" })).result).toEqual({
-      content: [{ type: "text", text: "Fecha imposible: 2024-02-30." }],
+      content: [{ type: "text", text: "[parametro-invalido] Fecha imposible: 2024-02-30." }],
       isError: true,
     });
     expect(cliente.registros).toHaveLength(registrosAntes);
@@ -894,7 +903,7 @@ describe("tools/call", () => {
         content: [
           {
             type: "text",
-            text: "Hay demasiadas llamadas en curso; intenta de nuevo cuando terminen.",
+            text: "[demasiadas-peticiones] Hay demasiadas llamadas en curso; intenta de nuevo cuando terminen.",
           },
         ],
         isError: true,

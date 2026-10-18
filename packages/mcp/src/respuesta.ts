@@ -16,6 +16,7 @@ import {
   type Herramienta,
   type ResultadoHerramienta,
   resultadoError,
+  textoDeError,
 } from "./herramientas.js";
 
 /** Con qué responden las herramientas. */
@@ -78,8 +79,9 @@ export const TEXTO_NUMERICO = { type: "string", pattern: "^[0-9]+([.][0-9]+)?$" 
 const URL_HTTP = { type: "string", pattern: "^https?://" } as const;
 
 /** Error de la herramienta cuando la API respondió 200 con datos que no tienen la forma esperada. */
-export const DATOS_CON_OTRA_FORMA =
-  "La API respondió datos con otra forma de la esperada, así que no se usan. Revisa MEXICOAPI_BASE o actualiza mexicoapi-mcp.";
+const DETALLE_OTRA_FORMA =
+  "La API respondió datos con otra forma de la esperada, así que no se usan. Si MEXICOAPI_BASE apunta a otra API, revísala; si no, actualiza mexicoapi-mcp.";
+export const DATOS_CON_OTRA_FORMA = textoDeError("error-interno", DETALLE_OTRA_FORMA);
 
 const ESQUEMA_FUENTE = {
   type: "object",
@@ -162,24 +164,11 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
  */
 export { aUnaLinea };
 
-/** Un tipo de problema de la API como `no-encontrado`; otra forma no se copia al texto. */
-const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
-
-/**
- * El texto de un error de herramienta con el tipo de problema de la API al inicio
- * (`[dato-no-disponible] …`): así el modelo distingue sin leer el español un dato que todavía no
- * se publica (vuelve a intentar después) de uno que no existe. Sin tipo, solo el detalle.
- */
-export function textoDeProblema(tipo: string | undefined, detalle: string): string {
-  const texto = aUnaLinea(detalle);
-  return tipo !== undefined && TIPO_PROBLEMA.test(tipo) ? `[${tipo}] ${texto}` : texto;
-}
-
 /** El resultado de error de una regla de la API que el servidor revisa sin pedirla. */
 export const resultadoProblema = (problema: {
   tipo: string;
   detalle: string;
-}): ResultadoHerramienta => resultadoError(textoDeProblema(problema.tipo, problema.detalle));
+}): ResultadoHerramienta => resultadoError(problema.tipo, problema.detalle);
 
 /** Las fuentes sin repetir, en su orden. */
 export function unicas(fuentes: readonly Fuente[]): Fuente[] {
@@ -297,15 +286,13 @@ export async function consultar<T extends { origen: Origen; data: unknown }>(
   } catch (error) {
     if (signal.aborted) throw error;
     if (error instanceof MexicoApiError) {
-      throw new ErrorHerramienta(
-        textoDeProblema(error.tipo, aUnaLinea(error.detail) || aUnaLinea(error.message)),
-      );
+      throw new ErrorHerramienta(error.tipo, aUnaLinea(error.detail) || aUnaLinea(error.message));
     }
     throw error;
   }
   // Lo que viene de la API se revisa antes de usarlo: el texto se arma con esos campos.
   if (r.origen === "api" && revisarDatos !== undefined && revisarDatos(r.data).length > 0) {
-    throw new ErrorHerramienta(DATOS_CON_OTRA_FORMA);
+    throw new ErrorHerramienta("error-interno", DETALLE_OTRA_FORMA);
   }
   return r;
 }
@@ -324,7 +311,7 @@ export function conSalidaDeApiRevisada(herramienta: Herramienta): Herramienta {
       const r = await herramienta.ejecutar(args, contexto);
       const contenido = r.structuredContent;
       if (r.isError !== true && contenido?.origen === "api" && validar(contenido).length > 0) {
-        return resultadoError(DATOS_CON_OTRA_FORMA);
+        return resultadoError("error-interno", DETALLE_OTRA_FORMA);
       }
       return r;
     },
@@ -333,7 +320,8 @@ export function conSalidaDeApiRevisada(herramienta: Herramienta): Herramienta {
 
 /**
  * Anotaciones de las herramientas de solo lectura. `openWorldHint` solo si la herramienta puede
- * usar la red: las de datos que caducan con MEXICOAPI_BASE; sin ella ninguna sale del equipo.
+ * usar la red: las de datos que caducan, que consultan la API pública o la de MEXICOAPI_BASE. Con
+ * MEXICOAPI_SIN_RED=1 ninguna sale del equipo.
  */
 export const anotaciones = (openWorldHint: boolean) =>
   ({ readOnlyHint: true, openWorldHint, idempotentHint: true }) as const;

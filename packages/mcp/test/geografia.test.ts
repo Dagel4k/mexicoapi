@@ -84,15 +84,15 @@ describe("buscar_municipio", () => {
   it("rechaza un texto vacío o sin letras ni números, y un estado que no existe", async () => {
     esError(
       await llamar("buscar_municipio", { texto: "" }),
-      'Argumentos inválidos para buscar_municipio: "texto" debe tener al menos 1 carácter',
+      '[parametro-invalido] Argumentos inválidos para buscar_municipio: "texto" debe tener al menos 1 carácter',
     );
     esError(
       await llamar("buscar_municipio", { texto: " ¿!- " }),
-      "El texto no tiene letras ni números para buscar.",
+      "[parametro-invalido] El texto no tiene letras ni números para buscar.",
     );
     esError(
       await llamar("buscar_municipio", { texto: "san", cve_ent: "99" }),
-      "No existe el estado 99.",
+      "[no-encontrado] No existe el estado 99.",
     );
   });
 
@@ -108,7 +108,7 @@ describe("buscar_municipio", () => {
     ]) {
       esError(
         await llamar("buscar_municipio", args),
-        /^Argumentos inválidos para buscar_municipio: /,
+        /^\[parametro-invalido\] Argumentos inválidos para buscar_municipio: /,
       );
     }
   });
@@ -141,7 +141,10 @@ describe("municipio", () => {
       "[no-encontrado] No existe el municipio 99999.",
     );
     for (const cvegeo of ["2500", "25006a", ""]) {
-      esError(await llamar("municipio", { cvegeo }), /^Argumentos inválidos para municipio: /);
+      esError(
+        await llamar("municipio", { cvegeo }),
+        /^\[parametro-invalido\] Argumentos inválidos para municipio: /,
+      );
     }
   });
 });
