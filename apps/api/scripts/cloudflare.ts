@@ -37,6 +37,8 @@ export const TITULO_KV = "mexicoapi-estado";
 const BASE = "https://api.cloudflare.com/client/v4";
 const TIEMPO_MAXIMO_MS = 30_000;
 const POR_PAGINA = 100;
+// 5000 namespaces: muy por encima de lo que permite una cuenta; más allá algo anda mal.
+const MAX_PAGINAS = 50;
 
 type Objeto = Record<string, unknown>;
 
@@ -48,13 +50,21 @@ function mensajeDe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Cambia el token y la cuenta por `***` donde aparezcan. */
+/** Cambia el token y la cuenta, tal cual y codificados como van en una URL, por `***`. */
 function tapar(texto: string, c: ClienteCloudflare): string {
   let salida = texto;
   for (const secreto of [c.token, c.cuenta]) {
-    if (secreto.length > 0) salida = salida.replaceAll(secreto, "***");
+    if (secreto.length === 0) continue;
+    salida = salida.replaceAll(encodeURIComponent(secreto), "***").replaceAll(secreto, "***");
   }
   return salida;
+}
+
+/** Mensaje de un error con su causa, si la trae (fetch pone ahí el motivo de red). */
+function detalleDe(error: unknown): string {
+  const causa =
+    error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
+  return `${mensajeDe(error)}${causa}`;
 }
 
 async function pedir(
@@ -75,19 +85,30 @@ async function pedir(
       signal: AbortSignal.timeout(TIEMPO_MAXIMO_MS),
     });
   } catch (error) {
-    const causa =
-      error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
+    throw new ErrorCloudflare(tapar(`no se pudo ${operacion}: ${detalleDe(error)}`, c), 0, []);
+  }
+}
+
+/** Cuerpo de la respuesta. Una lectura que se corta es error, nunca un cuerpo vacío. */
+async function leerTexto(
+  c: ClienteCloudflare,
+  respuesta: Response,
+  operacion: string,
+): Promise<string> {
+  try {
+    return await respuesta.text();
+  } catch (error) {
     throw new ErrorCloudflare(
-      tapar(`no se pudo ${operacion}: ${mensajeDe(error)}${causa}`, c),
-      0,
+      tapar(`no se pudo leer la respuesta al ${operacion}: ${detalleDe(error)}`, c),
+      respuesta.status,
       [],
     );
   }
 }
 
-async function leerJson(respuesta: Response): Promise<unknown> {
+function jsonDe(texto: string): unknown {
   try {
-    return JSON.parse(await respuesta.text());
+    return JSON.parse(texto);
   } catch {
     return undefined;
   }
@@ -120,8 +141,12 @@ function errorDe(
   );
 }
 
-function inesperada(operacion: string, estado: number): ErrorCloudflare {
-  return new ErrorCloudflare(`respuesta inesperada de Cloudflare al ${operacion}`, estado, []);
+function inesperada(operacion: string, estado: number, detalle = ""): ErrorCloudflare {
+  return new ErrorCloudflare(
+    `respuesta inesperada de Cloudflare al ${operacion}${detalle}`,
+    estado,
+    [],
+  );
 }
 
 /** Pide y desenvuelve el sobre `{ success, errors, result, result_info }`. */
@@ -133,7 +158,7 @@ async function llamar(
   cuerpo?: { tipo: string; texto: string },
 ): Promise<{ result: unknown; result_info: unknown; estado: number }> {
   const respuesta = await pedir(c, operacion, metodo, ruta, cuerpo);
-  const sobre = await leerJson(respuesta);
+  const sobre = jsonDe(await leerTexto(c, respuesta, operacion));
   if (!respuesta.ok || !esObjeto(sobre) || sobre.success !== true) {
     throw errorDe(c, operacion, respuesta.status, sobre);
   }
@@ -154,8 +179,18 @@ async function buscarNamespace(c: ClienteCloudflare, titulo: string): Promise<st
       if (esObjeto(ns) && ns.title === titulo && typeof ns.id === "string") return ns.id;
     }
     const total = esObjeto(result_info) ? result_info.total_pages : undefined;
-    const hayMas = typeof total === "number" ? pagina < total : result.length === POR_PAGINA;
-    if (!hayMas) return null;
+    if (typeof total !== "number") {
+      if (result.length < POR_PAGINA) return null;
+      throw inesperada(operacion, estado, ": página llena sin result_info.total_pages");
+    }
+    if (total > MAX_PAGINAS) {
+      throw inesperada(
+        operacion,
+        estado,
+        `: ${total} páginas, más de las ${MAX_PAGINAS} que recorre`,
+      );
+    }
+    if (pagina >= total) return null;
   }
 }
 
@@ -177,7 +212,18 @@ export async function resolverNamespace(
   } catch (error) {
     // Otra corrida pudo crearlo entre la búsqueda y el POST (Cloudflare rechaza el título
     // repetido); si tampoco aparece ahora, el error del POST es el que explica la falla.
-    const creado = await buscarNamespace(c, titulo);
+    let creado: string | null;
+    try {
+      creado = await buscarNamespace(c, titulo);
+    } catch (otro) {
+      const { estado, errores } =
+        error instanceof ErrorCloudflare ? error : { estado: 0, errores: [] };
+      throw new ErrorCloudflare(
+        tapar(`${mensajeDe(error)}; y al volver a listar: ${mensajeDe(otro)}`, c),
+        estado,
+        errores,
+      );
+    }
     if (creado !== null) return creado;
     throw error;
   }
@@ -341,16 +387,37 @@ function leerResumen(resumen: unknown, codigo: number): Array<[string, EstadoKv[
 const rutaValor = (kvId: string, clave: string) =>
   `/storage/kv/namespaces/${encodeURIComponent(kvId)}/values/${encodeURIComponent(clave)}`;
 
-/** Valor JSON guardado en la clave; `undefined` si no existe o no es JSON. */
+/**
+ * Valor JSON guardado en la clave; `undefined` si no existe o no es JSON. Un cuerpo que no se
+ * pudo leer es error: tomarlo como vacío borraría un `last_success` válido.
+ */
 async function leerValor(c: ClienteCloudflare, kvId: string, clave: string): Promise<unknown> {
   const operacion = `leer ${clave}`;
   const respuesta = await pedir(c, operacion, "GET", rutaValor(kvId, clave));
   if (respuesta.status === 404) return undefined;
-  if (!respuesta.ok) throw errorDe(c, operacion, respuesta.status, await leerJson(respuesta));
-  return leerJson(respuesta);
+  const texto = await leerTexto(c, respuesta, operacion);
+  if (!respuesta.ok) throw errorDe(c, operacion, respuesta.status, jsonDe(texto));
+  return jsonDe(texto);
 }
 
-/** Escribe `estado:<dataset>` de cada dataset del resumen y devuelve los escritos, en orden. */
+/** Algunos datasets no se pudieron escribir; los demás sí. */
+export class ErrorEstados extends Error {
+  readonly escritos: string[];
+  readonly fallas: { dataset: string; mensaje: string }[];
+
+  constructor(escritos: string[], fallas: { dataset: string; mensaje: string }[]) {
+    const lista = fallas.map((f) => `${f.dataset} (${f.mensaje})`).join("; ");
+    super(`escritos: ${escritos.length > 0 ? escritos.join(", ") : "ninguno"}; fallaron: ${lista}`);
+    this.name = "ErrorEstados";
+    this.escritos = escritos;
+    this.fallas = fallas;
+  }
+}
+
+/**
+ * Escribe `estado:<dataset>` de cada dataset del resumen y devuelve los escritos, en orden.
+ * Intenta todos aunque alguno falle; si hubo fallas, al final lanza `ErrorEstados`.
+ */
 export async function escribirEstados(
   c: ClienteCloudflare,
   kvId: string,
@@ -360,15 +427,21 @@ export async function escribirEstados(
 ): Promise<string[]> {
   const pares = leerResumen(resumen, codigo);
   const escritos: string[] = [];
+  const fallas: { dataset: string; mensaje: string }[] = [];
   for (const [dataset, resultado] of pares) {
     const clave = `estado:${dataset}`;
-    const siguiente = siguienteEstado(await leerValor(c, kvId, clave), resultado, ahora);
-    await llamar(c, `escribir ${clave}`, "PUT", rutaValor(kvId, clave), {
-      tipo: "application/octet-stream",
-      texto: JSON.stringify(siguiente),
-    });
-    escritos.push(dataset);
+    try {
+      const siguiente = siguienteEstado(await leerValor(c, kvId, clave), resultado, ahora);
+      await llamar(c, `escribir ${clave}`, "PUT", rutaValor(kvId, clave), {
+        tipo: "application/octet-stream",
+        texto: JSON.stringify(siguiente),
+      });
+      escritos.push(dataset);
+    } catch (error) {
+      fallas.push({ dataset, mensaje: tapar(mensajeDe(error), c) });
+    }
   }
+  if (fallas.length > 0) throw new ErrorEstados(escritos, fallas);
   return escritos;
 }
 
@@ -417,9 +490,12 @@ function clienteDesde(entorno: EntornoCli): ClienteCloudflare | string {
     return `Faltan ${faltan.map(([k]) => k).join(" y ")}; ver docs/operacion/cloudflare.md.`;
   }
   // Un encabezado inválido haría que fetch repitiera el token en su mensaje de error.
-  const raras = Object.entries(valores).filter(([, v]) => /[^!-~]/.test(v));
-  if (raras.length > 0) {
-    return `${raras.map(([k]) => k).join(" y ")} tiene espacios o caracteres fuera de ASCII.`;
+  if (/[^!-~]/.test(valores.CLOUDFLARE_API_TOKEN)) {
+    return "CLOUDFLARE_API_TOKEN tiene espacios o caracteres fuera de ASCII.";
+  }
+  // Va en la URL: con otra forma aparecería codificada en los errores, donde nada la tapa.
+  if (!/^[0-9a-f]{32}$/.test(valores.CLOUDFLARE_ACCOUNT_ID)) {
+    return "CLOUDFLARE_ACCOUNT_ID no es un Account ID (32 caracteres hexadecimales en minúsculas).";
   }
   return {
     cuenta: valores.CLOUDFLARE_ACCOUNT_ID,
@@ -500,6 +576,9 @@ export async function principal(
     const destino = values.entorno as string;
     const salida = values.salida as string;
     if (!esEntorno(destino)) return usar(`--entorno inválido: ${destino}`);
+    if (relative(resolve(entorno.raizApi, "wrangler.jsonc"), resolve(salida)) === "") {
+      return usar("--salida no puede ser wrangler.jsonc: es la base de la configuración.");
+    }
     if (relative(resolve(entorno.raizApi), resolve(dirname(salida))) !== "") {
       return usar(
         `--salida debe quedar en la misma carpeta que wrangler.jsonc (${entorno.raizApi}): sus rutas son relativas a ella.`,
@@ -526,7 +605,9 @@ export async function principal(
   }
 }
 
-if (import.meta.main) {
+// import.meta.main existe desde Node 24.2; antes el script saldría con 0 sin hacer nada.
+const esPrincipal = (import.meta as { main?: boolean }).main;
+if (esPrincipal === true) {
   process.exitCode = await principal(process.argv.slice(2), {
     variables: process.env,
     raizApi: fileURLToPath(new URL("..", import.meta.url)),
@@ -534,4 +615,10 @@ if (import.meta.main) {
     escribir: (texto) => void process.stdout.write(texto),
     escribirError: (texto) => void process.stderr.write(texto),
   });
+} else if (
+  esPrincipal === undefined &&
+  resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)
+) {
+  process.stderr.write(`cloudflare.ts pide Node 24.2 o posterior (hay ${process.version}).\n`);
+  process.exitCode = 1;
 }
