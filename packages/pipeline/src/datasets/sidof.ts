@@ -10,8 +10,9 @@ import {
   type TipoCambioFix,
   type Udi,
 } from "@mexicoapi/core";
-import { PLAZOS, type PlazoCalendario, revisarPlazos } from "@mexicoapi/core/curados";
+import { feriadosBancarios } from "@mexicoapi/core/curados";
 import { z } from "zod";
+import { calendarioCurado } from "../curado/calendario.js";
 import { leerCurado } from "../curado/leer.js";
 import { curadoDiasCnbv, DIRECTORIO_CURADO } from "../curado/registro.js";
 import { ErrorDatos } from "../errores.js";
@@ -202,18 +203,16 @@ const repetidos = (valores: readonly string[]): string[] => {
 };
 
 /**
- * Los días de descanso de la CNBV dentro de la cobertura de su calendario (la del plazo
- * `general`, la misma que usa la API). Solo un día de descanso cierra los bancos: unas
- * vacaciones administrativas no detienen el FIX. Recibe el YAML ya revisado (`leerCurado`).
+ * Los días de descanso de la CNBV dentro de la cobertura de su calendario: `feriadosBancarios`
+ * del núcleo sobre el calendario que arman la API y el paquete. Solo un día de descanso cierra
+ * los bancos: unas vacaciones administrativas no detienen el FIX. Recibe el YAML ya revisado
+ * (`leerCurado`); lanza ErrorDatos si con él no se arma el calendario.
  */
 export function descansosBancarios(
   cobertura: CoberturaCurada,
   registros: readonly DiaInhabilCurado[],
 ): (fecha: FechaISO) => boolean {
-  const { plazos } = revisarPlazos(PLAZOS.cnbv, cobertura, registros);
-  const { desde, hasta } = (plazos.general as PlazoCalendario).cobertura;
-  const fechas = new Set(registros.filter((r) => r.tipo === "descanso").map((r) => r.fecha));
-  return (fecha) => fecha >= desde && fecha <= hasta && fechas.has(fecha);
+  return feriadosBancarios(calendarioCurado("cnbv", registros, cobertura));
 }
 
 /**

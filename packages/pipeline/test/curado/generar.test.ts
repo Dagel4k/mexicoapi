@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
+import { shardCalendario } from "../../src/curado/calendario.js";
 import { archivosCurado } from "../../src/curado/generar.js";
 import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado } from "../../src/curado/leer.js";
 import type { DefinicionCurado } from "../../src/curado/registro.js";
 import { curadoDiasSat, curadoTarifasIsr, curadoUma } from "../../src/curado/registro.js";
-import { shardCalendario } from "../../src/sitio/calendarios.js";
 import { YAML_ISR, YAML_SAT, YAML_UMA } from "./ejemplos.js";
 
 const LICENCIA_DOF =

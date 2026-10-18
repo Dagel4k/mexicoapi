@@ -1148,22 +1148,27 @@ describe("revisar", () => {
           nombre: "n",
           url: "https://dof.gob.mx/",
           fecha_publicacion: fecha,
-          fragmento: "f",
+          // El calendario cita con ella los fines de semana, como el que arma la API.
+          fragmento: "IX. Los sábados y domingos.",
         },
       });
-      const esDescanso = descansosBancarios(
-        { descanso: { desde: "2026-01-01", hasta: "2026-12-31" } },
-        [
-          dia("2026-11-02", "descanso"),
-          dia("2026-11-16", "vacaciones"),
-          dia("2027-01-01", "descanso"),
-        ],
-      );
+      const cobertura = { descanso: { desde: "2026-01-01", hasta: "2026-12-31" } };
+      const esDescanso = descansosBancarios(cobertura, [
+        dia("2026-11-02", "descanso"),
+        dia("2026-11-16", "vacaciones"),
+      ]);
       expect(esDescanso("2026-11-02")).toBe(true);
       // Unas vacaciones administrativas no cierran los bancos: el DOF publica el FIX.
       expect(esDescanso("2026-11-16")).toBe(false);
       expect(esDescanso("2026-11-17")).toBe(false);
       expect(esDescanso("2027-01-01")).toBe(false);
+      // Un día fuera de la cobertura no arma calendario (leerCurado ya lo rechaza en el YAML).
+      expect(() =>
+        descansosBancarios(cobertura, [
+          dia("2026-11-02", "descanso"),
+          dia("2027-01-01", "descanso"),
+        ]),
+      ).toThrow(ErrorDatos);
     });
 
     it("un YAML de la CNBV con un día de otro tipo detiene la corrida", async () => {

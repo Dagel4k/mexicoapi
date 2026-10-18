@@ -17,6 +17,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { jsonCanonico, sha256Hex } from "../canonico.js";
+import { shardCalendario } from "../curado/calendario.js";
 import { leerCurado } from "../curado/leer.js";
 import {
   curadoDiasCnbv,
@@ -31,7 +32,7 @@ import { ErrorDatos } from "../errores.js";
 import { escribirDirectorioAtomico } from "../escritura.js";
 import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
-import { type CoberturaCalendario, coberturasDe, shardCalendario } from "./calendarios.js";
+import { type CoberturaCalendario, coberturasDe } from "./calendarios.js";
 import { aCsv } from "./csv.js";
 import {
   type AniosConstantes,

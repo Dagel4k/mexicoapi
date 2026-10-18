@@ -6,7 +6,7 @@ import type {
   Manifiesto,
 } from "@mexicoapi/core";
 import { jsonCanonico, ordenarPorClave, sha256Hex } from "../canonico.js";
-import { shardCalendario } from "../sitio/calendarios.js";
+import { shardCalendario } from "./calendario.js";
 import type { FuenteCurada } from "./esquemas.js";
 import type { DocumentoCurado } from "./leer.js";
 import type { DefinicionCurado } from "./registro.js";

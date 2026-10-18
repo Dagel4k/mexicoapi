@@ -16,6 +16,7 @@ import {
 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
+import { type ShardCalendario, shardCalendario } from "../../src/curado/calendario.js";
 import { curarDatos } from "../../src/curado/curar.js";
 import { leerCurado } from "../../src/curado/leer.js";
 import {
@@ -28,11 +29,7 @@ import {
 } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
-import {
-  coberturasDe,
-  type ShardCalendario,
-  shardCalendario,
-} from "../../src/sitio/calendarios.js";
+import { coberturasDe } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
