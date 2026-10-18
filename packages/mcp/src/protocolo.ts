@@ -296,7 +296,8 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
   function listar(id: IdSolicitud, params: unknown, sesion: VersionProtocolo): RespuestaJsonRpc {
     const lista = listas.get(sesion) as Record<string, unknown>[];
     let inicio = 0;
-    if (esObjeto(params) && Object.hasOwn(params, "cursor")) {
+    // Un cursor null es como no mandarlo: algunos clientes lo envían en la primera página.
+    if (esObjeto(params) && Object.hasOwn(params, "cursor") && params.cursor !== null) {
       const desplazamiento = leerCursor(params.cursor, lista.length);
       if (desplazamiento === null) {
         return respuestaError(id, PARAMETROS_INVALIDOS, "Cursor inválido");
@@ -348,7 +349,8 @@ export function crearServidor(opciones: OpcionesServidor): Servidor {
     if (!esObjeto(params) || typeof params.name !== "string") {
       return respuestaError(id, PARAMETROS_INVALIDOS, "tools/call necesita name (texto)");
     }
-    const args = Object.hasOwn(params, "arguments") ? params.arguments : {};
+    // arguments null es como no mandarlos: se valida {}.
+    const args = params.arguments ?? {};
     if (!esObjeto(args)) {
       return respuestaError(id, PARAMETROS_INVALIDOS, "arguments debe ser un objeto");
     }

@@ -626,7 +626,6 @@ describe("tools/list", () => {
     "basura",
     "",
     7,
-    null,
     Buffer.from("o:0").toString("base64url"),
     Buffer.from("o:99").toString("base64url"),
     Buffer.from("o:-2").toString("base64url"),
@@ -638,6 +637,16 @@ describe("tools/list", () => {
     expect(await cliente.pedir("tools/list", { cursor }, "l")).toEqual(
       error("l", PARAMETROS_INVALIDOS, "Cursor inválido"),
     );
+  });
+
+  it("cursor null es como no mandarlo: la primera página", async () => {
+    const cliente = conectar({ porPagina: 2 });
+    await cliente.inicializar();
+    const sinCursor = await cliente.pedir("tools/list");
+    expect(await cliente.pedir("tools/list", { cursor: null }, "n")).toEqual({
+      ...sinCursor,
+      id: "n",
+    });
   });
 
   it("las definiciones que se publican no cambian si alguien muta el objeto original", async () => {
@@ -719,13 +728,27 @@ describe("tools/call", () => {
     [{ name: 3 }, "tools/call necesita name (texto)"],
     [{ name: "eco", arguments: [] }, "arguments debe ser un objeto"],
     [{ name: "eco", arguments: "texto=hola" }, "arguments debe ser un objeto"],
-    [{ name: "eco", arguments: null }, "arguments debe ser un objeto"],
   ])("params %j da Invalid params", async (params, mensaje) => {
     const cliente = conectar();
     await cliente.inicializar();
     expect(await cliente.pedir("tools/call", params, "c")).toEqual(
       error("c", PARAMETROS_INVALIDOS, mensaje),
     );
+  });
+
+  it("arguments null es como no mandarlos: se valida {}", async () => {
+    const cliente = conectar();
+    await cliente.inicializar();
+    expect(
+      (await cliente.pedir("tools/call", { name: "rechaza", arguments: null })).result,
+    ).toEqual({
+      content: [{ type: "text", text: "No hay dato para esa fecha." }],
+      isError: true,
+    });
+    expect((await cliente.pedir("tools/call", { name: "eco", arguments: null })).result).toEqual({
+      content: [{ type: "text", text: 'Argumentos inválidos para eco: falta "texto"' }],
+      isError: true,
+    });
   });
 
   it("tools/call sin params da Invalid params", async () => {
