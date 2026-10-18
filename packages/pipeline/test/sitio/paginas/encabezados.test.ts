@@ -131,7 +131,7 @@ describe("_headers", () => {
   });
 
   // Una regla `/*` chocaría con la CSP, el nosniff y la caché de `/descargas/*` y de cada ruta
-  // del sitio. El 404 es una página estática sin scripts que no repite nada de la petición.
+  // del sitio. El 404 lleva su CSP y su referrer en meta (prueba de no-encontrado).
   it("las rutas que no existen no reciben reglas", () => {
     expect(reglas.some((r) => r.ruta === "/*")).toBe(false);
     for (const ruta of ["/wp-admin", "/v2", "/404.html", "/index.html", "/estado"]) {

@@ -1,3 +1,5 @@
+import { CSP_404 } from "./encabezados.js";
+
 const ENTIDADES: Readonly<Record<string, string>> = {
   "&": "&amp;",
   "<": "&lt;",
@@ -69,9 +71,24 @@ export interface Documento {
   cuerpo: string;
   /** Módulos del mismo origen (`/sitio.js`), sin scripts en línea: la CSP no los permite. */
   scripts?: readonly string[];
+  /**
+   * Para la página que se sirve sin reglas de `_headers` (el 404): su CSP y su política de
+   * referrer van en `<meta>`, antes de cualquier recurso.
+   */
+  seguridadEnMeta?: boolean;
 }
 
-export function documento({ titulo, descripcion, cuerpo, scripts = [] }: Documento): string {
+const SEGURIDAD_EN_META = `<meta http-equiv="Content-Security-Policy" content="${CSP_404}">
+<meta name="referrer" content="no-referrer">
+`;
+
+export function documento({
+  titulo,
+  descripcion,
+  cuerpo,
+  scripts = [],
+  seguridadEnMeta = false,
+}: Documento): string {
   const modulos = scripts.map((src) => {
     if (!RUTA_SCRIPT.test(src)) throw new Error(`script fuera del sitio: ${src}`);
     return `<script type="module" src="${src}"></script>\n`;
@@ -80,7 +97,7 @@ export function documento({ titulo, descripcion, cuerpo, scripts = [] }: Documen
 <html lang="es-MX">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+${seguridadEnMeta ? SEGURIDAD_EN_META : ""}<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escaparHtml(titulo)}</title>
 <meta name="description" content="${escaparHtml(descripcion)}">
 <meta name="color-scheme" content="light dark">
