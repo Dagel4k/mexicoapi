@@ -1074,6 +1074,9 @@ describe("con los datos reales del repositorio", () => {
       .map((href) => href.slice(URL_ARCHIVOS.length + 1));
     expect(enlaces.length).toBeGreaterThanOrEqual(DATASETS.size + CURADOS.length + 5);
     expect(enlaces).toContain("docs/datos/inegi-estados.md");
+    // La ruta de cada dataset sale con sus parámetros obligatorios y el & escapado.
+    expect(inicio).toContain("<code>/v1/dias-inhabiles?autoridad=cnbv&amp;anio={anio}</code>");
+    expect(inicio).toContain("<code>/v1/udis?fecha={fecha}</code>");
     for (const ruta of enlaces) {
       await expect(readFile(join(repo, ruta)), ruta).resolves.toBeDefined();
     }
