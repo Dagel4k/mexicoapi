@@ -438,7 +438,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - `{ offline: true }` fuerza el modo sin red; `/v1/status` solo existe en la API.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
   - `mexicoapi/sepomex` y la CLI piden Node (desde 20): la caché se guarda en JSON y, desde Node 22.13 (`node:sqlite`), también en SQLite.
-  - Las pruebas instalan el `.tgz` de `npm pack` en un proyecto nuevo: una prueba de humo sin Vitest corre en CI en Node 20, 22 y 24, y un Worker mínimo que importa las entradas universales corre en workerd con `unstable_startWorker`, sin `nodejs_compat` (sección 13).
+  - Las pruebas instalan el `.tgz` de `npm pack` en un proyecto nuevo: una prueba de humo sin Vitest corre en CI en Node 20, 22, 24 y 26, y un Worker mínimo que importa las entradas universales corre en workerd con `unstable_startWorker`, sin `nodejs_compat` (sección 13).
 
 ## 11. Servidor MCP (`mexicoapi-mcp`)
 
