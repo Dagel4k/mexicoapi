@@ -1,8 +1,16 @@
 import type { TipoCambioFix, Udi } from "../datos/indicadores.js";
 import type { Fuente } from "../dias-habiles/tipos.js";
-import { aDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
+import { SerieIncompletaError } from "../errores.js";
+import { aDias, deDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
 
-/** Fechas del primer y del último registro de la serie completa, aunque se consulte un tramo. */
+/**
+ * Rango de fechas de una serie, con los dos extremos incluidos.
+ *
+ * Como cobertura, va del primer al último registro de la serie completa: está completa hasta
+ * `hasta`. Como tramo, son las fechas que cubre la parte de la serie que se pasa a la consulta
+ * (con shards por año, del 1 de enero al 31 de diciembre de los años cargados, recortado a la
+ * cobertura): el tramo trae todos los registros de esas fechas y ninguno de otras.
+ */
 export interface CoberturaSerie {
   desde: FechaISO;
   hasta: FechaISO;
@@ -28,13 +36,35 @@ export const FUENTE_CFF_20: Fuente = Object.freeze({
 const SIN_DATO: Consulta<never> = Object.freeze({ tipo: "sin_dato" });
 const NO_DISPONIBLE: Consulta<never> = Object.freeze({ tipo: "no_disponible" });
 
-function validarEntrada(cobertura: CoberturaSerie, fecha: FechaISO): void {
-  if (!esFechaIsoValida(fecha)) throw new RangeError(`Fecha ISO inválida: ${fecha}`);
-  if (!esFechaIsoValida(cobertura.desde) || !esFechaIsoValida(cobertura.hasta)) {
-    throw new RangeError("La cobertura debe tener fechas ISO válidas");
+function validarRango(rango: CoberturaSerie, nombre: "La cobertura" | "El tramo"): void {
+  if (!esFechaIsoValida(rango.desde) || !esFechaIsoValida(rango.hasta)) {
+    throw new RangeError(`${nombre} debe tener fechas ISO válidas`);
   }
-  if (cobertura.desde > cobertura.hasta) {
-    throw new RangeError("La cobertura tiene desde posterior a hasta");
+  if (rango.desde > rango.hasta) {
+    throw new RangeError(`${nombre} tiene desde posterior a hasta`);
+  }
+}
+
+function validarEntrada<T>(
+  serie: readonly T[],
+  fechaDe: (registro: T) => FechaISO,
+  tramo: CoberturaSerie,
+  cobertura: CoberturaSerie,
+  fecha: FechaISO,
+): void {
+  if (!esFechaIsoValida(fecha)) throw new RangeError(`Fecha ISO inválida: ${fecha}`);
+  validarRango(cobertura, "La cobertura");
+  validarRango(tramo, "El tramo");
+  // También atrapa el tramo y la cobertura invertidos, que tienen el mismo tipo.
+  if (tramo.desde < cobertura.desde || tramo.hasta > cobertura.hasta) {
+    throw new RangeError("El tramo debe estar dentro de la cobertura");
+  }
+  // La serie está ordenada: basta revisar el primer y el último registro.
+  if (
+    serie.length > 0 &&
+    (fechaDe(serie[0] as T) < tramo.desde || fechaDe(serie[serie.length - 1] as T) > tramo.hasta)
+  ) {
+    throw new SerieIncompletaError(fecha, tramo, "trae registros fuera de las fechas del tramo");
   }
 }
 
@@ -54,32 +84,40 @@ function primeroDesde<T>(
   return bajo;
 }
 
-function delDia<T>(
+function registroDelDia<T>(
   serie: readonly T[],
   fechaDe: (registro: T) => FechaISO,
+  tramo: CoberturaSerie,
+  cobertura: CoberturaSerie,
   fecha: FechaISO,
-): T | undefined {
+): Consulta<T> {
+  validarEntrada(serie, fechaDe, tramo, cobertura, fecha);
+  if (fecha < cobertura.desde) return SIN_DATO;
+  if (fecha > cobertura.hasta) return NO_DISPONIBLE;
+  if (fecha < tramo.desde || fecha > tramo.hasta) {
+    throw new SerieIncompletaError(fecha, tramo, "el tramo no incluye la fecha");
+  }
   const registro = serie[primeroDesde(serie, fechaDe, fecha)];
-  return registro !== undefined && fechaDe(registro) === fecha ? registro : undefined;
+  return registro !== undefined && fechaDe(registro) === fecha
+    ? { tipo: "encontrado", registro }
+    : SIN_DATO;
 }
 
 const fechaFix = (registro: TipoCambioFix) => registro.fecha_publicacion;
 const fechaUdi = (registro: Udi) => registro.fecha;
 
 /**
- * FIX publicado en el DOF exactamente en `fecha`. `serie` ordenada por `fecha_publicacion`;
- * puede ser solo un tramo, siempre que incluya la fecha (por ejemplo, el año completo).
+ * FIX publicado en el DOF exactamente en `fecha`. `serie` es un tramo ordenado de la serie y
+ * `tramo` las fechas que cubre, dentro de `cobertura`. Si la fecha cae en la cobertura pero no
+ * en el tramo, lanza SerieIncompletaError.
  */
 export function fixPublicado(
   serie: readonly TipoCambioFix[],
+  tramo: CoberturaSerie,
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<TipoCambioFix> {
-  validarEntrada(cobertura, fecha);
-  if (fecha < cobertura.desde) return SIN_DATO;
-  if (fecha > cobertura.hasta) return NO_DISPONIBLE;
-  const registro = delDia(serie, fechaFix, fecha);
-  return registro ? { tipo: "encontrado", registro } : SIN_DATO;
+  return registroDelDia(serie, fechaFix, tramo, cobertura, fecha);
 }
 
 /**
@@ -88,31 +126,37 @@ export function fixPublicado(
  * una publicación posterior: si la víspera pasa de `cobertura.hasta` y el hueco tiene un día
  * entre semana, da `no_disponible` en vez de un valor viejo.
  *
- * `serie` ordenada; puede ser un tramo, pero debe traer todas las publicaciones desde la
- * aplicable hasta la víspera. Con años completos basta el de la víspera y, si ese año no tiene
- * publicaciones antes de `fecha`, también el anterior. Si se nota que falta la publicación
- * aplicable, lanza RangeError.
+ * `tramo` debe llegar a la víspera (o a `cobertura.hasta`, si la serie termina antes) y
+ * empezar antes de la publicación aplicable. Con shards por año basta el de la víspera y, si
+ * ese año no tiene publicaciones antes de `fecha`, también el anterior. Si el tramo no
+ * alcanza, lanza SerieIncompletaError en vez de responder.
  */
 export function fixParaOperacion(
   serie: readonly TipoCambioFix[],
+  tramo: CoberturaSerie,
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<TipoCambioFix> {
-  validarEntrada(cobertura, fecha);
+  validarEntrada(serie, fechaFix, tramo, cobertura, fecha);
   if (fecha <= cobertura.desde) return SIN_DATO;
-  if (!hayCertezaHastaLaVispera(aDias(fecha), aDias(cobertura.hasta))) return NO_DISPONIBLE;
+  const dia = aDias(fecha);
+  if (!hayCertezaHastaLaVispera(dia, aDias(cobertura.hasta))) return NO_DISPONIBLE;
+  const vispera = deDias(dia - 1);
+  const necesario = vispera < cobertura.hasta ? vispera : cobertura.hasta;
+  if (tramo.hasta < necesario) {
+    throw new SerieIncompletaError(fecha, tramo, `el tramo debe llegar hasta ${necesario}`);
+  }
   const i = primeroDesde(serie, fechaFix, fecha);
-  const registro = i > 0 ? serie[i - 1] : undefined;
-  // Si la serie completa termina antes de la fecha, la aplicable es su último registro.
-  if (
-    registro === undefined ||
-    (cobertura.hasta < fecha && registro.fecha_publicacion !== cobertura.hasta)
-  ) {
-    throw new RangeError(
-      `El tramo de la serie no incluye la última publicación anterior a ${fecha}`,
+  if (i > 0) return { tipo: "encontrado", registro: serie[i - 1] as TipoCambioFix };
+  // Sin publicación anterior en el tramo: es definitivo solo si el tramo empieza con la serie.
+  if (tramo.desde > cobertura.desde) {
+    throw new SerieIncompletaError(
+      fecha,
+      tramo,
+      `el tramo no incluye la última publicación anterior; faltan fechas antes de ${tramo.desde}`,
     );
   }
-  return { tipo: "encontrado", registro };
+  return SIN_DATO;
 }
 
 // El DOF no publica el FIX en sábado ni en domingo: un hueco de solo fin de semana entre
@@ -126,29 +170,15 @@ function hayCertezaHastaLaVispera(dia: number, ultimo: number): boolean {
 }
 
 /**
- * UDI del día `fecha`. `serie` ordenada; puede ser un tramo que incluya la fecha. La serie es
- * diaria y sin huecos: si falta un día dentro del tramo, da `sin_dato`; si el tramo no llega
- * a la fecha, lanza RangeError.
+ * UDI del día `fecha`. `serie` es un tramo ordenado y `tramo` las fechas que cubre, dentro de
+ * `cobertura`. La serie es diaria: un día que falta dentro del tramo da `sin_dato`; si la fecha
+ * cae en la cobertura pero no en el tramo, lanza SerieIncompletaError.
  */
 export function udiDeFecha(
   serie: readonly Udi[],
+  tramo: CoberturaSerie,
   cobertura: CoberturaSerie,
   fecha: FechaISO,
 ): Consulta<Udi> {
-  validarEntrada(cobertura, fecha);
-  if (fecha < cobertura.desde) return SIN_DATO;
-  if (fecha > cobertura.hasta) return NO_DISPONIBLE;
-  const registro = delDia(serie, fechaUdi, fecha);
-  if (registro) return { tipo: "encontrado", registro };
-  const primero = serie[0];
-  const ultimo = serie[serie.length - 1];
-  if (
-    primero === undefined ||
-    ultimo === undefined ||
-    fecha < primero.fecha ||
-    fecha > ultimo.fecha
-  ) {
-    throw new RangeError(`El tramo de la serie no incluye ${fecha}`);
-  }
-  return SIN_DATO;
+  return registroDelDia(serie, fechaUdi, tramo, cobertura, fecha);
 }
