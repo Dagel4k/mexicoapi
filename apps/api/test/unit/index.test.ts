@@ -200,6 +200,21 @@ describe("query", () => {
     }
   });
 
+  it("una query con segmentos vacíos da 400 sin tocar ASSETS", async () => {
+    for (const ruta of ["/v1/estados?&", "/v1/estados?&&", "/v1?a=1&&b=2", "/v1?=1"]) {
+      const { respuesta, assets } = await pedir(ruta);
+      expect(respuesta.status, ruta).toBe(400);
+      expect(await respuesta.json(), ruta).toEqual({
+        type: `${TIPO}parametro-invalido`,
+        title: "Parámetro inválido",
+        status: 400,
+        detail: "La query tiene un parámetro sin nombre.",
+        instance: ruta.slice(0, ruta.indexOf("?")),
+      });
+      expect(assets.pedidas, ruta).toEqual([]);
+    }
+  });
+
   it("un ? sin parámetros no cuenta", async () => {
     const { respuesta } = await pedir("/v1?");
     expect(respuesta.status).toBe(200);
@@ -227,6 +242,7 @@ describe("límite de peticiones", () => {
     );
     expect(respuesta.status).toBe(429);
     expect(respuesta.headers.get("retry-after")).toBe("60");
+    expect(respuesta.headers.get("access-control-expose-headers")).toContain("Retry-After");
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
     expect(await respuesta.json()).toMatchObject({

@@ -34,18 +34,21 @@ export function crearAssets(
     const ruta = url.pathname + url.search;
     pedidas.push(ruta);
     if (opciones.fallar === true) throw new Error("fallo del binding con /ruta/interna");
+    const cuerpoDe = (texto: string): ReadableStream<Uint8Array> => {
+      const bytes = new TextEncoder().encode(texto);
+      return new ReadableStream<Uint8Array>({
+        pull(controlador) {
+          controlador.enqueue(bytes);
+          controlador.close();
+        },
+        cancel() {
+          canceladas.push(ruta);
+        },
+      });
+    };
     const asset = mapa[ruta];
-    if (asset === undefined) return new Response("not found", { status: 404 });
-    const bytes = new TextEncoder().encode(asset.cuerpo);
-    const cuerpo = new ReadableStream<Uint8Array>({
-      pull(controlador) {
-        controlador.enqueue(bytes);
-        controlador.close();
-      },
-      cancel() {
-        canceladas.push(ruta);
-      },
-    });
+    if (asset === undefined) return new Response(cuerpoDe("not found"), { status: 404 });
+    const cuerpo = cuerpoDe(asset.cuerpo);
     const encabezados = new Headers({ "Content-Type": "application/json" });
     if (asset.etag !== undefined) encabezados.set("ETag", asset.etag);
     const status = asset.status ?? 200;
@@ -67,7 +70,7 @@ export function peticion(ruta: string, init?: RequestInit): Request {
 
 export const SEGURIDAD: Readonly<Record<string, string>> = {
   "access-control-allow-origin": "*",
-  "access-control-expose-headers": "ETag",
+  "access-control-expose-headers": "ETag, Retry-After",
   "x-content-type-options": "nosniff",
   "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
   "referrer-policy": "no-referrer",

@@ -86,7 +86,7 @@ describe("recurso inexistente", () => {
     ["/v1/municipios/25999", "/v1/municipios/25999.json", "No existe el municipio 25999."],
     ["/v1/bancos/999", "/v1/bancos/999.json", "No existe el banco 999."],
   ] as const) {
-    it(`${ruta} da el 404 del Worker`, async () => {
+    it(`${ruta} da el 404 del Worker y cancela el cuerpo del asset`, async () => {
       const { respuesta, assets } = await pedir(ruta);
       expect(respuesta.status).toBe(404);
       expect(respuesta.headers.get("content-type")).toBe("application/problem+json; charset=utf-8");
@@ -100,6 +100,7 @@ describe("recurso inexistente", () => {
         instance: ruta,
       });
       expect(assets.pedidas).toEqual([asset]);
+      expect(assets.canceladas).toEqual([asset]);
     });
   }
 

@@ -144,6 +144,45 @@ describe("catalogoBancos", () => {
     await expect(catalogoBancos(conAssets({}).entorno)).rejects.toThrow();
   });
 
+  it("una carga fallida cancela el cuerpo y no se recuerda", async () => {
+    const vacio = conAssets({});
+    await expect(catalogoBancos(vacio.entorno)).rejects.toThrow();
+    expect(vacio.assets.canceladas).toEqual(["/v1/bancos.json"]);
+    const { assets, entorno } = conAssets({ "/v1/bancos.json": BANCOS });
+    expect((await catalogoBancos(entorno)).get("002")?.nombre_corto).toBe("BANAMEX");
+    expect(assets.pedidas).toEqual(["/v1/bancos.json"]);
+  });
+
+  it("el catálogo compartido no se puede alterar", async () => {
+    const { entorno } = conAssets({ "/v1/bancos.json": BANCOS });
+    const catalogo = await catalogoBancos(entorno);
+    const comoMapa = catalogo as unknown as Map<string, unknown>;
+    const otro = { codigo: "001", nombre_corto: "OTRO", activo: true };
+    expect(() => comoMapa.set("001", otro)).toThrow(TypeError);
+    expect(() => comoMapa.delete("002")).toThrow(TypeError);
+    expect(() => comoMapa.clear()).toThrow(TypeError);
+    expect(() => Map.prototype.set.call(comoMapa, "001", otro)).toThrow(TypeError);
+    expect(Object.isFrozen(catalogo)).toBe(true);
+    const otraVez = await catalogoBancos(entorno);
+    expect(otraVez.size).toBe(2);
+    expect(otraVez.has("001")).toBe(false);
+    expect(otraVez.has("002")).toBe(true);
+  });
+
+  it("se lee como un ReadonlyMap", async () => {
+    const { entorno } = conAssets({ "/v1/bancos.json": BANCOS });
+    const catalogo = await catalogoBancos(entorno);
+    expect([...catalogo.keys()]).toEqual(["002", "999"]);
+    expect([...catalogo.values()].map((b) => b.activo)).toEqual([true, false]);
+    expect([...catalogo.entries()].map(([codigo]) => codigo)).toEqual(["002", "999"]);
+    const vistos: string[] = [];
+    const contexto = { prefijo: ">" };
+    catalogo.forEach(function (this: typeof contexto, banco, codigo, mapa) {
+      vistos.push(`${this.prefijo}${codigo}:${banco.nombre_corto}:${mapa === catalogo}`);
+    }, contexto);
+    expect(vistos).toEqual([">002:BANAMEX:true", ">999:VIEJO:true"]);
+  });
+
   const banco = { codigo: "002", nombre_corto: "BANAMEX", activo: true };
   for (const [caso, valor] of [
     ["no es objeto", "null"],

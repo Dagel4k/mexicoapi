@@ -115,6 +115,32 @@ describe("resolver", () => {
       });
     });
 
+    it("un segmento vacío o sin nombre es inválido y no nombra parámetro", () => {
+      for (const ruta of [
+        "/q?&",
+        "/q?&&",
+        "/q?a=1&&b=true",
+        "/q?a=1&",
+        "/q?&a=1",
+        "/q?=1",
+        "/q?a=1&=2",
+        "/x/25?&",
+      ]) {
+        expect(resolverEn(ruta), ruta).toEqual({
+          problema: "parametro-invalido",
+          detalle: "La query tiene un parámetro sin nombre.",
+        });
+      }
+    });
+
+    it("un ? sin parámetros no cuenta", () => {
+      expect(resolverEn("/x/25?")).toEqual({
+        ruta: TABLA[0],
+        parametros: { id: "25" },
+        consulta: {},
+      });
+    });
+
     it("falta un obligatorio", () => {
       expect(resolverEn("/q?b=true")).toEqual({
         problema: "parametro-faltante",

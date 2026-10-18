@@ -5,6 +5,7 @@ import {
   respuestaJson,
   respuestaProblema,
   respuestaVacia,
+  sinCuerpo,
 } from "../../src/respuestas.js";
 import { SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
 
@@ -101,5 +102,31 @@ describe("respuestaProblema", () => {
       status: 500,
       detail: "Ocurrió un error interno.",
     });
+  });
+});
+
+describe("sinCuerpo", () => {
+  it("cancela el cuerpo que reemplaza y conserva status y encabezados", async () => {
+    let cancelado = false;
+    const cuerpo = new ReadableStream<Uint8Array>({
+      pull(controlador) {
+        controlador.enqueue(new TextEncoder().encode("{}"));
+      },
+      cancel() {
+        cancelado = true;
+      },
+    });
+    const original = new Response(cuerpo, { status: 201, headers: { ETag: '"x"' } });
+    const r = await sinCuerpo(original);
+    expect(cancelado).toBe(true);
+    expect(r.status).toBe(201);
+    expect(r.body).toBeNull();
+    expect([...r.headers]).toEqual([...original.headers]);
+  });
+
+  it("acepta una respuesta que ya no tiene cuerpo", async () => {
+    const r = await sinCuerpo(respuestaVacia(204));
+    expect(r.status).toBe(204);
+    expect(r.body).toBeNull();
   });
 });

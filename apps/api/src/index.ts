@@ -4,6 +4,7 @@ import {
   DETALLE_ERROR_INTERNO,
   respuestaProblema,
   respuestaVacia,
+  sinCuerpo,
 } from "./respuestas.js";
 import { RUTAS, resolver } from "./rutas.js";
 
@@ -87,8 +88,7 @@ export async function manejar(
   } catch {
     respuesta = respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, url.pathname);
   }
-  if (peticion.method !== "HEAD") return respuesta;
-  return new Response(null, { status: respuesta.status, headers: respuesta.headers });
+  return peticion.method === "HEAD" ? sinCuerpo(respuesta) : respuesta;
 }
 
 export default {

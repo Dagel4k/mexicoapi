@@ -85,11 +85,14 @@ function validarConsulta(
   return { consulta };
 }
 
-function validar(
-  ruta: Ruta,
-  grupos: Readonly<Record<string, string>>,
-  query: URLSearchParams,
-): Resolucion {
+/** URLSearchParams ignora `?&` y `a=1&&b=2`, y a `?=1` le da nombre vacío; aquí se rechazan. */
+const tieneSegmentoSinNombre = (search: string): boolean =>
+  search
+    .slice(1)
+    .split("&")
+    .some((segmento) => segmento === "" || segmento.startsWith("="));
+
+function validar(ruta: Ruta, grupos: Readonly<Record<string, string>>, url: URL): Resolucion {
   const parametros: Record<string, string> = {};
   for (const [nombre, regla] of Object.entries(ruta.parametros ?? {})) {
     const valor = grupos[nombre];
@@ -98,7 +101,11 @@ function validar(
     }
     parametros[nombre] = valor;
   }
-  const resultado = validarConsulta(ruta.consulta ?? {}, query);
+  // `url.search` es "" con un `?` solo.
+  if (url.search !== "" && tieneSegmentoSinNombre(url.search)) {
+    return { problema: "parametro-invalido", detalle: "La query tiene un parámetro sin nombre." };
+  }
+  const resultado = validarConsulta(ruta.consulta ?? {}, url.searchParams);
   return "consulta" in resultado ? { ruta, parametros, consulta: resultado.consulta } : resultado;
 }
 
@@ -111,7 +118,7 @@ export function resolver(tabla: readonly Ruta[], url: URL): Resolucion {
   if (!camino.includes("%")) {
     for (const ruta of tabla) {
       const coincidencia = ruta.patron.exec(camino);
-      if (coincidencia !== null) return validar(ruta, coincidencia.groups ?? {}, url.searchParams);
+      if (coincidencia !== null) return validar(ruta, coincidencia.groups ?? {}, url);
     }
   }
   return { problema: "no-encontrado", detalle: "No existe la ruta." };

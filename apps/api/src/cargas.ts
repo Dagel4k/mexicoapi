@@ -85,6 +85,51 @@ function congelar<T>(valor: T): T {
   return valor;
 }
 
+/**
+ * Vista de solo lectura de un Map: no tiene `set`, `delete` ni `clear`, y como no es un Map,
+ * `Map.prototype.set.call(vista, …)` lanza TypeError.
+ */
+class MapaCongelado<K, V> implements ReadonlyMap<K, V> {
+  readonly #mapa: Map<K, V>;
+
+  constructor(mapa: Map<K, V>) {
+    this.#mapa = mapa;
+    Object.freeze(this);
+  }
+
+  get size(): number {
+    return this.#mapa.size;
+  }
+
+  get(clave: K): V | undefined {
+    return this.#mapa.get(clave);
+  }
+
+  has(clave: K): boolean {
+    return this.#mapa.has(clave);
+  }
+
+  forEach(fn: (valor: V, clave: K, mapa: ReadonlyMap<K, V>) => void, thisArg?: unknown): void {
+    for (const [clave, valor] of this.#mapa) fn.call(thisArg, valor, clave, this);
+  }
+
+  entries(): MapIterator<[K, V]> {
+    return this.#mapa.entries();
+  }
+
+  keys(): MapIterator<K> {
+    return this.#mapa.keys();
+  }
+
+  values(): MapIterator<V> {
+    return this.#mapa.values();
+  }
+
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return this.#mapa.entries();
+  }
+}
+
 function aCatalogo(valor: unknown): ReadonlyMap<string, BancoCatalogo> {
   if (!esObjeto(valor) || !Array.isArray(valor.data)) {
     throw new Error("El shard de bancos no tiene data.");
@@ -101,7 +146,7 @@ function aCatalogo(valor: unknown): ReadonlyMap<string, BancoCatalogo> {
     const { codigo, nombre_corto, activo } = b as unknown as BancoCatalogo;
     catalogo.set(codigo, Object.freeze({ codigo, nombre_corto, activo }));
   }
-  return catalogo;
+  return new MapaCongelado(catalogo);
 }
 
 // Se guarda el valor y no la promesa: en workerd, una promesa iniciada por una petición que

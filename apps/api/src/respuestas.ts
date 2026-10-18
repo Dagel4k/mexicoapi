@@ -6,7 +6,7 @@ export const CACHE_STATUS = "public, max-age=60";
 
 const SEGURIDAD: ReadonlyArray<readonly [string, string]> = [
   ["Access-Control-Allow-Origin", "*"],
-  ["Access-Control-Expose-Headers", "ETag"],
+  ["Access-Control-Expose-Headers", "ETag, Retry-After"],
   ["X-Content-Type-Options", "nosniff"],
   ["Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"],
   ["Referrer-Policy", "no-referrer"],
@@ -22,6 +22,12 @@ export function encabezados(extra?: HeadersInit): Headers {
 
 export function respuestaVacia(status: number, extra?: HeadersInit): Response {
   return new Response(null, { status, headers: encabezados(extra) });
+}
+
+/** La misma respuesta sin cuerpo (para HEAD); cancela el cuerpo que reemplaza. */
+export async function sinCuerpo(respuesta: Response): Promise<Response> {
+  await respuesta.body?.cancel();
+  return new Response(null, { status: respuesta.status, headers: respuesta.headers });
 }
 
 /** Sin `cache`, la respuesta no se guarda (`no-store`). */
