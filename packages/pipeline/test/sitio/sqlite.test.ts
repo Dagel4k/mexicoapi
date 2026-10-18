@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Banco, Estado, Municipio } from "@mexicoapi/core";
+import type { Banco, Estado, Municipio, TipoCambioFix, Udi } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { construirSqlite } from "../../src/sitio/sqlite.js";
 
@@ -51,6 +51,15 @@ const bancos: Banco[] = [
     ],
   },
 ];
+const tipoCambioFix: TipoCambioFix[] = [
+  { fecha_publicacion: "2026-10-15", valor: "18.4870" },
+  { fecha_publicacion: "2026-10-16", valor: "18.4250" },
+];
+const udis: Udi[] = [
+  { fecha: "2026-10-15", valor: "8.612345" },
+  { fecha: "2026-10-16", valor: "8.613456" },
+  { fecha: "2026-10-17", valor: "8.614567" },
+];
 const datasets = [
   {
     dataset: "bancos",
@@ -68,7 +77,14 @@ beforeEach(async () => {
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
 async function abrir(): Promise<DatabaseSync> {
-  const bytes = await construirSqlite({ estados, municipios, bancos, datasets });
+  const bytes = await construirSqlite({
+    estados,
+    municipios,
+    bancos,
+    tipoCambioFix,
+    udis,
+    datasets,
+  });
   const ruta = join(dir, "x.sqlite");
   await writeFile(ruta, bytes);
   return new DatabaseSync(ruta, { readOnly: true });
@@ -84,8 +100,10 @@ describe("construirSqlite", () => {
       n("municipios"),
       n("bancos"),
       n("bancos_historial"),
+      n("tipo_cambio_fix"),
+      n("udis"),
       n("datasets"),
-    ]).toEqual([2, 2, 2, 3, 1]);
+    ]).toEqual([2, 2, 2, 3, 2, 3, 1]);
     db.close();
   });
 
@@ -104,6 +122,28 @@ describe("construirSqlite", () => {
     db.close();
   });
 
+  it("guarda las series con su fecha como llave y el valor como texto", async () => {
+    const db = await abrir();
+    expect(db.prepare("SELECT * FROM tipo_cambio_fix ORDER BY fecha_publicacion").all()).toEqual(
+      tipoCambioFix,
+    );
+    expect(db.prepare("SELECT * FROM udis ORDER BY fecha").all()).toEqual(udis);
+    expect(db.prepare("SELECT typeof(valor) AS t FROM udis LIMIT 1").get()).toEqual({ t: "text" });
+    const columnas = (tabla: string) =>
+      db
+        .prepare(`SELECT name, type, "notnull", pk FROM pragma_table_info('${tabla}') ORDER BY cid`)
+        .all();
+    expect(columnas("tipo_cambio_fix")).toEqual([
+      { name: "fecha_publicacion", type: "TEXT", notnull: 1, pk: 1 },
+      { name: "valor", type: "TEXT", notnull: 1, pk: 0 },
+    ]);
+    expect(columnas("udis")).toEqual([
+      { name: "fecha", type: "TEXT", notnull: 1, pk: 1 },
+      { name: "valor", type: "TEXT", notnull: 1, pk: 0 },
+    ]);
+    db.close();
+  });
+
   it("no deja violaciones de llaves foráneas", async () => {
     const db = await abrir();
     expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
@@ -118,7 +158,15 @@ describe("construirSqlite", () => {
       )
       .all();
     expect(tablas).toEqual(
-      ["bancos", "bancos_historial", "datasets", "estados", "municipios"].map((name) => ({
+      [
+        "bancos",
+        "bancos_historial",
+        "datasets",
+        "estados",
+        "municipios",
+        "tipo_cambio_fix",
+        "udis",
+      ].map((name) => ({
         name,
         strict: 1,
       })),
@@ -134,8 +182,23 @@ describe("construirSqlite", () => {
           { cvegeo: "30001", cve_ent: "30", cve_mun: "001", nombre: "X", cve_cabecera: null },
         ],
         bancos,
+        tipoCambioFix,
+        udis,
         datasets,
       }),
     ).rejects.toThrow(/foreign key/i);
+  });
+
+  it("falla si una serie repite una fecha", async () => {
+    await expect(
+      construirSqlite({
+        estados,
+        municipios,
+        bancos,
+        tipoCambioFix,
+        udis: [...udis, udis[0] as Udi],
+        datasets,
+      }),
+    ).rejects.toThrow(/UNIQUE/);
   });
 });

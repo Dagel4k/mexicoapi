@@ -1,6 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import type { Banco, Estado, Manifiesto, Municipio } from "@mexicoapi/core";
+import type {
+  Banco,
+  CoberturaSerie,
+  Estado,
+  FechaISO,
+  Manifiesto,
+  Municipio,
+  TipoCambioFix,
+  Udi,
+} from "@mexicoapi/core";
 import { sha256Hex } from "../canonico.js";
 import { ErrorDatos } from "../errores.js";
 import { escribirDirectorioAtomico } from "../escritura.js";
@@ -9,6 +18,7 @@ import { verificarDatos } from "../verificar.js";
 import { aCsv } from "./csv.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, metaDesdeManifiesto } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
+import { partirPorAnio } from "./series.js";
 import { construirSqlite, type FilaDataset } from "./sqlite.js";
 
 export interface ResultadoConstruccion {
@@ -40,6 +50,8 @@ const COLUMNAS_BANCOS = [
   "baja_detectada",
 ];
 const COLUMNAS_HISTORIAL = ["codigo", "codigo_spei", "nombre_corto", "desde", "hasta"];
+const COLUMNAS_FIX = ["fecha_publicacion", "valor"];
+const COLUMNAS_UDIS = ["fecha", "valor"];
 
 const SEGURIDAD = [
   "Access-Control-Allow-Origin: *",
@@ -132,6 +144,8 @@ export async function construirSitio(opciones: {
   const estados = await cargar<Estado>(opciones.raizDatos, "inegi.estados");
   const municipios = await cargar<Municipio>(opciones.raizDatos, "inegi.municipios");
   const bancos = await cargar<Banco>(opciones.raizDatos, "bancos");
+  const fix = await cargar<TipoCambioFix>(opciones.raizDatos, "tipo-cambio.fix");
+  const udis = await cargar<Udi>(opciones.raizDatos, "udis");
 
   const archivos = new Map<string, Uint8Array | string>();
   const shard = (ruta: string, data: unknown, meta: Meta): void => {
@@ -149,14 +163,29 @@ export async function construirSitio(opciones: {
   shard("v1/bancos.json", bancos.registros, bancos.meta);
   for (const b of bancos.registros) shard(`v1/bancos/${b.codigo}.json`, b, bancos.meta);
 
-  const cargados = [estados, municipios, bancos];
+  // Las series se sirven por año desde el Worker: cada shard lleva su tramo y meta interna la
+  // cobertura de la serie completa.
+  const coberturas = new Map<string, CoberturaSerie>();
+  const porAnio = <T>(carpeta: string, c: Cargado<T>, fechaDe: (registro: T) => FechaISO): void => {
+    const { cobertura, shards } = partirPorAnio(c.registros, fechaDe, c.manifiesto.dataset);
+    coberturas.set(c.manifiesto.dataset, cobertura);
+    for (const { anio, tramo, datos } of shards) {
+      archivos.set(`v1/_internos/${carpeta}/${anio}.json`, json({ tramo, datos }));
+    }
+  };
+  porAnio("fix", fix, (r) => r.fecha_publicacion);
+  porAnio("udis", udis, (r) => r.fecha);
+
+  const cargados = [estados, municipios, bancos, fix, udis];
   const interna: MetaInterna = { datasets: {} };
   for (const c of cargados) {
+    const cobertura = coberturas.get(c.manifiesto.dataset);
     interna.datasets[c.manifiesto.dataset] = {
       meta: c.meta,
       records: c.manifiesto.records,
       data_sha256: c.manifiesto.data_sha256,
       frescura_horas: frescura(c.manifiesto.dataset),
+      ...(cobertura === undefined ? {} : { cobertura }),
     };
   }
   archivos.set("v1/_internos/meta.json", json(interna));
@@ -185,6 +214,8 @@ export async function construirSitio(opciones: {
       "bancos",
     ),
   );
+  descargas.set("tipo-cambio-fix.csv", aCsv(COLUMNAS_FIX, fix.registros, "tipo-cambio.fix"));
+  descargas.set("udis.csv", aCsv(COLUMNAS_UDIS, udis.registros, "udis"));
   const filas: FilaDataset[] = cargados.map((c) => ({
     dataset: c.manifiesto.dataset,
     as_of: c.manifiesto.as_of,
@@ -198,6 +229,8 @@ export async function construirSitio(opciones: {
       estados: estados.registros,
       municipios: municipios.registros,
       bancos: bancos.registros,
+      tipoCambioFix: fix.registros,
+      udis: udis.registros,
       datasets: filas,
     }),
   );

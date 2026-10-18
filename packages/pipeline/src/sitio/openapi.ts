@@ -1,8 +1,17 @@
 import { z } from "zod";
-import { esquemaBanco, esquemaEstado, esquemaMunicipio, esquemaPeriodoBanco } from "../esquemas.js";
+import {
+  esquemaBanco,
+  esquemaEstado,
+  esquemaMunicipio,
+  esquemaPeriodoBanco,
+  esquemaTipoCambioFix,
+  esquemaUdi,
+} from "../esquemas.js";
 import {
   esquemaDiaInhabil,
   esquemaEstadoDataset,
+  esquemaFixOperacion,
+  esquemaFuente,
   esquemaFuenteMeta,
   esquemaIndice,
   esquemaMeta,
@@ -20,6 +29,7 @@ export const PROBLEMAS = {
   "parametro-desconocido": { title: "Parámetro desconocido", status: 400 },
   "parametro-faltante": { title: "Falta un parámetro obligatorio", status: 400 },
   "no-encontrado": { title: "Recurso no encontrado", status: 404 },
+  "dato-no-disponible": { title: "Dato todavía no disponible", status: 404 },
   "calendario-incompleto": { title: "Calendario incompleto", status: 422 },
   "metodo-no-permitido": { title: "Método no permitido", status: 405 },
   "demasiadas-peticiones": { title: "Demasiadas peticiones", status: 429 },
@@ -78,12 +88,23 @@ function esquemas(): Record<string, Json> {
     FuenteMeta: jsonSchema(esquemaFuenteMeta),
     Meta: sustituirFuente(jsonSchema(esquemaMeta)),
     Problema: problema,
-    DiaInhabil: jsonSchema(esquemaDiaInhabil),
+    Fuente: jsonSchema(esquemaFuente),
+    DiaInhabil: conFuente(jsonSchema(esquemaDiaInhabil), "fuente"),
     ResultadoDiasHabiles: sustituirDias(jsonSchema(esquemaResultadoDiasHabiles)),
     ResultadoClabe: jsonSchema(esquemaResultadoClabe),
+    TipoCambioFix: jsonSchema(esquemaTipoCambioFix),
+    FixOperacion: conFuente(jsonSchema(esquemaFixOperacion), "fundamento"),
+    Udi: jsonSchema(esquemaUdi),
     EstadoDataset: jsonSchema(esquemaEstadoDataset),
     Indice: jsonSchema(esquemaIndice),
   };
+}
+
+/** Cambia la fuente en línea de `propiedad` por una referencia a Fuente; conserva su descripción. */
+function conFuente(esquema: Json, propiedad: string): Json {
+  const props = esquema.properties as Record<string, Json>;
+  props[propiedad] = { description: props[propiedad]?.description, ...ref("Fuente") };
+  return esquema;
 }
 
 function sustituirDias(esquema: Json): Json {
@@ -149,6 +170,17 @@ const parametroRuta = (
   example,
 });
 
+const FECHA_EJEMPLO = "2026-01-05";
+
+const parametroFecha = (name: string, required: boolean, description: string): Json => ({
+  name,
+  in: "query",
+  required,
+  description,
+  schema: { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+  example: FECHA_EJEMPLO,
+});
+
 const AUTORIDAD: Json = {
   name: "autoridad",
   in: "query",
@@ -158,17 +190,18 @@ const AUTORIDAD: Json = {
   example: "lft",
 };
 
-const FECHA_EJEMPLO = "2026-01-05";
-
 interface Operacion {
   ruta: string;
   operationId: string;
   summary: string;
+  description?: string;
   tag: string;
   parametros?: Json[];
   ok: Json;
   /** Errores propios de la ruta; los de ERRORES_COMUNES se agregan siempre. */
   errores: number[];
+  /** Respuesta de componentes para un código, en lugar de la de CODIGOS. */
+  respuestas?: Partial<Record<number, string>>;
   /** Sirve un shard del build: lleva ETag y responde 304 a un If-None-Match que coincide. */
   shard?: boolean;
 }
@@ -195,9 +228,11 @@ function operacion(o: Operacion): [string, Json] {
     parametros = [...(parametros ?? []), IF_NONE_MATCH];
   }
   for (const codigo of [...o.errores, ...ERRORES_COMUNES].sort((a, b) => a - b)) {
-    responses[String(codigo)] = refRespuesta(CODIGOS[codigo] as string);
+    responses[String(codigo)] = refRespuesta(o.respuestas?.[codigo] ?? (CODIGOS[codigo] as string));
   }
-  const op: Json = { operationId: o.operationId, summary: o.summary, tags: [o.tag] };
+  const op: Json = { operationId: o.operationId, summary: o.summary };
+  if (o.description !== undefined) op.description = o.description;
+  op.tags = [o.tag];
   if (parametros !== undefined) op.parameters = parametros;
   op.responses = responses;
   return [o.ruta, { get: op }];
@@ -319,14 +354,7 @@ function operaciones(): Operacion[] {
       tag: "Cálculos",
       parametros: [
         AUTORIDAD,
-        {
-          name: "desde",
-          in: "query",
-          required: true,
-          description: "Fecha de partida (AAAA-MM-DD); no se cuenta.",
-          schema: { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          example: FECHA_EJEMPLO,
-        },
+        parametroFecha("desde", true, "Fecha de partida (AAAA-MM-DD); no se cuenta."),
         {
           name: "dias",
           in: "query",
@@ -368,6 +396,51 @@ function operaciones(): Operacion[] {
       errores: [422],
     },
     {
+      ruta: "/v1/tipo-cambio/fix",
+      operationId: "consultarFix",
+      summary: "Tipo de cambio FIX por fecha de publicación o para una operación",
+      description:
+        "Indica exactamente uno de publicado u operacion: sin ninguno la respuesta es 400 parametro-faltante y con los dos, 400 parametro-invalido.",
+      tag: "Indicadores",
+      parametros: [
+        parametroFecha(
+          "publicado",
+          false,
+          "Fecha de publicación en el DOF (AAAA-MM-DD): responde el FIX publicado ese día.",
+        ),
+        parametroFecha(
+          "operacion",
+          false,
+          "Fecha de una operación (AAAA-MM-DD): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20).",
+        ),
+      ],
+      ok: respuestaDatos(
+        "Con publicado, el FIX de ese día (TipoCambioFix); con operacion, el FIX que aplica (FixOperacion).",
+        // anyOf: con esquemas abiertos, una FixOperacion también cumple TipoCambioFix.
+        { anyOf: [ref("TipoCambioFix"), ref("FixOperacion")] },
+      ),
+      errores: [404],
+      respuestas: { 404: "SinDato" },
+    },
+    {
+      ruta: "/v1/tipo-cambio/fix/ultimo",
+      operationId: "ultimoFix",
+      summary: "Último tipo de cambio FIX publicado",
+      tag: "Indicadores",
+      ok: respuestaDatos("La publicación más reciente de la serie.", ref("TipoCambioFix")),
+      errores: [],
+    },
+    {
+      ruta: "/v1/udis",
+      operationId: "consultarUdi",
+      summary: "Valor de la UDI en una fecha",
+      tag: "Indicadores",
+      parametros: [parametroFecha("fecha", true, "Día del valor (AAAA-MM-DD).")],
+      ok: respuestaDatos("El valor de la UDI ese día.", ref("Udi")),
+      errores: [404],
+      respuestas: { 404: "SinDato" },
+    },
+    {
       ruta: "/v1/status",
       operationId: "estadoDatasets",
       summary: "Estado y frescura de los datasets",
@@ -407,7 +480,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       version: "1.0.0",
       summary: "Datos de referencia oficiales de México.",
       description:
-        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta.",
+        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta.",
       license: { name: "MIT", identifier: "MIT" },
     },
     servers: [{ url: "/" }],
@@ -416,6 +489,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       { name: "Estados", description: "Catálogo de entidades de INEGI." },
       { name: "Municipios", description: "Catálogo de municipios de INEGI." },
       { name: "Bancos", description: "Catálogo de bancos del SPEI." },
+      { name: "Indicadores", description: "Tipo de cambio FIX y UDIS publicados en el DOF." },
       { name: "Cálculos", description: "Validaciones y cálculos sobre los datos." },
     ],
     paths: Object.fromEntries(operaciones().map(operacion)),
@@ -430,6 +504,9 @@ export function documentoOpenApi(): Record<string, unknown> {
           headers: { ETag: ETAG },
         },
         NoEncontrado: respuestaProblema("El recurso o la ruta no existe."),
+        SinDato: respuestaProblema(
+          "No hay dato para la fecha pedida. El tipo no-encontrado es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. El tipo dato-no-disponible puede cambiar: todavía no se cargan los datos necesarios para responder con certeza, y se puede reintentar después de la siguiente actualización.",
+        ),
         MetodoNoPermitido: respuestaProblema("Métodos permitidos: GET, HEAD y OPTIONS.", {
           Allow: {
             description: "Métodos que acepta la API.",
