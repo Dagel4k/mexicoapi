@@ -99,6 +99,11 @@ El publicador de confianza (trusted publishing) hace que solo `publicacion.yml`,
 
 Lo mismo se repite en `mexicoapi-mcp`: cada paquete tiene su propia configuración, con los mismos valores y el mismo Environment.
 
+El workflow y sus revisiones salen del commit de la etiqueta, así que quien pueda crear o mover una etiqueta `mexicoapi@*` también puede cambiarlos; la GitHub App del bot de datos, por ejemplo, puede escribir en el repositorio. Por eso conviene, también una sola vez:
+
+- En el Environment `npm`, en Required reviewers, agrégate (`Dagel4k`) sin marcar Prevent self-review. Cada publicación espera a que la apruebes en la corrida (Review deployments), aunque la etiqueta la haya creado otro.
+- En Settings, Rules, Rulesets, crea un ruleset de etiquetas (New tag ruleset) activo, con `mexicoapi@*` y `mexicoapi-mcp@*` en Target tags, las reglas Restrict creations, Restrict updates y Restrict deletions, y Repository admin en Bypass list. Así solo un administrador crea, mueve o borra esas etiquetas.
+
 ## Cómo se corta una versión
 
 Cada paquete lleva su historial en `CHANGELOG.md` (`packages/sdk` y `packages/mcp`), que viaja en el paquete publicado. El PR que sube la versión agrega al principio una sección `## <versión> (AAAA-MM-DD)` con una lista corta de lo que cambia; mientras la versión no sale, el encabezado dice `## <versión> (sin publicar)`, y el PR de la publicación cambia "sin publicar" por la fecha. `publicable.ts` se niega a armar el paquete si el primer encabezado `## ` no empieza con la versión del `package.json`, y `publicacion.yml` se niega si ese encabezado no trae la fecha, así que olvidar esta sección detiene la publicación.
@@ -114,7 +119,7 @@ Para `mexicoapi`:
    ```
 
    Las notas pueden ser la sección del `CHANGELOG.md`. En la web: Releases, Draft a new release, la etiqueta nueva y el commit en Target.
-4. `publicacion.yml` corre solo. Se sigue con `gh run watch` o en la pestaña Actions (workflow Publicación): el job `preparar` revisa y arma el paquete, y el job `publicar` lo publica en el Environment `npm`. El resumen de la corrida muestra lo que lleva el paquete y el enlace a la versión en npm.
+4. `publicacion.yml` corre solo. Se sigue con `gh run watch` o en la pestaña Actions (workflow Publicación): el job `preparar` revisa y arma el paquete, y el job `publicar` lo publica en el Environment `npm` (con el revisor requerido, después de que lo apruebes). El resumen de la corrida muestra lo que lleva el paquete y el enlace a la versión en npm.
 5. Se comprueba con `npm view mexicoapi@<versión>`. En npmjs.com, la página de la versión muestra la procedencia (Provenance) con el commit y la corrida.
 
 `mexicoapi-mcp` lleva su propia versión y su etiqueta `mexicoapi-mcp@<versión>`. La regla: cada versión de `mexicoapi` va seguida de un *patch* de `mexicoapi-mcp`, en dos pasos y en este orden:
@@ -130,10 +135,10 @@ Corre con cada Release publicado y tiene dos jobs. `preparar` no puede publicar 
 
 | Revisión | Si falla |
 | --- | --- |
+| La etiqueta sigue en el commit del Release y ese commit está en `main`. Se revisa antes de correr nada del repositorio, solo con git y contra `main` recién traído de GitHub. | La etiqueta apunta a una rama sin integrar: solo se publica lo que ya está en `main`. |
 | La etiqueta es `mexicoapi@X.Y.Z` o `mexicoapi-mcp@X.Y.Z` y el Release no es pre-release. Por ahora no se publican pre-versiones. | Borra el Release y su etiqueta (`gh release delete <etiqueta> --cleanup-tag`) y créalo bien. |
 | El `package.json` del paquete tiene ese nombre y esa versión. | El Release está sobre un commit anterior al PR de la versión: bórralo y créalo sobre el commit correcto. |
 | El primer encabezado del `CHANGELOG.md` es `## <versión> (AAAA-MM-DD)`. | Falta la sección o todavía dice "(sin publicar)": se arregla en un PR y se crea el Release otra vez sobre el commit nuevo. |
-| El commit de la etiqueta está en `main`. | La etiqueta apunta a una rama sin integrar: solo se publica lo que ya está en `main`. |
 | La corrida más reciente del check `verify` de `ci.yml` terminó en verde en ese commit. | Si todavía corre, espera a que termine y usa Re-run all jobs. Si falló, se arregla en un PR. Si el commit no tiene `verify`, no es el último de un push a `main`. |
 | npm: el paquete existe y la versión es mayor que todas las publicadas (`npm view <paquete> versions`). | Si el paquete no existe (404), la corrida termina en verde con un aviso y no publica: la primera versión va a mano. Si la versión ya está o es menor, sube la versión en un PR nuevo. Si npm no responde, Re-run all jobs. |
 | Compila el paquete y lo arma con su `publicable.ts`; `mexicoapi-mcp` con `--publicar`, que exige `mexicoapi@<versión de packages/sdk>` en npm. | Lo mismo que en el job `paquete` de CI. En `mexicoapi-mcp`, publica antes esa versión de `mexicoapi`. |
