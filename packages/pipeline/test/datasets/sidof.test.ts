@@ -8,7 +8,7 @@ import {
   type TipoCambioFix,
   type Udi,
 } from "@mexicoapi/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   ANIO_INICIAL,
   descansosBancarios,
@@ -47,7 +47,16 @@ const LICENCIA =
 const URL_LICENCIA = "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html";
 
 const texto = (s: string) => new TextEncoder().encode(s);
-const fixture = (nombre: string) => leerFixture(`sidof/${nombre}`);
+const fixturesLeidos = new Map<string, Promise<Uint8Array>>();
+/** Un fixture de sidof/: se lee del disco una vez y cada llamada recibe su propia copia. */
+async function fixture(nombre: string): Promise<Uint8Array> {
+  let leido = fixturesLeidos.get(nombre);
+  if (leido === undefined) {
+    leido = leerFixture(`sidof/${nombre}`);
+    fixturesLeidos.set(nombre, leido);
+  }
+  return (await leido).slice();
+}
 const en = (r: Respuesta, i: number) => r.ListaIndicadores[i] as Indicador;
 const archivo = (tipo: Tipo, anio: number) => `raw/sidof-${tipo}-${anio}.json`;
 
@@ -118,6 +127,28 @@ const FIX_SINTETICO = fixSinteticos();
 /** Publicaciones sintéticas del FIX de 2021 a 2025. */
 const N_FIX = [...FIX_SINTETICO.values()].reduce((n, l) => n + l.length, 0);
 
+/** Las respuestas sintéticas de cada año, armadas una vez para todo el archivo. */
+const SINTETICAS: ReadonlyMap<string, Uint8Array> = (() => {
+  const udisPorAnio = udisSinteticas();
+  const porUrl = new Map<string, Uint8Array>();
+  for (const anio of ANIOS) {
+    porUrl.set(urlSidof(158, anio), respuesta(158, FIX_SINTETICO.get(anio) ?? []));
+    porUrl.set(urlSidof(159, anio), respuesta(159, udisPorAnio.get(anio) ?? []));
+  }
+  return porUrl;
+})();
+
+/** Lo que sirve la fuente falsa al empezar cada prueba: años sintéticos y fixtures reales. */
+async function fuenteInicial(): Promise<Map<string, Uint8Array>> {
+  const fuente = new Map<string, Uint8Array>(
+    [...SINTETICAS].map(([url, bytes]) => [url, bytes.slice()]),
+  );
+  fuente.set(urlSidof(158, 2020), await fixture("158-2020.json"));
+  fuente.set(urlSidof(158, 2026), await fixture("158-2026.json"));
+  fuente.set(urlSidof(159, 2026), await fixture("159-2026.json"));
+  return fuente;
+}
+
 let raiz: string;
 let pedidas: string[];
 let fuenteFalsa: Map<string, Uint8Array>;
@@ -131,16 +162,8 @@ const sinDatos = (url: string) => erroresFalsos.set(url, { estado: 404, cuerpo: 
 beforeEach(async () => {
   raiz = await mkdtemp(join(tmpdir(), "sidof-"));
   pedidas = [];
-  fuenteFalsa = new Map();
+  fuenteFalsa = await fuenteInicial();
   erroresFalsos = new Map();
-  const sinteticas = udisSinteticas();
-  for (const anio of ANIOS) {
-    fuenteFalsa.set(urlSidof(158, anio), respuesta(158, FIX_SINTETICO.get(anio) ?? []));
-    fuenteFalsa.set(urlSidof(159, anio), respuesta(159, sinteticas.get(anio) ?? []));
-  }
-  fuenteFalsa.set(urlSidof(158, 2020), await fixture("158-2020.json"));
-  fuenteFalsa.set(urlSidof(158, 2026), await fixture("158-2026.json"));
-  fuenteFalsa.set(urlSidof(159, 2026), await fixture("159-2026.json"));
   // Como el SIDOF real: el año siguiente todavía no tiene publicaciones.
   sinDatos(urlSidof(158, 2027));
   sinDatos(urlSidof(159, 2027));
@@ -197,13 +220,22 @@ async function calendarioCnbvEnDisco(texto?: string) {
   );
 }
 
-/** Escribe en disco el crudo de esos años, con lo que hoy sirve la fuente falsa. */
-async function crudosEnDisco(directorio: string, tipo: Tipo, anios: readonly number[]) {
-  await mkdir(join(raiz, directorio, "raw"), { recursive: true });
+/**
+ * Escribe en disco el crudo de esos años, con lo que hoy sirve la fuente falsa (o `fuente`), en
+ * la raíz de la prueba (o `destino`).
+ */
+async function crudosEnDisco(
+  directorio: string,
+  tipo: Tipo,
+  anios: readonly number[],
+  destino = raiz,
+  fuente = fuenteFalsa,
+) {
+  await mkdir(join(destino, directorio, "raw"), { recursive: true });
   for (const anio of anios) {
     await writeFile(
-      join(raiz, directorio, archivo(tipo, anio)),
-      fuenteFalsa.get(urlSidof(tipo, anio)) as Uint8Array,
+      join(destino, directorio, archivo(tipo, anio)),
+      fuente.get(urlSidof(tipo, anio)) as Uint8Array,
     );
   }
 }
@@ -592,11 +624,23 @@ describe("capturar", () => {
     expect(f?.crudos[1]?.obtenido_en).not.toBe(actual);
   });
 
-  it("en enero también pide el año anterior y, en diciembre, udis pide el siguiente", async () => {
-    await crudosEnDisco("tipo-cambio-fix", 158, ANIOS);
-    await crudosEnDisco("udis", 159, ANIOS);
-    const casos: [string, number[], number[]][] = [
-      // fecha, años que pide el FIX, años que pide udis
+  // Un caso por prueba, con los crudos de todos los años escritos una sola vez: cada caso solo los
+  // lee. Juntos en una prueba eran 18 capturas y unas 100 lecturas de disco, que con el equipo
+  // ocupado pasaban de los 5 s de Vitest.
+  describe("en enero también pide el año anterior y, en diciembre, udis pide el siguiente", () => {
+    let conCrudos: string;
+    beforeAll(async () => {
+      conCrudos = await mkdtemp(join(tmpdir(), "sidof-crudos-"));
+      const fuente = await fuenteInicial();
+      await crudosEnDisco("tipo-cambio-fix", 158, ANIOS, conCrudos, fuente);
+      await crudosEnDisco("udis", 159, ANIOS, conCrudos, fuente);
+    });
+    afterAll(async () => {
+      await rm(conCrudos, { recursive: true, force: true });
+    });
+
+    // fecha, años que pide el FIX, años que pide udis
+    it.each<[string, number[], number[]]>([
       ["2026-01-01", [2025, 2026], [2025, 2026]],
       ["2026-01-31", [2025, 2026], [2025, 2026]],
       ["2026-02-01", [2026], [2026]],
@@ -606,15 +650,14 @@ describe("capturar", () => {
       ["2026-12-31", [2026], [2026, 2027]],
       ["2027-01-20", [2026, 2027], [2026, 2027]],
       ["2027-02-01", [2027], [2027]],
-    ];
-    for (const [fecha, delFix, deUdis] of casos) {
+    ])("%s", async (fecha, delFix, deUdis) => {
+      const conDisco = (): Contexto => ({ ...ctx(fecha), raizDatos: conCrudos });
+      await tipoCambioFix.capturar(conDisco());
+      expect(pedidas, "fix").toEqual(urls(158, delFix));
       pedidas = [];
-      await tipoCambioFix.capturar(ctx(fecha));
-      expect(pedidas, `fix ${fecha}`).toEqual(urls(158, delFix));
-      pedidas = [];
-      await udis.capturar(ctx(fecha));
-      expect(pedidas, `udis ${fecha}`).toEqual(urls(159, deUdis));
-    }
+      await udis.capturar(conDisco());
+      expect(pedidas, "udis").toEqual(urls(159, deUdis));
+    });
   });
 
   it("en diciembre guarda las UDIS de enero ya publicadas, o nada si el SIDOF da 404 NOT_FOUND", async () => {
