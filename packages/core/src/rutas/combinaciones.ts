@@ -6,7 +6,7 @@ import type { ProblemaConsulta } from "./parametros.js";
 
 /**
  * Cómo se nombran la autoridad y el tipo de plazo en cada superficie: `tipo_plazo` en la API y el
- * MCP, `--tipo-plazo` en la CLI y `tipoPlazo` en el SDK.
+ * MCP, `--tipo-plazo` en la CLI y `tipoPlazo` en el SDK. Es interno: no sale del núcleo.
  */
 export interface NombresTipoPlazo {
   /** "autoridad=sat", "--autoridad sat". */
@@ -25,13 +25,23 @@ const conMayuscula = (texto: string): string => texto.charAt(0).toUpperCase() + 
 /**
  * Con el SAT, el tipo de plazo es obligatorio: sus vacaciones no son inhábiles en los plazos de
  * declaraciones y pagos (CFF art. 12, segundo párrafo). Las demás autoridades tienen un solo plazo
- * y no lo aceptan. Devuelve el problema de la API, o null si la combinación vale. `nombres` cambia
- * cómo se nombran los parámetros en el texto; `parametro` sigue siendo el de la API.
+ * y no lo aceptan. Devuelve el problema de la API, con sus textos, o null si la combinación vale.
  */
 export function revisarTipoPlazo(
   autoridad: Autoridad,
   tipoPlazo: TipoPlazo | undefined,
-  nombres: NombresTipoPlazo = NOMBRES_API,
+): ProblemaConsulta | null {
+  return revisarTipoPlazoCon(autoridad, tipoPlazo, NOMBRES_API);
+}
+
+/**
+ * `revisarTipoPlazo` con los nombres de otra superficie (la CLI, el SDK) en el texto; `parametro`
+ * sigue siendo el de la API. Es interno: la CLI y el paquete lo toman de la subruta del núcleo.
+ */
+export function revisarTipoPlazoCon(
+  autoridad: Autoridad,
+  tipoPlazo: TipoPlazo | undefined,
+  nombres: NombresTipoPlazo,
 ): ProblemaConsulta | null {
   const conSat = nombres.autoridad("sat");
   const extras = { parametro: "tipo_plazo" };

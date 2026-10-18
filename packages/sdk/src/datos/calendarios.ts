@@ -3,7 +3,7 @@
 // coberturas y respaldo), listos para sumarDiasHabiles:
 // `sumarDiasHabiles({ calendario: calendario("sat", "general"), ... })`.
 
-import { revisarTipoPlazo } from "@mexicoapi/core/combinaciones";
+import { revisarTipoPlazoCon } from "@mexicoapi/core/combinaciones";
 import {
   type CalendarioCurado as CalendarioDelNucleo,
   crearCalendarioCurado,
@@ -69,7 +69,7 @@ export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): C
   const curado = calendarioCurado(autoridad);
   if (tipoPlazo === undefined) {
     // La regla de la API con el nombre del SDK. A diferencia de la API, la CNBV acepta general.
-    const falta = revisarTipoPlazo(autoridad, undefined, NOMBRES_SDK);
+    const falta = revisarTipoPlazoCon(autoridad, undefined, NOMBRES_SDK);
     if (falta !== null) throw new TypeError(falta.detalle);
   }
   return plazoDe(curado, tipoPlazo ?? "general").calendario;
