@@ -94,6 +94,7 @@ describe("problemaDeError", () => {
 
   it("compara el tipo y no la clase: reconoce el error de otra copia del núcleo", () => {
     const copia = Object.assign(new Error("x"), {
+      name: "CalendarioIncompletoError",
       tipo: "calendario-incompleto",
       autoridad: "cnbv",
       fecha: "2027-01-04",

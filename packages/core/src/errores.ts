@@ -72,13 +72,23 @@ export class CalendarioIncompletoError extends Error {
 
 type ErrorDelNucleo = FechaFueraDeRangoError | SerieIncompletaError | CalendarioIncompletoError;
 
+/** El `name` de la clase de cada tipo de error del núcleo. */
+const CLASES: Readonly<Record<ErrorDelNucleo["tipo"], string>> = {
+  "fecha-fuera-de-rango": "FechaFueraDeRangoError",
+  "serie-incompleta": "SerieIncompletaError",
+  "calendario-incompleto": "CalendarioIncompletoError",
+};
+
 /**
- * Si `error` es un error del núcleo de ese `tipo`. Compara el campo y no la clase: con dos copias
- * del núcleo (el paquete y otra dependencia), instanceof falla.
+ * Si `error` es un error del núcleo de ese `tipo`. Compara los campos y no la clase: con dos
+ * copias del núcleo (el paquete y otra dependencia), instanceof falla. Pide también el `name` de la
+ * clase: un MexicoApiError del cliente trae `tipo: "calendario-incompleto"` con otra forma.
  */
 export function esErrorDelNucleo<T extends ErrorDelNucleo["tipo"]>(
   error: unknown,
   tipo: T,
 ): error is Extract<ErrorDelNucleo, { tipo: T }> {
-  return typeof error === "object" && error !== null && (error as { tipo?: unknown }).tipo === tipo;
+  if (typeof error !== "object" || error === null) return false;
+  const { tipo: suyo, name } = error as { tipo?: unknown; name?: unknown };
+  return suyo === tipo && name === CLASES[tipo];
 }

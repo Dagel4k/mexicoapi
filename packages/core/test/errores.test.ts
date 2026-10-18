@@ -23,13 +23,30 @@ describe("errores del núcleo", () => {
 });
 
 describe("esErrorDelNucleo", () => {
+  // Una copia del núcleo tiene la misma clase con otra identidad: el mismo name y el mismo tipo.
   it("reconoce el tipo aunque el error venga de otra copia del núcleo", () => {
-    const copia = Object.assign(new Error("otra copia"), { tipo: "calendario-incompleto" });
+    const copia = Object.assign(new Error("otra copia"), {
+      name: "CalendarioIncompletoError",
+      tipo: "calendario-incompleto",
+    });
     expect(esErrorDelNucleo(copia, "calendario-incompleto")).toBe(true);
     expect(esErrorDelNucleo(new FechaFueraDeRangoError(), "fecha-fuera-de-rango")).toBe(true);
     expect(esErrorDelNucleo(new FechaFueraDeRangoError(), "calendario-incompleto")).toBe(false);
     for (const otro of [new RangeError("x"), null, undefined, "calendario-incompleto", 3]) {
       expect(esErrorDelNucleo(otro, "calendario-incompleto")).toBe(false);
     }
+  });
+
+  it("no confunde un MexicoApiError del cliente, que trae el mismo tipo con otra forma", () => {
+    // El problema de la API: la cobertura va en `problema`, no en el error.
+    const delCliente = Object.assign(new Error("422 Calendario incompleto: …"), {
+      name: "MexicoApiError",
+      tipo: "calendario-incompleto",
+      status: 422,
+      problema: { cobertura: { desde: "2026-01-01", hasta: "2026-12-31" } },
+    });
+    expect(esErrorDelNucleo(delCliente, "calendario-incompleto")).toBe(false);
+    const sinNombre = Object.assign(new Error("x"), { tipo: "fecha-fuera-de-rango" });
+    expect(esErrorDelNucleo(sinNombre, "fecha-fuera-de-rango")).toBe(false);
   });
 });
