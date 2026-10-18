@@ -44,6 +44,15 @@ beforeAll(async () => {
   const cliente = {
     banco: (codigo: string) =>
       responde(codigo === "777" ? BANCO : { ...BANCO, codigo, activo: true, historial: [] })(),
+    clabe: responde({
+      valor: "999010077777777772",
+      valido: false,
+      formato_valido: false,
+      digito_verificador_valido: false,
+      errores: ["banco", "digito_verificador"],
+      nota: "Nota.",
+      detalle: null,
+    }),
     municipio: responde({
       cvegeo: "99001",
       cve_ent: "99",
@@ -56,6 +65,13 @@ beforeAll(async () => {
 });
 
 describe("respuestas raras", () => {
+  it("una CLABE con varios errores los lista todos en el texto", async () => {
+    const t = texto(await llamar("validar_clabe", { clabe: "999010077777777772" }));
+    expect(t).toContain(
+      "CLABE inválida: el código de banco 999 no está en el catálogo, el dígito verificador no coincide.",
+    );
+  });
+
   it("un banco inactivo sin fecha de baja, con otra participación y un nombre anterior abierto", async () => {
     const t = texto(await llamar("banco_por_codigo", { codigo: "777" }));
     expect(t).toContain("777 NUEVO\n");
