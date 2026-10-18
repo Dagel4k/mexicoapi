@@ -167,7 +167,7 @@ data.resultado; // "2026-08-05"
 origen; // "api", o "paquete" si la API no respondió
 ```
 
-Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API. `crearCliente({})` sin `base` ni `offline` lanza `TypeError`.
+Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API. `crearCliente({})` sin `base` ni `offline` lanza `TypeError`, igual que una `base` con query, fragmento o credenciales (`usuario:clave@`).
 
 Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen` y `advertencias`.
 
