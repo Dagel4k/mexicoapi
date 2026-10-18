@@ -285,10 +285,12 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "404.html",
       "_headers",
       "descargas",
+      "estado",
       "estilo.css",
       "favicon.svg",
       "index.html",
       "robots.txt",
+      "sitio.js",
       "v1",
     ]);
   });

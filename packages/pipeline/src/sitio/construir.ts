@@ -43,6 +43,7 @@ import {
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
 import { archivoEncabezados } from "./paginas/encabezados.js";
+import { paginaEstado } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
 import { FAVICON } from "./paginas/favicon.js";
 import { paginaInicio } from "./paginas/inicio.js";
@@ -193,6 +194,12 @@ function validarSalida(raizDatos: string, salida: string): void {
 }
 
 const json = (valor: unknown): string => JSON.stringify(valor);
+
+/**
+ * El script del sitio, que se publica tal cual. La ruta vale desde `src/sitio` (pruebas) y desde
+ * `dist/sitio` (build): las dos quedan a dos niveles de la raíz del paquete.
+ */
+const CLIENTE = new URL("../../src/sitio/cliente/sitio.js", import.meta.url);
 
 /** Orden por unidades de código UTF-16, igual que el resto de los datos. */
 const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -405,6 +412,8 @@ export async function construirSitio(opciones: {
       descargas,
     }),
   );
+  archivos.set("estado/index.html", paginaEstado());
+  archivos.set("sitio.js", await readFile(CLIENTE));
   archivos.set("404.html", paginaNoEncontrada());
   archivos.set("estilo.css", ESTILO);
   archivos.set("favicon.svg", FAVICON);

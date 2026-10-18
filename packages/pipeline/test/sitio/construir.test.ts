@@ -43,6 +43,7 @@ import {
   CSP_PAGINAS,
   RUTAS_SITIO,
 } from "../../src/sitio/paginas/encabezados.js";
+import { paginaEstado } from "../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../src/sitio/paginas/estilo.js";
 import { FAVICON } from "../../src/sitio/paginas/favicon.js";
 import { enlaceSeguro } from "../../src/sitio/paginas/html.js";
@@ -238,10 +239,12 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.csv",
         "descargas/udis.json",
         "descargas/udis.manifest.json",
+        "estado/index.html",
         "estilo.css",
         "favicon.svg",
         "index.html",
         "robots.txt",
+        "sitio.js",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
         "v1/_internos/constantes.json",
@@ -784,6 +787,14 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
   });
 
+  it("escribe la página de estado y copia sitio.js tal cual", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    expect(await readFile(join(salida, "estado/index.html"), "utf8")).toBe(paginaEstado());
+    const fuente = await readFile(new URL("../../src/sitio/cliente/sitio.js", import.meta.url));
+    expect((await readFile(join(salida, "sitio.js"))).equals(fuente)).toBe(true);
+    expect(fuente.toString("utf8").startsWith("// @ts-check\n")).toBe(true);
+  });
+
   it("es determinista", async () => {
     await construirSitio({ raizDatos: datos, salida });
     const primera = new Map(
@@ -1047,6 +1058,8 @@ describe("con los datos reales del repositorio", () => {
     expect(await listar(otra)).toEqual(archivos);
     for (const n of [
       "index.html",
+      "estado/index.html",
+      "sitio.js",
       "404.html",
       "estilo.css",
       "favicon.svg",
