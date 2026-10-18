@@ -159,6 +159,13 @@ describe("el package.json de packages/mcp", () => {
     );
   });
 
+  it("compila desde un dist vacío: tsc no borra lo que ya no está en src", async () => {
+    const manifiesto = await leerJson(join(MCP, "package.json"));
+    expect((manifiesto.scripts as Record<string, string>).build).toBe(
+      "node scripts/limpiar.ts && tsc -p tsconfig.build.json",
+    );
+  });
+
   it("trae la misma licencia que el repositorio", async () => {
     expect(await readFile(join(MCP, "LICENSE"), "utf8")).toBe(
       await readFile(join(REPO, "LICENSE"), "utf8"),
