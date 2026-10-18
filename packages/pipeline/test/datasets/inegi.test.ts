@@ -131,8 +131,14 @@ describe("municipios", () => {
       nombre: "Culiacán",
       cve_cabecera: "0001",
     });
-    const sinCabecera = r.filter((m) => m.cve_cabecera === "----");
-    expect(sinCabecera.map((m) => m.cve_ent)).toEqual(Array(16).fill("09"));
+    const sinCabecera = r.filter((m) => m.cve_cabecera === null);
+    expect(sinCabecera.map((m) => m.cvegeo)).toEqual(
+      Array.from({ length: 16 }, (_, i) => `09${String(i + 2).padStart(3, "0")}`),
+    );
+    expect(r.find((m) => m.cvegeo === "09015")).toMatchObject({
+      nombre: "Cuauhtémoc",
+      cve_cabecera: null,
+    });
     expect(r.find((m) => m.cvegeo === "25019")?.nombre).toBe("Eldorado");
     expect(r.find((m) => m.cvegeo === "25020")?.nombre).toBe("Juan José Ríos");
     for (const m of r) expect(m.nombre).toBe(m.nombre.normalize("NFC"));
@@ -159,6 +165,16 @@ describe("municipios", () => {
     const sobra = await municipios().catch((x) => x);
     expect(sobra).toBeInstanceOf(ErrorDatos);
     expect(sobra.message).toContain("raw/otro.json");
+  });
+
+  it("una cve_cab que no es de 4 dígitos ni '----' lanza ErrorDatos con el cvegeo", async () => {
+    const i = claves.indexOf("25");
+    const json = JSON.parse(new TextDecoder().decode(crudosMunicipios[i]?.bytes));
+    json.datos[0].cve_cab = "12";
+    crudosMunicipios[i] = crudo("raw/mgem-25.json", texto(JSON.stringify(json)));
+    const e = await municipios().catch((x) => x);
+    expect(e).toBeInstanceOf(ErrorDatos);
+    expect(e.message).toContain("25001");
   });
 
   it("HTML o JSON ajeno en un mgem lanza ErrorDatos", async () => {

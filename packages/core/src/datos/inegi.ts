@@ -12,5 +12,5 @@ export interface Municipio {
   cve_ent: string;
   cve_mun: string;
   nombre: string;
-  cve_cabecera: string;
+  cve_cabecera: string | null;
 }
