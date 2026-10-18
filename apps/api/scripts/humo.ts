@@ -97,6 +97,31 @@ const COMPROBACIONES: readonly Comprobacion[] = [
     },
   },
   {
+    // El primer periodo de vacaciones del SAT (20 al 31 de julio) se salta: confirma que el
+    // calendario curado se carga.
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10",
+    estado: 200,
+    tipo: "json",
+    validar(cuerpo) {
+      const resultado = objeto(dataDe(cuerpo))?.resultado;
+      return resultado === "2026-08-12"
+        ? undefined
+        : `resultado ${String(resultado)}, no 2026-08-12`;
+    },
+  },
+  {
+    ruta: "/v1/constantes/uma/2026",
+    estado: 200,
+    tipo: "json",
+    validar(cuerpo) {
+      const data = objeto(dataDe(cuerpo));
+      if (data?.anio !== 2026) return "no es la UMA de 2026";
+      return typeof data.diaria === "string" && /^\d+\.\d{2}$/.test(data.diaria)
+        ? undefined
+        : "diaria no es un decimal con 2 decimales";
+    },
+  },
+  {
     ruta: "/v1/tipo-cambio/fix/ultimo",
     estado: 200,
     tipo: "json",
