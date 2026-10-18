@@ -15,11 +15,9 @@ function campo(valor: unknown): string {
 }
 
 /** CSV según RFC 4180: UTF-8, `\r\n` al final de cada renglón, `null` como campo vacío. */
-export function aCsv(
-  columnas: readonly string[],
-  filas: readonly Record<string, unknown>[],
-): string {
+export function aCsv(columnas: readonly string[], filas: readonly object[]): string {
   const renglones = [columnas.join(",")];
-  for (const fila of filas) renglones.push(columnas.map((c) => campo(fila[c])).join(","));
+  for (const fila of filas)
+    renglones.push(columnas.map((c) => campo((fila as Record<string, unknown>)[c])).join(","));
   return `${renglones.join("\r\n")}\r\n`;
 }
