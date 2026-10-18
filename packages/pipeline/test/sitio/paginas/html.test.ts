@@ -120,6 +120,13 @@ describe("documento", () => {
     );
   });
 
+  it("con indexable: false pide a los buscadores no indexar la página", () => {
+    expect(documento(base)).not.toContain('name="robots"');
+    const html = documento({ ...base, indexable: false });
+    esperarDocumentoValido(html);
+    expect(html).toContain('<meta name="robots" content="noindex">\n');
+  });
+
   it("carga cada script como módulo del mismo origen", () => {
     const html = documento({ ...base, scripts: ["/sitio.js"] });
     esperarDocumentoValido(html);

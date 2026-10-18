@@ -28,6 +28,11 @@ describe("404.html", () => {
     expect(html).not.toContain("frame-ancestors");
   });
 
+  // Se sirve con 404 en cualquier URL; el noindex cubre a quien la tome por una página más.
+  it("pide no indexarla", () => {
+    expect(html).toContain('<meta name="robots" content="noindex">');
+  });
+
   it("enlaza al inicio y al índice de la API", () => {
     expect(html).toContain('<a href="/">');
     expect(html).toContain('<a href="/v1">');

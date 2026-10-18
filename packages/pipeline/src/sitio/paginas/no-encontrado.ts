@@ -10,6 +10,7 @@ export function paginaNoEncontrada(): string {
     titulo: "No existe esta página · MéxicoAPI",
     descripcion: "La dirección no corresponde a ninguna página ni descarga de MéxicoAPI.",
     seguridadEnMeta: true,
+    indexable: false,
     cuerpo: `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">
