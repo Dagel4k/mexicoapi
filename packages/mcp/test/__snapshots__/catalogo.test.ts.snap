@@ -1379,7 +1379,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
         "anio": {
           "description": "Año de 4 cifras.",
           "maximum": 9999,
-          "minimum": 1,
+          "minimum": 1000,
           "type": "integer",
         },
         "autoridad": {
@@ -1737,7 +1737,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
         "anio": {
           "description": "Año de 4 cifras.",
           "maximum": 9999,
-          "minimum": 1,
+          "minimum": 1000,
           "type": "integer",
         },
         "fecha": {

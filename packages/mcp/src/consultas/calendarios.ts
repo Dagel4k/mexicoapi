@@ -54,7 +54,7 @@ export function diasInhabilesHerramienta({ cliente }: OpcionesHerramientas): Her
       type: "object",
       properties: {
         autoridad: AUTORIDAD,
-        anio: { type: "integer", minimum: 1, maximum: 9999, description: "Año de 4 cifras." },
+        anio: { type: "integer", minimum: 1000, maximum: 9999, description: "Año de 4 cifras." },
       },
       required: ["autoridad", "anio"],
       additionalProperties: false,
