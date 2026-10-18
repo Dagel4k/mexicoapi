@@ -101,7 +101,10 @@ curl https://<base>/v1/estados/99
 
 Si la ruta no existe, el `detail` es `No existe la ruta.`
 
-En el tipo de cambio FIX y las UDIS, este tipo es definitivo: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. El problema trae además `fecha` (la pedida) y `cobertura` (la primera y la última fecha de la serie). Si el dato puede llegar después, el tipo es [`dato-no-disponible`](#dato-no-disponible).
+En el tipo de cambio FIX y las UDIS, este tipo es definitivo y el problema trae además `fecha` (la pedida) y `cobertura` (la primera y la última fecha de la serie). Si el dato puede llegar después, el tipo es [`dato-no-disponible`](#dato-no-disponible).
+
+- En el FIX: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. Con `publicado`, un sábado o domingo posterior a lo cargado también lo da si entre el último dato y esa fecha solo hay fin de semana. Con `operacion`, lo da una operación hasta el primer día de la serie, porque la publicación que aplica es anterior a ella.
+- En las UDIS: solo una fecha anterior al inicio de la serie. Hay un valor para cada día, así que dentro de la serie no falta ninguno; una fecha posterior a lo cargado es `dato-no-disponible`.
 
 ```bash
 curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
@@ -119,11 +122,29 @@ curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
 }
 ```
 
+Antes del inicio de la serie, el `detail` dice dónde empieza:
+
+```bash
+curl "https://<base>/v1/udis?fecha=2019-12-31"
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
+  "title": "Recurso no encontrado",
+  "status": 404,
+  "detail": "La serie empieza el 2020-01-01; no incluye el 2019-12-31.",
+  "instance": "/v1/udis",
+  "fecha": "2019-12-31",
+  "cobertura": { "desde": "2020-01-01", "hasta": "2026-10-25" }
+}
+```
+
 Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`09`, no `9`). En el FIX, para saber qué tipo de cambio aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
 
 ## dato-no-disponible
 
-Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie o, en una operación con FIX, falta cargar la publicación de la víspera. La API no responde un valor anterior en su lugar. El problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado.
+Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. El problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado.
 
 ```bash
 curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"

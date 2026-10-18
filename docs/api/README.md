@@ -359,6 +359,8 @@ curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-16"
 
 `valor` es un texto con 4 decimales, para no perder ceros ni precisión. `fecha_publicacion` es el día de la publicación en el DOF, no el día al que se aplica.
 
+El Banco de México, en el SIE y en su sitio, muestra el FIX por fecha de determinación, que es el día hábil bancario anterior a la publicación en el DOF. Por eso ahí la misma cifra aparece un día hábil antes que en `publicado`: el 18.4250 que el DOF publicó el 2026-10-16 aparece en Banxico como FIX del 2026-10-15. La columna de publicación en el DOF de la tabla de Banxico sí coincide con `publicado`.
+
 `operacion` aplica el artículo 20 del Código Fiscal de la Federación: para una operación se usa el FIX que el Banco de México publicó el día anterior y, si ese día no hubo publicación, el último publicado antes. La respuesta dice qué publicación se usó y cita el fundamento:
 
 ```bash
@@ -383,7 +385,9 @@ curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-19"
 
 El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica el valor del viernes 16.
 
-`operacion` solo responde cuando la respuesta es cierta. Si falta cargar la publicación de la víspera de un día hábil, no devuelve un valor anterior: responde 404 `dato-no-disponible`. Los fines de semana no cuentan, porque no se espera publicación. Por eso una consulta temprano por la operación de mañana puede dar 404 hasta que corra la actualización diaria; vuelve a intentar después.
+`operacion` solo responde cuando la respuesta es cierta: cuando están cargados todos los días entre semana hasta la víspera de la operación. Los sábados y domingos no cuentan, porque el DOF no publica el FIX esos días. Los feriados bancarios sí cuentan como días entre semana: la API no usa un calendario bancario y no distingue un feriado de una publicación que todavía no se carga. Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México, así que una consulta temprano por la operación de mañana da 404 hasta esa hora; vuelve a intentar después.
+
+Por la misma razón, la mañana después de un feriado bancario, una operación de ese día da `dato-no-disponible` hasta la corrida de las 13:30. Por ejemplo, el lunes 16 de noviembre de 2026 es feriado bancario y no hay publicación. El martes 17 por la mañana, lo cargado termina en el viernes 13 y el lunes 16 cuenta como día entre semana sin cargar, así que `operacion=2026-11-17` responde `dato-no-disponible`. Después de la corrida del martes responde la publicación del viernes 13, que es la que aplica.
 
 ### Último
 
