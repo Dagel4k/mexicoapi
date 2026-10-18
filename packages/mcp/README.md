@@ -90,7 +90,7 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 
 Sin `MEXICOAPI_BASE`, el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
 
-Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo) llega como resultado con `isError: true` y un texto que dice qué pasó.
+Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó.
 
 ### Datos al día
 
