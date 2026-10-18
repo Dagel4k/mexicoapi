@@ -1,0 +1,38 @@
+{
+  "dataset": "dias-inhabiles.sat",
+  "schema_version": 1,
+  "as_of": "2026-07-09",
+  "fetched_at": "2026-07-09T00:00:00Z",
+  "data_file": "dias-inhabiles.json",
+  "data_sha256": "6bd1b3a28df0b47e6362338306fd59bf58e90639524f9cb4f20c90d02e3f35cd",
+  "records": 23,
+  "sources": [
+    {
+      "name": "Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "Resolución Miscelánea Fiscal para 2026. Diario Oficial de la Federación, 28/12/2025. https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025",
+      "published_at": "2025-12-28",
+      "raw": []
+    },
+    {
+      "name": "Código Fiscal de la Federación, artículo 12",
+      "url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "Código Fiscal de la Federación, artículo 12. Texto vigente con la última reforma publicada en el DOF el 09/04/2026. https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf",
+      "published_at": "2026-04-09",
+      "raw": []
+    },
+    {
+      "name": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "license": "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)",
+      "license_url": "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+      "citation": "Primera Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026. Diario Oficial de la Federación, 09/07/2026. https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+      "published_at": "2026-07-09",
+      "raw": []
+    }
+  ]
+}
