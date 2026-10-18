@@ -319,7 +319,11 @@ function operaciones(): Operacion[] {
       operationId: "estadoDatasets",
       summary: "Estado y frescura de los datasets",
       tag: "General",
-      ok: respuestaDatos("Estado de cada dataset.", lista("EstadoDataset")),
+      ok: respuestaDatosPlano("Estado de cada dataset; no lleva meta.", {
+        type: "object",
+        required: ["data"],
+        properties: { data: lista("EstadoDataset") },
+      }),
       errores: [],
     },
     {
