@@ -6,7 +6,7 @@ import type {
   Manifiesto,
 } from "@mexicoapi/core";
 import { jsonCanonico, ordenarPorClave, sha256Hex } from "../canonico.js";
-import { shardCalendario } from "./calendario.js";
+import { fuenteDeRegla, registrosConRegla, shardCalendario } from "./calendario.js";
 import type { FuenteCurada } from "./esquemas.js";
 import type { DocumentoCurado } from "./leer.js";
 import type { DefinicionCurado } from "./registro.js";
@@ -53,17 +53,32 @@ function fuentesManifiesto(fuentes: Iterable<FuenteCurada>): FuenteManifiesto[] 
 export const ARCHIVO_CALENDARIO = "calendario.json";
 
 /**
+ * Los registros que se publican de un curado: los del YAML y, en un calendario con regla del
+ * núcleo (el SAT), los días de la regla de los años que cubre el YAML, en orden de fecha.
+ */
+export function registrosPublicados<T extends { fuente: FuenteDof }>(
+  def: DefinicionCurado<T>,
+  documento: DocumentoCurado<T>,
+): T[] {
+  if (def.calendario === undefined) return documento.registros;
+  const registros = documento.registros as unknown as DiaInhabilCurado[];
+  return registrosConRegla(def.calendario, registros, documento.cobertura) as unknown as T[];
+}
+
+/**
  * Archivos de `data/<directorio>/`: los registros en JSON canónico y su manifiesto y, en un
- * calendario, `calendario.json`. Todo sale del YAML, incluidas las fechas (`as_of` es la
- * publicación más reciente), así que es reproducible. Lanza ErrorDatos si un calendario no puede
- * citar los fines de semana de cada año.
+ * calendario, `calendario.json`. Todo sale del YAML y, en un calendario con regla, de la regla
+ * del núcleo, incluidas las fechas (`as_of` es la publicación más reciente), así que es
+ * reproducible. Lanza ErrorDatos si un calendario no puede citar los fines de semana de cada año.
  */
 export function archivosCurado<T extends { fuente: FuenteDof }>(
   def: DefinicionCurado<T>,
   documento: DocumentoCurado<T>,
 ): Map<string, string> {
-  const datos = jsonCanonico(documento.registros);
-  const fuentes = [...documento.fuentes.values()];
+  const registros = registrosPublicados(def, documento);
+  const datos = jsonCanonico(registros);
+  const deRegla = def.calendario === undefined ? undefined : fuenteDeRegla(def.calendario);
+  const fuentes = [...documento.fuentes.values(), ...(deRegla === undefined ? [] : [deRegla])];
   const asOf = fuentes.reduce(
     (max, f) => (f.fecha_publicacion > max ? f.fecha_publicacion : max),
     "",
@@ -76,7 +91,7 @@ export function archivosCurado<T extends { fuente: FuenteDof }>(
     fetched_at: `${asOf}T00:00:00Z`,
     data_file: def.archivo,
     data_sha256: sha256Hex(datos),
-    records: documento.registros.length,
+    records: registros.length,
     sources: fuentesManifiesto(fuentes),
   };
   const archivos = new Map([
@@ -84,10 +99,9 @@ export function archivosCurado<T extends { fuente: FuenteDof }>(
     ["manifest.json", jsonCanonico(manifiesto)],
   ]);
   if (def.calendario !== undefined) {
-    const registros = documento.registros as unknown as DiaInhabilCurado[];
     const { dias: _dias, ...calendario } = shardCalendario(
       def.calendario,
-      registros,
+      registros as unknown as DiaInhabilCurado[],
       documento.cobertura,
     );
     archivos.set(ARCHIVO_CALENDARIO, jsonCanonico(calendario));

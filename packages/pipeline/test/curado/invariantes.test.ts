@@ -407,12 +407,61 @@ describe("días inhábiles", () => {
       "2026-07-20: el tipo vacaciones no es de cnbv, que solo tiene descanso",
       "la cobertura declara vacaciones, que no es un tipo de día de cnbv",
     ]);
-    // El SAT sí tiene vacaciones.
+    // El SAT sí tiene vacaciones (su cobertura de descanso la da la regla, no el YAML).
     const vacacionesSat = dia("2026-07-20", "Primer periodo general de vacaciones de 2026", {
       autoridad: "sat",
       tipo: "vacaciones",
     });
-    expect(invariantesDias("sat")([vacacionesSat], conVacaciones)).toEqual([]);
+    expect(
+      invariantesDias("sat")([vacacionesSat], {
+        vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("días inhábiles del SAT y la regla del art. 12 del CFF", () => {
+  const sat = invariantesDias("sat");
+  const REGLA = "la regla del núcleo (Código Fiscal de la Federación, artículo 12)";
+  const vacaciones = { vacaciones: { desde: "2026-01-01", hasta: "2026-11-30" } };
+  const delSat = (fecha: string, motivo: string, tipo: DiaInhabilCurado["tipo"]) => ({
+    ...(DIAS_CNBV_OFICIALES[0] as DiaInhabilCurado),
+    fecha,
+    autoridad: "sat" as const,
+    motivo,
+    tipo,
+  });
+
+  it("no captura los días de descanso: los da la regla", () => {
+    expect(sat([delSat("2026-01-01", "1o. de enero", "descanso")], vacaciones)).toEqual([
+      `2026-01-01: los días de descanso de sat los da ${REGLA}; no se capturan`,
+    ]);
+  });
+
+  it("no declara la cobertura de descanso", () => {
+    expect(
+      sat([delSat("2026-07-20", "Primer periodo general de vacaciones de 2026", "vacaciones")], {
+        ...vacaciones,
+        descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
+      }),
+    ).toEqual([
+      `la cobertura declara descanso, que da ${REGLA} del 2026-01-01 al 2100-12-31; no se declara`,
+    ]);
+  });
+
+  it("no repite como vacaciones un día de la regla", () => {
+    // El 1o. de enero de 2026 cae en el segundo periodo de vacaciones de 2025.
+    expect(
+      sat([delSat("2026-01-01", "Segundo periodo general de vacaciones de 2025", "vacaciones")], {
+        vacaciones: { desde: "2026-01-01", hasta: "2026-11-30" },
+      }),
+    ).toEqual([`2026-01-01: ya es de descanso por ${REGLA}; no se repite como vacaciones`]);
+    // El 2 de enero no es de la regla: sí se captura.
+    expect(
+      sat([delSat("2026-01-02", "Segundo periodo general de vacaciones de 2025", "vacaciones")], {
+        vacaciones: { desde: "2026-01-01", hasta: "2026-11-30" },
+      }),
+    ).toEqual([]);
   });
 });
 
@@ -427,60 +476,81 @@ describe("días inhábiles y tipos de plazo", () => {
   });
 
   it("rechaza un día en la cobertura de su tipo pero fuera de la de todos los tipos de plazo", () => {
-    // general es la intersección de descanso y vacaciones; declaraciones_pagos, la de descanso.
-    const cobertura: CoberturaCurada = {
-      descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
-      vacaciones: { desde: "2026-01-01", hasta: "2027-01-04" },
-    };
-    expect(sat([vacaciones("2026-12-31"), vacaciones("2027-01-04")], cobertura)).toEqual([
-      "2027-01-04: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al 2026-12-31; declaraciones_pagos del 2026-01-01 al 2026-12-31)",
+    // general es la intersección de descanso (la regla del art. 12, de 2026 a 2100) y
+    // vacaciones; declaraciones_pagos, la de descanso. Unas vacaciones capturadas antes de 2026
+    // (la cola de 2025 del segundo periodo) o después de 2100 no caen en ningún plazo.
+    const plazos =
+      "general del 2026-01-01 al 2026-11-30; declaraciones_pagos del 2026-01-01 al 2100-12-31";
+    expect(
+      sat([vacaciones("2025-12-31"), vacaciones("2026-01-02")], {
+        vacaciones: { desde: "2025-12-18", hasta: "2026-11-30" },
+      }),
+    ).toEqual([`2025-12-31: no cae en la cobertura de ningún tipo de plazo (${plazos})`]);
+    expect(
+      sat([vacaciones("2026-12-31"), vacaciones("2101-01-04")], {
+        vacaciones: { desde: "2026-01-01", hasta: "2101-01-04" },
+      }),
+    ).toEqual([
+      "2101-01-04: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al 2100-12-31; declaraciones_pagos del 2026-01-01 al 2100-12-31)",
     ]);
   });
 
-  it("rechaza un plazo sin cobertura de un tipo de día que cuente o con la cobertura vacía", () => {
+  it("con la regla, declaraciones_pagos siempre tiene cobertura; general puede quedar vacía", () => {
+    // Antes, sin cobertura de descanso en el YAML, declaraciones_pagos se quedaba sin cobertura;
+    // ahora la da la regla del art. 12.
     expect(
       sat([vacaciones("2026-07-20")], {
         vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
       }),
-    ).toEqual(["el plazo declaraciones_pagos no tiene cobertura de un tipo de día que cuente"]);
+    ).toEqual([]);
     expect(
       sat([vacaciones("2025-07-21")], {
-        descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
         vacaciones: { desde: "2025-01-01", hasta: "2025-12-31" },
       }),
     ).toEqual(["la cobertura del plazo general queda vacía"]);
   });
 
-  it("el YAML real con vacaciones más allá de la cobertura de descanso no pasa", async () => {
-    // El caso que hacía responder 500 al Worker: vacaciones capturadas cuatro días después del
-    // fin de la cobertura de descanso, sin extenderla. Se arma sobre la cobertura del YAML.
+  it("el YAML real con vacaciones antes del inicio de la regla no pasa", async () => {
+    // El caso que hacía responder 500 al Worker: vacaciones capturadas fuera de la cobertura de
+    // todos los plazos. Con la regla, la de descanso empieza el 2026-01-01: capturar la cola de
+    // 2025 del segundo periodo (del 29 al 31 de diciembre) cae fuera. Se arma sobre el YAML.
     const yaml = await readFile(
       new URL("../../../../data/curado/dias-inhabiles-sat.yaml", import.meta.url),
       "utf8",
     );
-    const { descanso, vacaciones } =
-      interpretarCurado(curadoDiasSat, yaml).documento?.cobertura ?? {};
-    if (descanso === undefined || vacaciones === undefined) throw new Error("faltan coberturas");
-    const fuera = [1, 2, 3, 4].map((n) => sumarDias(descanso.hasta, n));
-    const linea = /vacaciones: \{ desde: ([\d-]+), hasta: [\d-]+ \}/;
+    const { vacaciones } = interpretarCurado(curadoDiasSat, yaml).documento?.cobertura ?? {};
+    if (vacaciones === undefined) throw new Error("falta la cobertura de vacaciones");
+    expect(interpretarCurado(curadoDiasSat, yaml).documento?.cobertura).toEqual({ vacaciones });
+    const fuera = [3, 2, 1].map((n) => sumarDias("2026-01-01", -n));
+    const linea = /vacaciones: \{ desde: [\d-]+, hasta: ([\d-]+) \}/;
     expect(yaml).toMatch(linea);
     const extra = fuera.map(
       (f) =>
-        `  - { fecha: ${f}, autoridad: sat, motivo: "Segundo periodo general de vacaciones", tipo: vacaciones, fuente: primera-rm-2026 }`,
+        `  - { fecha: ${f}, autoridad: sat, motivo: "Segundo periodo general de vacaciones de 2025", tipo: vacaciones, fuente: rmf-2026-2.1.6-i }`,
     );
     const cambiado = [
-      yaml.replace(linea, `vacaciones: { desde: $1, hasta: ${fuera.at(-1)} }`).trimEnd(),
+      yaml.replace(linea, `vacaciones: { desde: ${fuera[0]}, hasta: $1 }`).trimEnd(),
       ...extra,
       "",
     ].join("\n");
     const { documento, problemas } = interpretarCurado(curadoDiasSat, cambiado);
     expect(documento).toBeNull();
-    const desde = descanso.desde > vacaciones.desde ? descanso.desde : vacaciones.desde;
     expect(problemas).toEqual(
       fuera.map(
         (f) =>
-          `invariante: ${f}: no cae en la cobertura de ningún tipo de plazo (general del ${desde} al ${descanso.hasta}; declaraciones_pagos del ${descanso.desde} al ${descanso.hasta})`,
+          `invariante: ${f}: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al ${vacaciones.hasta}; declaraciones_pagos del 2026-01-01 al 2100-12-31)`,
       ),
     );
+  });
+
+  it("el YAML real no trae días de descanso ni su cobertura: los da la regla", async () => {
+    const yaml = await readFile(
+      new URL("../../../../data/curado/dias-inhabiles-sat.yaml", import.meta.url),
+      "utf8",
+    );
+    const { documento } = interpretarCurado(curadoDiasSat, yaml);
+    expect(documento?.registros.every((d) => d.tipo === "vacaciones")).toBe(true);
+    expect(Object.keys(documento?.cobertura ?? {})).toEqual(["vacaciones"]);
+    expect(yaml).not.toMatch(/tipo: descanso/);
   });
 });

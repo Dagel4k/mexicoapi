@@ -79,6 +79,27 @@ describe("dias_inhabiles", () => {
     expect(t).toContain("(vacaciones)");
   });
 
+  it("del SAT del año después de las vacaciones publicadas trae solo los días del art. 12", async () => {
+    // Cambio: antes, error por falta de calendario. El año sale de los datos (hoy 2027): capturar
+    // las vacaciones de 2027 lo mueve al siguiente, que solo responde la regla.
+    const { desde, hasta } = SAT.general.cobertura;
+    const anio = Number(hasta.slice(0, 4)) + 1;
+    const regla = SAT.dias.filter((d) => d.fecha.startsWith(`${anio}-`));
+    expect(regla).toHaveLength(8);
+    for (const d of regla) {
+      expect(d, d.fecha).toMatchObject({
+        tipo: "descanso",
+        fuente: { nombre: "Código Fiscal de la Federación, artículo 12" },
+      });
+    }
+    const r = await llamar("dias_inhabiles", { autoridad: "sat", anio });
+    const c = contenido(r);
+    expect(c.datos).toEqual(regla);
+    expect(texto(r)).toContain(
+      `Advertencia: Los días de tipo vacaciones del SAT solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de ${anio} está completa.`,
+    );
+  });
+
   it("un año fuera del calendario es error con el texto de la API", async () => {
     const { amplia } = SAT;
     const fuera = Number(amplia.hasta.slice(0, 4)) + 1;

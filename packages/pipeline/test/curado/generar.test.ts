@@ -1,7 +1,8 @@
+import { diasDescansoCff } from "@mexicoapi/core";
 import { describe, expect, it } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
 import { shardCalendario } from "../../src/curado/calendario.js";
-import { archivosCurado } from "../../src/curado/generar.js";
+import { archivosCurado, registrosPublicados } from "../../src/curado/generar.js";
 import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado } from "../../src/curado/leer.js";
 import type { DefinicionCurado } from "../../src/curado/registro.js";
@@ -68,7 +69,8 @@ describe("archivosCurado", () => {
       ) as string,
     );
     expect(sat.as_of).toBe("2026-07-09");
-    expect(sat.records).toBe(8);
+    // Las 4 vacaciones del YAML y los 8 días del art. 12 de 2026, que agrega la regla.
+    expect(sat.records).toBe(12);
     expect(sat.sources.map((s: { published_at: string }) => s.published_at)).toEqual([
       "2025-12-28",
       "2026-04-09",
@@ -109,14 +111,42 @@ describe("archivosCurado", () => {
       "plazos",
       "fuentes_fin_de_semana",
     ]);
+    // declaraciones_pagos solo cuenta los días del art. 12, que la regla da hasta 2100.
     expect(JSON.parse(texto).plazos).toEqual({
       general: { cobertura: { desde: "2026-01-01", hasta: "2026-11-30" }, excluir_tipos: [] },
       declaraciones_pagos: {
-        cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+        cobertura: { desde: "2026-01-01", hasta: "2100-12-31" },
         excluir_tipos: ["vacaciones"],
       },
     });
-    expect(Object.keys(JSON.parse(texto).fuentes_fin_de_semana)).toEqual(["2026"]);
+    // Los fines de semana del SAT los cita la regla, no el calendario.
+    expect(JSON.parse(texto).fuentes_fin_de_semana).toEqual({});
+  });
+
+  it("la lista del SAT trae los días del art. 12 de los años del YAML, calculados por la regla", () => {
+    const doc = documento(curadoDiasSat, YAML_SAT);
+    const dias = JSON.parse(
+      archivosCurado(curadoDiasSat, doc).get("dias-inhabiles.json") as string,
+    );
+    expect(dias).toEqual(registrosPublicados(curadoDiasSat, doc));
+    const descanso = dias.filter((d: { tipo: string }) => d.tipo === "descanso");
+    expect(descanso).toEqual(
+      diasDescansoCff(2026).map(({ fecha, motivo, tipo, fuente }) => ({
+        fecha,
+        autoridad: "sat",
+        motivo,
+        tipo,
+        fuente: { ...fuente },
+      })),
+    );
+    // El YAML no los trae: solo las vacaciones.
+    expect(doc.registros.every((d: { tipo: string }) => d.tipo === "vacaciones")).toBe(true);
+    expect(dias.map((d: { fecha: string }) => d.fecha)).toEqual(
+      [...dias.map((d: { fecha: string }) => d.fecha)].sort(),
+    );
+    // Los demás datasets se publican como están en el YAML.
+    const uma = documento(curadoUma, YAML_UMA);
+    expect(registrosPublicados(curadoUma, uma)).toBe(uma.registros);
   });
 
   it("es determinista", () => {

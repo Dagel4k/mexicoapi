@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { AVISO_LFT_715, diaDeLaSemana, sumarDias } from "@mexicoapi/core";
+import { AVISO_LFT_715, diaDeLaSemana, diasDescansoCff, sumarDias } from "@mexicoapi/core";
 import { describe, expect, inject, it } from "vitest";
 import { probarHumo } from "../../scripts/humo.ts";
 import {
@@ -604,10 +604,6 @@ function siguienteHabil(desde: string, publicados: readonly DiaReal[]): string {
   return fecha;
 }
 
-/** Días de calendario del fin de una cobertura al de otra. */
-const diasEntre = (a: Rango, b: Rango): number =>
-  (Date.parse(b.hasta) - Date.parse(a.hasta)) / 86_400_000;
-
 /** El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`. */
 function avisosDelNucleo(cobertura: Rango, resultado: string): string[] {
   const avisos: string[] = [];
@@ -615,6 +611,13 @@ function avisosDelNucleo(cobertura: Rango, resultado: string): string[] {
     avisos.push(`Calendario incompleto: SAT ${anio}; solo se descontaron fines de semana.`);
   }
   return avisos;
+}
+
+/** Los días de un año del SAT como los responde la API: los del art. 12 y las vacaciones. */
+function delSat(anio: string): Obj[] {
+  const regla = diasDescansoCff(Number(anio)).map((d) => ({ ...d, fuente: { ...d.fuente } }));
+  const vacaciones = DIAS_SAT.filter((d) => d.tipo === "vacaciones" && d.fecha.startsWith(anio));
+  return [...regla, ...vacaciones.map(comoApi)].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
 }
 
 /** Los años que la cobertura incluye completos. */
@@ -646,19 +649,33 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     expect(Object.keys(COBERTURA_CNBV)).toEqual(["general"]);
     // general cuenta todos los tipos de día: ninguna vacación publicada queda fuera de su cobertura.
     expect(DIAS_SAT.some((d) => d.tipo === "vacaciones" && d.fecha > general.hasta)).toBe(false);
+    // Los días de descanso de la lista son los de la regla del art. 12 de sus años.
+    for (const anio of new Set(DIAS_SAT.map((d) => anioDe(d.fecha)))) {
+      expect(DIAS_SAT.filter((d) => d.tipo === "descanso" && d.fecha.startsWith(anio))).toEqual(
+        diasDescansoCff(Number(anio)).map((d) => ({ ...d, autoridad: "sat", fuente: d.fuente })),
+      );
+    }
+    expect(declaraciones).toEqual({ desde: "2026-01-01", hasta: "2100-12-31" });
     expect(DIAS_CNBV.map((d) => d.fecha)).toEqual(
       expect.arrayContaining(["2025-12-12", "2026-11-02"]),
     );
   });
 
-  it("la descarga de coberturas trae las de los calendarios que usa el Worker", async () => {
+  it("la descarga de coberturas trae las de la lista que se descarga", async () => {
     const descarga = JSON.parse(
       (await leerPublico("descargas/dias-inhabiles-coberturas.json")).toString("utf8"),
     );
+    // Cambio: en el SAT, la lista solo trae los días del art. 12 de sus años (el Worker los
+    // calcula hasta 2100), así que declaraciones_pagos llega al fin del último año de la lista.
+    const finDeLaLista = `${anioDe(DIAS_SAT.at(-1)?.fecha ?? "")}-12-31`;
+    const deLaLista = {
+      ...COBERTURA_SAT,
+      declaraciones_pagos: { desde: declaraciones.desde, hasta: finDeLaLista },
+    };
     expect(descarga).toEqual(
       [
         ["cnbv", COBERTURA_CNBV],
-        ["sat", COBERTURA_SAT],
+        ["sat", deLaLista],
       ].flatMap(([autoridad, plazos]) =>
         Object.entries(plazos as Record<string, Rango>).map(([tipo_plazo, r]) => ({
           autoridad,
@@ -666,6 +683,28 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
           ...r,
         })),
       ),
+    );
+  });
+
+  it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni advertencias", async () => {
+    // Los casos de la auditoría: antes, 422 desde el 2027-01-01.
+    for (const [desde, dias, resultado] of [
+      ["2026-12-30", 2, "2027-01-04"],
+      ["2026-11-20", 30, "2027-01-05"],
+      ["2026-12-15", 15, "2027-01-07"],
+    ] as const) {
+      const { data } = await datos(sat("declaraciones_pagos", desde, dias));
+      expect(data, desde).toMatchObject({ resultado, advertencias: [] });
+      expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toContain("2027-01-01");
+    }
+  });
+
+  it("avisa de la transmisión del Poder Ejecutivo de 2030 y no descuenta el 1o. de octubre", async () => {
+    const { data } = await datos(sat("declaraciones_pagos", "2030-09-30", 1));
+    expect(data.resultado).toBe("2030-10-01");
+    expect(data.advertencias).toHaveLength(1);
+    expect(data.advertencias[0]).toMatch(
+      /^En 2030 no se descuentan el 1o\. de octubre ni el 1o\. de diciembre: el art\. 12 del CFF/,
     );
   });
 
@@ -734,14 +773,18 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
         DIAS_SAT.filter((d) => d.fecha > vispera && d.fecha < salto.data.resultado).map(comoApi),
       );
       expect(salto.data.inhabiles_saltados).toContainEqual(comoApi(publicado));
-      // Contar más días hábiles que días hay en el hueco pasa la cobertura más amplia: se suma
-      // el aviso del núcleo, uno por año.
-      const largo = await datos(permitir(general.hasta, diasEntre(general, declaraciones) + 1));
+      // Pasar la cobertura más amplia (la regla del art. 12, hasta 2100) suma el aviso del
+      // núcleo, uno por año. Antes bastaba con cruzar el 31 de diciembre de 2026.
+      const largo = await datos(permitir(sumarDias(declaraciones.hasta, -10), 20));
       expect(largo.data.resultado > declaraciones.hasta).toBe(true);
       expect(largo.data.advertencias).toEqual([
         aviso,
         ...avisosDelNucleo(declaraciones, largo.data.resultado),
       ]);
+      // Un plazo largo desde el fin de general descuenta el 1 de enero de 2027, que da la regla.
+      const enero = await datos(permitir(general.hasta, 40));
+      expect(enero.data.advertencias).toEqual([aviso]);
+      expect(enero.data.inhabiles_saltados.map((d: Obj) => d.fecha)).toContain("2027-01-01");
     },
   );
 
@@ -789,22 +832,30 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     });
   });
 
-  it("dias-inhabiles del SAT: la lista publicada de cada año, con la advertencia si faltan vacaciones", async () => {
+  it("dias-inhabiles del SAT: los días del art. 12 y las vacaciones de cada año, con la advertencia si faltan vacaciones", async () => {
     const anios = aniosCompletos(declaraciones);
+    // Cambio: con la regla del art. 12, la lista se responde de 2026 a 2100.
     expect(anios).toContain("2026");
+    expect(anios).toContain("2027");
     for (const anio of anios) {
       const cuerpo = await datos(`/v1/dias-inhabiles?autoridad=sat&anio=${anio}`);
-      expect(cuerpo.data).toEqual(
-        DIAS_SAT.filter((d) => d.fecha.startsWith(`${anio}-`)).map(comoApi),
-      );
+      expect(cuerpo.data, anio).toEqual(delSat(anio));
+      // Donde hay lista publicada, es la misma.
+      const publicados = DIAS_SAT.filter((d) => d.fecha.startsWith(`${anio}-`)).map(comoApi);
+      if (publicados.length > 0) expect(cuerpo.data, anio).toEqual(publicados);
       const completo = `${anio}-01-01` >= general.desde && `${anio}-12-31` <= general.hasta;
-      expect(cuerpo.advertencias, anio).toEqual(
-        completo
-          ? []
-          : [
-              `Los días de tipo vacaciones del SAT solo están completos ${rango(general)}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de ${anio} está completa.`,
-            ],
-      );
+      const vacaciones = completo
+        ? []
+        : [
+            `Los días de tipo vacaciones del SAT solo están completos ${rango(general)}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de ${anio} está completa.`,
+          ];
+      // En los años de transmisión del Poder Ejecutivo, también ese aviso.
+      const transmision = (Number(anio) - 2024) % 6 === 0;
+      expect(cuerpo.advertencias.slice(0, vacaciones.length), anio).toEqual(vacaciones);
+      expect(cuerpo.advertencias, anio).toHaveLength(vacaciones.length + (transmision ? 1 : 0));
+      if (transmision) {
+        expect(cuerpo.advertencias.at(-1)).toMatch(new RegExp(`^En ${anio} no se descuentan`));
+      }
       expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
     }
     await calendarioIncompleto(

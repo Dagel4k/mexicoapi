@@ -225,6 +225,11 @@ const CASOS: Caso[] = [
     estado: 200,
   },
   { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-12-11&dias=1", estado: 200 },
+  // Los días del art. 12 del CFF salen de la regla: declaraciones_pagos cruza a 2027.
+  {
+    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-12-30&dias=2",
+    estado: 200,
+  },
   {
     ruta: "/v1/dias-habiles?autoridad=lft&tipo_plazo=general&desde=2026-01-05&dias=10",
     estado: 400,
@@ -252,6 +257,8 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-inhabiles?autoridad=cnbv&anio=2025", estado: 200 },
   // La lista publicada, con la advertencia si faltan vacaciones; los años junto a cada cobertura.
   { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026", estado: 200 },
+  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2027", estado: 200 },
+  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2030", estado: 200 },
   { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026&tipo_plazo=general", estado: 400 },
   {
     ruta: `/v1/dias-inhabiles?autoridad=sat&anio=${anioDe(sumarDias(SAT_DECLARACIONES.hasta, 1))}`,

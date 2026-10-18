@@ -12,6 +12,7 @@ import {
 } from "../../src/cargas.js";
 import { crearAssets, entornoDe } from "./ayudas.js";
 import {
+  DIAS_CALENDARIO_SAT,
   DIAS_SAT,
   FUENTE_CFF,
   FUENTE_CNBV,
@@ -451,13 +452,14 @@ describe("calendarios curados", () => {
     expect(calendario.general.cobertura).toEqual({ desde: "2026-01-01", hasta: "2026-11-30" });
     expect(calendario.general.excluirTipos).toEqual([]);
     expect(calendario.plazos.get("declaraciones_pagos")?.excluirTipos).toEqual(["vacaciones"]);
-    expect(calendario.amplia).toEqual({ desde: "2026-01-01", hasta: "2026-12-31" });
-    expect(calendario.dias).toEqual(DIAS_SAT);
+    // La cobertura amplia y los días de descanso salen de la regla del art. 12 (hasta 2100).
+    expect(calendario.amplia).toEqual({ desde: "2026-01-01", hasta: "2100-12-31" });
+    expect(calendario.dias).toEqual(DIAS_CALENDARIO_SAT);
     expect(await calendarioCurado(entorno, "sat")).toBe(calendario);
     expect(assets.pedidas).toEqual([RUTA_SAT]);
   });
 
-  it("general cuenta las vacaciones; declaraciones_pagos no, y cubre hasta diciembre", async () => {
+  it("general cuenta las vacaciones; declaraciones_pagos no, y cubre hasta 2100 con la regla", async () => {
     const { entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT });
     const { general, plazos } = await calendarioCurado(entorno, "sat");
     const declaraciones = plazos.get("declaraciones_pagos");
@@ -468,7 +470,12 @@ describe("calendarios curados", () => {
     expect(declaraciones?.calendario.inhabil("2026-12-26")?.fuente).toEqual(FUENTE_CFF);
     // El 25 de diciembre queda fuera de la cobertura de general: no entra a su calendario.
     expect(() => general.calendario.inhabil("2026-12-25")).toThrow(CalendarioIncompletoError);
-    expect(() => declaraciones?.calendario.inhabil("2027-01-01")).toThrow(
+    // Cambio: el 1 de enero de 2027 es inhábil por el art. 12, no un día sin calendario.
+    expect(declaraciones?.calendario.inhabil("2027-01-01")).toMatchObject({
+      tipo: "descanso",
+      fuente: FUENTE_CFF,
+    });
+    expect(() => declaraciones?.calendario.inhabil("2101-01-01")).toThrow(
       CalendarioIncompletoError,
     );
   });
@@ -477,7 +484,7 @@ describe("calendarios curados", () => {
     const { entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT, [RUTA_CNBV]: SHARD_CNBV });
     const { general, plazos } = await calendarioCurado(entorno, "sat");
     const respaldo = general.respaldo;
-    expect(respaldo?.cobertura).toEqual({ desde: "2026-01-01", hasta: "2026-12-31" });
+    expect(respaldo?.cobertura).toEqual({ desde: "2026-01-01", hasta: "2100-12-31" });
     // Cuenta lo mismo que general (también las vacaciones) y llega a diciembre.
     expect(respaldo?.inhabil("2026-07-20")?.tipo).toBe("vacaciones");
     expect(respaldo?.inhabil("2026-12-25")).toMatchObject({ tipo: "descanso", fuente: FUENTE_CFF });
@@ -523,7 +530,7 @@ describe("calendarios curados", () => {
     };
     const { entorno } = conAssets({ [RUTA_SAT]: conExtra });
     const calendario = await calendarioCurado(entorno, "sat");
-    expect(calendario.dias).toEqual(DIAS_SAT);
+    expect(calendario.dias).toEqual(DIAS_CALENDARIO_SAT);
     for (const parte of [
       calendario,
       calendario.dias,
@@ -547,7 +554,7 @@ describe("calendarios curados", () => {
     const roto = conAssets({ [RUTA_SAT]: { ...SHARD_SAT, dias: null } });
     await expect(calendarioCurado(roto.entorno, "sat")).rejects.toThrow();
     const { assets, entorno } = conAssets({ [RUTA_SAT]: SHARD_SAT });
-    expect((await calendarioCurado(entorno, "sat")).dias).toHaveLength(DIAS_SAT.length);
+    expect((await calendarioCurado(entorno, "sat")).dias).toHaveLength(DIAS_CALENDARIO_SAT.length);
     expect(assets.pedidas).toEqual([RUTA_SAT]);
   });
 
@@ -573,7 +580,8 @@ describe("calendarios curados", () => {
   const SIN_PARTES = "El shard calendarios/sat no tiene autoridad, plazos, fuentes y días.";
   const FORMA =
     "El shard calendarios/sat tiene un plazo, una fuente o un día con forma inesperada.";
-  const SIN_FINES_2026 = "El calendario de sat no cita los fines de semana de 2026.";
+  const POR_REGLA =
+    "El calendario de sat cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).";
   const SIN_GENERAL = "El calendario de sat no tiene un plazo general que cuente todos los días.";
   for (const [caso, valor, mensaje] of [
     ["JSON roto", "{", SyntaxError],
@@ -598,20 +606,21 @@ describe("calendarios curados", () => {
       { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: { ...FUENTE_CFF, fragmento: undefined } } },
       FORMA,
     ],
+    // El SAT no cita fines de semana: los cita la regla del art. 12.
     [
-      "sin la fuente de un año de la cobertura",
-      { ...SHARD_SAT, fuentes_fin_de_semana: {} },
-      SIN_FINES_2026,
-    ],
-    [
-      "fuente de fines de semana de un año fuera de la cobertura",
-      { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: FUENTE_CFF, 2027: FUENTE_CFF } },
-      "El calendario de sat cita fines de semana de años fuera de su cobertura.",
+      "fuente de fines de semana en el SAT",
+      { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: FUENTE_CFF } },
+      POR_REGLA,
     ],
     [
       "fuente de fines de semana con otro año en la llave",
       { ...SHARD_SAT, fuentes_fin_de_semana: { "2026-01": FUENTE_CFF } },
-      SIN_FINES_2026,
+      POR_REGLA,
+    ],
+    [
+      "un día del art. 12 distinto del de la regla",
+      conDia({ motivo: "Año nuevo" }),
+      "El calendario de sat trae el día de descanso 2026-01-01 distinto del que da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
     ],
     [
       "plazo desconocido",
@@ -689,8 +698,8 @@ describe("calendarios curados", () => {
     ],
     [
       "día fuera de toda cobertura",
-      conDia({ fecha: "2027-01-01" }),
-      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2027-01-01.",
+      conDia({ fecha: "2101-01-01" }),
+      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2101-01-01.",
     ],
   ] as const) {
     it(`rechaza un calendario con forma inesperada: ${caso}`, async () => {
@@ -699,26 +708,67 @@ describe("calendarios curados", () => {
     });
   }
 
+  // La CNBV sí cita los fines de semana de cada año de su cobertura.
+  const SIN_FINES_2026 = "El calendario de cnbv no cita los fines de semana de 2026.";
+  const conFuentes = (fuentes: unknown) => ({ ...SHARD_CNBV, fuentes_fin_de_semana: fuentes });
+  for (const [caso, valor, mensaje] of [
+    [
+      "sin la fuente de un año de la cobertura",
+      conFuentes({ 2025: FUENTE_CNBV_2025 }),
+      SIN_FINES_2026,
+    ],
+    [
+      "fuente de fines de semana de un año fuera de la cobertura",
+      conFuentes({ 2025: FUENTE_CNBV_2025, 2026: FUENTE_CNBV, 2027: FUENTE_CNBV }),
+      "El calendario de cnbv cita fines de semana de años fuera de su cobertura.",
+    ],
+    [
+      "fuente de fines de semana con otro año en la llave",
+      conFuentes({ 2025: FUENTE_CNBV_2025, "2026-01": FUENTE_CNBV }),
+      SIN_FINES_2026,
+    ],
+  ] as const) {
+    it(`rechaza un calendario de la CNBV con forma inesperada: ${caso}`, async () => {
+      const { entorno } = conAssets({ [RUTA_CNBV]: valor });
+      await expect(calendarioCurado(entorno, "cnbv")).rejects.toThrow(mensaje);
+    });
+  }
+
   it("una llave __proto__ en plazos o en las fuentes llega al núcleo, que la rechaza", async () => {
     // JSON.parse deja `__proto__` como llave propia; cadaValor la conserva con fromEntries (una
     // asignación la perdería en el prototipo) y así el núcleo la ve como un plazo o un año más.
-    const texto = JSON.stringify(SHARD_SAT);
-    const conLlave = (campo: string, valor: unknown) =>
-      texto.replace(`"${campo}":{`, `"${campo}":{"__proto__":${JSON.stringify(valor)},`);
-    for (const [cuerpo, mensaje] of [
+    const conLlave = (shard: object, campo: string, valor: unknown) => {
+      const texto = JSON.stringify(shard);
+      const llave = `"__proto__":${JSON.stringify(valor)}`;
+      // Un objeto vacío (las fuentes del SAT) no lleva coma después de la llave.
+      return texto.includes(`"${campo}":{}`)
+        ? texto.replace(`"${campo}":{}`, `"${campo}":{${llave}}`)
+        : texto.replace(`"${campo}":{`, `"${campo}":{${llave},`);
+    };
+    for (const [autoridad, ruta, cuerpo, mensaje] of [
       [
-        conLlave("plazos", general),
+        "sat",
+        RUTA_SAT,
+        conLlave(SHARD_SAT, "plazos", general),
         "El calendario de sat tiene un tipo de plazo inesperado: __proto__.",
       ],
       [
-        conLlave("fuentes_fin_de_semana", FUENTE_CFF),
-        "El calendario de sat cita fines de semana de años fuera de su cobertura.",
+        "sat",
+        RUTA_SAT,
+        conLlave(SHARD_SAT, "fuentes_fin_de_semana", FUENTE_CFF),
+        "El calendario de sat cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+      ],
+      [
+        "cnbv",
+        RUTA_CNBV,
+        conLlave(SHARD_CNBV, "fuentes_fin_de_semana", FUENTE_CNBV),
+        "El calendario de cnbv cita fines de semana de años fuera de su cobertura.",
       ],
     ] as const) {
       expect(cuerpo).toContain('"__proto__":');
       reiniciarCargas();
-      const { entorno } = conAssets({ [RUTA_SAT]: cuerpo });
-      await expect(calendarioCurado(entorno, "sat")).rejects.toThrow(mensaje);
+      const { entorno } = conAssets({ [ruta]: cuerpo });
+      await expect(calendarioCurado(entorno, autoridad)).rejects.toThrow(mensaje);
     }
     expect(Object.hasOwn(Object.prototype, "general")).toBe(false);
     expect(Object.hasOwn(Object.prototype, "cobertura")).toBe(false);

@@ -263,20 +263,14 @@ registros:
   - { fecha: 2026-12-25, autoridad: cnbv, motivo: "25 de diciembre", tipo: descanso, fuente: cnbv-2026 }
 `;
 
-const FRAGMENTO_CFF_12 =
-  "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre.";
-
+/**
+ * El SAT 2026 como se captura: solo las vacaciones. Los días del art. 12 del CFF los da la regla
+ * del núcleo, y `curar` los agrega a la lista de 2026.
+ */
 export const YAML_SAT = `dataset: dias-inhabiles.sat
 cobertura:
-  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }
   vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }
 fuentes:
-  cff-12:
-    nombre: "Código Fiscal de la Federación, artículo 12"
-    url: https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf
-    fecha_publicacion: 2026-04-09
-    fragmento: "${FRAGMENTO_CFF_12}"
-${LICENCIA_DOF}
   rmf-2026-2.1.6-i:
     nombre: "Resolución Miscelánea Fiscal para 2026"
     url: https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025
@@ -296,14 +290,10 @@ ${LICENCIA_DOF}
     fragmento: "III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
 ${LICENCIA_DOF}
 registros:
-  - { fecha: 2026-01-01, autoridad: sat, motivo: "1o. de enero", tipo: descanso, fuente: cff-12 }
   - { fecha: 2026-01-02, autoridad: sat, motivo: "Segundo periodo general de vacaciones de 2025", tipo: vacaciones, fuente: rmf-2026-2.1.6-i }
-  - { fecha: 2026-02-02, autoridad: sat, motivo: "Primer lunes de febrero, en conmemoración del 5 de febrero", tipo: descanso, fuente: cff-12 }
   - { fecha: 2026-04-02, autoridad: sat, motivo: "Día inhábil para el SAT", tipo: vacaciones, fuente: rmf-2026-2.1.6-ii }
   - { fecha: 2026-04-03, autoridad: sat, motivo: "Día inhábil para el SAT", tipo: vacaciones, fuente: rmf-2026-2.1.6-ii }
   - { fecha: 2026-07-20, autoridad: sat, motivo: "Primer periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }
-  - { fecha: 2026-11-16, autoridad: sat, motivo: "Tercer lunes de noviembre, en conmemoración del 20 de noviembre", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-12-25, autoridad: sat, motivo: "25 de diciembre", tipo: descanso, fuente: cff-12 }
 `;
 
 /** UMA 2017-2026 tal como el INEGI las publicó en el DOF. */

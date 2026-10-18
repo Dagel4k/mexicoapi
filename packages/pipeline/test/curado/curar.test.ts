@@ -57,7 +57,8 @@ describe("curar", () => {
     const e = entorno();
     expect(await principal(["curar"], e)).toBe(0);
     expect(e.salida).toEqual([
-      "dias-inhabiles.sat: actualizado (8 registros)\n",
+      // Las 4 vacaciones del YAML y los 8 días del art. 12 de 2026 que agrega la regla.
+      "dias-inhabiles.sat: actualizado (12 registros)\n",
       "constantes.uma: actualizado (2 registros)\n",
       "isr.tarifas: actualizado (3 registros)\n",
     ]);

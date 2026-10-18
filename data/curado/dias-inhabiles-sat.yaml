@@ -1,5 +1,8 @@
-# Días inhábiles del SAT en 2026: los del artículo 12 del CFF (descanso) y los de la regla 2.1.6
-# de la RMF 2026 (vacaciones). Los sábados y domingos no se listan: el calendario los agrega solo.
+# Días inhábiles del SAT que se transcriben del DOF: los de la regla 2.1.6 de la RMF 2026
+# (vacaciones). Los del primer párrafo del artículo 12 del CFF (1o. de enero, primer lunes de
+# febrero, etc.) no se capturan: los calcula el núcleo por regla de 2026 a 2100, y `curar` los
+# agrega a la lista publicada de los años que cubre este archivo. Los sábados y domingos tampoco
+# se listan: el calendario los agrega solo.
 #
 # Las vacaciones generales cuentan como días hábiles en los plazos para presentar declaraciones y
 # pagar contribuciones (art. 12, segundo párrafo). El 2 y 3 de abril (regla 2.1.6, fracción II) se
@@ -11,16 +14,8 @@
 # extiende la cobertura.
 dataset: dias-inhabiles.sat
 cobertura:
-  descanso: { desde: 2026-01-01, hasta: 2026-12-31 }
   vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }
 fuentes:
-  cff-12:
-    nombre: "Código Fiscal de la Federación, artículo 12"
-    url: https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf
-    fecha_publicacion: 2026-04-09 # última reforma publicada en el DOF
-    fragmento: "Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."
-    licencia: "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)"
-    licencia_url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf
   rmf-2026-2.1.6-i:
     nombre: "Resolución Miscelánea Fiscal para 2026"
     url: https://dof.gob.mx/nota_detalle.php?codigo=5777217&fecha=28/12/2025
@@ -43,16 +38,8 @@ fuentes:
     licencia: "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)"
     licencia_url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf
 registros:
-  # Artículo 12 del CFF. El 1o. de diciembre por la transmisión del Poder Ejecutivo no aplica en 2026.
-  - { fecha: 2026-01-01, autoridad: sat, motivo: "1o. de enero", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-02-02, autoridad: sat, motivo: "Primer lunes de febrero, en conmemoración del 5 de febrero", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-03-16, autoridad: sat, motivo: "Tercer lunes de marzo, en conmemoración del 21 de marzo", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-05-01, autoridad: sat, motivo: "1o. de mayo", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-05-05, autoridad: sat, motivo: "5 de mayo", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-09-16, autoridad: sat, motivo: "16 de septiembre", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-11-16, autoridad: sat, motivo: "Tercer lunes de noviembre, en conmemoración del 20 de noviembre", tipo: descanso, fuente: cff-12 }
-  - { fecha: 2026-12-25, autoridad: sat, motivo: "25 de diciembre", tipo: descanso, fuente: cff-12 }
-  # Regla 2.1.6, fracción I: cola del segundo periodo de 2025 (el 1 de enero ya es de descanso).
+  # Regla 2.1.6, fracción I: cola del segundo periodo de 2025 (el 1 de enero ya es de descanso
+  # por el art. 12 y no se repite).
   - { fecha: 2026-01-02, autoridad: sat, motivo: "Segundo periodo general de vacaciones de 2025", tipo: vacaciones, fuente: rmf-2026-2.1.6-i }
   # Regla 2.1.6, fracción II.
   - { fecha: 2026-04-02, autoridad: sat, motivo: "Día inhábil para el SAT", tipo: vacaciones, fuente: rmf-2026-2.1.6-ii }

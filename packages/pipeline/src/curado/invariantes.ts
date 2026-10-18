@@ -10,7 +10,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { enesimoDiaDeSemana, esFechaIsoValida } from "@mexicoapi/core";
-import { PLAZOS, revisarPlazos } from "@mexicoapi/core/curados";
+import { coberturaConRegla, PLAZOS, REGLAS, revisarPlazos } from "@mexicoapi/core/curados";
 import { aCentavos, conMiles, deCentavos, dividirRedondeando } from "./decimal.js";
 import type { ExcepcionCuotaFija } from "./esquemas.js";
 
@@ -333,21 +333,33 @@ function revisarFechaFija(dia: DiaInhabilCurado): string[] {
 }
 
 /**
- * Tipos de día de cada autoridad. La CNBV solo publica días de cierre (descanso): la consulta del
- * FIX da por hecho que en ellos no hay publicación, y unas vacaciones administrativas, con los
- * bancos abiertos, la harían responder un valor viejo.
+ * Tipos de día que se capturan de cada autoridad. La CNBV solo publica días de cierre (descanso):
+ * la consulta del FIX da por hecho que en ellos no hay publicación, y unas vacaciones
+ * administrativas, con los bancos abiertos, la harían responder un valor viejo. Del SAT solo se
+ * capturan las vacaciones: sus días de descanso (art. 12 del CFF) los da la regla del núcleo.
  */
 const TIPOS_DE_AUTORIDAD: Readonly<Record<AutoridadCurada, readonly TipoDiaCurado[]>> = {
   cnbv: ["descanso"],
-  sat: ["descanso", "vacaciones"],
+  sat: ["vacaciones"],
 };
+
+/** Si `fecha` es un día de la regla de la autoridad (dentro de su cobertura). */
+function esDeRegla(autoridad: AutoridadCurada, fecha: string): boolean {
+  const regla = Object.hasOwn(REGLAS, autoridad) ? REGLAS[autoridad] : undefined;
+  if (regla === undefined) return false;
+  if (fecha < regla.cobertura.desde || fecha > regla.cobertura.hasta) return false;
+  return regla.dias(Number(fecha.slice(0, 4))).some((d) => d.fecha === fecha);
+}
 
 /**
  * Cada día es de un tipo de su autoridad y cae en la cobertura de su tipo y en la de algún tipo
- * de plazo: el Worker rechaza el calendario completo si no (ver `revisarPlazos`).
+ * de plazo: el Worker rechaza el calendario completo si no (ver `revisarPlazos`). Lo que da una
+ * regla del núcleo no se captura: ni sus días, ni su cobertura, ni otro tipo de día en sus fechas.
  */
 export function invariantesDias(autoridad: AutoridadCurada) {
   const tipos = TIPOS_DE_AUTORIDAD[autoridad];
+  const regla = Object.hasOwn(REGLAS, autoridad) ? REGLAS[autoridad] : undefined;
+  const deRegla = `la regla del núcleo (${regla?.fuente.nombre})`;
   return (registros: readonly DiaInhabilCurado[], cobertura: CoberturaCurada | null): string[] => {
     const fallas: string[] = [];
     const enSuTipo: DiaInhabilCurado[] = [];
@@ -356,8 +368,15 @@ export function invariantesDias(autoridad: AutoridadCurada) {
       if (dia.autoridad !== autoridad) {
         falla(`la autoridad es ${dia.autoridad}, se esperaba ${autoridad}`);
       }
+      if (regla !== undefined && dia.tipo === regla.tipo) {
+        falla(`los días de ${regla.tipo} de ${autoridad} los da ${deRegla}; no se capturan`);
+        continue;
+      }
       if (!tipos.includes(dia.tipo)) {
         falla(`el tipo ${dia.tipo} no es de ${autoridad}, que solo tiene ${tipos.join(" y ")}`);
+      }
+      if (esDeRegla(autoridad, dia.fecha)) {
+        falla(`ya es de ${regla?.tipo} por ${deRegla}; no se repite como ${dia.tipo}`);
       }
       const rango = cobertura?.[dia.tipo];
       if (rango === undefined) {
@@ -372,11 +391,19 @@ export function invariantesDias(autoridad: AutoridadCurada) {
     }
     if (cobertura !== null) {
       for (const tipo of Object.keys(cobertura) as TipoDiaCurado[]) {
-        if (!tipos.includes(tipo)) {
+        if (regla !== undefined && tipo === regla.tipo) {
+          const { desde, hasta } = regla.cobertura;
+          fallas.push(
+            `la cobertura declara ${tipo}, que da ${deRegla} del ${desde} al ${hasta}; no se declara`,
+          );
+        } else if (!tipos.includes(tipo)) {
           fallas.push(`la cobertura declara ${tipo}, que no es un tipo de día de ${autoridad}`);
         }
       }
-      fallas.push(...revisarPlazos(PLAZOS[autoridad], cobertura, enSuTipo).fallas);
+      fallas.push(
+        ...revisarPlazos(PLAZOS[autoridad], coberturaConRegla(autoridad, cobertura), enSuTipo)
+          .fallas,
+      );
     }
     return fallas;
   };

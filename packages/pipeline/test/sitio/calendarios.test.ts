@@ -3,15 +3,23 @@ import {
   type AutoridadCurada,
   type Calendario,
   CalendarioIncompletoError,
-  crearCalendario,
+  COBERTURA_CFF,
   type DiaInhabilCurado,
+  diasDescansoCff,
+  FUENTE_CFF_12,
   type FuenteDof,
   sumarDias,
   sumarDiasHabiles,
   type TipoPlazo,
 } from "@mexicoapi/core";
+import { crearCalendarioCurado } from "@mexicoapi/core/curados";
 import { describe, expect, it } from "vitest";
-import { type ShardCalendario, shardCalendario } from "../../src/curado/calendario.js";
+import {
+  coberturasDeLaLista,
+  registrosConRegla,
+  type ShardCalendario,
+  shardCalendario,
+} from "../../src/curado/calendario.js";
 import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado, leerCurado } from "../../src/curado/leer.js";
 import { curadoDiasCnbv, curadoDiasSat, type DefinicionCurado } from "../../src/curado/registro.js";
@@ -32,23 +40,14 @@ const shardDe = (autoridad: AutoridadCurada, d: DocumentoCurado<DiaInhabilCurado
   shardCalendario(autoridad, d.registros, d.cobertura);
 
 /**
- * Lo que hace el Worker con el shard: lo lee como JSON, toma los días que caen en la cobertura
- * del plazo (crearCalendario rechaza los de afuera) y arma el calendario.
+ * Lo que hace el Worker con el shard: lo lee como JSON y lo arma con crearCalendarioCurado del
+ * núcleo, que agrega los días de la regla (en el SAT, los del art. 12 hasta 2100).
  */
 function calendarioDe(shard: ShardCalendario, tipo: TipoPlazo): Calendario {
-  const { autoridad, plazos, dias, fuentes_fin_de_semana } = JSON.parse(
-    JSON.stringify(shard),
-  ) as ShardCalendario;
-  const plazo = plazos[tipo];
-  if (plazo === undefined) throw new Error(`${autoridad} no tiene el plazo ${tipo}`);
-  const { desde, hasta } = plazo.cobertura;
-  return crearCalendario({
-    autoridad,
-    cobertura: plazo.cobertura,
-    dias: dias.filter((d) => d.fecha >= desde && d.fecha <= hasta),
-    fuenteFinDeSemana: (anio) => fuentes_fin_de_semana[String(anio)] as FuenteDof,
-    excluirTipos: plazo.excluir_tipos,
-  });
+  const curado = crearCalendarioCurado(JSON.parse(JSON.stringify(shard)) as ShardCalendario);
+  const plazo = curado.plazos.get(tipo);
+  if (plazo === undefined) throw new Error(`${shard.autoridad} no tiene el plazo ${tipo}`);
+  return plazo.calendario;
 }
 
 const fuente = (fragmento: string, fecha_publicacion = "2025-12-10"): FuenteDof => ({
@@ -66,15 +65,16 @@ const dia = (
 ): DiaInhabilCurado => ({ fecha, autoridad, motivo: `Motivo ${fecha}`, tipo, fuente: f });
 
 describe("shardCalendario", () => {
-  it("SAT: general cubre la intersección y declaraciones_pagos la de descanso, sin vacaciones", () => {
+  it("SAT: general cubre la intersección con las vacaciones y declaraciones_pagos la regla del art. 12", () => {
     const d = documento(curadoDiasSat, YAML_SAT);
     const shard = shardDe("sat", d);
     expect(Object.keys(shard)).toEqual(["autoridad", "plazos", "fuentes_fin_de_semana", "dias"]);
     expect(shard.autoridad).toBe("sat");
+    // Cambio: declaraciones_pagos llega al fin de la regla del art. 12 (antes, 2026-12-31).
     expect(shard.plazos).toEqual({
       general: { cobertura: { desde: "2026-01-01", hasta: "2026-11-30" }, excluir_tipos: [] },
       declaraciones_pagos: {
-        cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+        cobertura: { desde: "2026-01-01", hasta: "2100-12-31" },
         excluir_tipos: ["vacaciones"],
       },
     });
@@ -83,12 +83,27 @@ describe("shardCalendario", () => {
       d.registros.map(({ fecha, motivo, tipo, fuente }) => ({ fecha, motivo, tipo, fuente })),
     );
     expect(shard.dias.map((x) => x.fecha)).toEqual([...shard.dias.map((x) => x.fecha)].sort());
-    // Los fines de semana se citan con el CFF art. 12, la fuente de los días de descanso.
-    expect(shard.fuentes_fin_de_semana).toEqual({
-      2026: d.registros.find((r) => r.fecha === "2026-12-25")?.fuente,
-    });
-    expect(shard.fuentes_fin_de_semana["2026"]?.nombre).toBe(
-      "Código Fiscal de la Federación, artículo 12",
+    // Los fines de semana los cita la regla (el art. 12 del CFF): el shard no trae ninguno.
+    expect(shard.fuentes_fin_de_semana).toEqual({});
+    expect(calendarioDe(shard, "general").inhabil("2026-10-17")?.fuente).toEqual(FUENTE_CFF_12);
+  });
+
+  it("SAT: el shard puede traer la lista publicada, con los días de la regla", () => {
+    const d = documento(curadoDiasSat, YAML_SAT);
+    const lista = registrosConRegla("sat", d.registros, d.cobertura);
+    expect(lista.filter((r) => r.tipo === "descanso").map((r) => r.fecha)).toEqual(
+      diasDescansoCff(2026).map((r) => r.fecha),
+    );
+    expect(lista.filter((r) => r.tipo === "vacaciones")).toEqual(d.registros);
+    const shard = shardCalendario("sat", lista, d.cobertura);
+    expect(shard.plazos).toEqual(shardDe("sat", d).plazos);
+    expect(shard.dias).toHaveLength(lista.length);
+    // Un día de descanso que no es el de la regla lo rechaza el núcleo.
+    const cambiado = lista.map((r) =>
+      r.fecha === "2026-05-05" ? { ...r, motivo: "Batalla de Puebla" } : r,
+    );
+    expect(() => shardCalendario("sat", cambiado, d.cobertura)).toThrow(
+      /el núcleo rechaza el calendario: .*2026-05-05 distinto del que da la regla/,
     );
   });
 
@@ -99,9 +114,53 @@ describe("shardCalendario", () => {
         autoridad: "sat",
         tipo_plazo: "declaraciones_pagos",
         desde: "2026-01-01",
+        hasta: "2100-12-31",
+      },
+    ]);
+  });
+
+  it("coberturasDeLaLista: la lista publicada del SAT solo trae la regla de los años del YAML", () => {
+    const d = documento(curadoDiasSat, YAML_SAT);
+    const lista = registrosConRegla("sat", d.registros, d.cobertura);
+    const plazos = coberturasDeLaLista("sat", lista, d.cobertura);
+    expect(coberturasDe({ autoridad: "sat", plazos })).toEqual([
+      { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
+      {
+        autoridad: "sat",
+        tipo_plazo: "declaraciones_pagos",
+        desde: "2026-01-01",
         hasta: "2026-12-31",
       },
     ]);
+    // Sin regla, la de la lista es la del calendario.
+    const cnbv = documento(curadoDiasCnbv, YAML_CNBV);
+    expect(coberturasDeLaLista("cnbv", cnbv.registros, cnbv.cobertura)).toEqual(
+      shardDe("cnbv", cnbv).plazos,
+    );
+    expect(() => coberturasDeLaLista("sat", lista, null)).toThrow(/sin cobertura/);
+    // Un día después de los años de la lista no cae en ella.
+    const fds = fuente("Los sábados y domingos.");
+    expect(() =>
+      coberturasDeLaLista("sat", [...lista, dia("2027-01-04", "vacaciones", fds)], d.cobertura),
+    ).toThrow(/2027-01-04: no cae en la cobertura/);
+  });
+
+  it("registrosConRegla: sin regla o sin años en la regla, los del YAML tal cual", () => {
+    const cnbv = documento(curadoDiasCnbv, YAML_CNBV);
+    expect(registrosConRegla("cnbv", cnbv.registros, cnbv.cobertura)).toEqual(cnbv.registros);
+    const vacaciones = [dia("2025-07-20", "vacaciones", fuente("x"))];
+    expect(
+      registrosConRegla("sat", vacaciones, {
+        vacaciones: { desde: "2025-01-01", hasta: "2025-12-31" },
+      }),
+    ).toEqual(vacaciones);
+    expect(registrosConRegla("sat", vacaciones, null)).toEqual(vacaciones);
+    expect(registrosConRegla("sat", vacaciones, {})).toEqual(vacaciones);
+    // Los años de la lista no pasan de la cobertura de la regla (2100).
+    const lejos = registrosConRegla("sat", [], {
+      vacaciones: { desde: "2100-03-01", hasta: "2101-06-30" },
+    });
+    expect(lejos.map((d) => d.fecha)).toEqual(diasDescansoCff(2100).map((d) => d.fecha));
   });
 
   it("CNBV: solo el plazo general, con la cobertura de descanso", () => {
@@ -156,74 +215,69 @@ describe("shardCalendario", () => {
 
   it("falla con ErrorDatos sin días de descanso, sin cobertura o con una cobertura vacía", () => {
     const fds = fuente("Los sábados y domingos.");
-    const casos: [DiaInhabilCurado[], Parameters<typeof shardCalendario>[2], RegExp][] = [
+    // La CNBV cita sus fines de semana con sus días de descanso; el SAT, con la regla.
+    const casos: [
+      AutoridadCurada,
+      DiaInhabilCurado[],
+      Parameters<typeof shardCalendario>[2],
+      RegExp,
+    ][] = [
       [
-        [dia("2026-07-20", "vacaciones", fds)],
-        {
-          descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
-          vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
-        },
+        "cnbv",
+        [],
+        { descanso: { desde: "2026-01-01", hasta: "2026-12-31" } },
         /sin días de descanso/,
       ],
-      [[dia("2026-12-25", "descanso", fds)], null, /sin cobertura/],
+      ["sat", [dia("2026-07-20", "vacaciones", fds)], null, /sin cobertura/],
       [
-        [dia("2026-12-25", "descanso", fds)],
-        {
-          descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
-          vacaciones: { desde: "2025-01-01", hasta: "2025-12-31" },
-        },
+        "sat",
+        [dia("2025-07-21", "vacaciones", fds)],
+        { vacaciones: { desde: "2025-01-01", hasta: "2025-12-31" } },
         /la cobertura del plazo general queda vacía/,
       ],
     ];
-    for (const [dias, cobertura, mensaje] of casos) {
+    for (const [autoridad, dias, cobertura, mensaje] of casos) {
       let error: unknown;
       try {
-        shardCalendario("sat", dias, cobertura);
+        shardCalendario(autoridad, dias, cobertura);
       } catch (e) {
         error = e;
       }
       expect(error, String(mensaje)).toBeInstanceOf(ErrorDatos);
-      expect((error as ErrorDatos).dataset).toBe("dias-inhabiles.sat");
+      expect((error as ErrorDatos).dataset).toBe(`dias-inhabiles.${autoridad}`);
       expect((error as ErrorDatos).message).toMatch(mensaje);
     }
   });
 
   it("la cobertura de general va del desde más tardío al hasta más temprano", () => {
     const fds = fuente("Los sábados y domingos.");
-    const shard = shardCalendario("sat", [dia("2026-12-25", "descanso", fds)], {
-      descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
+    const shard = shardCalendario("sat", [dia("2026-07-20", "vacaciones", fds)], {
       vacaciones: { desde: "2026-03-01", hasta: "2026-11-30" },
     });
     expect(shard.plazos.general.cobertura).toEqual({ desde: "2026-03-01", hasta: "2026-11-30" });
-    expect(shard.plazos.declaraciones_pagos?.cobertura).toEqual({
-      desde: "2026-01-01",
-      hasta: "2026-12-31",
-    });
+    expect(shard.plazos.declaraciones_pagos?.cobertura).toEqual(COBERTURA_CFF);
   });
 
   it("falla con ErrorDatos si un día queda fuera de la cobertura de todos los plazos", () => {
-    // El Worker rechaza el shard entero si un día cae fuera de la cobertura amplia.
+    // El Worker rechaza el shard entero si un día cae fuera de la cobertura amplia, que en el SAT
+    // empieza con la regla del art. 12 (2026).
     const fds = fuente("Los sábados y domingos.");
     expect(() =>
       shardCalendario(
         "sat",
-        [dia("2026-12-25", "descanso", fds), dia("2027-01-04", "vacaciones", fds)],
-        {
-          descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
-          vacaciones: { desde: "2026-01-01", hasta: "2027-01-04" },
-        },
+        [dia("2025-12-31", "vacaciones", fds), dia("2026-07-20", "vacaciones", fds)],
+        { vacaciones: { desde: "2025-12-18", hasta: "2026-11-30" } },
       ),
-    ).toThrow(/2027-01-04: no cae en la cobertura de ningún tipo de plazo/);
+    ).toThrow(/2025-12-31: no cae en la cobertura de ningún tipo de plazo/);
   });
 
-  it("falla si un plazo no tiene cobertura de ningún tipo de día que cuente", () => {
-    // declaraciones_pagos no cuenta las vacaciones y no hay cobertura de descanso.
+  it("con la regla, declaraciones_pagos tiene cobertura aunque el YAML solo traiga vacaciones", () => {
+    // Antes, sin cobertura de descanso en el YAML, declaraciones_pagos se quedaba sin cobertura.
     const fds = fuente("Los sábados y domingos.");
-    expect(() =>
-      shardCalendario("sat", [dia("2026-12-25", "descanso", fds)], {
-        vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
-      }),
-    ).toThrow(/el plazo declaraciones_pagos no tiene cobertura/);
+    const shard = shardCalendario("sat", [dia("2026-07-20", "vacaciones", fds)], {
+      vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
+    });
+    expect(shard.plazos.declaraciones_pagos?.cobertura).toEqual(COBERTURA_CFF);
   });
 });
 
@@ -283,9 +337,10 @@ describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabil
     return expect.unreachable();
   }
 
-  it("SAT: general cubre donde se cruzan descanso y vacaciones; declaraciones y pagos, donde hay descanso", () => {
-    const { descanso, vacaciones } = yamlSat.cobertura ?? {};
-    if (descanso === undefined || vacaciones === undefined) throw new Error("faltan coberturas");
+  it("SAT: general cubre donde se cruzan la regla del art. 12 y las vacaciones; declaraciones y pagos, la regla", () => {
+    const { vacaciones } = yamlSat.cobertura ?? {};
+    if (vacaciones === undefined) throw new Error("falta la cobertura de vacaciones");
+    const descanso = COBERTURA_CFF;
     expect(general.cobertura).toEqual({
       desde: descanso.desde > vacaciones.desde ? descanso.desde : vacaciones.desde,
       hasta: descanso.hasta < vacaciones.hasta ? descanso.hasta : vacaciones.hasta,
@@ -304,6 +359,10 @@ describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabil
     const d = sumar(declaraciones, "2026-12-24", 1);
     expect(d.resultado).toBe("2026-12-28");
     expect(fechas(d)).toEqual(["2026-12-25"]);
+    // Y el 1 de enero de 2027, que ya no depende de una publicación.
+    const enero = sumar(declaraciones, "2026-12-30", 2);
+    expect(enero.resultado).toBe("2027-01-04");
+    expect(fechas(enero)).toEqual(["2027-01-01"]);
   });
 
   it("CNBV: salta sus días de 2025 y 2026 y falla al día siguiente de su cobertura", () => {
