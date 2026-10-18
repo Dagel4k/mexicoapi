@@ -28,7 +28,8 @@ jobs:
     outputs:
       codigo: ${{ steps.cli.outputs.codigo }}
       # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
-      publicado: ${{ steps.publicar.outcome == 'success' && 'si' || 'no' }}
+      # Con el código 3 el PR lleva la etiqueta revisar y no se fusiona solo: no cuenta.
+      publicado: ${{ steps.publicar.outcome == 'success' && steps.cli.outputs.codigo == '0' && 'si' || 'no' }}
     steps:
       - name: Comprobar secretos del bot
         id: bot
@@ -127,6 +128,8 @@ jobs:
           path: ${{ runner.temp }}/resumen.json
           if-no-files-found: warn
           retention-days: 1
+          # Al volver a correr el job, reemplaza el resumen de la corrida anterior.
+          overwrite: true
 
       - name: Publicar resultado
         id: publicar
