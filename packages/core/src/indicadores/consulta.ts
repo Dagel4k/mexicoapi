@@ -111,8 +111,9 @@ export interface OpcionesFix {
   /**
    * Días entre semana en que se sabe que el DOF no publica el FIX, como los días de descanso
    * de la CNBV dentro de su calendario. Solo se pregunta por días posteriores a
-   * `cobertura.hasta` y solo cuenta un `true`. Sin esta opción, solo los sábados y domingos
-   * cuentan como días sin publicación.
+   * `cobertura.hasta` y solo cuenta un `true`. Un hueco de más de 31 días después de
+   * `cobertura.hasta` da `no_disponible` sin preguntar. Sin esta opción, solo los sábados y
+   * domingos cuentan como días sin publicación.
    */
   sinPublicacion?: ((fecha: FechaISO) => boolean) | undefined;
 }
@@ -196,11 +197,19 @@ export function fixParaOperacion(
   return SIN_DATO;
 }
 
+/**
+ * Días sin publicación seguidos que se aceptan después del último dato. Los reales son unos
+ * cuantos (un feriado pegado al fin de semana, o jueves y viernes santos); un hueco más largo da
+ * no_disponible sin recorrerlo, aunque `sinPublicacion` diga otra cosa.
+ */
+const HUECO_MAXIMO = 31;
+
 // El DOF no publica el FIX en sábado ni en domingo, ni en los días que marque `sinPublicacion`:
 // un hueco de solo esos días después del último dato no cambia la respuesta. Revisa los días de
-// (ultimo, fin) y se detiene en el primero que pudo tener publicación; sin `sinPublicacion`, a
-// lo más tres.
+// (ultimo, fin), a lo más HUECO_MAXIMO, y se detiene en el primero que pudo tener publicación;
+// sin `sinPublicacion`, a lo más tres.
 function sinPublicacionEntre(ultimo: number, fin: number, sinPublicacion: SinPublicacion): boolean {
+  if (fin - ultimo - 1 > HUECO_MAXIMO) return false;
   for (let d = ultimo + 1; d < fin; d++) {
     const semana = diaSemanaDeDias(d);
     if (semana === 0 || semana === 6) continue;
