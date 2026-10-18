@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Revisa el Release y arma el paquete, sin permiso para publicar. Si el paquete todavía no existe
-  # en npm, termina en verde con un aviso: la primera versión se publica a mano.
+  # Revisa el Release y arma el .tgz, sin permiso para publicar. Si el paquete todavía no existe en
+  # npm, termina en verde con un aviso: la primera versión se publica a mano.
   preparar:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -28,6 +28,8 @@ jobs:
       estado: ${{ steps.npm.outputs.estado }}
       nombre: ${{ steps.revisar.outputs.nombre }}
       version: ${{ steps.revisar.outputs.version }}
+      sha256: ${{ steps.armar.outputs.sha256 }}
+      node: ${{ steps.node.outputs.node-version }}
     steps:
       # Todo el historial: hace falta para saber si el commit ya está en main.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,6 +56,7 @@ jobs:
 
       # Sin caché: lo que se publica no sale de algo que guardó otra corrida.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
         with:
           node-version-file: .nvmrc
 
@@ -114,9 +117,11 @@ jobs:
           NOMBRE: ${{ steps.revisar.outputs.nombre }}
         run: pnpm --filter "${NOMBRE}..." build
 
-      # Como en ci.yml, en una carpeta aparte, sin devDependencies ni scripts. mexicoapi-mcp va con
-      # --publicar: se niega si mexicoapi@<versión de packages/sdk>, su piso, no está en npm.
+      # Como en ci.yml: publicable.ts arma una carpeta sin devDependencies ni scripts y npm pack la
+      # empaqueta. mexicoapi-mcp va con --publicar, que se niega si mexicoapi@<versión de
+      # packages/sdk>, su piso, no está en npm. publicar sube este mismo .tgz y revisa su sha256.
       - name: Armar el paquete
+        id: armar
         if: steps.npm.outputs.estado == 'publicable'
         env:
           NOMBRE: ${{ steps.revisar.outputs.nombre }}
@@ -129,26 +134,32 @@ jobs:
           else
             node packages/sdk/scripts/publicable.ts "${destino}"
           fi
+          mkdir -p "${RUNNER_TEMP}/paquete"
           cd "${destino}"
-          npm pack --dry-run 2>&1 | tee "${RUNNER_TEMP}/contenido.txt"
+          npm pack --ignore-scripts --pack-destination "${RUNNER_TEMP}/paquete"
+          tgz="${RUNNER_TEMP}/paquete/${NOMBRE}-${VERSION}.tgz"
+          sha256="$(sha256sum "${tgz}" | cut -d " " -f 1)"
+          echo "sha256=${sha256}" | tee -a "${GITHUB_OUTPUT}"
           {
             echo "## ${NOMBRE}@${VERSION}: listo para publicar"
             echo
+            echo "${NOMBRE}-${VERSION}.tgz, sha256 ${sha256}. Contenido:"
+            echo
             echo "~~~text"
-            cat "${RUNNER_TEMP}/contenido.txt"
+            tar -tzvf "${tgz}"
             echo "~~~"
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.npm.outputs.estado == 'publicable'
         with:
-          name: publicable
-          path: ${{ runner.temp }}/publicable
+          name: paquete
+          path: ${{ runner.temp }}/paquete
           if-no-files-found: error
           retention-days: 1
 
   # Lo único que puede publicar: el Environment npm (solo etiquetas mexicoapi@* y mexicoapi-mcp@*)
-  # e id-token para el OIDC de npm. No hace checkout ni compila: publica la carpeta de preparar.
+  # e id-token para el OIDC de npm. No hace checkout ni compila: publica el .tgz de preparar.
   publicar:
     needs: preparar
     if: needs.preparar.outputs.estado == 'publicable'
@@ -161,10 +172,10 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # La de .nvmrc (aquí no hay checkout).
+      # El mismo Node que preparar (el de .nvmrc).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "24.21.0"
+          node-version: ${{ needs.preparar.outputs.node }}
 
       - name: Revisar la versión de npm
         run: |
@@ -179,23 +190,34 @@ jobs:
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: publicable
-          path: ${{ runner.temp }}/publicable
+          name: paquete
+          path: ${{ runner.temp }}/paquete
 
+      # Publica el .tgz que revisó preparar: mismo sha256, el paquete y la versión del Release y sin
+      # scripts en su package.json.
       - name: Publicar en npm con procedencia
         id: publicar
         env:
           NOMBRE: ${{ needs.preparar.outputs.nombre }}
           VERSION: ${{ needs.preparar.outputs.version }}
+          SHA256: ${{ needs.preparar.outputs.sha256 }}
         run: |
           set -euo pipefail
-          cd "${RUNNER_TEMP}/publicable"
-          paquete="$(node -p 'const m = require("./package.json"); m.name + "@" + m.version')"
+          tgz="${RUNNER_TEMP}/paquete/${NOMBRE}-${VERSION}.tgz"
+          echo "${SHA256}  ${tgz}" | sha256sum -c -
+          paquete="$(tar -xzOf "${tgz}" package/package.json | node -e '
+            const m = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+            if (m.scripts !== undefined) {
+              console.error("::error::El package.json del .tgz trae scripts y no se publica.");
+              process.exit(1);
+            }
+            console.log(m.name + "@" + m.version);
+          ')"
           if [ "${paquete}" != "${NOMBRE}@${VERSION}" ]; then
-            echo "::error::El artefacto es de ${paquete} y el Release, de ${NOMBRE}@${VERSION}."
+            echo "::error::El .tgz es de ${paquete} y el Release, de ${NOMBRE}@${VERSION}."
             exit 1
           fi
-          npm publish --provenance --access public
+          npm publish "${tgz}" --ignore-scripts --provenance --access public
           {
             echo "## ${NOMBRE}@${VERSION} publicado"
             echo
