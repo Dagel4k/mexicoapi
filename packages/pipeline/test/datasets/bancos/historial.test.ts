@@ -217,8 +217,8 @@ describe("observacionesCompactas", () => {
   it("ordena las entradas por unidades de código, no según el idioma", () => {
     // localeCompare da 0 entre formas canónicamente equivalentes; con él, el orden de llegada
     // cambiaría la firma de una misma lista.
-    const X: EntradaCep = ["40012", "É"];
-    const Y: EntradaCep = ["40012", "É"];
+    const X: EntradaCep = ["40012", "\u00C9"];
+    const Y: EntradaCep = ["40012", "E\u0301"];
     const r = observacionesCompactas([
       o("2020-01-01", [X, Y]),
       o("2020-01-02", [Y, X]),
