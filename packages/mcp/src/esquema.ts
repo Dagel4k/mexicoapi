@@ -24,7 +24,7 @@ export class EsquemaNoSoportadoError extends Error {
   }
 }
 
-export const DIALECTO = "https://json-schema.org/draft/2020-12/schema";
+const DIALECTO = "https://json-schema.org/draft/2020-12/schema";
 
 /** Tope de errores por validación, para que un objeto enorme no produzca un mensaje enorme. */
 const MAX_ERRORES = 10;

@@ -34,7 +34,7 @@ function esUrlHttps(url: string): boolean {
 }
 
 /** URL https en uno de los sitios oficiales, sin usuario ni puerto. */
-export function esUrlOficial(url: string): boolean {
+function esUrlOficial(url: string): boolean {
   return esUrlHttps(url) && SITIOS_OFICIALES.some((sitio) => url.startsWith(`https://${sitio}/`));
 }
 
@@ -68,7 +68,7 @@ export const esquemaFuenteDof: z.ZodType<FuenteDof> = z.strictObject({
  * Fecha AAAA-MM-DD del parámetro `fecha=DD/MM/AAAA` de una nota del DOF; `undefined` si la URL
  * no es una nota con fecha y `null` si la trae con otra forma.
  */
-export function fechaDeNotaDof(url: string): string | null | undefined {
+function fechaDeNotaDof(url: string): string | null | undefined {
   if (!url.startsWith("https://dof.gob.mx/nota_detalle.php?")) return undefined;
   const valor = new URL(url).searchParams.get("fecha");
   if (valor === null) return undefined;
