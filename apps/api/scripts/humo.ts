@@ -116,8 +116,11 @@ const ENCABEZADOS: readonly (readonly [string, string])[] = [
 const mensajeDe = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-/** Pide `url` con tope de tiempo, aunque el `fetch` recibido ignore la señal. */
-async function pedir(url: string, pedidor: typeof fetch, timeoutMs: number): Promise<Response> {
+/**
+ * Corre `tarea` con un tope de tiempo que cubre la petición y la lectura del cuerpo, aunque el
+ * `fetch` recibido ignore la señal.
+ */
+async function acotar<T>(timeoutMs: number, tarea: (señal: AbortSignal) => Promise<T>): Promise<T> {
   const control = new AbortController();
   let reloj: ReturnType<typeof setTimeout> | undefined;
   const limite = new Promise<never>((_, rechazar) => {
@@ -127,10 +130,34 @@ async function pedir(url: string, pedidor: typeof fetch, timeoutMs: number): Pro
     }, timeoutMs);
   });
   try {
-    return await Promise.race([pedidor(url, { signal: control.signal }), limite]);
+    return await Promise.race([tarea(control.signal), limite]);
   } finally {
     clearTimeout(reloj);
   }
+}
+
+async function revisar(respuesta: Response, caso: Comprobacion): Promise<string | undefined> {
+  if (respuesta.status !== caso.estado) {
+    return `estado ${respuesta.status}, se esperaba ${caso.estado}`;
+  }
+  const medio = (respuesta.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
+  if (medio.toLowerCase() !== TIPOS[caso.tipo]) {
+    return `tipo de contenido ${medio || "ausente"}, se esperaba ${TIPOS[caso.tipo]}`;
+  }
+  for (const [nombre, valor] of ENCABEZADOS) {
+    const actual = respuesta.headers.get(nombre);
+    if (actual !== valor) return `${nombre}: ${actual ?? "ausente"}, se esperaba ${valor}`;
+  }
+  if (caso.tipo === "texto") {
+    return (await respuesta.text()).trim() === "" ? "cuerpo vacío" : undefined;
+  }
+  let cuerpo: unknown;
+  try {
+    cuerpo = await respuesta.json();
+  } catch {
+    return "el cuerpo no es JSON";
+  }
+  return caso.validar?.(cuerpo);
 }
 
 async function comprobar(
@@ -139,34 +166,10 @@ async function comprobar(
   pedidor: typeof fetch,
   timeoutMs: number,
 ): Promise<string | undefined> {
-  let respuesta: Response;
   try {
-    respuesta = await pedir(`${base}${caso.ruta}`, pedidor, timeoutMs);
-  } catch (error) {
-    return mensajeDe(error);
-  }
-  try {
-    if (respuesta.status !== caso.estado) {
-      return `estado ${respuesta.status}, se esperaba ${caso.estado}`;
-    }
-    const medio = (respuesta.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
-    if (medio.toLowerCase() !== TIPOS[caso.tipo]) {
-      return `tipo de contenido ${medio || "ausente"}, se esperaba ${TIPOS[caso.tipo]}`;
-    }
-    for (const [nombre, valor] of ENCABEZADOS) {
-      const actual = respuesta.headers.get(nombre);
-      if (actual !== valor) return `${nombre}: ${actual ?? "ausente"}, se esperaba ${valor}`;
-    }
-    if (caso.tipo === "texto") {
-      return (await respuesta.text()).trim() === "" ? "cuerpo vacío" : undefined;
-    }
-    let cuerpo: unknown;
-    try {
-      cuerpo = await respuesta.json();
-    } catch {
-      return "el cuerpo no es JSON";
-    }
-    return caso.validar?.(cuerpo);
+    return await acotar(timeoutMs, async (signal) =>
+      revisar(await pedidor(`${base}${caso.ruta}`, { signal }), caso),
+    );
   } catch (error) {
     return mensajeDe(error);
   }
