@@ -60,7 +60,16 @@ Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) 
 
    El orden importa: si se compila antes de `curar`, el Worker publica los datos anteriores.
 
-8. Abrir un PR con el YAML y la carpeta regenerada de `data/`. En la descripción, la liga a la nota del DOF.
+8. Si cambió la cobertura de un calendario, actualizar los documentos que citan la cobertura vigente. Las pruebas la toman de los datos, así que no fallan cuando estos textos quedan viejos:
+
+   - `docs/api/README.md`: la tabla de [Cobertura de la CNBV y el SAT](../api/README.md#cobertura-de-la-cnbv-y-el-sat), los ejemplos del 422 y de `permitir_incompleto`, y en [dias-inhabiles](../api/README.md#dias-inhabiles) los años que se responden y la advertencia;
+   - `docs/api/problemas.md`: la cobertura de hoy en `calendario-incompleto`;
+   - `docs/diseno/arquitectura-v1.md`: el párrafo de cobertura de "Datos curados" (sección 8) y la decisión sobre la cobertura del SAT `general` (sección 14);
+   - `docs/datos/dias-inhabiles-cnbv.md` o `docs/datos/dias-inhabiles-sat.md`: la sección Cobertura;
+   - este documento: el ejemplo de [Cobertura de los calendarios](#cobertura-de-los-calendarios) y los [Pendientes](#pendientes);
+   - el encabezado del YAML, si dice hasta dónde está completa la lista.
+
+9. Abrir un PR con el YAML y la carpeta regenerada de `data/`. En la descripción, la liga a la nota del DOF.
 
 Los pasos 6 y 7 se repiten cada vez que se edita el YAML.
 
@@ -130,7 +139,7 @@ El SAT suele fijar el segundo periodo general de vacaciones de diciembre en una 
 2. Agregar un registro `tipo: vacaciones` por cada día del periodo, incluidos sábados y domingos, con `fuente` apuntando a esa fuente. Un día que ya es de descanso (el 25 de diciembre) se queda como `descanso`: la clave es la fecha.
 3. Extender `cobertura.vacaciones.hasta` al 2026-12-31. Con eso, `general` y `declaraciones_pagos` quedan con la misma cobertura y la advertencia de `dias-inhabiles` para 2026 desaparece.
 4. Quitar del encabezado del YAML el párrafo que dice que el periodo no se ha publicado.
-5. Seguir los pasos 6 a 8.
+5. Seguir los pasos 6 a 9.
 
 Si el periodo cruza al 2027 (por ejemplo, hasta el 1 de enero), esos días de 2027 caen fuera de la cobertura de 2026 y el YAML falla. Hay que capturar entonces el calendario del SAT de 2027 en el mismo cambio.
 
@@ -141,7 +150,7 @@ Las disposiciones de la CNBV para 2027 se publican en el DOF en diciembre de 202
 1. Agregar una fuente por publicación. En el calendario de la CNBV, la del artículo 1 de las disposiciones; en el del SAT, el artículo 12 del CFF (ya declarado como `cff-12`, aunque su `fecha_publicacion` es la de la última reforma, que habrá que actualizar si cambió) y la regla 2.1.6 de la RMF 2027.
 2. Agregar los días de 2027: los de las disposiciones en la CNBV; los del artículo 12 y las vacaciones o días inhábiles de la regla 2.1.6 en el SAT. Los días de regla llevan en `motivo` la regla ("Tercer lunes de noviembre, en conmemoración del 20 de noviembre") para que la verificación recalcule la fecha.
 3. Extender la `cobertura` al 2027-12-31 para los tipos que queden completos. En el SAT, `descanso` suele poder cerrarse al publicarse la RMF; `vacaciones` queda en el último día de periodo publicado, y entonces `general` termina ahí hasta que se publique el resto.
-4. Seguir los pasos 6 a 8.
+4. Seguir los pasos 6 a 9.
 
 Los calendarios de 2025 y 2026 no se borran: la cobertura es un rango continuo y los plazos que empiezan en un año pueden terminar en el siguiente.
 
