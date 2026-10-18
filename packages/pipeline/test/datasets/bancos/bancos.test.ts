@@ -144,6 +144,12 @@ describe("construir", () => {
     expect(fuentes[1]?.url).toBe(URL_PDF);
   });
 
+  it("si el CEP no es válido falla sin pedir la página ni el PDF", async () => {
+    cep = new TextEncoder().encode("<html><body>Acceso denegado</body></html>");
+    await expect(bancos.capturar(ctx())).rejects.toThrow(ErrorDatos);
+    expect(pedidos.filter((u) => !u.endsWith("robots.txt"))).toEqual([urlCep(HOY)]);
+  });
+
   const wal = (extra: Partial<Banco> = {}): Banco => ({
     codigo: "134",
     codigo_spei: "40134",
