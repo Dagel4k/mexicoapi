@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { sumarDias, type TipoCambioFix, type Udi } from "@mexicoapi/core";
+import { diaDeLaSemana, sumarDias, type TipoCambioFix, type Udi } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   ANIO_INICIAL,
@@ -86,6 +86,31 @@ function udisSinteticas(): Map<number, { fecha: string; valor: string }[]> {
   return porAnio;
 }
 
+/** FIX de 2021 a 2025 de lunes a viernes, que baja de a poco entre los fixtures reales. */
+function fixSinteticos(): Map<number, { fecha: string; valor: string }[]> {
+  const porAnio = new Map<number, { fecha: string; valor: string }[]>();
+  // Diezmilésimas; empieza junto al 19.9352 real de 2020-12-31 y termina cerca del 18.0012 real
+  // de 2026-01-02.
+  let diez = 199_000;
+  for (let f = "2021-01-01"; f < "2026-01-01"; f = sumarDias(f, 1)) {
+    const dia = diaDeLaSemana(f);
+    if (dia === 0 || dia === 6) continue;
+    const anio = Number(f.slice(0, 4));
+    const lista = porAnio.get(anio) ?? [];
+    porAnio.set(anio, lista);
+    lista.push({
+      fecha: f,
+      valor: `${Math.trunc(diez / 1e4)}.${String(diez % 1e4).padStart(4, "0")}`,
+    });
+    diez -= 15;
+  }
+  return porAnio;
+}
+
+const FIX_SINTETICO = fixSinteticos();
+/** Publicaciones sintéticas del FIX de 2021 a 2025. */
+const N_FIX = [...FIX_SINTETICO.values()].reduce((n, l) => n + l.length, 0);
+
 let raiz: string;
 let pedidas: string[];
 let fuenteFalsa: Map<string, Uint8Array>;
@@ -103,12 +128,15 @@ beforeEach(async () => {
   erroresFalsos = new Map();
   const sinteticas = udisSinteticas();
   for (const anio of ANIOS) {
-    fuenteFalsa.set(urlSidof(158, anio), respuesta(158, []));
+    fuenteFalsa.set(urlSidof(158, anio), respuesta(158, FIX_SINTETICO.get(anio) ?? []));
     fuenteFalsa.set(urlSidof(159, anio), respuesta(159, sinteticas.get(anio) ?? []));
   }
   fuenteFalsa.set(urlSidof(158, 2020), await fixture("158-2020.json"));
   fuenteFalsa.set(urlSidof(158, 2026), await fixture("158-2026.json"));
   fuenteFalsa.set(urlSidof(159, 2026), await fixture("159-2026.json"));
+  // Como el SIDOF real: el año siguiente todavía no tiene publicaciones.
+  sinDatos(urlSidof(158, 2027));
+  sinDatos(urlSidof(159, 2027));
 });
 afterEach(async () => {
   await rm(raiz, { recursive: true, force: true });
@@ -182,6 +210,17 @@ async function serieUdis(): Promise<Udi[]> {
   return interpretarSidof(await fixture("159-2026.json"), 159, 2026, 6);
 }
 
+/** Error que lanza `fn`; la prueba falla si no lanza o si lanza otra cosa que ErrorDatos. */
+function errorDe(fn: () => unknown): ErrorDatos {
+  try {
+    fn();
+  } catch (e) {
+    expect(e).toBeInstanceOf(ErrorDatos);
+    return e as ErrorDatos;
+  }
+  throw new Error("se esperaba un ErrorDatos y no se lanzó nada");
+}
+
 describe("urlSidof", () => {
   it("pide el año completo del tipo", () => {
     expect(urlSidof(158, 2020)).toBe(
@@ -209,15 +248,20 @@ describe("interpretarSidof", () => {
     expect(r.at(-1)).toEqual({ fecha: "2026-10-16", valor: "18.4250" });
   });
 
-  it("lee las UDIS de 2026, publicadas por adelantado, y quita el espacio de la fuente", async () => {
+  it("lee las UDIS de 2026, publicadas por adelantado, y quita los espacios de la fuente", async () => {
     const r = interpretarSidof(await fixture("159-2026.json"), 159, 2026, 6);
     expect(r).toHaveLength(298);
     expect(r[0]).toEqual({ fecha: "2026-01-01", valor: "8.666288" });
     expect(r.at(-1)).toEqual({ fecha: "2026-10-25", valor: "8.861350" });
-    // El SIDOF publica "8.673506 " (con un espacio al final) para el 9 de enero de 2026.
+    // El SIDOF publica "8.673506 " (espacio al final) el 2026-01-09 y " 8.830830" (espacio al
+    // inicio) el 2026-06-09.
     expect(r.find((x) => x.fecha === "2026-01-09")).toEqual({
       fecha: "2026-01-09",
       valor: "8.673506",
+    });
+    expect(r.find((x) => x.fecha === "2026-06-09")).toEqual({
+      fecha: "2026-06-09",
+      valor: "8.830830",
     });
     for (const x of r) expect(x.valor).toMatch(/^\d+\.\d{6}$/);
   });
@@ -416,18 +460,10 @@ describe("interpretarSidof", () => {
 
   it.each(casos)("rechaza %s con ErrorDatos", async (_, cambio, mensaje) => {
     const bytes = await variante("158-2020.json", cambio);
-    const e = (() => {
-      try {
-        interpretarSidof(bytes, 158, 2020, 4);
-      } catch (x) {
-        return x;
-      }
-      return null;
-    })();
-    expect(e).toBeInstanceOf(ErrorDatos);
-    expect((e as ErrorDatos).dataset).toBe("tipo-cambio.fix");
-    expect((e as ErrorDatos).message).toContain("SIDOF (tipo 158, 2020)");
-    expect((e as ErrorDatos).message).toContain(mensaje);
+    const e = errorDe(() => interpretarSidof(bytes, 158, 2020, 4));
+    expect(e.dataset).toBe("tipo-cambio.fix");
+    expect(e.message).toContain("SIDOF (tipo 158, 2020)");
+    expect(e.message).toContain(mensaje);
   });
 
   it("rechaza HTML, bytes que no son UTF-8 y JSON que no es un objeto", () => {
@@ -443,11 +479,7 @@ describe("interpretarSidof", () => {
       expect(() => interpretarSidof(bytes, 159, 2026, 6)).toThrow(ErrorDatos);
       expect(() => interpretarSidof(bytes, 159, 2026, 6)).toThrow(mensaje);
     }
-    try {
-      interpretarSidof(texto("<html>"), 159, 2026, 6);
-    } catch (e) {
-      expect((e as ErrorDatos).dataset).toBe("udis");
-    }
+    expect(errorDe(() => interpretarSidof(texto("<html>"), 159, 2026, 6)).dataset).toBe("udis");
   });
 
   it("rechaza decimales de más o de menos según el tipo", async () => {
@@ -533,19 +565,75 @@ describe("capturar", () => {
     expect(f?.crudos[1]?.obtenido_en).not.toBe(actual);
   });
 
-  it("del 1 al 15 de enero también pide el año anterior", async () => {
-    await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
-    for (const [fecha, esperadas] of [
-      ["2026-01-01", [2025, 2026]],
-      ["2026-01-15", [2025, 2026]],
-      ["2026-01-16", [2026]],
-      ["2026-02-10", [2026]],
-      ["2026-12-31", [2026]],
-    ] as const) {
+  it("en enero también pide el año anterior y, en diciembre, udis pide el siguiente", async () => {
+    await crudosEnDisco("tipo-cambio-fix", 158, ANIOS);
+    await crudosEnDisco("udis", 159, ANIOS);
+    const casos: [string, number[], number[]][] = [
+      // fecha, años que pide el FIX, años que pide udis
+      ["2026-01-01", [2025, 2026], [2025, 2026]],
+      ["2026-01-31", [2025, 2026], [2025, 2026]],
+      ["2026-02-01", [2026], [2026]],
+      ["2026-11-30", [2026], [2026]],
+      ["2026-12-01", [2026], [2026, 2027]],
+      ["2026-12-20", [2026], [2026, 2027]],
+      ["2026-12-31", [2026], [2026, 2027]],
+      ["2027-01-20", [2026, 2027], [2026, 2027]],
+      ["2027-02-01", [2027], [2027]],
+    ];
+    for (const [fecha, delFix, deUdis] of casos) {
       pedidas = [];
       await tipoCambioFix.capturar(ctx(fecha));
-      expect(pedidas, fecha).toEqual(urls(158, esperadas));
+      expect(pedidas, `fix ${fecha}`).toEqual(urls(158, delFix));
+      pedidas = [];
+      await udis.capturar(ctx(fecha));
+      expect(pedidas, `udis ${fecha}`).toEqual(urls(159, deUdis));
     }
+  });
+
+  it("en diciembre guarda las UDIS de enero ya publicadas, o nada si el SIDOF da 404 NOT_FOUND", async () => {
+    await crudosEnDisco("udis", 159, [2020, 2021, 2022, 2023, 2024, 2025]);
+    const sinEnero = await udis.capturar(ctx("2026-12-20"));
+    expect(sinEnero[0]?.crudos.map((c) => c.file)).toEqual(ANIOS.map((a) => archivo(159, a)));
+
+    erroresFalsos.delete(urlSidof(159, 2027));
+    const enero = Array.from({ length: 10 }, (_, i) => ({
+      fecha: `2027-01-${String(i + 1).padStart(2, "0")}`,
+      valor: `8.9${String(i).padStart(5, "0")}`,
+    }));
+    fuenteFalsa.set(urlSidof(159, 2027), respuesta(159, enero));
+    const conEnero = await udis.capturar(ctx("2026-12-26"));
+    expect(conEnero[0]?.crudos.map((c) => c.file)).toEqual(
+      [...ANIOS, 2027].map((a) => archivo(159, a)),
+    );
+    const { registros } = await udis.construir(conEnero, null, ctx("2026-12-26"));
+    expect(registros.at(-1)).toEqual({ fecha: "2027-01-10", valor: "8.900009" });
+
+    // Un 404 con otro cuerpo para el año siguiente sigue siendo un error.
+    erroresFalsos.set(urlSidof(159, 2027), { estado: 404, cuerpo: "<html>404</html>" });
+    const e = await udis.capturar(ctx("2026-12-26")).catch((x) => x);
+    expect(e).toBeInstanceOf(ErrorDatos);
+    expect(e.message).toContain("404 para 2027");
+  });
+
+  it("un año cerrado sin publicaciones es un error, aunque el SIDOF responda 200", async () => {
+    fuenteFalsa.set(urlSidof(158, 2021), respuesta(158, []));
+    const cerrado = await tipoCambioFix.capturar(ctx()).catch((x) => x);
+    expect(cerrado).toBeInstanceOf(ErrorDatos);
+    expect(cerrado.message).toContain("no trae publicaciones de 2021");
+    expect(pedidas).toEqual(urls(158, [2020, 2021]));
+
+    // El año anterior que se vuelve a pedir en enero, también.
+    await crudosEnDisco("udis", 159, [2020, 2021, 2022, 2023, 2024, 2025]);
+    fuenteFalsa.set(urlSidof(159, 2025), respuesta(159, []));
+    const enero = await udis.capturar(ctx("2026-01-20")).catch((x) => x);
+    expect(enero).toBeInstanceOf(ErrorDatos);
+    expect(enero.message).toContain("no trae publicaciones de 2025");
+
+    // El año en curso puede venir vacío: si antes tenía registros, `revisar` lo marca como bajas.
+    fuenteFalsa.set(urlSidof(158, 2026), respuesta(158, []));
+    await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
+    const [f] = await tipoCambioFix.capturar(ctx());
+    expect(f?.crudos.map((c) => c.file)).toEqual(ANIOS.map((a) => archivo(158, a)));
   });
 
   it("udis pide el tipo 159 y lee su propio directorio", async () => {
@@ -617,7 +705,7 @@ describe("capturar", () => {
     expect(pasado).toBeInstanceOf(ErrorDatos);
     expect(pasado.message).toContain("2021");
     expect(pedidas).toEqual(urls(158, [2020, 2021]));
-    // El año anterior que se vuelve a pedir del 1 al 15 de enero.
+    // El año anterior que se vuelve a pedir en enero.
     await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
     sinDatos(urlSidof(158, 2026));
     const enero = await tipoCambioFix.capturar(ctx("2027-01-05")).catch((x) => x);
@@ -642,8 +730,8 @@ describe("construir", () => {
   it("el año en curso puede no tener crudo; los cerrados no", async () => {
     const crudos = [2020, 2021, 2022, 2023, 2024, 2025].map((a) => crudoDe(158, a));
     const { registros } = await tipoCambioFix.construir([fuenteCon(crudos)], null, ctx());
-    expect(registros).toHaveLength(252);
-    expect(registros.at(-1)).toEqual({ fecha_publicacion: "2020-12-31", valor: "19.9352" });
+    expect(registros).toHaveLength(252 + N_FIX);
+    expect(registros.at(-1)?.fecha_publicacion).toBe("2025-12-31");
     const sin2025 = crudos.slice(0, -1);
     await expect(tipoCambioFix.construir([fuenteCon(sin2025)], null, ctx())).rejects.toThrow(
       "raw/sidof-158-2025.json",
@@ -654,10 +742,11 @@ describe("construir", () => {
     const crudos = [...ANIOS].reverse().map((a) => crudoDe(158, a));
     const { registros, avisos } = await tipoCambioFix.construir([fuenteCon(crudos)], null, ctx());
     expect(avisos).toEqual([]);
-    expect(registros).toHaveLength(452);
+    expect(registros).toHaveLength(252 + N_FIX + 200);
     expect(registros[0]).toEqual({ fecha_publicacion: "2020-01-02", valor: "18.8642" });
     expect(registros[251]).toEqual({ fecha_publicacion: "2020-12-31", valor: "19.9352" });
-    expect(registros[252]).toEqual({ fecha_publicacion: "2026-01-02", valor: "18.0012" });
+    expect(registros[252]).toEqual({ fecha_publicacion: "2021-01-01", valor: "19.9000" });
+    expect(registros[252 + N_FIX]).toEqual({ fecha_publicacion: "2026-01-02", valor: "18.0012" });
     expect(registros.at(-1)).toEqual({ fecha_publicacion: "2026-10-16", valor: "18.4250" });
     const fechas = registros.map((r) => r.fecha_publicacion);
     expect(fechas).toEqual([...fechas].sort());
@@ -690,6 +779,48 @@ describe("construir", () => {
       .catch((x) => x);
     expect(futuro).toBeInstanceOf(ErrorDatos);
     expect(futuro.message).toContain("raw/sidof-158-2026.json");
+  });
+
+  it("un año cerrado sin publicaciones falla; el año en curso y el siguiente pueden venir vacíos", async () => {
+    const crudos = ANIOS.map((a) => crudoDe(158, a));
+    crudos[1] = { ...(crudos[1] as CrudoCapturado), bytes: respuesta(158, []) };
+    const e = await tipoCambioFix.construir([fuenteCon(crudos)], null, ctx()).catch((x) => x);
+    expect(e).toBeInstanceOf(ErrorDatos);
+    expect(e.message).toContain("raw/sidof-158-2021.json no trae publicaciones de 2021");
+
+    const vacio2026 = ANIOS.map((a) =>
+      a === 2026 ? { ...crudoDe(158, a), bytes: respuesta(158, []) } : crudoDe(158, a),
+    );
+    const { registros } = await tipoCambioFix.construir([fuenteCon(vacio2026)], null, ctx());
+    expect(registros).toHaveLength(252 + N_FIX);
+
+    const conSiguiente = [
+      ...ANIOS.map((a) => crudoDe(159, a)),
+      { ...crudoDe(159, 2027), bytes: respuesta(159, []) },
+    ];
+    const diciembre = await udis.construir([fuenteCon(conSiguiente)], null, ctx("2026-12-20"));
+    expect(diciembre.registros.at(-1)?.fecha).toBe("2026-10-25");
+  });
+
+  it("el año siguiente solo entra en diciembre y solo en udis", async () => {
+    const conSiguiente = [
+      ...ANIOS.map((a) => crudoDe(158, a)),
+      { ...crudoDe(158, 2027), bytes: respuesta(158, []) },
+    ];
+    const fix = await tipoCambioFix
+      .construir([fuenteCon(conSiguiente)], null, ctx("2026-12-20"))
+      .catch((x) => x);
+    expect(fix).toBeInstanceOf(ErrorDatos);
+    expect(fix.message).toContain("Crudos inesperados: raw/sidof-158-2027.json");
+    const deUdis = [
+      ...ANIOS.map((a) => crudoDe(159, a)),
+      { ...crudoDe(159, 2027), bytes: respuesta(159, []) },
+    ];
+    const noviembre = await udis
+      .construir([fuenteCon(deUdis)], null, ctx("2026-11-30"))
+      .catch((x) => x);
+    expect(noviembre).toBeInstanceOf(ErrorDatos);
+    expect(noviembre.message).toContain("Crudos inesperados: raw/sidof-159-2027.json");
   });
 
   it("un crudo inválido en cualquier año falla con ErrorDatos", async () => {
@@ -894,14 +1025,18 @@ describe("corrida completa", () => {
     expect(resultado).toMatchObject({
       dataset: "tipo-cambio.fix",
       estado: "actualizado",
-      registros: 452,
+      registros: 252 + N_FIX + 200,
       motivos: ["snapshot inicial"],
       escrito: true,
     });
     const datos = JSON.parse(await readFile(join(dirFix(), "fix.json"), "utf8"));
     expect(datos[0]).toEqual({ fecha_publicacion: "2020-01-02", valor: "18.8642" });
     const m = JSON.parse(await readFile(join(dirFix(), "manifest.json"), "utf8"));
-    expect(m).toMatchObject({ dataset: "tipo-cambio.fix", data_file: "fix.json", records: 452 });
+    expect(m).toMatchObject({
+      dataset: "tipo-cambio.fix",
+      data_file: "fix.json",
+      records: 252 + N_FIX + 200,
+    });
     expect(m.sources).toHaveLength(1);
     expect(m.sources[0].raw.map((x: { file: string }) => x.file)).toEqual(
       ANIOS.map((a) => archivo(158, a)),
@@ -931,10 +1066,15 @@ describe("corrida completa", () => {
       fecha: "2026-01-09",
       valor: "8.673506",
     });
-    // El crudo se guarda tal cual lo publica la fuente, con el espacio.
+    expect(datos.find((x: Udi) => x.fecha === "2026-06-09")).toEqual({
+      fecha: "2026-06-09",
+      valor: "8.830830",
+    });
+    // El crudo se guarda tal cual lo publica la fuente, con los espacios.
     const crudo = await readFile(join(raiz, "udis", archivo(159, 2026)));
     expect(crudo).toEqual(Buffer.from(await fixture("159-2026.json")));
     expect(crudo.toString("utf8")).toContain('"valor":"8.673506 "');
+    expect(crudo.toString("utf8")).toContain('"valor":" 8.830830"');
     expect(await verificarDatos(raiz)).toEqual([]);
   });
 
@@ -1018,6 +1158,28 @@ describe("corrida completa", () => {
       bajas: 1,
       motivos: ["desapareció 2026-10-16"],
     });
+  });
+
+  it("un crudo dañado en disco hace fallar la corrida sin tocar el directorio", async () => {
+    await ejecutarDataset(tipoCambioFix, ctx());
+    const ruta = join(dirFix(), archivo(158, 2021));
+    const danados: [string, Uint8Array][] = [
+      ["HTML", texto("<html><body>Error</body></html>")],
+      ["un crudo de UDIS con nombre de FIX", fuenteFalsa.get(urlSidof(159, 2021)) as Uint8Array],
+      ["el crudo de 2020 con nombre de 2021", await fixture("158-2020.json")],
+      ["un año cerrado vacío", respuesta(158, [])],
+    ];
+    for (const [caso, bytes] of danados) {
+      await writeFile(ruta, bytes);
+      const antes = await leerDir(dirFix());
+      pedidas = [];
+      const e = await ejecutarDataset(tipoCambioFix, ctx("2026-10-19")).catch((x) => x);
+      expect(e, caso).toBeInstanceOf(ErrorDatos);
+      expect(e.message, caso).toContain("2021");
+      // El crudo de 2021 se leyó del disco, no se pidió.
+      expect(pedidas, caso).toEqual([urlSidof(158, 2026)]);
+      expect(await leerDir(dirFix()), caso).toEqual(antes);
+    }
   });
 
   it("una respuesta con forma inesperada hace fallar la corrida sin escribir", async () => {
