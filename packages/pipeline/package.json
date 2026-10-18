@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.build.json",
     "actualizar": "node dist/bin.js actualizar",
     "bancos-historico": "node dist/bin.js bancos-historico",
-    "verificar": "node dist/bin.js verificar"
+    "verificar": "node dist/bin.js verificar",
+    "curar": "node dist/bin.js curar"
   },
   "dependencies": {
     "@mexicoapi/core": "workspace:*",

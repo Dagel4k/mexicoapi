@@ -6,7 +6,7 @@ import { z } from "zod";
 import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
 import { archivosCurado } from "./curado/generar.js";
 import { leerCurado } from "./curado/leer.js";
-import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
+import { CURADOS, type DefinicionCurado, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { DATASETS } from "./registro.js";
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
@@ -187,12 +187,42 @@ export async function diferenciasConEsperados(
   return problemas;
 }
 
+export interface CuradoListo {
+  // biome-ignore lint/suspicious/noExplicitAny: cualquier dataset curado
+  def: DefinicionCurado<any>;
+  /** Lo que `curar` escribe en `data/<directorio>/`. */
+  archivos: Map<string, string>;
+  registros: number;
+  /** Si ya existe la carpeta generada. */
+  generado: boolean;
+}
+
+/** Nombres de las carpetas de `raizDatos`, ordenados; vacío si no existe. */
+export async function directoriosDe(raizDatos: string): Promise<string[]> {
+  let entradas: Dirent[];
+  try {
+    entradas = await readdir(raizDatos, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+  return entradas
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort();
+}
+
 /**
- * Cada curado con YAML debe tener su carpeta generada igual a lo que produce `curar`, y cada
- * carpeta curada su YAML. Sin YAML ni carpeta, el dataset todavía no existe y no se revisa.
+ * Valida los YAML de `data/curado/`: que no haya archivos ajenos, que cada YAML cumpla su esquema
+ * e invariantes, y que no quede una carpeta generada sin su YAML. Un curado sin YAML ni carpeta
+ * todavía no existe y no se revisa.
  */
-async function verificarCurados(raizDatos: string, dirs: ReadonlySet<string>): Promise<string[]> {
+export async function revisarYamlCurados(
+  raizDatos: string,
+  dirs: ReadonlySet<string>,
+): Promise<{ problemas: string[]; listos: CuradoListo[] }> {
   const problemas: string[] = [];
+  const listos: CuradoListo[] = [];
   if (dirs.has(DIRECTORIO_CURADO)) {
     const declarados = new Set(CURADOS.map((d) => d.yaml));
     for (const archivo of (await archivosDe(join(raizDatos, DIRECTORIO_CURADO))).sort()) {
@@ -202,24 +232,34 @@ async function verificarCurados(raizDatos: string, dirs: ReadonlySet<string>): P
     }
   }
   for (const def of CURADOS) {
-    const yaml = `${DIRECTORIO_CURADO}/${def.yaml}`;
     const generado = dirs.has(def.directorio);
     const lectura = await leerCurado(def, raizDatos);
     if (lectura === null) {
-      if (generado) problemas.push(`${def.directorio}: falta ${yaml}`);
-      continue;
+      if (generado) problemas.push(`${def.directorio}: falta ${DIRECTORIO_CURADO}/${def.yaml}`);
+    } else if (lectura.documento === null) {
+      for (const p of lectura.problemas) problemas.push(`${DIRECTORIO_CURADO}/${def.yaml}: ${p}`);
+    } else {
+      const archivos = archivosCurado(def, lectura.documento);
+      listos.push({ def, archivos, registros: lectura.documento.registros.length, generado });
     }
-    if (lectura.documento === null) {
-      for (const p of lectura.problemas) problemas.push(`${yaml}: ${p}`);
-      continue;
-    }
+  }
+  return { problemas, listos };
+}
+
+/** Cada curado con YAML debe tener su carpeta generada igual a lo que produce `curar`. */
+async function verificarCurados(raizDatos: string, dirs: ReadonlySet<string>): Promise<string[]> {
+  const { problemas, listos } = await revisarYamlCurados(raizDatos, dirs);
+  for (const { def, archivos, generado } of listos) {
     if (!generado) {
       problemas.push(`${def.directorio}: faltan los datos generados; corre curar`);
       continue;
     }
-    const esperados = archivosCurado(def, lectura.documento);
-    const dir = join(raizDatos, def.directorio);
-    for (const p of await diferenciasConEsperados(dir, esperados, yaml)) {
+    const origen = `${DIRECTORIO_CURADO}/${def.yaml}`;
+    for (const p of await diferenciasConEsperados(
+      join(raizDatos, def.directorio),
+      archivos,
+      origen,
+    )) {
       problemas.push(`${def.directorio}: ${p}`);
     }
   }
@@ -228,15 +268,7 @@ async function verificarCurados(raizDatos: string, dirs: ReadonlySet<string>): P
 
 /** Revisa cada `data/*` contra su manifiesto y los curados contra su YAML; vacía si todo cuadra. */
 export async function verificarDatos(raizDatos: string): Promise<string[]> {
-  let entradas: Dirent[];
-  try {
-    entradas = await readdir(raizDatos, { withFileTypes: true });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
-  const dirs = entradas.filter((e) => e.isDirectory()).map((e) => e.name);
-  dirs.sort();
+  const dirs = await directoriosDe(raizDatos);
   const curados = new Set(CURADOS.map((d) => d.directorio));
   const problemas: string[] = [];
   for (const nombre of dirs) {
