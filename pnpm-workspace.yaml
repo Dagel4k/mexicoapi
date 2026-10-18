@@ -6,3 +6,5 @@ allowBuilds:
   workerd: false
 minimumReleaseAge: 10080
 shellEmulator: true
+blockExoticSubdeps: true
+trustPolicy: no-downgrade

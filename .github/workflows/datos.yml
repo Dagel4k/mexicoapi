@@ -93,7 +93,8 @@ jobs:
         if: steps.bot.outputs.tiene_bot == 'true'
         run: |
           set -euo pipefail
-          pnpm install --frozen-lockfile
+          # Solo el pipeline y lo que usa (el núcleo): el bot no necesita wrangler ni workerd.
+          pnpm install --frozen-lockfile --filter "@mexicoapi/pipeline..."
           pnpm --filter "@mexicoapi/pipeline..." build
 
       - name: Actualizar datos
@@ -202,24 +203,29 @@ jobs:
               echo "Corrida: ${url_corrida}"
             } > "${cuerpo}"
             gh pr comment "${pr_pendiente}" --body-file "${cuerpo}"
-            # Avisa si el PR lleva más de 48 horas abierto o tiene algún check en rojo.
-            estado_pr="$(gh pr view "${pr_pendiente}" --json createdAt,statusCheckRollup)"
-            atasco="$(jq -r --argjson ahora "$(date -u +%s)" '
+            # Avisa si el PR lleva más de 48 horas abierto o tiene algún check en rojo. Si la API
+            # falla aquí, solo queda un aviso: el paso sigue y el issue de revisión de abajo se abre.
+            if estado_pr="$(gh pr view "${pr_pendiente}" --json createdAt,statusCheckRollup)" \
+              && atasco="$(jq -r --argjson ahora "$(date -u +%s)" '
               [ (if any(.statusCheckRollup[]?;
                     ((.conclusion // "") | IN("FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"))
                     or ((.state // "") | IN("FAILURE", "ERROR")))
                  then "CI en rojo" else empty end),
                 (if ($ahora - (.createdAt | fromdateiso8601)) > 172800
                  then "más de 48 horas abierto" else empty end)
-              ] | join(" y ")' <<< "${estado_pr}")"
-            if [ -n "${atasco}" ]; then
-              cuerpo="${RUNNER_TEMP}/issue-atascado.md"
-              {
-                echo "El PR ${pr_pendiente} está atascado: ${atasco}."
-                echo
-                echo "Corrida: ${url_corrida}"
-              } > "${cuerpo}"
-              abrir_o_comentar "PR de datos atascado: ${GRUPO}" "${cuerpo}"
+              ] | join(" y ")' <<< "${estado_pr}")"; then
+              if [ -n "${atasco}" ]; then
+                cuerpo="${RUNNER_TEMP}/issue-atascado.md"
+                {
+                  echo "El PR ${pr_pendiente} está atascado: ${atasco}."
+                  echo
+                  echo "Corrida: ${url_corrida}"
+                } > "${cuerpo}"
+                abrir_o_comentar "PR de datos atascado: ${GRUPO}" "${cuerpo}" \
+                  || echo "::warning::No se pudo abrir el issue del PR atascado ${pr_pendiente}."
+              fi
+            else
+              echo "::warning::No se pudo revisar si el PR ${pr_pendiente} está atascado."
             fi
             if [ "${CODIGO}" = "3" ]; then
               cuerpo="${RUNNER_TEMP}/issue-pendiente.md"

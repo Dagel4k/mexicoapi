@@ -4,3 +4,9 @@ coverage
 .wrangler
 *.log
 apps/api/public/
+# Secretos locales de wrangler y de entorno.
+.dev.vars*
+.env*
+# Restos del escritor atómico si una corrida se corta.
+*.tmp-*
+*.bak-*
