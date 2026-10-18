@@ -59,8 +59,30 @@ const archivoCrudo = (tipo: TipoSidof, anio: number): string => `raw/sidof-${tip
 const anioDe = (fecha: FechaISO): number => Number(fecha.slice(0, 4));
 const porTexto = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
-function aniosHasta(actual: number): number[] {
-  return Array.from({ length: Math.max(0, actual - ANIO_INICIAL + 1) }, (_, i) => ANIO_INICIAL + i);
+interface PlanAnios {
+  /** Años que cubre la corrida, cada uno con su crudo. */
+  anios: number[];
+  /** Años que se piden a la fuente aunque su crudo ya esté en disco. */
+  recientes: Set<number>;
+  /** Años que todavía pueden no tener publicaciones: el en curso y, si se pide, el siguiente. */
+  abiertos: Set<number>;
+}
+
+/**
+ * Años de una corrida. En enero se vuelve a pedir el año anterior, por si llegó algo tarde. En
+ * diciembre, si la serie se publica por adelantado (UDIS), también se pide el año siguiente.
+ */
+function planAnios(fecha: FechaISO, porAdelantado: boolean): PlanAnios {
+  const actual = anioDe(fecha);
+  const mes = fecha.slice(5, 7);
+  const ultimo = porAdelantado && mes === "12" ? actual + 1 : actual;
+  const anios = Array.from(
+    { length: Math.max(0, ultimo - ANIO_INICIAL + 1) },
+    (_, i) => ANIO_INICIAL + i,
+  );
+  const abiertos = new Set(anios.filter((a) => a >= actual));
+  const recientes = new Set(anios.filter((a) => a >= actual || (mes === "01" && a === actual - 1)));
+  return { anios, recientes, abiertos };
 }
 
 /**
@@ -104,8 +126,8 @@ export function interpretarSidof(
     );
   }
 
-  // Solo se toleran espacios alrededor del valor: el SIDOF publica "8.673506 " para la UDI
-  // del 2026-01-09.
+  // Solo se toleran espacios alrededor del valor: el SIDOF publica "8.673506 " (espacio al
+  // final) para la UDI del 2026-01-09 y " 8.830830" (al inicio) para la del 2026-06-09.
   const formatoValor = new RegExp(`^ *(\\d+\\.\\d{${decimales}}) *$`);
   const vistas = new Set<string>();
   const registros: { fecha: FechaISO; valor: string }[] = [];
@@ -186,6 +208,8 @@ interface ConfigSidof<T extends { valor: string }> {
   registro(fecha: FechaISO, valor: string): T;
   /** La serie tiene un valor para cada día, sin huecos. */
   diaria: boolean;
+  /** La fuente publica valores de fechas futuras (en diciembre, los de enero). */
+  porAdelantado: boolean;
   /** Más altas que esto en una corrida piden revisión. */
   maximoAltas: number;
   /** Variación máxima contra el registro anterior: `numerador / denominador`. */
@@ -223,16 +247,14 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       if (actual < ANIO_INICIAL) {
         throw new ErrorDatos(`la fecha ${ctx.fecha} es anterior a ${ANIO_INICIAL}`, c.id);
       }
-      // Del 1 al 15 de enero se vuelve a pedir el año anterior, por si llegó algo tarde.
-      const enero = ctx.fecha.slice(5, 7) === "01" && ctx.fecha.slice(8, 10) <= "15";
+      const plan = planAnios(ctx.fecha, c.porAdelantado);
       const crudos: CrudoCapturado[] = [];
       const delDisco: number[] = [];
       let hora = "";
-      for (const anio of aniosHasta(actual)) {
+      for (const anio of plan.anios) {
         const file = archivoCrudo(c.tipo, anio);
         const url = urlSidof(c.tipo, anio);
-        const reciente = anio === actual || (enero && anio === actual - 1);
-        const previo = reciente
+        const previo = plan.recientes.has(anio)
           ? null
           : await leerCrudoDisco(join(ctx.raizDatos, c.directorio, file));
         if (previo !== null) {
@@ -243,17 +265,24 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
         const r = await ctx.cliente.obtener(url, { aceptar: [404] });
         // El año en curso siempre se pide; los crudos del disco llevan la hora de esa petición.
         if (anio === actual) hora = r.obtenido_en;
+        const abierto = plan.abiertos.has(anio);
         if (r.estado === 404) {
-          // Solo el año en curso puede no tener publicaciones todavía; no deja crudo. Si antes
-          // tenía registros, desaparecen y `revisar` pide revisión por cada uno.
-          if (anio === actual && esRangoSinPublicaciones(r.cuerpo)) continue;
+          // Solo el año en curso y el siguiente pueden no tener publicaciones todavía; no dejan
+          // crudo. Si antes tenían registros, desaparecen y `revisar` pide revisión por cada uno.
+          if (abierto && esRangoSinPublicaciones(r.cuerpo)) continue;
           throw new ErrorDatos(
-            `el SIDOF respondió 404 para ${anio}${anio === actual ? " con un cuerpo inesperado" : ", un año que ya debe tener publicaciones"}`,
+            `el SIDOF respondió 404 para ${anio}${abierto ? " con un cuerpo inesperado" : ", un año que ya debe tener publicaciones"}`,
             c.id,
           );
         }
         // Si la fuente responde algo inesperado, se detiene antes de pedir más años.
-        interpretarSidof(r.cuerpo, c.tipo, anio, c.decimales);
+        const leidos = interpretarSidof(r.cuerpo, c.tipo, anio, c.decimales);
+        if (leidos.length === 0 && !abierto) {
+          throw new ErrorDatos(
+            `el SIDOF no trae publicaciones de ${anio}, un año que ya debe tenerlas`,
+            c.id,
+          );
+        }
         crudos.push({ file, url, bytes: r.cuerpo, obtenido_en: r.obtenido_en });
       }
       return [
@@ -262,13 +291,13 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
     },
 
     async construir(fuentes, _anterior, ctx): Promise<Construccion<T>> {
-      const actual = anioDe(ctx.fecha);
-      const anios = aniosHasta(actual);
+      const { anios, abiertos } = planAnios(ctx.fecha, c.porAdelantado);
       const porArchivo = new Map(fuentes.flatMap((f) => f.crudos).map((x) => [x.file, x]));
       const esperados = anios.map((a) => archivoCrudo(c.tipo, a));
-      // El año en curso no tiene crudo mientras el SIDOF no tenga publicaciones de ese año.
-      const opcional = archivoCrudo(c.tipo, actual);
-      const faltan = esperados.filter((f) => f !== opcional && !porArchivo.has(f));
+      // Un año abierto no tiene crudo mientras el SIDOF no tenga publicaciones de ese año.
+      const faltan = anios
+        .filter((a) => !abiertos.has(a) && !porArchivo.has(archivoCrudo(c.tipo, a)))
+        .map((a) => archivoCrudo(c.tipo, a));
       if (faltan.length > 0) throw new ErrorDatos(`Faltan crudos: ${faltan.join(", ")}`, c.id);
       const sobran = [...porArchivo.keys()].filter((f) => !esperados.includes(f));
       if (sobran.length > 0) throw new ErrorDatos(`Crudos inesperados: ${sobran.join(", ")}`, c.id);
@@ -276,9 +305,16 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       const registros = anios.flatMap((anio) => {
         const crudo = porArchivo.get(archivoCrudo(c.tipo, anio));
         if (crudo === undefined) return [];
-        return interpretarSidof(crudo.bytes, c.tipo, anio, c.decimales).map((x) =>
-          c.registro(x.fecha, x.valor),
-        );
+        const leidos = interpretarSidof(crudo.bytes, c.tipo, anio, c.decimales);
+        // Un año cerrado vacío (pedido o leído del disco) es un crudo dañado: el SIDOF responde
+        // 404 a los rangos sin publicaciones.
+        if (leidos.length === 0 && !abiertos.has(anio)) {
+          throw new ErrorDatos(
+            `${crudo.file} no trae publicaciones de ${anio}, un año que ya debe tenerlas`,
+            c.id,
+          );
+        }
+        return leidos.map((x) => c.registro(x.fecha, x.valor));
       });
       registros.sort((a, b) => porTexto(c.fechaDe(a), c.fechaDe(b)));
       return { registros, avisos: [] };
@@ -361,6 +397,7 @@ export const tipoCambioFix: DefinicionDataset<TipoCambioFix> = crearDatasetSidof
   fechaDe: (r) => r.fecha_publicacion,
   registro: (fecha, valor) => ({ fecha_publicacion: fecha, valor }),
   diaria: false,
+  porAdelantado: false,
   maximoAltas: 31,
   umbral: { numerador: 5n, denominador: 100n, texto: "5 %" },
   nombre: "el FIX",
@@ -380,6 +417,7 @@ export const udis: DefinicionDataset<Udi> = crearDatasetSidof({
   fechaDe: (r) => r.fecha,
   registro: (fecha, valor) => ({ fecha, valor }),
   diaria: true,
+  porAdelantado: true,
   maximoAltas: 45,
   umbral: { numerador: 5n, denominador: 1000n, texto: "0.5 %" },
   nombre: "la UDI",
