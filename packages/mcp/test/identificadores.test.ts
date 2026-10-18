@@ -46,7 +46,9 @@ describe("validar_rfc", () => {
       ...PROCEDENCIA,
     });
     expect(texto(r)).toContain("RFC válido: genérico, fecha 010101 (AAMMDD), homoclave 000.");
-    expect(texto(r)).toContain("as_of: no aplica (validación por algoritmo, sin datos publicados)");
+    expect(texto(r)).toContain(
+      "as_of (corte de los datos): no aplica (validación por algoritmo, sin datos publicados)",
+    );
     expect(urls).toEqual([]);
   });
 

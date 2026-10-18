@@ -47,7 +47,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -128,6 +128,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -183,7 +184,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -261,6 +262,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -312,7 +314,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -449,6 +451,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -499,7 +502,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -620,6 +623,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -671,7 +675,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": [
             "string",
@@ -783,6 +787,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -834,7 +839,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": [
             "string",
@@ -949,6 +954,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -1000,7 +1006,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": [
             "string",
@@ -1088,6 +1094,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "paquete",
           ],
@@ -1140,7 +1147,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -1227,6 +1234,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "api",
             "paquete",
@@ -1278,7 +1286,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -1338,6 +1346,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "api",
             "paquete",
@@ -1400,7 +1409,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -1490,6 +1499,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "api",
             "paquete",
@@ -1570,7 +1580,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -1694,6 +1704,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "api",
             "paquete",
@@ -1767,7 +1778,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": "string",
         },
@@ -1817,6 +1828,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
           "enum": [
             "api",
             "paquete",
@@ -1877,7 +1889,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "as_of": {
-          "description": "Fecha de los datos.",
+          "description": "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.",
           "format": "date",
           "type": [
             "string",
@@ -2005,6 +2017,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "array",
         },
         "origen": {
+          "description": "cache_local: el catálogo de Correos de México que el usuario descargó en este equipo.",
           "enum": [
             "cache_local",
           ],

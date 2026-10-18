@@ -113,6 +113,19 @@ describe("ciclo de vida", () => {
     expect(INSTRUCCIONES).toMatch(/códigos postales/);
     expect(INSTRUCCIONES).toMatch(/Correos de México/);
   });
+
+  it("las instrucciones dicen que as_of es el corte del dataset", () => {
+    expect(INSTRUCCIONES).toContain(
+      "as_of (fecha de corte del dataset; la del valor va en los datos)",
+    );
+    expect(INSTRUCCIONES).not.toMatch(/fecha del dato/);
+  });
+
+  it("las instrucciones piden no sustituir ni estimar un dato que falta", () => {
+    expect(INSTRUCCIONES).toContain(
+      "Si una herramienta responde con error o sin el dato, dilo; no lo sustituyas por otro valor ni lo estimes.",
+    );
+  });
 });
 
 describe("negociación de versión (Review Focus 2)", () => {

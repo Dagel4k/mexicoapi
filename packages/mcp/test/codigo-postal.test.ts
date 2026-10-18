@@ -76,7 +76,7 @@ describe("codigo_postal con catálogo", () => {
     expect(t).toContain("- Centro de Prueba (Colonia, Urbano, Culiacán Rosales)");
     expect(t).toContain(`Aviso de Correos de México: ${AVISO_SEPOMEX}`);
     expect(t).toMatch(
-      /as_of: Correos de México no indicó la fecha; se descargó el \d{4}-\d{2}-\d{2}/,
+      /as_of \(corte de los datos\): Correos de México no indicó la fecha; se descargó el \d{4}-\d{2}-\d{2}/,
     );
     expect(t).toContain("Origen: catálogo de Correos de México descargado en este equipo");
     expect(JSON.stringify(r)).not.toContain(trabajo.trabajo.replaceAll("\\", "\\\\"));

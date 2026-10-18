@@ -1,12 +1,13 @@
 import { MexicoApiError } from "mexicoapi/cliente";
 import { describe, expect, it } from "vitest";
-import { compilarEsquema } from "../src/esquema.js";
+import { compilarEsquema, type EsquemaJson } from "../src/esquema.js";
 import { ErrorHerramienta } from "../src/herramientas.js";
 import {
   AVISO_SIN_API,
   consultar,
   enLinea,
   esquemaSalida,
+  type Origen,
   procedencia,
   resultado,
   unicas,
@@ -78,7 +79,7 @@ describe("resultado", () => {
         "Línea 1",
         "Fuente: Fuente A (https://a.example)",
         "Otra fuente: Fuente B (https://b.example)",
-        "as_of: 2026-10-17",
+        "as_of (corte de los datos): 2026-10-17",
         "Origen: datos del paquete mexicoapi",
         "Advertencia: Ojo: esto",
       ].join("\n"),
@@ -88,9 +89,11 @@ describe("resultado", () => {
 
   it("dice por qué no hay fecha", () => {
     const p = { ...procedencia({ meta: META, origen: "paquete" }), as_of: null };
-    expect(resultado([], null, p).content[0]?.text).toContain("as_of: sin fecha");
+    expect(resultado([], null, p).content[0]?.text).toContain(
+      "as_of (corte de los datos): sin fecha",
+    );
     expect(resultado([], null, p, { sinFecha: "no aplica" }).content[0]?.text).toContain(
-      "as_of: no aplica",
+      "as_of (corte de los datos): no aplica",
     );
   });
 });
@@ -110,6 +113,28 @@ describe("esquemaSalida", () => {
     expect(validar({ ...bien, otro: 1 })).toHaveLength(1);
     const { total: _, ...sinTotal } = bien;
     expect(validar(sinTotal)).toEqual(['falta "total"']);
+  });
+
+  /** La descripción de una propiedad del esquema de salida. */
+  const descripcion = (origenes: readonly Origen[], propiedad: string): unknown =>
+    (esquemaSalida({ type: "null" }, { origenes }).properties as Record<string, EsquemaJson>)[
+      propiedad
+    ]?.description;
+
+  it("describe as_of como el corte del dataset, no como la fecha del valor", () => {
+    const texto = descripcion(["paquete"], "as_of");
+    expect(texto).toMatch(/^Fecha de corte del dataset/);
+    expect(texto).toMatch(/No es la fecha del valor/);
+  });
+
+  it("describe cada origen posible de la herramienta", () => {
+    const describir = (origenes: readonly Origen[]) => descripcion(origenes, "origen");
+    expect(describir(["api", "paquete"])).toBe(
+      "api: la API de MéxicoAPI; paquete: los datos y las reglas del paquete mexicoapi, sin red.",
+    );
+    expect(describir(["cache_local"])).toBe(
+      "cache_local: el catálogo de Correos de México que el usuario descargó en este equipo.",
+    );
   });
 
   it("acepta as_of null si se pide", () => {
