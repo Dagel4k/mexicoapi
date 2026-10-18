@@ -12,7 +12,7 @@ El `package.json` de `packages/sdk` trae cosas que solo sirven en el monorepo: `
 
 Un `npm pack` o `npm publish` en `packages/sdk` falla a propósito (el `prepack` lo rechaza con un mensaje que dice qué hacer).
 
-En CI, el job `paquete` de `ci.yml` hace estos tres pasos con el Node de `.nvmrc` y sube el `.tgz` como artefacto; `paquete-node` lo instala en un proyecto nuevo con Node 20, 22 y 24 y corre la prueba de humo. `pnpm --filter mexicoapi test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y además levanta un Worker en workerd que usa el paquete instalado.
+En CI, el job `paquete` de `ci.yml` hace estos tres pasos con el Node de `.nvmrc` y sube el `.tgz` como artefacto; `paquete-node` lo instala en un proyecto nuevo con Node 20, 22 y 24 y corre la prueba de humo. El check `verify`, el que exige la protección de `main`, pasa solo si `verificacion` (que corre `verify.sh`), `paquete` y cada Node de `paquete-node` terminan bien: uno que falla, se salta o se cancela bloquea el merge. `pnpm --filter mexicoapi test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y además levanta un Worker en workerd que usa el paquete instalado.
 
 Hoy (0.1.0) el paquete tiene 145 archivos: unos 180 kB comprimido y 900 kB sin comprimir.
 

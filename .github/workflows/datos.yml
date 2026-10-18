@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           # Con el token en el entorno, ni el commit, ni el switch ni el push corren hooks del repo.
-          # El check verify del PR cubre biome y gitleaks.
+          # El job verificacion del PR (que exige el check verify) cubre biome y gitleaks.
           git config core.hooksPath /dev/null
           resumen_md="${RESUMEN_DIR}/resumen.md"
           resumen_json="${RESUMEN_DIR}/resumen.json"

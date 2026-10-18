@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  verificacion:
+    name: verificacion
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -137,3 +138,30 @@ jobs:
           printf '{"name":"consumidor","private":true,"type":"module"}\n' > package.json
           npm install --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
           node humo.mjs
+
+  # El check que exige la protección de main. Pasa solo si la verificación, el empaquetado y cada
+  # Node de la matriz terminaron bien: con always() corre aunque alguno falle, se salte o se
+  # cancele, y en ese caso falla en vez de quedar saltado (un check saltado cuenta como aprobado).
+  verify:
+    name: verify
+    if: always()
+    needs: [verificacion, paquete, paquete-node]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Revisar los jobs requeridos
+        env:
+          VERIFICACION: ${{ needs.verificacion.result }}
+          PAQUETE: ${{ needs.paquete.result }}
+          PAQUETE_NODE: ${{ needs.paquete-node.result }}
+        run: |
+          set -euo pipefail
+          falla=0
+          for par in "verificacion=${VERIFICACION}" "paquete=${PAQUETE}" "paquete-node=${PAQUETE_NODE}"; do
+            echo "${par}"
+            if [ "${par#*=}" != "success" ]; then
+              falla=1
+            fi
+          done
+          exit "${falla}"
