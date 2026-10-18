@@ -2,10 +2,12 @@
 // valores nuevos). Se piden a la API si hay MEXICOAPI_BASE.
 import type { SalarioMinimo, TarifaIsr, Uma } from "mexicoapi";
 import type { Respuesta } from "mexicoapi/cliente";
+import { compilarEsquema } from "../esquema.js";
 import { type Herramienta, type ResultadoHerramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
   consultar,
+  ESQUEMA_FUENTE_DATO,
   enLinea,
   esquemaSalida,
   FECHA,
@@ -14,6 +16,7 @@ import {
   procedencia,
   RESPALDO_API,
   resultado,
+  TEXTO_NUMERICO,
 } from "../respuesta.js";
 
 type Tipo = "uma" | "salario_minimo" | "isr";
@@ -24,6 +27,60 @@ interface Argumentos {
   fecha?: string;
   periodo?: "mensual" | "anual";
 }
+
+const ANIO = { type: "integer" } as const;
+
+const UMA = {
+  type: "object",
+  properties: {
+    anio: ANIO,
+    diaria: TEXTO_NUMERICO,
+    mensual: TEXTO_NUMERICO,
+    anual: TEXTO_NUMERICO,
+    vigencia_desde: FECHA,
+    fuente: ESQUEMA_FUENTE_DATO,
+  },
+  required: ["anio", "diaria", "mensual", "anual", "vigencia_desde", "fuente"],
+} as const;
+
+const SALARIO = {
+  type: "object",
+  properties: {
+    anio: ANIO,
+    zona: { type: "string" },
+    diario: TEXTO_NUMERICO,
+    vigencia_desde: FECHA,
+    fuente: ESQUEMA_FUENTE_DATO,
+  },
+  required: ["anio", "zona", "diario", "vigencia_desde", "fuente"],
+} as const;
+
+const TRAMO = {
+  type: "object",
+  properties: {
+    limite_inferior: TEXTO_NUMERICO,
+    limite_superior: { ...TEXTO_NUMERICO, type: ["string", "null"] },
+    cuota_fija: TEXTO_NUMERICO,
+    tasa_excedente: TEXTO_NUMERICO,
+  },
+  required: ["limite_inferior", "limite_superior", "cuota_fija", "tasa_excedente"],
+} as const;
+
+const TARIFA_ISR = {
+  type: "object",
+  properties: {
+    anio: ANIO,
+    periodo: { type: "string", enum: ["mensual", "anual"] },
+    tramos: { type: "array", items: TRAMO },
+    fuente: ESQUEMA_FUENTE_DATO,
+  },
+  required: ["anio", "periodo", "tramos", "fuente"],
+} as const;
+
+/** Lo que se revisa de una respuesta de la API antes de usarla, según tipo. */
+const revisarUma = compilarEsquema(UMA);
+const revisarSalarios = compilarEsquema({ type: "array", items: SALARIO });
+const revisarTarifa = compilarEsquema(TARIFA_ISR);
 
 const ZONAS: Readonly<Record<string, string>> = {
   general: "general",
@@ -78,6 +135,10 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
         type: ["object", "array"],
         description:
           "La UMA (objeto), el salario mínimo (lista, uno por zona) o la tarifa de ISR (objeto con sus tramos), según tipo. Cada uno trae su fuente.",
+        // Sin combinadores: properties revisa los campos de la UMA y de la tarifa que vengan, e
+        // items cada zona del salario mínimo.
+        properties: { ...UMA.properties, ...TARIFA_ISR.properties },
+        items: SALARIO,
       },
       {
         origenes: ["api", "paquete"],
@@ -92,10 +153,13 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
       const op = { signal };
       const extra = { tipo: a.tipo };
       if (a.tipo === "uma") {
-        const r: Respuesta<Uma> = await consultar(signal, () =>
-          a.fecha === undefined
-            ? cliente.uma(a.anio as number, op)
-            : cliente.umaVigente(a.fecha, op),
+        const r: Respuesta<Uma> = await consultar(
+          signal,
+          () =>
+            a.fecha === undefined
+              ? cliente.uma(a.anio as number, op)
+              : cliente.umaVigente(a.fecha, op),
+          revisarUma,
         );
         const u = r.data;
         const montos = enLinea(
@@ -108,8 +172,10 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
         return conFuentes([linea], r, [u.fuente], extra);
       }
       if (a.tipo === "salario_minimo") {
-        const r: Respuesta<readonly SalarioMinimo[]> = await consultar(signal, () =>
-          cliente.salarioMinimo(a.anio as number, op),
+        const r: Respuesta<readonly SalarioMinimo[]> = await consultar(
+          signal,
+          () => cliente.salarioMinimo(a.anio as number, op),
+          revisarSalarios,
         );
         const zonas = r.data;
         const primera = zonas[0];
@@ -128,8 +194,10 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
         );
       }
       const periodo = a.periodo as "mensual" | "anual";
-      const r: Respuesta<TarifaIsr> = await consultar(signal, () =>
-        cliente.tarifaIsr(periodo, a.anio as number, op),
+      const r: Respuesta<TarifaIsr> = await consultar(
+        signal,
+        () => cliente.tarifaIsr(periodo, a.anio as number, op),
+        revisarTarifa,
       );
       const t = r.data;
       const lineas = [

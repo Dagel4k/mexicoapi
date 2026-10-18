@@ -3,6 +3,7 @@
 // advierte solo cuando la respuesta puede no estar al día (ver cercaDelFinal).
 import type { CoberturaSerie } from "mexicoapi";
 import type { Respuesta } from "mexicoapi/cliente";
+import { compilarEsquema } from "../esquema.js";
 import { type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
@@ -16,18 +17,30 @@ import {
   procedencia,
   RESPALDO_API,
   resultado,
+  TEXTO_NUMERICO,
 } from "../respuesta.js";
 
 const FIX = {
   type: "object",
   properties: {
     fecha_publicacion: { ...FECHA, description: "Día de la publicación en el DOF." },
-    valor: { type: "string", description: "Pesos por dólar, con 4 decimales." },
+    valor: { ...TEXTO_NUMERICO, description: "Pesos por dólar, con 4 decimales." },
     fecha_operacion: FECHA,
     fundamento: ESQUEMA_FUENTE_DATO,
   },
   required: ["fecha_publicacion", "valor"],
 } as const;
+const revisarFix = compilarEsquema(FIX);
+
+const UDI = {
+  type: "object",
+  properties: {
+    fecha: FECHA,
+    valor: { ...TEXTO_NUMERICO, description: "Pesos por UDI, con 6 decimales." },
+  },
+  required: ["fecha", "valor"],
+} as const;
+const revisarUdi = compilarEsquema(UDI);
 
 /**
  * Días antes del último dato de la serie del paquete en los que, sin API, se advierte que puede
@@ -88,6 +101,7 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
             : operacion !== undefined
               ? cliente.fixParaOperacion(operacion, op)
               : cliente.fixUltimo(op),
+        revisarFix,
       );
       const fix = r.data;
       // Del paquete es la más reciente que trae, que puede no ser la última publicada.
@@ -123,20 +137,14 @@ export function udisHerramienta({ cliente, conApi }: OpcionesHerramientas): Herr
       required: ["fecha"],
       additionalProperties: false,
     },
-    outputSchema: esquemaSalida(
-      {
-        type: "object",
-        properties: {
-          fecha: FECHA,
-          valor: { type: "string", description: "Pesos por UDI, con 6 decimales." },
-        },
-        required: ["fecha", "valor"],
-      },
-      { origenes: ["api", "paquete"] },
-    ),
+    outputSchema: esquemaSalida(UDI, { origenes: ["api", "paquete"] }),
     annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
-      const r = await consultar(signal, () => cliente.udi(args.fecha as string, { signal }));
+      const r = await consultar(
+        signal,
+        () => cliente.udi(args.fecha as string, { signal }),
+        revisarUdi,
+      );
       const udi = r.data;
       const sinApi = !conApi && (await cercaDelFinal(serieUdis, udi.fecha));
       return resultado(

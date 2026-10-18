@@ -1,6 +1,7 @@
 // Días inhábiles y suma de días hábiles de la LFT, la CNBV y el SAT: datos que caducan (los
 // calendarios crecen con cada publicación en el DOF). Se piden a la API si hay MEXICOAPI_BASE.
 import type { DiaInhabil, ResultadoDiasHabiles } from "mexicoapi";
+import { compilarEsquema } from "../esquema.js";
 import { type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
@@ -42,6 +43,23 @@ const DIA_INHABIL = {
   required: ["fecha", "motivo", "tipo", "fuente"],
 } as const;
 
+const DIAS_INHABILES = { type: "array", items: DIA_INHABIL } as const;
+const revisarDias = compilarEsquema(DIAS_INHABILES);
+
+const SUMA = {
+  type: "object",
+  properties: {
+    autoridad: { type: "string" },
+    desde: FECHA,
+    dias: { type: "integer" },
+    resultado: { ...FECHA, description: "Fecha en que vence el plazo." },
+    inhabiles_saltados: { type: "array", items: DIA_INHABIL },
+    advertencias: { type: "array", items: { type: "string" } },
+  },
+  required: ["autoridad", "desde", "dias", "resultado", "inhabiles_saltados", "advertencias"],
+} as const;
+const revisarSuma = compilarEsquema(SUMA);
+
 const lineaDia = (d: DiaInhabil): string =>
   `- ${d.fecha} ${enLinea(d.motivo)} (${enLinea(d.tipo)})`;
 
@@ -59,15 +77,14 @@ export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramient
       required: ["autoridad", "anio"],
       additionalProperties: false,
     },
-    outputSchema: esquemaSalida(
-      { type: "array", items: DIA_INHABIL },
-      { origenes: ["api", "paquete"] },
-    ),
+    outputSchema: esquemaSalida(DIAS_INHABILES, { origenes: ["api", "paquete"] }),
     annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { autoridad, anio } = args as { autoridad: Autoridad; anio: number };
-      const r = await consultar(signal, () =>
-        cliente.diasInhabiles({ autoridad, anio }, { signal }),
+      const r = await consultar(
+        signal,
+        () => cliente.diasInhabiles({ autoridad, anio }, { signal }),
+        revisarDias,
       );
       const dias = r.data;
       const de = `de ${anio} según ${NOMBRE[autoridad]}`;
@@ -117,21 +134,7 @@ export function sumarDiasHabilesHerramienta({
       required: ["autoridad", "desde", "dias"],
       additionalProperties: false,
     },
-    outputSchema: esquemaSalida(
-      {
-        type: "object",
-        properties: {
-          autoridad: { type: "string" },
-          desde: FECHA,
-          dias: { type: "integer" },
-          resultado: { ...FECHA, description: "Fecha en que vence el plazo." },
-          inhabiles_saltados: { type: "array", items: DIA_INHABIL },
-          advertencias: { type: "array", items: { type: "string" } },
-        },
-        required: ["autoridad", "desde", "dias", "resultado", "inhabiles_saltados", "advertencias"],
-      },
-      { origenes: ["api", "paquete"] },
-    ),
+    outputSchema: esquemaSalida(SUMA, { origenes: ["api", "paquete"] }),
     annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { autoridad, desde, dias, tipo_plazo, permitir_incompleto } = args as {
@@ -154,8 +157,11 @@ export function sumarDiasHabilesHerramienta({
         autoridad === "sat"
           ? { autoridad, tipoPlazo: tipo_plazo as "general" | "declaraciones_pagos", desde, dias }
           : { autoridad, desde, dias };
-      const r = await consultar(signal, () =>
-        cliente.diasHabiles({ ...consulta, permitirIncompleto: permitir_incompleto }, { signal }),
+      const r = await consultar(
+        signal,
+        () =>
+          cliente.diasHabiles({ ...consulta, permitirIncompleto: permitir_incompleto }, { signal }),
+        revisarSuma,
       );
       const calculo: ResultadoDiasHabiles = r.data;
       const plazo = tipo_plazo === undefined ? "" : ` (tipo_plazo ${tipo_plazo})`;
