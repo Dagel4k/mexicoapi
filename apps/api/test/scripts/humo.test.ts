@@ -10,6 +10,8 @@ const UDIS = "/v1/udis?fecha=2024-06-03";
 const DIAS = "/v1/dias-habiles?autoridad=lft&desde=2026-11-13&dias=1";
 const DIAS_SAT = "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10";
 const UMA = "/v1/constantes/uma/2026";
+const UMA_2016 = "/v1/constantes/uma/2016";
+const PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
 
 interface Ruta {
   estado?: number;
@@ -32,6 +34,11 @@ function rutasBuenas(): Record<string, Ruta> {
     },
     [UDIS]: { cuerpo: { data: { fecha: "2024-06-03", valor: "8.146030" } } },
     [UMA]: { cuerpo: { data: { anio: 2026, diaria: "117.31" } } },
+    [UMA_2016]: {
+      estado: 404,
+      tipo: "application/problem+json; charset=utf-8",
+      cuerpo: { type: `${PROBLEMAS}#no-encontrado`, status: 404 },
+    },
     "/v1/estados/33": {
       estado: 404,
       tipo: "application/problem+json; charset=utf-8",
@@ -66,7 +73,7 @@ describe("probarHumo", () => {
     const r = await probarHumo(`${BASE}/`, { fetch: falso(rutasBuenas()) });
     expect(r.fallas).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(Object.keys(r.tiempos)).toHaveLength(13);
+    expect(Object.keys(r.tiempos)).toHaveLength(14);
   });
 
   it("un 200 con HTML es una falla", async () => {
@@ -117,7 +124,7 @@ describe("probarHumo", () => {
   it("un fetch que ignora la señal también vence", async () => {
     const mudo = (() => new Promise(() => {})) as typeof fetch;
     const r = await probarHumo(BASE, { fetch: mudo, timeoutMs: 5 });
-    expect(r.fallas).toHaveLength(13);
+    expect(r.fallas).toHaveLength(14);
   });
 
   it("un error de red es una falla con su mensaje", async () => {
@@ -173,6 +180,18 @@ describe("probarHumo", () => {
     }
   });
 
+  it("la UMA de 2016 debe ser no-encontrado: un año anterior a los datos", async () => {
+    for (const [cuerpo, texto] of [
+      [{ type: `${PROBLEMAS}#dato-no-disponible`, status: 404 }, "dato-no-disponible"],
+      [{ status: 404 }, "undefined"],
+    ] as const) {
+      const rutas = rutasBuenas();
+      rutas[UMA_2016] = { estado: 404, tipo: "application/problem+json", cuerpo };
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas).toEqual([`${UMA_2016}: type ${texto}, no no-encontrado`]);
+    }
+  });
+
   it("JSON roto, SHA256SUMS vacío y un 404 sin problem+json fallan", async () => {
     const rutas = rutasBuenas();
     rutas["/v1/openapi.json"] = { cuerpo: "{no es json" };
@@ -193,7 +212,7 @@ describe("principal", () => {
     const codigo = await principal([BASE], (t) => salida.push(t), { fetch: falso(rutasBuenas()) });
     expect(codigo).toBe(0);
     const texto = salida.join("");
-    expect(texto.match(/^ok /gm)).toHaveLength(13);
+    expect(texto.match(/^ok /gm)).toHaveLength(14);
     expect(texto).toContain("Prueba de humo correcta.");
   });
 
