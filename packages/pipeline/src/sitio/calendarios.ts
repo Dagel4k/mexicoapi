@@ -3,19 +3,12 @@ import type {
   CoberturaCurada,
   DiaInhabil,
   DiaInhabilCurado,
-  FechaISO,
   FuenteDof,
-  TipoDiaCurado,
-  TipoPlazo,
 } from "@mexicoapi/core";
+import { PLAZOS, type PlazoCalendario, revisarPlazos } from "../curado/plazos.js";
 import { ErrorDatos } from "../errores.js";
 
-export interface PlazoCalendario {
-  /** Rango en que la lista está completa para este tipo de plazo. */
-  cobertura: { desde: FechaISO; hasta: FechaISO };
-  /** Tipos de día que en este plazo no cuentan como inhábiles (`excluirTipos` del núcleo). */
-  excluir_tipos: TipoDiaCurado[];
-}
+export type { PlazoCalendario } from "../curado/plazos.js";
 
 /**
  * `v1/_internos/calendarios/<autoridad>.json`: lo que el Worker pasa a `crearCalendario`. Un
@@ -29,44 +22,6 @@ export interface ShardCalendario {
   fuente_fin_de_semana: FuenteDof;
   /** Todos los días curados, por fecha, sin `autoridad`. */
   dias: DiaInhabil[];
-}
-
-/**
- * Tipos de plazo de cada autoridad y los tipos de día que no cuentan en cada uno. En los plazos
- * para presentar declaraciones y pagar contribuciones no se cuentan las vacaciones generales
- * del SAT como inhábiles (CFF art. 12, segundo párrafo).
- */
-const PLAZOS: Readonly<Record<AutoridadCurada, Partial<Record<TipoPlazo, TipoDiaCurado[]>>>> = {
-  cnbv: { general: [] },
-  sat: { general: [], declaraciones_pagos: ["vacaciones"] },
-};
-
-/**
- * La cobertura de un plazo es la intersección de las coberturas de los tipos de día que cuentan
- * en él: con `general` del SAT, hasta donde están publicadas las vacaciones.
- */
-function plazo(
-  tipo: TipoPlazo,
-  excluir: readonly TipoDiaCurado[],
-  cobertura: CoberturaCurada,
-  dataset: string,
-): PlazoCalendario {
-  const [primero, ...resto] = (Object.keys(cobertura) as TipoDiaCurado[])
-    .filter((t) => !excluir.includes(t))
-    .map((t) => cobertura[t] as { desde: FechaISO; hasta: FechaISO });
-  if (primero === undefined) {
-    throw new ErrorDatos(
-      `el plazo ${tipo} no tiene cobertura de un tipo de día que cuente`,
-      dataset,
-    );
-  }
-  let { desde, hasta } = primero;
-  for (const r of resto) {
-    if (r.desde > desde) desde = r.desde;
-    if (r.hasta < hasta) hasta = r.hasta;
-  }
-  if (desde > hasta) throw new ErrorDatos(`la cobertura del plazo ${tipo} queda vacía`, dataset);
-  return { cobertura: { desde, hasta }, excluir_tipos: [...excluir] };
 }
 
 /**
@@ -96,13 +51,8 @@ export function shardCalendario(
 ): ShardCalendario {
   const dataset = `dias-inhabiles.${autoridad}`;
   if (cobertura === null) throw new ErrorDatos("el calendario está sin cobertura", dataset);
-  const plazos: Partial<Record<TipoPlazo, PlazoCalendario>> = {};
-  for (const [tipo, excluir] of Object.entries(PLAZOS[autoridad]) as [
-    TipoPlazo,
-    TipoDiaCurado[],
-  ][]) {
-    plazos[tipo] = plazo(tipo, excluir, cobertura, dataset);
-  }
+  const { plazos, fallas } = revisarPlazos(PLAZOS[autoridad], cobertura, registros);
+  if (fallas.length > 0) throw new ErrorDatos(fallas.join("; "), dataset);
   return {
     autoridad,
     plazos: plazos as ShardCalendario["plazos"],
