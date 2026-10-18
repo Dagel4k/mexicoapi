@@ -118,7 +118,7 @@ Para `mexicoapi`:
    gh release create "mexicoapi@0.1.1" --target <commit> --title "mexicoapi 0.1.1" --notes-file notas.md
    ```
 
-   Las notas pueden ser la sección del `CHANGELOG.md`. En la web: Releases, Draft a new release, la etiqueta nueva y el commit en Target.
+   Las notas pueden ser la sección del `CHANGELOG.md`. En la web: Releases, Draft a new release, la etiqueta nueva, el commit en Target, sin marcar Set as a pre-release, y Publish release al final. Save draft no corre el workflow: solo un Release publicado lo hace.
 4. `publicacion.yml` corre solo. Se sigue con `gh run watch` o en la pestaña Actions (workflow Publicación): el job `preparar` revisa y arma el paquete, y el job `publicar` lo publica en el Environment `npm` (con el revisor requerido, después de que lo apruebes). El resumen de la corrida muestra lo que lleva el paquete y el enlace a la versión en npm.
 5. Se comprueba con `npm view mexicoapi@<versión>`. En npmjs.com, la página de la versión muestra la procedencia (Provenance) con el commit y la corrida.
 
