@@ -5,11 +5,21 @@ import {
   FUENTE_CFF_20,
   fixParaOperacion,
   fixPublicado,
+  type OpcionesFix,
   sumarDias,
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
-import { anioDe, type Meta, metaInterna, type ShardSerie, shardFix, shardUdis } from "../cargas.js";
+import {
+  anioDe,
+  type CalendarioCurado,
+  calendarioCurado,
+  type Meta,
+  metaInterna,
+  type ShardSerie,
+  shardFix,
+  shardUdis,
+} from "../cargas.js";
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
@@ -36,8 +46,8 @@ async function serieDe(entorno: Entorno, dataset: string, docs: string): Promise
 /**
  * `fecha` llevada a la cobertura. El año que se carga sale de aquí: una fecha fuera de la
  * serie la resuelve el núcleo sin pedir años que no existen. Antes de la serie es sin_dato;
- * después, no_disponible, salvo un fin de semana del FIX justo después del último dato (sin
- * días entre semana de por medio), que es sin_dato.
+ * después, no_disponible, salvo un día sin publicación del FIX (fin de semana o feriado
+ * bancario) con solo días sin publicación desde el último dato, que es sin_dato.
  */
 const acotar = (fecha: FechaISO, { desde, hasta }: CoberturaSerie): FechaISO =>
   fecha < desde ? desde : fecha > hasta ? hasta : fecha;
@@ -124,11 +134,52 @@ function responder<T>(
   );
 }
 
+const AVISO_SIN_CNBV =
+  "mexicoapi: aviso: el calendario de la CNBV no cargó; el FIX solo salta fines de semana";
+
+/**
+ * Los días de descanso de la CNBV, dentro de su cobertura, como días sin publicación del FIX:
+ * el DOF no lo publica en los feriados bancarios. Si el calendario no carga, undefined y un
+ * aviso: la consulta sigue solo con los fines de semana, que da menos respuestas pero ninguna
+ * vieja, en vez de un 500. La falla no se recuerda.
+ */
+async function feriadosBancarios(entorno: Entorno): Promise<OpcionesFix["sinPublicacion"]> {
+  let cnbv: CalendarioCurado;
+  try {
+    cnbv = await calendarioCurado(entorno, "cnbv");
+  } catch {
+    console.warn(AVISO_SIN_CNBV);
+    return undefined;
+  }
+  // Fuera de su cobertura el calendario lanza; ahí solo cuentan los fines de semana.
+  const { cobertura, calendario } = cnbv.general;
+  return (fecha) =>
+    fecha >= cobertura.desde && fecha <= cobertura.hasta && calendario.inhabil(fecha) !== null;
+}
+
+/**
+ * La consulta con solo los fines de semana y, si da no_disponible, otra vez con los feriados
+ * bancarios. Los feriados solo vuelven cierta una respuesta que sin ellos es no_disponible, así
+ * que el calendario se pide solo entonces.
+ */
+async function conFeriados(
+  entorno: Entorno,
+  consultar: (opciones?: OpcionesFix) => Consulta<TipoCambioFix>,
+): Promise<Consulta<TipoCambioFix>> {
+  const consulta = consultar();
+  if (consulta.tipo !== "no_disponible") return consulta;
+  const sinPublicacion = await feriadosBancarios(entorno);
+  return sinPublicacion === undefined ? consulta : consultar({ sinPublicacion });
+}
+
 async function fixDelDia(c: Contexto, fecha: FechaISO): Promise<Response> {
   const serie = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
   const { cobertura } = serie;
   const { tramo, datos } = await shardFix(c.entorno, anioDe(acotar(fecha, cobertura)), cobertura);
-  return responder(c, fixPublicado(datos, tramo, cobertura, fecha), serie, fecha, {
+  const consulta = await conFeriados(c.entorno, (opciones) =>
+    fixPublicado(datos, tramo, cobertura, fecha, opciones),
+  );
+  return responder(c, consulta, serie, fecha, {
     sinDato:
       fecha < cobertura.desde
         ? fueraDeLaSerie(cobertura, `el ${fecha}`)
@@ -141,9 +192,12 @@ async function fixDeOperacion(c: Contexto, fecha: FechaISO): Promise<Response> {
   const serie = await serieDe(c.entorno, "tipo-cambio.fix", DOCS_FIX);
   const { cobertura } = serie;
   const { tramo, datos } = await tramoParaOperacion(c.entorno, cobertura, fecha);
+  const consulta = await conFeriados(c.entorno, (opciones) =>
+    fixParaOperacion(datos, tramo, cobertura, fecha, opciones),
+  );
   return responder(
     c,
-    fixParaOperacion(datos, tramo, cobertura, fecha),
+    consulta,
     serie,
     fecha,
     {

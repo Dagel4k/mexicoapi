@@ -232,6 +232,71 @@ describe("tipo de cambio FIX y UDIS con los datos reales", () => {
     },
   );
 
+  describe("feriados bancarios de la CNBV", () => {
+    interface ShardCnbv {
+      plazos: { general: { cobertura: { desde: string; hasta: string } } };
+      dias: { fecha: string }[];
+    }
+    /** El calendario de la CNBV que lee el Worker. */
+    const leerCnbv = async () =>
+      JSON.parse(
+        (await leerPublico("v1/_internos/calendarios/cnbv.json")).toString("utf8"),
+      ) as ShardCnbv;
+    const finDeSemana = (fecha: string) => [0, 6].includes(diaDeLaSemana(fecha));
+
+    it("ningún feriado bancario entre semana ya cargado tiene FIX: el supuesto de la certeza", async () => {
+      const { dias } = await leerCnbv();
+      const entreSemana = dias
+        .map((d) => d.fecha)
+        .filter((f) => f <= ultimoFix.fecha_publicacion && !finDeSemana(f));
+      expect(entreSemana.length).toBeGreaterThan(0);
+      expect(entreSemana.filter((f) => fixDe(f) !== undefined)).toEqual([]);
+    });
+
+    it("lunes 17 de noviembre de 2025: sin publicación, y la operación del martes usa el viernes 14", async () => {
+      await sinDato(
+        "/v1/tipo-cambio/fix?publicado=2025-11-17",
+        "no-encontrado",
+        "2025-11-17",
+        coberturaFix,
+      );
+      const { data } = await datos("/v1/tipo-cambio/fix?operacion=2025-11-18");
+      expect(data).toMatchObject({ fecha_operacion: "2025-11-18", ...fixDe("2025-11-14") });
+    });
+
+    // Después del último dato solo pueden faltar fines de semana y días de descanso de la CNBV
+    // dentro de su cobertura. La respuesta esperada depende de hasta dónde llegue la serie el día
+    // de la prueba: antes del feriado da dato-no-disponible; la mañana después, ya responde.
+    it.each([
+      ["publicado", "2026-11-02"],
+      ["operacion", "2026-11-03"],
+      ["publicado", "2026-11-16"],
+      ["operacion", "2026-11-17"],
+    ])("%s=%s: responde lo que permite el calendario con lo cargado", async (modo, fecha) => {
+      const { plazos, dias } = await leerCnbv();
+      const { desde, hasta } = plazos.general.cobertura;
+      const descanso = new Set(dias.map((d) => d.fecha));
+      const sinPublicacion = (f: string) =>
+        finDeSemana(f) || (f >= desde && f <= hasta && descanso.has(f));
+      const fin = modo === "publicado" ? fecha : sumarDias(fecha, -1);
+      let cierta = true;
+      for (let f = sumarDias(ultimoFix.fecha_publicacion, 1); f <= fin; f = sumarDias(f, 1)) {
+        if (!sinPublicacion(f)) cierta = false;
+      }
+      const ruta = `/v1/tipo-cambio/fix?${modo}=${fecha}`;
+      if (!cierta) {
+        const cuerpo = await sinDato(ruta, "dato-no-disponible", fecha, coberturaFix);
+        expect(JSON.stringify(cuerpo)).not.toContain(ultimoFix.valor);
+      } else if (modo === "publicado") {
+        await sinDato(ruta, "no-encontrado", fecha, coberturaFix);
+      } else {
+        const { data } = await datos(ruta);
+        const aplica = FIX.filter((r) => r.fecha_publicacion < fecha).at(-1);
+        expect(data).toMatchObject({ fecha_operacion: fecha, ...aplica });
+      }
+    });
+  });
+
   it("/v1/status: la cobertura de cada serie va de su primera a su última fecha", async () => {
     const { data } = await datos("/v1/status");
     const de = (id: string) => data.find((d: Obj) => d.dataset === id)?.cobertura;

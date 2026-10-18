@@ -433,6 +433,140 @@ describe("fixParaOperacion (CFF art. 20)", () => {
   });
 });
 
+describe("días sin publicación entre semana (sinPublicacion)", () => {
+  // Lunes 16 de noviembre de 2026: feriado bancario. Lo cargado termina el viernes 13.
+  const JUE_12 = fix("2026-11-12", "18.3000");
+  const VIE_13 = fix("2026-11-13", "18.3100");
+  const NOVIEMBRE = [JUE_12, VIE_13];
+  const HASTA_13 = rango("2020-01-02", "2026-11-13");
+  const TRAMO_13 = rango("2026-01-01", "2026-11-13");
+  const FERIADOS = new Set(["2026-04-02", "2026-04-03", "2026-09-16", "2026-11-02", "2026-11-16"]);
+  const feriados = { sinPublicacion: (fecha: string) => FERIADOS.has(fecha) };
+
+  it("lunes feriado: la operación del martes usa el viernes en vez de no_disponible", () => {
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17")).toEqual(NO_DISPONIBLE);
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17", feriados)).toEqual(
+      encontrado(VIE_13),
+    );
+  });
+
+  it("lunes feriado: publicado ese lunes es sin_dato en vez de no_disponible", () => {
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-16")).toEqual(NO_DISPONIBLE);
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-16", feriados)).toEqual(SIN_DATO);
+  });
+
+  it("un día entre semana que no es feriado sigue sin cargarse: nunca un valor viejo", () => {
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-18", feriados)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17", feriados)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-21", feriados)).toEqual(
+      NO_DISPONIBLE,
+    );
+  });
+
+  it("lunes 2 de noviembre de 2026, con lo cargado hasta el viernes 30 de octubre", () => {
+    const VIE_30 = fix("2026-10-30", "18.5000");
+    const hasta = rango("2020-01-02", "2026-10-30");
+    const tramo = rango("2026-01-01", "2026-10-30");
+    expect(fixParaOperacion([VIE_30], tramo, hasta, "2026-11-03", feriados)).toEqual(
+      encontrado(VIE_30),
+    );
+    expect(fixPublicado([VIE_30], tramo, hasta, "2026-11-02", feriados)).toEqual(SIN_DATO);
+    expect(fixParaOperacion([VIE_30], tramo, hasta, "2026-11-04", feriados)).toEqual(NO_DISPONIBLE);
+  });
+
+  it("un feriado a media semana y dos seguidos antes del fin de semana", () => {
+    const MAR_15 = fix("2026-09-15", "18.9000");
+    const septiembre = rango("2026-01-01", "2026-09-15");
+    const hastaSep = rango("2020-01-02", "2026-09-15");
+    expect(fixParaOperacion([MAR_15], septiembre, hastaSep, "2026-09-17", feriados)).toEqual(
+      encontrado(MAR_15),
+    );
+    expect(fixPublicado([MAR_15], septiembre, hastaSep, "2026-09-16", feriados)).toEqual(SIN_DATO);
+    // Jueves 2 y viernes 3 de abril, y luego el fin de semana.
+    const MIE_1 = fix("2026-04-01", "17.9000");
+    const abril = rango("2026-01-01", "2026-04-01");
+    const hastaAbr = rango("2020-01-02", "2026-04-01");
+    for (const fecha of ["2026-04-03", "2026-04-04", "2026-04-05", "2026-04-06"]) {
+      expect(fixParaOperacion([MIE_1], abril, hastaAbr, fecha, feriados), fecha).toEqual(
+        encontrado(MIE_1),
+      );
+    }
+    expect(fixPublicado([MIE_1], abril, hastaAbr, "2026-04-05", feriados)).toEqual(SIN_DATO);
+    expect(fixParaOperacion([MIE_1], abril, hastaAbr, "2026-04-07", feriados)).toEqual(
+      NO_DISPONIBLE,
+    );
+  });
+
+  it("solo pregunta por días entre semana posteriores a lo cargado y anteriores a la respuesta", () => {
+    const consultados: string[] = [];
+    const opciones = {
+      sinPublicacion: (fecha: string) => {
+        consultados.push(fecha);
+        return FERIADOS.has(fecha);
+      },
+    };
+    fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17", opciones);
+    expect(consultados).toEqual(["2026-11-16"]);
+    consultados.length = 0;
+    fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-20", opciones);
+    // Se detiene en el primer día en que pudo haber publicación.
+    expect(consultados).toEqual(["2026-11-16", "2026-11-17"]);
+    consultados.length = 0;
+    // Dentro de lo cargado responde la serie, sin preguntar.
+    fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-13", opciones);
+    fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-14", opciones);
+    expect(consultados).toEqual([]);
+  });
+
+  it("solo un true marca un día sin publicación", () => {
+    const parecido = { sinPublicacion: () => "sí" as unknown as boolean };
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17", parecido)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-16", parecido)).toEqual(
+      NO_DISPONIBLE,
+    );
+  });
+
+  it("sinPublicacion que no es función lanza TypeError, aunque no haga falta", () => {
+    for (const malo of [true, "2026-11-16", 1, {}] as unknown[]) {
+      const opciones = { sinPublicacion: malo } as unknown as typeof feriados;
+      expect(() => fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-13", opciones)).toThrow(
+        TypeError,
+      );
+      expect(() => fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-13", opciones)).toThrow(
+        "sinPublicacion debe ser una función",
+      );
+    }
+  });
+
+  it("opciones vacías o null equivalen a no pasarlas", () => {
+    for (const opciones of [undefined, {}, { sinPublicacion: undefined }, null] as unknown[]) {
+      const o = opciones as typeof feriados;
+      expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-17", o)).toEqual(
+        NO_DISPONIBLE,
+      );
+      expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-11-14", o)).toEqual(SIN_DATO);
+    }
+  });
+
+  it("el tramo debe alcanzar igual que sin la opción", () => {
+    errorDeSerie(() =>
+      fixParaOperacion(
+        [JUE_12],
+        rango("2026-01-01", "2026-11-12"),
+        HASTA_13,
+        "2026-11-17",
+        feriados,
+      ),
+    );
+  });
+});
+
 describe("udiDeFecha", () => {
   const ULTIMO_DIC = udi("2025-12-31", "8.640123");
   const ANIO_NUEVO = udi("2026-01-01", "8.641001");
@@ -658,6 +792,178 @@ describe("propiedades", () => {
     // Las dos ramas se ejercitan.
     expect(respondidas).toBeGreaterThan(0);
     expect(incompletas).toBeGreaterThan(0);
+  });
+
+  /** Lo que devuelve o lanza `consultar`, para comparar dos llamadas. */
+  function resultadoDe(consultar: () => unknown): unknown {
+    try {
+      return { devuelve: consultar() };
+    } catch (error) {
+      return { lanza: (error as Error).name, mensaje: (error as Error).message };
+    }
+  }
+
+  const feriadosArb = fc.uniqueArray(fc.integer({ min: 0, max: 75 }), { maxLength: 20 });
+  // Para que los feriados importen, la mitad de los casos pide una fecha poco después de lo
+  // cargado y pone feriados justo ahí.
+  const cercaArb = fc.record({
+    cerca: fc.boolean(),
+    delta: fc.integer({ min: 1, max: 8 }),
+    cercanos: fc.uniqueArray(fc.integer({ min: 1, max: 7 }), { maxLength: 5 }),
+  });
+  const finDeSemanaIso = (fecha: string) => esFinDeSemana(aDias(fecha));
+
+  it("sin sinPublicacion el resultado es idéntico al de la versión sin el parámetro", () => {
+    fc.assert(
+      fc.property(casoArb, ({ dias, antes, despues, fecha: desplazamiento, a, b }) => {
+        const ordenados = [...dias].sort((x, y) => x - y);
+        const serie = ordenados.map((d) => fix(fechaDe(d), "18.0000"));
+        const inicio = (ordenados[0] as number) - antes;
+        const fin = (ordenados.at(-1) as number) + despues;
+        const cobertura = rango(fechaDe(inicio), fechaDe(fin));
+        const fecha = fechaDe(desplazamiento);
+        const largo = fin - inicio;
+        const tramo = rango(
+          fechaDe(inicio + Math.round(Math.min(a, b) * largo)),
+          fechaDe(inicio + Math.round(Math.max(a, b) * largo)),
+        );
+        const parcial = serie.filter(
+          (r) => r.fecha_publicacion >= tramo.desde && r.fecha_publicacion <= tramo.hasta,
+        );
+        const sinEfecto = [
+          undefined,
+          {},
+          { sinPublicacion: undefined },
+          { sinPublicacion: () => false },
+          // Los fines de semana ya no cuentan: marcarlos no cambia nada.
+          { sinPublicacion: finDeSemanaIso },
+        ];
+        for (const [s, t] of [
+          [serie, cobertura],
+          [parcial, tramo],
+        ] as const) {
+          const publicado = resultadoDe(() => fixPublicado(s, t, cobertura, fecha));
+          const operacion = resultadoDe(() => fixParaOperacion(s, t, cobertura, fecha));
+          for (const opciones of sinEfecto) {
+            expect(resultadoDe(() => fixPublicado(s, t, cobertura, fecha, opciones))).toEqual(
+              publicado,
+            );
+            expect(resultadoDe(() => fixParaOperacion(s, t, cobertura, fecha, opciones))).toEqual(
+              operacion,
+            );
+          }
+        }
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it("con feriados coinciden con un recorrido lineal y solo cambian lo que era no_disponible", () => {
+    let cambiadas = 0;
+    fc.assert(
+      fc.property(
+        casoArb,
+        feriadosArb,
+        cercaArb,
+        ({ dias, antes, despues, fecha: alAzar }, lejanos, { cerca, delta, cercanos }) => {
+          const ordenados = [...dias].sort((x, y) => x - y);
+          const serie = ordenados.map((d) => fix(fechaDe(d), "18.0000"));
+          const inicio = (ordenados[0] as number) - antes;
+          const fin = (ordenados.at(-1) as number) + despues;
+          const cobertura = rango(fechaDe(inicio), fechaDe(fin));
+          const desplazamiento = cerca ? fin + delta : alAzar;
+          const fecha = fechaDe(desplazamiento);
+          const feriados = new Set([...lejanos, ...cercanos.map((k) => fin + k)].map(fechaDe));
+          const opciones = { sinPublicacion: (f: string) => feriados.has(f) };
+          const sinPublicacion = (d: number) => esFinDeSemana(BASE + d) || feriados.has(fechaDe(d));
+
+          // Referencia lineal: el hueco después de lo cargado solo puede tener días sin publicación.
+          const hueco: number[] = [];
+          for (let d = fin + 1; d < desplazamiento; d++) hueco.push(d);
+          const exacto = serie.find((r) => r.fecha_publicacion === fecha);
+          const publicado =
+            fecha < cobertura.desde
+              ? SIN_DATO
+              : fecha > cobertura.hasta
+                ? [...hueco, desplazamiento].every(sinPublicacion)
+                  ? SIN_DATO
+                  : NO_DISPONIBLE
+                : exacto
+                  ? encontrado(exacto)
+                  : SIN_DATO;
+          const anterior = serie.filter((r) => r.fecha_publicacion < fecha).at(-1);
+          const operacion =
+            fecha <= cobertura.desde
+              ? SIN_DATO
+              : !hueco.every(sinPublicacion)
+                ? NO_DISPONIBLE
+                : anterior
+                  ? encontrado(anterior)
+                  : SIN_DATO;
+
+          const conPublicado = fixPublicado(serie, cobertura, cobertura, fecha, opciones);
+          const conOperacion = fixParaOperacion(serie, cobertura, cobertura, fecha, opciones);
+          expect(conPublicado).toEqual(publicado);
+          expect(conOperacion).toEqual(operacion);
+
+          // Los feriados solo vuelven cierta una respuesta que sin ellos era no_disponible.
+          for (const [con, sin] of [
+            [conPublicado, fixPublicado(serie, cobertura, cobertura, fecha)],
+            [conOperacion, fixParaOperacion(serie, cobertura, cobertura, fecha)],
+          ] as const) {
+            if (sin.tipo !== "no_disponible") expect(con).toEqual(sin);
+            else if (con.tipo !== "no_disponible") cambiadas++;
+          }
+        },
+      ),
+      { numRuns: 1000 },
+    );
+    expect(cambiadas).toBeGreaterThan(0);
+  });
+
+  it("nunca un valor viejo: si no hay publicación en los feriados, parte de la serie responde lo mismo que toda o no_disponible", () => {
+    // Fechas de la consulta hasta el día 74 y serie completa conocida hasta el 75: con toda la
+    // serie, ninguna respuesta queda pendiente.
+    const COMPLETA_HASTA = 75;
+    let porFeriados = 0;
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(fc.integer({ min: 0, max: 59 }), { minLength: 1, maxLength: 40 }),
+        feriadosArb,
+        fc.integer({ min: 0, max: 66 }),
+        fc.integer({ min: -8, max: 72 }),
+        cercaArb,
+        (dias, lejanos, corte, alAzar, { cerca, delta, cercanos }) => {
+          const desplazamiento = cerca ? corte + delta : alAzar;
+          const feriados = new Set([...lejanos, ...cercanos.map((k) => corte + k)].map(fechaDe));
+          // La fuente real: nunca publica en fin de semana ni en un feriado.
+          const publicaciones = [...dias]
+            .filter((d) => !esFinDeSemana(BASE + d) && !feriados.has(fechaDe(d)))
+            .sort((x, y) => x - y);
+          fc.pre(publicaciones.length > 0);
+          const primero = publicaciones[0] as number;
+          fc.pre(corte >= primero);
+          const serie = publicaciones.map((d) => fix(fechaDe(d), "18.0000"));
+          const completa = rango(fechaDe(primero), fechaDe(COMPLETA_HASTA));
+          const cargada = rango(fechaDe(primero), fechaDe(corte));
+          const parcial = serie.filter((r) => r.fecha_publicacion <= cargada.hasta);
+          const fecha = fechaDe(desplazamiento);
+          const opciones = { sinPublicacion: (f: string) => feriados.has(f) };
+
+          for (const consulta of [fixPublicado, fixParaOperacion]) {
+            const cierta = consulta(serie, completa, completa, fecha, opciones);
+            expect(cierta.tipo).not.toBe("no_disponible");
+            const respuesta = consulta(parcial, cargada, cargada, fecha, opciones);
+            if (respuesta.tipo === "no_disponible") continue;
+            expect(respuesta).toEqual(cierta);
+            if (consulta(parcial, cargada, cargada, fecha).tipo === "no_disponible") porFeriados++;
+          }
+        },
+      ),
+      { numRuns: 2000 },
+    );
+    // Hubo respuestas que solo los feriados permitieron dar.
+    expect(porFeriados).toBeGreaterThan(0);
   });
 });
 
