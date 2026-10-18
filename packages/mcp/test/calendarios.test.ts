@@ -1,3 +1,5 @@
+import { sumarDiasHabiles } from "mexicoapi";
+import { calendarioCurado } from "mexicoapi/datos/calendarios";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   apiOk,
@@ -16,6 +18,16 @@ const LFT_74 = {
   nombre: "Ley Federal del Trabajo, artículo 74",
   url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf",
 };
+
+// Sin API el servidor responde con los calendarios del paquete. Lo que depende de su cobertura
+// (conteos, años y fechas del borde) sale de esos datos: capturar el segundo periodo de
+// vacaciones del SAT o el año siguiente no rompe estas pruebas.
+const SAT = calendarioCurado("sat");
+const SAT_2026 = SAT.dias.filter((d) => d.fecha.startsWith("2026-"));
+/** Mientras falten vacaciones del SAT de 2026, general termina antes y la lista lo advierte. */
+const SAT_GENERAL_CORTO = SAT.general.cobertura.hasta < "2026-12-31";
+const siguiente = (fecha: string): string =>
+  new Date(Date.parse(fecha) + 86_400_000).toISOString().slice(0, 10);
 
 let llamar: Llamador;
 
@@ -48,23 +60,26 @@ describe("dias_inhabiles", () => {
   it("del SAT trae las fuentes de sus días y la advertencia de la lista incompleta", async () => {
     const r = await llamar("dias_inhabiles", { autoridad: "sat", anio: 2026 });
     const c = contenido(r);
-    expect((c.datos as unknown[]).length).toBe(23);
+    expect(SAT_2026.length).toBeGreaterThan(0);
+    expect(c.datos).toEqual(SAT_2026);
     const fuentes = c.fuentes as Array<{ nombre: string }>;
     expect(fuentes.length).toBeGreaterThan(1);
     expect(fuentes.map((f) => f.nombre)).toContain("Código Fiscal de la Federación, artículo 12");
-    const advertencias = c.advertencias as string[];
-    expect(advertencias.some((a) => a.startsWith("Los días de tipo vacaciones del SAT"))).toBe(
-      true,
-    );
-    expect(texto(r)).toMatch(/Advertencia: Los días de tipo vacaciones del SAT/);
-    expect(texto(r)).toContain("23 días inhábiles de 2026 según el SAT");
-    expect(texto(r)).toContain("(vacaciones)");
+    const { desde, hasta } = SAT.general.cobertura;
+    const aviso = `Los días de tipo vacaciones del SAT solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.`;
+    expect(c.advertencias).toEqual(SAT_GENERAL_CORTO ? [aviso] : []);
+    const t = texto(r);
+    expect(t.includes(`Advertencia: ${aviso}`)).toBe(SAT_GENERAL_CORTO);
+    expect(t).toContain(`${SAT_2026.length} días inhábiles de 2026 según el SAT`);
+    expect(t).toContain("(vacaciones)");
   });
 
   it("un año fuera del calendario es error con el texto de la API", async () => {
+    const { amplia } = SAT;
+    const fuera = Number(amplia.hasta.slice(0, 4)) + 1;
     esError(
-      await llamar("dias_inhabiles", { autoridad: "sat", anio: 2027 }),
-      "El calendario del SAT no cubre el año 2027; cubre del 2026-01-01 al 2026-12-31.",
+      await llamar("dias_inhabiles", { autoridad: "sat", anio: fuera }),
+      `El calendario del SAT no cubre el año ${fuera}; cubre del ${amplia.desde} al ${amplia.hasta}.`,
     );
     for (const args of [
       { autoridad: "lft" },
@@ -188,15 +203,24 @@ describe("sumar_dias_habiles", () => {
   });
 
   it("fuera de la cobertura es error, salvo con permitir_incompleto, que lo advierte", async () => {
-    const args = { autoridad: "sat", tipo_plazo: "general", desde: "2026-11-27", dias: 20 };
+    const general = SAT.general;
+    const desde = general.cobertura.hasta;
+    const args = { autoridad: "sat", tipo_plazo: "general", desde, dias: 20 };
     esError(
       await llamar("sumar_dias_habiles", args),
-      /^El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; /,
+      new RegExp(`^El calendario del SAT para tipo_plazo=general no cubre ${siguiente(desde)}; `),
     );
     const r = await llamar("sumar_dias_habiles", { ...args, permitir_incompleto: true });
     const c = contenido(r);
     const datos = c.datos as { resultado: string; advertencias: string[] };
-    expect(datos.resultado).toBe("2026-12-28");
+    // Con permitir_incompleto cuenta los días publicados después de la cobertura (el respaldo).
+    const esperado = sumarDiasHabiles({
+      calendario: general.respaldo ?? general.calendario,
+      desde,
+      dias: 20,
+      permitirIncompleto: true,
+    });
+    expect(datos.resultado).toBe(esperado.resultado);
     expect(datos.advertencias).toHaveLength(1);
     expect(c.advertencias).toEqual([datos.advertencias[0]]);
     expect(texto(r)).toContain(`Advertencia: ${datos.advertencias[0]}`);
