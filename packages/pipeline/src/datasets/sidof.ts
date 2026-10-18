@@ -133,6 +133,22 @@ export function interpretarSidof(
   return registros;
 }
 
+/**
+ * El SIDOF responde HTTP 404 con exactamente `{"messageCode":404,"response":"NOT_FOUND"}` cuando
+ * el rango pedido no tiene publicaciones (por ejemplo, el año nuevo antes del primer FIX).
+ */
+function esRangoSinPublicaciones(bytes: Uint8Array): boolean {
+  let json: unknown;
+  try {
+    json = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    return false;
+  }
+  if (typeof json !== "object" || json === null || Array.isArray(json)) return false;
+  const o = json as Record<string, unknown>;
+  return Object.keys(o).length === 2 && o.messageCode === 404 && o.response === "NOT_FOUND";
+}
+
 async function leerCrudoDisco(ruta: string): Promise<Uint8Array | null> {
   try {
     return new Uint8Array(await readFile(ruta));
@@ -211,6 +227,7 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       const enero = ctx.fecha.slice(5, 7) === "01" && ctx.fecha.slice(8, 10) <= "15";
       const crudos: CrudoCapturado[] = [];
       const delDisco: number[] = [];
+      let hora = "";
       for (const anio of aniosHasta(actual)) {
         const file = archivoCrudo(c.tipo, anio);
         const url = urlSidof(c.tipo, anio);
@@ -223,29 +240,42 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
           crudos.push({ file, url, bytes: previo, obtenido_en: "" });
           continue;
         }
-        const r = await ctx.cliente.obtener(url);
+        const r = await ctx.cliente.obtener(url, { aceptar: [404] });
+        // El año en curso siempre se pide; los crudos del disco llevan la hora de esa petición.
+        if (anio === actual) hora = r.obtenido_en;
+        if (r.estado === 404) {
+          // Solo el año en curso puede no tener publicaciones todavía; no deja crudo. Si antes
+          // tenía registros, desaparecen y `revisar` pide revisión por cada uno.
+          if (anio === actual && esRangoSinPublicaciones(r.cuerpo)) continue;
+          throw new ErrorDatos(
+            `el SIDOF respondió 404 para ${anio}${anio === actual ? " con un cuerpo inesperado" : ", un año que ya debe tener publicaciones"}`,
+            c.id,
+          );
+        }
         // Si la fuente responde algo inesperado, se detiene antes de pedir más años.
         interpretarSidof(r.cuerpo, c.tipo, anio, c.decimales);
         crudos.push({ file, url, bytes: r.cuerpo, obtenido_en: r.obtenido_en });
       }
-      // El año en curso siempre se pide; los crudos del disco llevan la hora de esa petición.
-      const hora = (crudos[crudos.length - 1] as CrudoCapturado).obtenido_en;
       return [
         fuente(crudos.map((x, i) => (delDisco.includes(i) ? { ...x, obtenido_en: hora } : x))),
       ];
     },
 
     async construir(fuentes, _anterior, ctx): Promise<Construccion<T>> {
-      const anios = aniosHasta(anioDe(ctx.fecha));
+      const actual = anioDe(ctx.fecha);
+      const anios = aniosHasta(actual);
       const porArchivo = new Map(fuentes.flatMap((f) => f.crudos).map((x) => [x.file, x]));
       const esperados = anios.map((a) => archivoCrudo(c.tipo, a));
-      const faltan = esperados.filter((f) => !porArchivo.has(f));
+      // El año en curso no tiene crudo mientras el SIDOF no tenga publicaciones de ese año.
+      const opcional = archivoCrudo(c.tipo, actual);
+      const faltan = esperados.filter((f) => f !== opcional && !porArchivo.has(f));
       if (faltan.length > 0) throw new ErrorDatos(`Faltan crudos: ${faltan.join(", ")}`, c.id);
       const sobran = [...porArchivo.keys()].filter((f) => !esperados.includes(f));
       if (sobran.length > 0) throw new ErrorDatos(`Crudos inesperados: ${sobran.join(", ")}`, c.id);
 
       const registros = anios.flatMap((anio) => {
-        const crudo = porArchivo.get(archivoCrudo(c.tipo, anio)) as CrudoCapturado;
+        const crudo = porArchivo.get(archivoCrudo(c.tipo, anio));
+        if (crudo === undefined) return [];
         return interpretarSidof(crudo.bytes, c.tipo, anio, c.decimales).map((x) =>
           c.registro(x.fecha, x.valor),
         );

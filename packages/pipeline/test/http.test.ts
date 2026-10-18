@@ -140,6 +140,58 @@ describe("crearCliente", () => {
     expect(m.pedidas.filter((u) => u === `${A}/x`)).toHaveLength(1);
   });
 
+  it("un estado en aceptar se devuelve con su cuerpo, sin lanzar ni reintentar", async () => {
+    const cuerpo = '{"messageCode":404,"response":"NOT_FOUND"}';
+    const m = montar({
+      [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
+      [`${A}/x`]: [res(404, cuerpo, { "content-type": "application/json" })],
+      [`${A}/y`]: [res(503, "caído"), res(200)],
+    });
+    const r = await m.cliente.obtener(`${A}/x`, { aceptar: [404] });
+    expect(r.estado).toBe(404);
+    expect(new TextDecoder().decode(r.cuerpo)).toBe(cuerpo);
+    expect(r.tipo).toBe("application/json");
+    expect(r.url).toBe(`${A}/x`);
+    expect(r.obtenido_en).toMatch(/^1970-01-01T/);
+    const y = await m.cliente.obtener(`${A}/y`, { aceptar: [503] });
+    expect(y.estado).toBe(503);
+    expect(new TextDecoder().decode(y.cuerpo)).toBe("caído");
+    expect(m.pedidas.filter((u) => u === `${A}/x` || u === `${A}/y`)).toEqual([`${A}/x`, `${A}/y`]);
+    // Solo los intervalos entre peticiones, sin backoff.
+    expect(m.esperas).toEqual([1000, 1000]);
+  });
+
+  it("los estados fuera de aceptar siguen lanzando y reintentando como siempre", async () => {
+    const m = montar({
+      [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
+      [`${A}/x`]: [res(410)],
+      [`${A}/y`]: [res(500)],
+      [`${A}/z`]: [res(404)],
+    });
+    const e410 = await m.cliente.obtener(`${A}/x`, { aceptar: [404] }).catch((x: unknown) => x);
+    expect(e410).toBeInstanceOf(ErrorHttp);
+    expect((e410 as ErrorHttp).estado).toBe(410);
+    const e500 = await m.cliente.obtener(`${A}/y`, { aceptar: [404] }).catch((x: unknown) => x);
+    expect((e500 as ErrorHttp).estado).toBe(500);
+    expect(m.pedidas.filter((u) => u === `${A}/y`)).toHaveLength(4);
+    // Sin opciones, un 404 sigue siendo un error.
+    const e404 = await m.cliente.obtener(`${A}/z`).catch((x: unknown) => x);
+    expect((e404 as ErrorHttp).estado).toBe(404);
+    const vacio = await m.cliente.obtener(`${A}/z`, { aceptar: [] }).catch((x: unknown) => x);
+    expect((vacio as ErrorHttp).estado).toBe(404);
+  });
+
+  it("aceptar no cambia el trato de robots.txt", async () => {
+    const m = montar({
+      [`${A}/robots.txt`]: [res(503), res(503), res(503), res(503)],
+      [`${A}/x`]: [res(200)],
+    });
+    const e = await m.cliente.obtener(`${A}/x`, { aceptar: [503] }).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ErrorHttp);
+    expect((e as ErrorHttp).estado).toBe(503);
+    expect(m.pedidas).not.toContain(`${A}/x`);
+  });
+
   it("una ruta negada por robots lanza sin pedir la URL", async () => {
     const m = montar({ [`${A}/robots.txt`]: [ROBOTS_ABIERTO] });
     const e = await m.cliente.obtener(`${A}/privado/x?a=1`).catch((x: unknown) => x);
