@@ -54,7 +54,7 @@ function dia(fecha: FechaISO, motivo: string): DiaInhabil {
  */
 export function diasDescansoLft(anio: number): DiaInhabil[] {
   if (!Number.isInteger(anio) || anio < ANIO_MIN || anio > ANIO_MAX) {
-    throw new RangeError(`El año debe ser un entero entre ${ANIO_MIN} y ${ANIO_MAX}`);
+    throw new RangeError(`El año debe ser un entero de ${ANIO_MIN} a ${ANIO_MAX}: ${anio}`);
   }
   const dias: DiaInhabil[] = [
     dia(`${anio}-01-01`, "1 de enero"),

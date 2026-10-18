@@ -1,4 +1,12 @@
-import type { FuenteDof, SalarioMinimo, TarifaIsr, TramoIsr, Uma } from "@mexicoapi/core";
+import {
+  AUTORIDADES,
+  type FuenteDof,
+  type SalarioMinimo,
+  type TarifaIsr,
+  TIPOS_DIA_CURADO,
+  type TramoIsr,
+  type Uma,
+} from "@mexicoapi/core";
 import { z } from "zod";
 import { MONTO } from "../curado/decimal.js";
 
@@ -49,12 +57,12 @@ export const esquemaFuente = z.object({
   fragmento: z.string().optional().describe("Texto de la fuente que lo respalda."),
 });
 
-const autoridad = z.enum(["lft", "cnbv", "sat"]).describe("Autoridad del calendario.");
+const autoridad = z.enum(AUTORIDADES).describe("Autoridad del calendario.");
 
 export const esquemaDiaInhabil = z.object({
   fecha: fechaIso.describe("Día inhábil (AAAA-MM-DD)."),
   motivo: z.string().describe("Motivo del día inhábil."),
-  tipo: z.enum(["descanso", "vacaciones", "fin_de_semana"]).describe("Tipo de día inhábil."),
+  tipo: z.enum([...TIPOS_DIA_CURADO, "fin_de_semana"]).describe("Tipo de día inhábil."),
   fuente: esquemaFuente.describe("Fuente que lo establece."),
 });
 

@@ -2,19 +2,28 @@
 // cada uno, los días que da una regla del núcleo (en el SAT, los del art. 12 del CFF), el
 // respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por
 // `@mexicoapi/core/curados` y no por el índice, para no pesar en quien solo valida.
-import type {
-  AutoridadCurada,
-  CoberturaCurada,
-  DiaInhabilCurado,
-  FuenteDof,
-  TipoDiaCurado,
+import {
+  type AutoridadCurada,
+  type CoberturaCurada,
+  type DiaInhabilCurado,
+  type FuenteDof,
+  TIPOS_DIA_CURADO,
+  type TipoDiaCurado,
 } from "../datos/curados.js";
-import { CalendarioIncompletoError, DEL_CALENDARIO } from "../errores.js";
+import { CalendarioIncompletoError } from "../errores.js";
 import { diaDeLaSemana, esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
 import { type Calendario, crearCalendario } from "./calendario.js";
 import { avisosTransmisionCff, COBERTURA_CFF, diasDescansoCff, FUENTE_CFF_12 } from "./cff.js";
 import { type ResultadoDiasHabiles, sumarDiasHabiles } from "./sumar.js";
-import type { Autoridad, DiaInhabil, TipoPlazo } from "./tipos.js";
+import {
+  type Autoridad,
+  DE_AUTORIDAD,
+  type DiaInhabil,
+  nombreDe,
+  SIGLAS_AUTORIDAD,
+  TIPOS_PLAZO,
+  type TipoPlazo,
+} from "./tipos.js";
 
 type Rango = { readonly desde: FechaISO; readonly hasta: FechaISO };
 
@@ -283,9 +292,9 @@ export class MapaCongelado<K extends string, V> implements ReadonlyMap<K, V> {
   }
 }
 
-/** Todos los tipos de plazo, en el orden en que salen en `plazos`. */
-const TIPOS_PLAZO: readonly string[] = ["general", "declaraciones_pagos"];
-const TIPOS_DIA: readonly string[] = ["descanso", "vacaciones"];
+/** Los tipos de plazo y de día como texto, para revisar lo que llega en los datos. */
+const PLAZOS_VALIDOS: readonly string[] = TIPOS_PLAZO;
+const DIAS_VALIDOS: readonly string[] = TIPOS_DIA_CURADO;
 
 const lista = (tipos: readonly string[]): string => `[${tipos.join(", ")}]`;
 const mismosTipos = (a: readonly string[], b: readonly string[]): boolean =>
@@ -317,6 +326,15 @@ function diasDeRegla(regla: ReglaCurada, rango: Rango): Map<FechaISO, DiaInhabil
   return dias;
 }
 
+/** Lanza RangeError si `autoridad` no tiene calendario curado (solo la CNBV y el SAT lo tienen). */
+export function exigirCurada(autoridad: string): asserts autoridad is AutoridadCurada {
+  if (Object.hasOwn(PLAZOS, autoridad)) return;
+  const curadas = (Object.keys(PLAZOS) as AutoridadCurada[]).map((a) => DE_AUTORIDAD[a]);
+  throw new RangeError(
+    `No hay calendario curado de ${nombreDe(String(autoridad))}: solo ${curadas.join(" y ")}.`,
+  );
+}
+
 /**
  * Arma el calendario de una autoridad: un `Calendario` por tipo de plazo con los días de su
  * cobertura y, si el plazo es más corto que la cobertura amplia, su respaldo. Lanza RangeError si
@@ -331,20 +349,17 @@ function diasDeRegla(regla: ReglaCurada, rango: Rango): Map<FechaISO, DiaInhabil
  */
 export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioCurado {
   const { autoridad } = datos;
-  const tabla = Object.hasOwn(PLAZOS, autoridad) ? PLAZOS[autoridad] : undefined;
-  if (tabla === undefined) {
-    throw new RangeError(
-      `No hay calendario curado de ${String(autoridad)}: solo de ${Object.keys(PLAZOS).join(" y ")}.`,
-    );
-  }
-  const falla = (motivo: string) => new RangeError(`El calendario de ${autoridad} ${motivo}.`);
+  exigirCurada(autoridad);
+  const tabla = PLAZOS[autoridad];
+  const falla = (motivo: string) =>
+    new RangeError(`El calendario ${DE_AUTORIDAD[autoridad]} ${motivo}.`);
   const leidos: [TipoPlazo, Rango, readonly TipoDiaCurado[]][] = [];
   for (const [tipo, plazo] of Object.entries(datos.plazos)) {
-    if (!TIPOS_PLAZO.includes(tipo) || plazo === undefined) {
+    if (!PLAZOS_VALIDOS.includes(tipo) || plazo === undefined) {
       throw falla(`tiene un tipo de plazo inesperado: ${tipo}`);
     }
     const { cobertura, excluir_tipos } = plazo;
-    if (!esRango(cobertura) || !excluir_tipos.every((t) => TIPOS_DIA.includes(t))) {
+    if (!esRango(cobertura) || !excluir_tipos.every((t) => DIAS_VALIDOS.includes(t))) {
       throw falla(`tiene una cobertura o tipos de día inesperados en ${tipo}`);
     }
     leidos.push([
@@ -417,7 +432,7 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
       !esFechaIsoValida(fecha) ||
       fecha <= anterior ||
       !dentro(fecha, amplia) ||
-      !TIPOS_DIA.includes(tipo)
+      !DIAS_VALIDOS.includes(tipo)
     ) {
       throw falla(`tiene un día inesperado, repetido o fuera de orden: ${fecha}`);
     }
@@ -483,7 +498,7 @@ function faltan(
   cubren: (p: PlazoCurado) => boolean,
 ): TipoDiaCurado[] {
   const otros = [...calendario.plazos.values()].filter(cubren);
-  return (TIPOS_DIA as TipoDiaCurado[]).filter(
+  return TIPOS_DIA_CURADO.filter(
     (t) => !plazo.excluirTipos.includes(t) && otros.every((p) => p.excluirTipos.includes(t)),
   );
 }
@@ -501,7 +516,7 @@ function detalleCurado(
   { fecha, cobertura }: CalendarioIncompletoError,
 ): string {
   const cual = calendario.plazos.size > 1 ? ` para tipo_plazo=${tipo}` : "";
-  const base = `El calendario ${DEL_CALENDARIO[calendario.autoridad]}${cual} no cubre ${fecha}; ${cubre(cobertura)}`;
+  const base = `El calendario ${DE_AUTORIDAD[calendario.autoridad]}${cual} no cubre ${fecha}; ${cubre(cobertura)}`;
   const otros = [...calendario.plazos].filter(([, p]) => dentro(fecha, p.cobertura));
   const tipos = faltan(calendario, plazo, (p) => dentro(fecha, p.cobertura));
   if (otros.length === 0 || tipos.length === 0) return `${base}.`;
@@ -526,6 +541,17 @@ function primerDiaFueraDelPlazo(
   if (inicio > fin) return undefined;
   if (!dentro(inicio, plazo)) return inicio;
   return fin > plazo.hasta ? sumarDias(plazo.hasta, 1) : undefined;
+}
+
+/** El plazo `tipoPlazo` del calendario; RangeError si no lo tiene (la CNBV solo tiene `general`). */
+export function plazoDe(calendario: CalendarioCurado, tipoPlazo: TipoPlazo): PlazoCurado {
+  const plazo = calendario.plazos.get(tipoPlazo);
+  if (plazo === undefined) {
+    throw new RangeError(
+      `El calendario ${DE_AUTORIDAD[calendario.autoridad]} no tiene el tipo de plazo ${tipoPlazo}.`,
+    );
+  }
+  return plazo;
 }
 
 export interface ConsultaDiasHabilesCurado {
@@ -590,12 +616,7 @@ export function sumarDiasHabilesCurado(
   consulta: ConsultaDiasHabilesCurado,
 ): ResultadoDiasHabiles {
   const { tipoPlazo, desde, dias, permitirIncompleto = false } = consulta;
-  const plazo = calendario.plazos.get(tipoPlazo);
-  if (plazo === undefined) {
-    throw new RangeError(
-      `El calendario de ${calendario.autoridad} no tiene el tipo de plazo ${tipoPlazo}.`,
-    );
-  }
+  const plazo = plazoDe(calendario, tipoPlazo);
   const { respaldo } = plazo;
   let resultado: ResultadoDiasHabiles;
   try {
@@ -620,7 +641,7 @@ export function sumarDiasHabilesCurado(
     fuera === undefined ? [] : faltan(calendario, plazo, (p) => dentro(fuera, p.cobertura));
   if (tipos.length > 0) {
     antes.push(
-      `Calendario incompleto: ${calendario.autoridad.toUpperCase()} con tipo_plazo=${tipoPlazo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
+      `Calendario incompleto: ${SIGLAS_AUTORIDAD[calendario.autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
     );
   }
   const prorroga =
@@ -654,7 +675,7 @@ export function exigirAnio(autoridad: Autoridad, anio: number, cobertura: Rango)
   if (cubreAnio(texto, cobertura)) return;
   const inicio = `${texto}-01-01`;
   const fecha = dentro(inicio, cobertura) ? sumarDias(cobertura.hasta, 1) : inicio;
-  const detalle = `El calendario ${DEL_CALENDARIO[autoridad]} no cubre el año ${texto}; ${cubre(cobertura)}.`;
+  const detalle = `El calendario ${DE_AUTORIDAD[autoridad]} no cubre el año ${texto}; ${cubre(cobertura)}.`;
   throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);
 }
 
@@ -682,7 +703,7 @@ function advertencias(calendario: CalendarioCurado, anio: string): string[] {
     );
   return [
     [
-      `Los días de tipo ${tipos.join(" y ")} ${DEL_CALENDARIO[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
+      `Los días de tipo ${tipos.join(" y ")} ${DE_AUTORIDAD[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
       ...completas,
     ].join(" "),
     ...deRegla,

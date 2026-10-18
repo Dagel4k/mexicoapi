@@ -581,8 +581,8 @@ describe("calendarios curados", () => {
   const FORMA =
     "El shard calendarios/sat tiene un plazo, una fuente o un día con forma inesperada.";
   const POR_REGLA =
-    "El calendario de sat cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).";
-  const SIN_GENERAL = "El calendario de sat no tiene un plazo general que cuente todos los días.";
+    "El calendario del SAT cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).";
+  const SIN_GENERAL = "El calendario del SAT no tiene un plazo general que cuente todos los días.";
   for (const [caso, valor, mensaje] of [
     ["JSON roto", "{", SyntaxError],
     ["no es objeto", [], SIN_PARTES],
@@ -620,12 +620,12 @@ describe("calendarios curados", () => {
     [
       "un día del art. 12 distinto del de la regla",
       conDia({ motivo: "Año nuevo" }),
-      "El calendario de sat trae el día de descanso 2026-01-01 distinto del que da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+      "El calendario del SAT trae el día de descanso 2026-01-01 distinto del que da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
     ],
     [
       "plazo desconocido",
       conPlazos({ general, anual: general }),
-      "El calendario de sat tiene un tipo de plazo inesperado: anual.",
+      "El calendario del SAT tiene un tipo de plazo inesperado: anual.",
     ],
     ["plazo nulo", conPlazos({ general, declaraciones_pagos: null }), FORMA],
     ["plazo sin cobertura", conPlazos({ general: { excluir_tipos: [] } }), FORMA],
@@ -667,7 +667,7 @@ describe("calendarios curados", () => {
           cobertura: { desde: "2026-02-01", hasta: "2026-12-31" },
         },
       }),
-      "El calendario de sat no tiene un plazo que contenga a los demás.",
+      "El calendario del SAT no tiene un plazo que contenga a los demás.",
     ],
     ["día nulo", conDias([null]), FORMA],
     ["día sin motivo", conDia({ motivo: undefined }), FORMA],
@@ -684,22 +684,22 @@ describe("calendarios curados", () => {
     [
       "días fuera de orden",
       conDias([DIAS_SAT[1], DIAS_SAT[0]]),
-      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
+      "El calendario del SAT tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
     ],
     [
       "fecha repetida",
       conDias([diaUno, diaUno]),
-      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
+      "El calendario del SAT tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
     ],
     [
       "declaraciones_pagos que cuenta las vacaciones",
       conPlazos({ general, declaraciones_pagos: { ...declaraciones_pagos, excluir_tipos: [] } }),
-      "El calendario de sat tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
+      "El calendario del SAT tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
     ],
     [
       "día fuera de toda cobertura",
       conDia({ fecha: "2101-01-01" }),
-      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2101-01-01.",
+      "El calendario del SAT tiene un día inesperado, repetido o fuera de orden: 2101-01-01.",
     ],
   ] as const) {
     it(`rechaza un calendario con forma inesperada: ${caso}`, async () => {
@@ -709,7 +709,7 @@ describe("calendarios curados", () => {
   }
 
   // La CNBV sí cita los fines de semana de cada año de su cobertura.
-  const SIN_FINES_2026 = "El calendario de cnbv no cita los fines de semana de 2026.";
+  const SIN_FINES_2026 = "El calendario de la CNBV no cita los fines de semana de 2026.";
   const conFuentes = (fuentes: unknown) => ({ ...SHARD_CNBV, fuentes_fin_de_semana: fuentes });
   for (const [caso, valor, mensaje] of [
     [
@@ -720,7 +720,7 @@ describe("calendarios curados", () => {
     [
       "fuente de fines de semana de un año fuera de la cobertura",
       conFuentes({ 2025: FUENTE_CNBV_2025, 2026: FUENTE_CNBV, 2027: FUENTE_CNBV }),
-      "El calendario de cnbv cita fines de semana de años fuera de su cobertura.",
+      "El calendario de la CNBV cita fines de semana de años fuera de su cobertura.",
     ],
     [
       "fuente de fines de semana con otro año en la llave",
@@ -750,19 +750,19 @@ describe("calendarios curados", () => {
         "sat",
         RUTA_SAT,
         conLlave(SHARD_SAT, "plazos", general),
-        "El calendario de sat tiene un tipo de plazo inesperado: __proto__.",
+        "El calendario del SAT tiene un tipo de plazo inesperado: __proto__.",
       ],
       [
         "sat",
         RUTA_SAT,
         conLlave(SHARD_SAT, "fuentes_fin_de_semana", FUENTE_CFF),
-        "El calendario de sat cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+        "El calendario del SAT cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
       ],
       [
         "cnbv",
         RUTA_CNBV,
         conLlave(SHARD_CNBV, "fuentes_fin_de_semana", FUENTE_CNBV),
-        "El calendario de cnbv cita fines de semana de años fuera de su cobertura.",
+        "El calendario de la CNBV cita fines de semana de años fuera de su cobertura.",
       ],
     ] as const) {
       expect(cuerpo).toContain('"__proto__":');

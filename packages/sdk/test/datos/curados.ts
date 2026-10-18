@@ -181,9 +181,13 @@ export function probarCalendarios(
 
   it("rechaza una autoridad o un plazo que no tiene", () => {
     expect(() => m.calendario("lft" as "cnbv")).toThrow(RangeError);
+    // El texto del núcleo, el mismo que da quien arma un calendario curado.
+    expect(() => m.calendario("lft" as "cnbv")).toThrow(
+      "No hay calendario curado de la LFT: solo de la CNBV y del SAT.",
+    );
     expect(() => m.calendarioCurado("toString" as "cnbv")).toThrow(RangeError);
     expect(() => m.calendario("cnbv", "declaraciones_pagos")).toThrow(
-      "El calendario de cnbv no tiene el tipo de plazo declaraciones_pagos.",
+      "El calendario de la CNBV no tiene el tipo de plazo declaraciones_pagos.",
     );
   });
 

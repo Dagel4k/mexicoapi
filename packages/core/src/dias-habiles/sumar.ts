@@ -1,7 +1,7 @@
 import { CalendarioIncompletoError } from "../errores.js";
 import { aDias, deDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
 import type { Calendario } from "./calendario.js";
-import type { Autoridad, DiaInhabil } from "./tipos.js";
+import { type Autoridad, type DiaInhabil, SIGLAS_AUTORIDAD } from "./tipos.js";
 
 export interface ResultadoDiasHabiles {
   autoridad: Autoridad;
@@ -23,7 +23,7 @@ export function sumarDiasHabiles(parametros: {
 }): ResultadoDiasHabiles {
   const { calendario, desde, dias, permitirIncompleto = false } = parametros;
   if (!Number.isInteger(dias) || dias < 1 || dias > DIAS_MAX) {
-    throw new RangeError(`Los días deben ser un entero entre 1 y ${DIAS_MAX}: ${dias}`);
+    throw new RangeError(`Los días deben ser un entero de 1 a ${DIAS_MAX}: ${dias}`);
   }
   if (!esFechaIsoValida(desde)) {
     throw new RangeError(`Fecha ISO inválida: ${desde}`);
@@ -50,7 +50,7 @@ export function sumarDiasHabiles(parametros: {
       if (!aniosAvisados.has(anio)) {
         aniosAvisados.add(anio);
         advertencias.push(
-          `Calendario incompleto: ${autoridad.toUpperCase()} ${anio}; solo se descontaron fines de semana.${falta}`,
+          `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} ${anio}; solo se descontaron fines de semana.${falta}`,
         );
       }
       const semana = diaSemanaDeDias(numero);

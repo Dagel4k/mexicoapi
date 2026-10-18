@@ -7,7 +7,7 @@ import type {
   TramoIsr,
   Uma,
 } from "@mexicoapi/core";
-import { esFechaIsoValida } from "@mexicoapi/core";
+import { esFechaIsoValida, TIPOS_DIA_CURADO } from "@mexicoapi/core";
 import { z } from "zod";
 import { limpiarTexto } from "../canonico.js";
 import { esMonto } from "./decimal.js";
@@ -148,7 +148,7 @@ export const esquemaDiaInhabilCurado: z.ZodType<DiaInhabilCurado> = z.strictObje
   fecha: fecha.describe("Día inhábil (AAAA-MM-DD)."),
   autoridad: opcion(["cnbv", "sat"]).describe("Autoridad del calendario."),
   motivo: texto.describe("Motivo del día inhábil; en los días de regla, la regla."),
-  tipo: opcion(["descanso", "vacaciones"]).describe("Tipo de día inhábil."),
+  tipo: opcion(TIPOS_DIA_CURADO).describe("Tipo de día inhábil."),
   fuente: esquemaFuenteDof.describe("Publicación que lo establece."),
 });
 

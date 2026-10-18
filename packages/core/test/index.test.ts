@@ -54,6 +54,11 @@ const VALORES_PUBLICOS = [
   "fixParaOperacion",
   "udiDeFecha",
   "FUENTE_CFF_20",
+  // Los catálogos de los calendarios, de los que salen sus tipos, y el nombre de cada autoridad.
+  "AUTORIDADES",
+  "TIPOS_PLAZO",
+  "TIPOS_DIA_CURADO",
+  "NOMBRE_AUTORIDAD",
 ];
 
 describe("API pública", () => {

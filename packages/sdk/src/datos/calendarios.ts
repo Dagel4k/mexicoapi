@@ -5,7 +5,9 @@
 import {
   type CalendarioCurado as CalendarioDelNucleo,
   crearCalendarioCurado,
+  exigirCurada,
   feriadosBancarios,
+  plazoDe,
 } from "@mexicoapi/core/curados";
 import * as cnbv from "./generados/dias-inhabiles-cnbv.js";
 import * as sat from "./generados/dias-inhabiles-sat.js";
@@ -28,15 +30,9 @@ export const meta: Readonly<Record<AutoridadCurada, MetaDatos>> = Object.freeze(
   sat: sat.meta,
 });
 
-function revisarAutoridad(autoridad: string): asserts autoridad is AutoridadCurada {
-  if (!Object.hasOwn(GENERADOS, autoridad)) {
-    throw new RangeError(`El paquete trae los calendarios de cnbv y sat, no de ${autoridad}.`);
-  }
-}
-
 /** El calendario de `autoridad` con todos sus tipos de plazo. Se arma una vez y está congelado. */
 export function calendarioCurado(autoridad: AutoridadCurada): CalendarioCurado {
-  revisarAutoridad(autoridad);
+  exigirCurada(autoridad);
   let curado = memoria.get(autoridad);
   if (curado === undefined) {
     const { datos, calendario } = GENERADOS[autoridad];
@@ -66,7 +62,8 @@ export function calendario(autoridad: "cnbv", tipoPlazo?: "general"): Calendario
 export function calendario(autoridad: "sat", tipoPlazo: TipoPlazo): Calendario;
 export function calendario(autoridad: AutoridadCurada, tipoPlazo: TipoPlazo): Calendario;
 export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): Calendario {
-  const { plazos } = calendarioCurado(autoridad);
+  const curado = calendarioCurado(autoridad);
+  const { plazos } = curado;
   if (tipoPlazo === undefined) {
     if (plazos.size > 1) {
       const tipos = [...plazos.keys()].join(" o ");
@@ -74,11 +71,7 @@ export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): C
     }
     tipoPlazo = "general";
   }
-  const plazo = plazos.get(tipoPlazo);
-  if (plazo === undefined) {
-    throw new RangeError(`El calendario de ${autoridad} no tiene el tipo de plazo ${tipoPlazo}.`);
-  }
-  return plazo.calendario;
+  return plazoDe(curado, tipoPlazo).calendario;
 }
 
 let feriados: ((fecha: FechaISO) => boolean) | undefined;
