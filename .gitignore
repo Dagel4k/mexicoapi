@@ -10,3 +10,6 @@ apps/api/public/
 # Restos del escritor atómico si una corrida se corta.
 *.tmp-*
 *.bak-*
+# Configuración de wrangler que genera el despliegue en cada corrida.
+apps/api/wrangler.staging.json
+apps/api/wrangler.produccion.json

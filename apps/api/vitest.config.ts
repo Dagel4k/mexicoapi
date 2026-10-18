@@ -9,6 +9,6 @@ export default defineProject({
   },
   test: {
     name: "api",
-    include: ["test/unit/**/*.test.ts"],
+    include: ["test/unit/**/*.test.ts", "test/scripts/**/*.test.ts"],
   },
 });
