@@ -25,5 +25,8 @@
   },
   "dependencies": {
     "mexicoapi": "workspace:*"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1"
   }
 }
