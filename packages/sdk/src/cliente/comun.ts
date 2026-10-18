@@ -3,6 +3,16 @@ export type Objeto = Record<string, unknown>;
 /** Comienzo de la advertencia de una respuesta del paquete porque la API falló (la CLI la busca). */
 export const AVISO_RESPALDO = "Respuesta de los datos del paquete porque la API falló";
 
+/**
+ * El umbral de datos viejos de las series del paquete (FIX y UDIS), en días: el único, para el
+ * cliente y el MCP. El cliente lo cuenta desde el último dato de la serie hasta hoy: si pasan más,
+ * la respuesta del paquete advierte que la API puede tener datos más recientes. El MCP sin API lo
+ * cuenta desde la fecha pedida hasta el último dato: a esa distancia o menos, la consulta puede
+ * buscar una publicación que el paquete todavía no trae. Miden cosas distintas y las dos
+ * advertencias pueden salir juntas.
+ */
+export const DIAS_DATOS_RECIENTES = 7;
+
 export const esObjeto = (valor: unknown): valor is Objeto =>
   typeof valor === "object" && valor !== null && !Array.isArray(valor);
 

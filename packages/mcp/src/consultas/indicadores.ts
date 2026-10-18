@@ -2,7 +2,7 @@
 // responde, salen del paquete con la advertencia del cliente. Sin base salen del paquete, y se
 // advierte solo cuando la respuesta puede no estar al día (ver cercaDelFinal).
 import { type CoberturaSerie, revisarFix } from "mexicoapi";
-import type { Respuesta } from "mexicoapi/cliente";
+import { DIAS_DATOS_RECIENTES, type Respuesta } from "mexicoapi/cliente";
 import { compilarEsquema } from "../esquema.js";
 import type { Herramienta } from "../herramientas.js";
 import {
@@ -47,9 +47,10 @@ const revisarUdi = compilarEsquema(UDI);
  * Días antes del último dato de la serie del paquete en los que, sin API, se advierte que puede
  * haber datos más nuevos: la última publicación que trae el paquete puede no ser la última que
  * hay, y una consulta por esos días suele buscar el valor vigente. Una fecha anterior es historia
- * publicada: no cambia y no se advierte.
+ * publicada: no cambia y no se advierte. Es el umbral de datos viejos del cliente
+ * (DIAS_DATOS_RECIENTES), que él cuenta desde el último dato hasta hoy.
  */
-const DIAS_CERCA_DEL_FINAL = 7;
+const DIAS_CERCA_DEL_FINAL = DIAS_DATOS_RECIENTES;
 
 const MS_POR_DIA = 86_400_000;
 

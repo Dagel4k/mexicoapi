@@ -9,6 +9,7 @@ export {
   URL_REPOSITORIO,
 } from "@mexicoapi/core/problemas";
 export { crearCliente } from "./cliente.js";
+export { DIAS_DATOS_RECIENTES } from "./comun.js";
 export { type ContextoError, MexicoApiError, type Problema } from "./error.js";
 export type {
   ArgumentosDe,

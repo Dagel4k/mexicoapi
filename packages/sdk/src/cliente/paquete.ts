@@ -18,6 +18,7 @@ import {
 } from "@mexicoapi/core/rutas";
 import type { MetaDatos } from "../datos/tipos.js";
 import type { RutaDelPaquete } from "./cliente.js";
+import { DIAS_DATOS_RECIENTES } from "./comun.js";
 import {
   type Contexto,
   conDocs,
@@ -64,12 +65,12 @@ interface Serie {
 }
 
 /**
- * Una serie del paquete (FIX o UDIS) con más de 7 días de antigüedad: lo que pase después de su
- * último dato solo lo tiene la API.
+ * Una serie del paquete (FIX o UDIS) con más de DIAS_DATOS_RECIENTES días de antigüedad: lo que
+ * pase después de su último dato solo lo tiene la API.
  */
 function antiguedad(c: Contexto, { meta, cobertura }: Serie): void {
   const dias = Math.floor((Date.now() - Date.parse(cobertura.hasta)) / MS_POR_DIA);
-  if (dias > 7) {
+  if (dias > DIAS_DATOS_RECIENTES) {
     c.advertencias.push(
       `Los datos de ${meta.dataset} del paquete llegan hasta el ${cobertura.hasta}, hace ${dias} días; la API puede tener datos más recientes.`,
     );
