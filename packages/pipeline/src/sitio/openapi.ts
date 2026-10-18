@@ -28,11 +28,27 @@ export const PROBLEMAS = {
 
 const URL_PROBLEMAS = `${URL_DOCS}/api/problemas.md`;
 
+/**
+ * Quita los `additionalProperties: false` que agrega `z.toJSONSchema`: el documento publica
+ * esquemas abiertos para que un campo nuevo no rompa a los clientes generados. La prueba de
+ * contrato valida contra una copia cerrada.
+ */
+function abrir(valor: unknown): unknown {
+  if (Array.isArray(valor)) return valor.map(abrir);
+  if (valor === null || typeof valor !== "object") return valor;
+  const resultado: Json = {};
+  for (const [clave, hijo] of Object.entries(valor)) {
+    if (clave === "additionalProperties" && hijo === false) continue;
+    resultado[clave] = abrir(hijo);
+  }
+  return resultado;
+}
+
 function jsonSchema(esquema: z.ZodType): Json {
   const { $schema: _omitido, ...resto } = z.toJSONSchema(esquema, {
     target: "draft-2020-12",
   }) as Json;
-  return resto;
+  return abrir(resto) as Json;
 }
 
 function esquemas(): Record<string, Json> {
@@ -43,7 +59,10 @@ function esquemas(): Record<string, Json> {
 
   const problema = jsonSchema(esquemaProblema);
   const tipo = (problema.properties as Record<string, Json>).type as Json;
-  tipo.description = `URI del tipo de problema: ${URL_PROBLEMAS}#<tipo>, con <tipo> uno de ${Object.keys(PROBLEMAS).join(", ")}.`;
+  const tipos = Object.entries(PROBLEMAS)
+    .map(([nombre, p]) => `${nombre} (${p.status}, ${p.title})`)
+    .join("; ");
+  tipo.description = `URI del tipo de problema: ${URL_PROBLEMAS}#<tipo>. Tipos (status, título): ${tipos}.`;
 
   const sustituirFuente = (esquema: Json): Json => {
     const props = esquema.properties as Record<string, Json>;
@@ -95,12 +114,26 @@ const lista = (nombre: string): Json => ({ type: "array", items: ref(nombre) });
 
 const refRespuesta = (nombre: string): Json => ({ $ref: `#/components/responses/${nombre}` });
 
-function respuestaProblema(descripcion: string): Json {
-  return {
-    description: descripcion,
-    content: { "application/problem+json": { schema: ref("Problema") } },
-  };
+function respuestaProblema(descripcion: string, headers?: Json): Json {
+  const respuesta: Json = { description: descripcion };
+  if (headers !== undefined) respuesta.headers = headers;
+  respuesta.content = { "application/problem+json": { schema: ref("Problema") } };
+  return respuesta;
 }
+
+const ETAG: Json = {
+  description: "Versión del recurso; cambia cuando cambian los datos.",
+  required: true,
+  schema: { type: "string" },
+};
+
+const IF_NONE_MATCH: Json = {
+  name: "If-None-Match",
+  in: "header",
+  required: false,
+  description: "ETag de una respuesta anterior; si coincide, la respuesta es 304 sin cuerpo.",
+  schema: { type: "string" },
+};
 
 const parametroRuta = (
   name: string,
@@ -136,6 +169,8 @@ interface Operacion {
   ok: Json;
   /** Errores propios de la ruta; los de ERRORES_COMUNES se agregan siempre. */
   errores: number[];
+  /** Sirve un shard del build: lleva ETag y responde 304 a un If-None-Match que coincide. */
+  shard?: boolean;
 }
 
 const CODIGOS: Record<number, string> = {
@@ -152,11 +187,18 @@ const ERRORES_COMUNES = [400, 405, 429, 500];
 
 function operacion(o: Operacion): [string, Json] {
   const responses: Record<string, Json> = { "200": o.ok };
+  let parametros = o.parametros;
+  if (o.shard === true) {
+    // El asset puede no traer ETag; la 304 siempre lo trae.
+    responses["200"] = { ...o.ok, headers: { ETag: { ...ETAG, required: false } } };
+    responses["304"] = refRespuesta("NoModificado");
+    parametros = [...(parametros ?? []), IF_NONE_MATCH];
+  }
   for (const codigo of [...o.errores, ...ERRORES_COMUNES].sort((a, b) => a - b)) {
     responses[String(codigo)] = refRespuesta(CODIGOS[codigo] as string);
   }
   const op: Json = { operationId: o.operationId, summary: o.summary, tags: [o.tag] };
-  if (o.parametros !== undefined) op.parameters = o.parametros;
+  if (parametros !== undefined) op.parameters = parametros;
   op.responses = responses;
   return [o.ruta, { get: op }];
 }
@@ -201,6 +243,7 @@ function operaciones(): Operacion[] {
       tag: "Estados",
       ok: respuestaDatos("Los 32 estados.", lista("Estado")),
       errores: [],
+      shard: true,
     },
     {
       ruta: "/v1/estados/{cve_ent}",
@@ -210,6 +253,7 @@ function operaciones(): Operacion[] {
       parametros: [cveEnt],
       ok: respuestaDatos("El estado.", ref("Estado")),
       errores: [404],
+      shard: true,
     },
     {
       ruta: "/v1/estados/{cve_ent}/municipios",
@@ -219,6 +263,7 @@ function operaciones(): Operacion[] {
       parametros: [cveEnt],
       ok: respuestaDatos("Los municipios del estado.", lista("Municipio")),
       errores: [404],
+      shard: true,
     },
     {
       ruta: "/v1/municipios",
@@ -227,6 +272,7 @@ function operaciones(): Operacion[] {
       tag: "Municipios",
       ok: respuestaDatos("Todos los municipios.", lista("Municipio")),
       errores: [],
+      shard: true,
     },
     {
       ruta: "/v1/municipios/{cvegeo}",
@@ -236,6 +282,7 @@ function operaciones(): Operacion[] {
       parametros: [cvegeo],
       ok: respuestaDatos("El municipio.", ref("Municipio")),
       errores: [404],
+      shard: true,
     },
     {
       ruta: "/v1/bancos",
@@ -244,6 +291,7 @@ function operaciones(): Operacion[] {
       tag: "Bancos",
       ok: respuestaDatos("Los bancos del catálogo.", lista("Banco")),
       errores: [],
+      shard: true,
     },
     {
       ruta: "/v1/bancos/{codigo}",
@@ -253,6 +301,7 @@ function operaciones(): Operacion[] {
       parametros: [codigo],
       ok: respuestaDatos("El banco.", ref("Banco")),
       errores: [404],
+      shard: true,
     },
     {
       ruta: "/v1/clabe/{clabe}",
@@ -340,11 +389,12 @@ function operaciones(): Operacion[] {
         content: { "application/json": { schema: { type: "object" } } },
       },
       errores: [],
+      shard: true,
     },
   ];
 }
 
-/** Respuesta 200 sin sobre `{ data, meta }`. */
+/** Respuesta 200 sin `meta`: el índice es un objeto propio y status lleva solo `{ data }`. */
 function respuestaDatosPlano(descripcion: string, schema: Json): Json {
   return { description: descripcion, content: { "application/json": { schema } } };
 }
@@ -375,12 +425,30 @@ export function documentoOpenApi(): Record<string, unknown> {
         ParametroInvalido: respuestaProblema(
           "Un parámetro es inválido, desconocido o falta (tipos parametro-invalido, parametro-desconocido y parametro-faltante). Toda ruta rechaza los parámetros de consulta que no declara.",
         ),
+        NoModificado: {
+          description: "El If-None-Match coincide con el ETag actual: la respuesta no trae cuerpo.",
+          headers: { ETag: ETAG },
+        },
         NoEncontrado: respuestaProblema("El recurso o la ruta no existe."),
-        MetodoNoPermitido: respuestaProblema("Solo se permite GET."),
+        MetodoNoPermitido: respuestaProblema("Métodos permitidos: GET, HEAD y OPTIONS.", {
+          Allow: {
+            description: "Métodos que acepta la API.",
+            required: true,
+            schema: { type: "string" },
+            example: "GET, HEAD, OPTIONS",
+          },
+        }),
         CalendarioIncompleto: respuestaProblema(
           "El calendario no cubre el periodo pedido; la extensión cobertura indica el rango.",
         ),
-        DemasiadasPeticiones: respuestaProblema("Se superó el límite de peticiones."),
+        DemasiadasPeticiones: respuestaProblema("Se superó el límite de peticiones.", {
+          "Retry-After": {
+            description: "Segundos que conviene esperar antes de reintentar.",
+            required: true,
+            schema: { type: "integer", minimum: 0 },
+            example: 60,
+          },
+        }),
         ErrorInterno: respuestaProblema("Error interno."),
       },
     },
