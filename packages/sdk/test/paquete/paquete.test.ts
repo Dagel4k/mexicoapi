@@ -2,9 +2,10 @@
 import { spawnSync } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { declarados } from "../../scripts/datos.ts";
 import {
   entradasUniversales,
   esModuloDeNode,
@@ -13,6 +14,14 @@ import {
   medirEntrada,
 } from "../../scripts/revisar.ts";
 import { type Modulo, probarModulo } from "../comun.ts";
+import {
+  type ModuloDatos,
+  type ModuloFix,
+  type ModuloUdis,
+  probarDatos,
+  probarFix,
+  probarUdis,
+} from "../datos/comun.ts";
 
 const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 const DIST = join(RAIZ, "dist");
@@ -26,13 +35,46 @@ const TSC = join(
   "tsc",
 );
 
+const importar = async <T>(archivo: string): Promise<T> =>
+  (await import(pathToFileURL(join(DIST, archivo)).href)) as T;
+
+/** Módulos de dist/datos/generados que carga una entrada, por nombre. */
+async function generadosDe(entrada: string): Promise<string[]> {
+  const { archivos } = await grafoDeModulos(join(DIST, entrada));
+  return archivos
+    .filter((a) => relative(DIST, a).startsWith(join("datos", "generados") + sep))
+    .map((a) => basename(a, ".js"))
+    .sort();
+}
+
 async function archivosDeDist(): Promise<string[]> {
   const entradas = await readdir(DIST, { recursive: true, withFileTypes: true });
   return entradas.filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name));
 }
 
 describe("mexicoapi desde dist", () => {
-  probarModulo(async () => (await import(pathToFileURL(join(DIST, "index.js")).href)) as Modulo);
+  probarModulo(() => importar<Modulo>("index.js"));
+});
+
+describe("mexicoapi/datos desde dist", () => {
+  probarDatos(async () => ({
+    datos: await importar<ModuloDatos>("datos/index.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
+});
+
+describe("mexicoapi/datos/fix desde dist", () => {
+  probarFix(async () => ({
+    fix: await importar<ModuloFix>("datos/fix.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
+});
+
+describe("mexicoapi/datos/udis desde dist", () => {
+  probarUdis(async () => ({
+    udis: await importar<ModuloUdis>("datos/udis.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
 });
 
 describe("dist", () => {
@@ -40,6 +82,37 @@ describe("dist", () => {
     const medida = await medirEntrada(join(DIST, "index.js"));
     expect(medida.archivos.length).toBeGreaterThan(1);
     expect(medida.gzip).toBeLessThanOrEqual(LIMITE_GZIP_PRINCIPAL);
+  });
+
+  it("revisa como universales la entrada principal y las de datos", () => {
+    expect(entradasUniversales(manifiesto.exports).map((e) => e.ruta)).toEqual([
+      ".",
+      "./datos",
+      "./datos/fix",
+      "./datos/udis",
+    ]);
+  });
+
+  it("cada entrada carga solo sus datos: la principal ninguno y el FIX y las UDIS aparte", async () => {
+    const principal = await grafoDeModulos(join(DIST, "index.js"));
+    expect(principal.archivos.filter((a) => relative(DIST, a).startsWith(`datos${sep}`))).toEqual(
+      [],
+    );
+    expect(await generadosDe("datos/index.js")).toEqual([
+      "bancos",
+      "inegi-estados",
+      "inegi-municipios",
+    ]);
+    expect(await generadosDe("datos/fix.js")).toEqual(["tipo-cambio-fix"]);
+    expect(await generadosDe("datos/udis.js")).toEqual(["udis"]);
+  });
+
+  it("trae un módulo generado y sus tipos por cada declaración de src/datos/generados", async () => {
+    const nombres = await declarados(join(RAIZ, "src", "datos", "generados"));
+    expect(nombres.length).toBeGreaterThan(0);
+    expect((await readdir(join(DIST, "datos", "generados"))).sort()).toEqual(
+      nombres.flatMap((n) => [`${n}.d.ts`, `${n}.js`]),
+    );
   });
 
   it.each(entradasUniversales(manifiesto.exports))(
@@ -94,6 +167,12 @@ describe("npm pack", () => {
         "dist/index.d.ts",
         "dist/nucleo/index.js",
         "dist/nucleo/index.d.ts",
+        "dist/datos/index.js",
+        "dist/datos/index.d.ts",
+        "dist/datos/fix.js",
+        "dist/datos/udis.js",
+        "dist/datos/generados/inegi-municipios.js",
+        "dist/datos/generados/inegi-municipios.d.ts",
       ]),
     );
     for (const ruta of rutas) {

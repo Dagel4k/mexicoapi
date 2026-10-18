@@ -19,6 +19,18 @@ import {
   validarNss,
   validarRfc,
 } from "mexicoapi";
+import {
+  type BancoCatalogo,
+  buscarMunicipio,
+  catalogoClabe,
+  estado,
+  type MetaDatos,
+  type Municipio,
+  meta,
+  municipios,
+} from "mexicoapi/datos";
+import * as datosFix from "mexicoapi/datos/fix";
+import * as datosUdis from "mexicoapi/datos/udis";
 
 const clabe: ResultadoValidacion<DetalleClabe> = validarClabe("002010077777777771");
 const banco: string | undefined = clabe.detalle?.codigo_banco;
@@ -40,4 +52,39 @@ function esIncompleto(error: unknown): string | null {
   return error instanceof CalendarioIncompletoError ? error.cobertura.hasta : null;
 }
 
-export const usados = [banco, validos, plazo.resultado, udi.tipo, valorFix, esIncompleto];
+const catalogo: ReadonlyMap<string, BancoCatalogo> = catalogoClabe();
+const conCatalogo: ResultadoValidacion<DetalleClabe> = validarClabe("002010077777777771", {
+  bancos: catalogo,
+});
+const culiacan: Municipio | undefined = buscarMunicipio("culiacan", { estado: "25", limite: 1 })[0];
+const sinaloa: readonly Municipio[] = municipios(estado("25")?.cve_ent);
+const asOf: string = meta.municipios.as_of;
+const fuentes: MetaDatos["sources"] = datosFix.meta.sources;
+const fixPaquete: Consulta<TipoCambioFix> = fixParaOperacion(
+  datosFix.serie,
+  datosFix.tramo,
+  datosFix.cobertura,
+  "2026-10-19",
+);
+const udiPaquete: Consulta<Udi> = udiDeFecha(
+  datosUdis.serie,
+  datosUdis.tramo,
+  datosUdis.cobertura,
+  datosUdis.cobertura.hasta,
+);
+
+export const usados = [
+  banco,
+  validos,
+  plazo.resultado,
+  udi.tipo,
+  valorFix,
+  esIncompleto,
+  conCatalogo.detalle?.banco?.nombre_corto,
+  culiacan?.cvegeo,
+  sinaloa.length,
+  asOf,
+  fuentes[0]?.license,
+  fixPaquete.tipo,
+  udiPaquete.tipo,
+];

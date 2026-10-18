@@ -1,6 +1,11 @@
+import { fileURLToPath } from "node:url";
 import { defineProject } from "vitest/config";
+import { pluginDatos } from "./scripts/datos.ts";
 
 export default defineProject({
+  // src/datos importa los módulos que genera el build; en las pruebas sobre src los sirve este
+  // plugin con el mismo código, leído de data/.
+  plugins: [pluginDatos(fileURLToPath(new URL("../../data", import.meta.url)))],
   // Igual que en el pipeline: @mexicoapi/core se lee desde src sin compilarlo.
   ssr: {
     resolve: {
