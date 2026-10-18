@@ -25,6 +25,17 @@ const TABLA: readonly Ruta[] = [
   },
   { patron: /^\/libre\/(?<libre>[^/]+)$/, manejar: nada },
   { patron: /^\/libre\/(?<libre>[^/]+)$/, manejar: () => new Response("segunda") },
+  {
+    // `cumple` agrega lo que el patrón no puede decir (un máximo, una fecha que existe).
+    patron: /^\/c\/(?<n>[^/]+)$/,
+    parametros: {
+      n: { patron: /^\d+$/, cumple: (v) => Number(v) <= 10, detalle: "n va de 0 a 10." },
+    },
+    consulta: {
+      m: { patron: /^\d+$/, cumple: (v) => Number(v) % 2 === 0, detalle: "m debe ser par." },
+    },
+    manejar: nada,
+  },
 ];
 
 const resolverEn = (ruta: string) => resolver(TABLA, new URL(`https://api.test${ruta}`));
@@ -60,6 +71,29 @@ describe("resolver", () => {
     expect(resolverEn("/mal/25")).toMatchObject({
       problema: "parametro-invalido",
       parametro: "id",
+    });
+  });
+
+  it("una regla con cumple exige el patrón y la comprobación extra", () => {
+    expect(resolverEn("/c/10?m=4")).toEqual({
+      ruta: TABLA[5],
+      parametros: { n: "10" },
+      consulta: { m: "4" },
+    });
+    expect(resolverEn("/c/11")).toEqual({
+      problema: "parametro-invalido",
+      detalle: "n va de 0 a 10.",
+      parametro: "n",
+    });
+    expect(resolverEn("/c/x")).toMatchObject({ problema: "parametro-invalido", parametro: "n" });
+    expect(resolverEn("/c/1?m=3")).toEqual({
+      problema: "parametro-invalido",
+      detalle: "m debe ser par.",
+      parametro: "m",
+    });
+    expect(resolverEn("/c/1?m=x")).toMatchObject({
+      problema: "parametro-invalido",
+      parametro: "m",
     });
   });
 
@@ -171,10 +205,25 @@ describe("RUTAS", () => {
       expect(ruta.patron.source).toMatch(/^\^.*\$$/);
       expect(ruta.patron.flags).toBe("");
       expect(grupos(ruta.patron)).toEqual(Object.keys(ruta.parametros ?? {}).sort());
-      for (const regla of Object.values(ruta.parametros ?? {})) {
+      const reglas = [
+        ...Object.values(ruta.parametros ?? {}),
+        ...Object.values(ruta.consulta ?? {}),
+      ];
+      for (const regla of reglas) {
         expect(regla.patron.source).toMatch(/^\^.*\$$/);
         expect(regla.patron.flags).toBe("");
       }
+    }
+  });
+
+  it("tiene las rutas calculadas", () => {
+    const fuentes = RUTAS.map((r) => r.patron.source);
+    for (const patron of [
+      /^\/v1\/clabe\/(?<clabe>[^/]+)$/,
+      /^\/v1\/dias-habiles$/,
+      /^\/v1\/dias-inhabiles$/,
+    ]) {
+      expect(fuentes).toContain(patron.source);
     }
   });
 });

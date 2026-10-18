@@ -35,6 +35,7 @@ const VALORES_PUBLICOS = [
   "COBERTURA_LFT",
   "FUENTE_LFT_74",
   "FUENTE_LFT_715",
+  "VIGENCIA_LFT",
   "RFC_GENERICOS",
   "NOTA_VALIDACION",
 ];
@@ -71,6 +72,7 @@ describe("API pública", () => {
     expect(core.COBERTURA_LFT.desde).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(core.FUENTE_LFT_74).toBeDefined();
     expect(core.FUENTE_LFT_715).toBeDefined();
+    expect(core.VIGENCIA_LFT).toBe("2026-05-14");
   });
 
   test("no expone VERSION ni los ayudantes internos", () => {

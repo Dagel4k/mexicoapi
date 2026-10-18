@@ -12,6 +12,7 @@ export {
   diasDescansoLft,
   FUENTE_LFT_74,
   FUENTE_LFT_715,
+  VIGENCIA_LFT,
 } from "./dias-habiles/lft.js";
 export type { ResultadoDiasHabiles } from "./dias-habiles/sumar.js";
 export { sumarDiasHabiles } from "./dias-habiles/sumar.js";

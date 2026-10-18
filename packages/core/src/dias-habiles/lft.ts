@@ -3,6 +3,9 @@ import type { DiaInhabil, Fuente } from "./tipos.js";
 
 const URL_LFT = "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf";
 
+/** Fecha de la última reforma de la LFT en el DOF; los textos de abajo son los de esa versión. */
+export const VIGENCIA_LFT: FechaISO = "2026-05-14";
+
 // Texto vigente según la LFT con última reforma DOF 14-05-2026.
 export const FUENTE_LFT_74: Fuente = Object.freeze({
   nombre: "Ley Federal del Trabajo, artículo 74",

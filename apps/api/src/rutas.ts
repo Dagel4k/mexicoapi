@@ -1,4 +1,6 @@
+import { esFechaIsoValida } from "@mexicoapi/core";
 import { clabe } from "./computados/clabe.js";
+import { diasHabiles, diasInhabiles } from "./computados/dias.js";
 import type { Entorno, Opciones } from "./entorno.js";
 import { servirShard } from "./estaticos.js";
 import { type TipoProblema, URL_DOCS } from "./problemas.js";
@@ -7,6 +9,8 @@ import { CACHE_DATOS, respuestaJson } from "./respuestas.js";
 export interface Regla {
   /** Expresión anclada (`^…$`) que debe cumplir el valor completo. */
   patron: RegExp;
+  /** Lo que el patrón no puede decir (un máximo, una fecha que existe); se prueba después. */
+  cumple?: (valor: string) => boolean;
   /** `detail` del 400 cuando el valor no la cumple. */
   detalle: string;
 }
@@ -48,6 +52,9 @@ function problema(tipo: TipoProblema, detalle: string, parametro: string): Probl
   return { problema: tipo, detalle, parametro };
 }
 
+const cumpleRegla = (regla: Regla, valor: string): boolean =>
+  regla.patron.test(valor) && (regla.cumple?.(valor) ?? true);
+
 function validarConsulta(
   reglas: Readonly<Record<string, ReglaConsulta>>,
   query: URLSearchParams,
@@ -80,7 +87,7 @@ function validarConsulta(
     if (valor === "") {
       return problema("parametro-invalido", `El parámetro ${nombre} está vacío.`, nombre);
     }
-    if (!regla.patron.test(valor)) return problema("parametro-invalido", regla.detalle, nombre);
+    if (!cumpleRegla(regla, valor)) return problema("parametro-invalido", regla.detalle, nombre);
     consulta[nombre] = valor;
   }
   return { consulta };
@@ -97,7 +104,7 @@ function validar(ruta: Ruta, grupos: Readonly<Record<string, string>>, url: URL)
   const parametros: Record<string, string> = {};
   for (const [nombre, regla] of Object.entries(ruta.parametros ?? {})) {
     const valor = grupos[nombre];
-    if (valor === undefined || !regla.patron.test(valor)) {
+    if (valor === undefined || !cumpleRegla(regla, valor)) {
       return problema("parametro-invalido", regla.detalle, nombre);
     }
     parametros[nombre] = valor;
@@ -150,6 +157,33 @@ const CODIGO_BANCO: Regla = {
 };
 const CLABE: Regla = { patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." };
 
+const AUTORIDAD: ReglaConsulta = {
+  patron: /^lft$/,
+  detalle: "Autoridades disponibles: lft.",
+  obligatorio: true,
+};
+const DESDE: ReglaConsulta = {
+  patron: /^\d{4}-\d{2}-\d{2}$/,
+  cumple: esFechaIsoValida,
+  detalle: "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
+  obligatorio: true,
+};
+const DIAS: ReglaConsulta = {
+  patron: /^[1-9]\d{0,3}$/,
+  cumple: (valor) => Number(valor) <= 3650,
+  detalle: "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
+  obligatorio: true,
+};
+const PERMITIR_INCOMPLETO: ReglaConsulta = {
+  patron: /^(?:true|false)$/,
+  detalle: "El parámetro permitir_incompleto debe ser true o false.",
+};
+const ANIO: ReglaConsulta = {
+  patron: /^\d{4}$/,
+  detalle: "El año (anio) debe tener 4 dígitos.",
+  obligatorio: true,
+};
+
 /**
  * Manejador de un shard. `destino` arma la ruta del asset y el nombre del recurso (para el
  * 404) solo con parámetros que ya pasaron su regla.
@@ -193,6 +227,21 @@ export const RUTAS: readonly Ruta[] = [
     patron: /^\/v1\/clabe\/(?<clabe>[^/]+)$/,
     parametros: { clabe: CLABE },
     manejar: clabe,
+  },
+  {
+    patron: /^\/v1\/dias-habiles$/,
+    consulta: {
+      autoridad: AUTORIDAD,
+      desde: DESDE,
+      dias: DIAS,
+      permitir_incompleto: PERMITIR_INCOMPLETO,
+    },
+    manejar: diasHabiles,
+  },
+  {
+    patron: /^\/v1\/dias-inhabiles$/,
+    consulta: { autoridad: AUTORIDAD, anio: ANIO },
+    manejar: diasInhabiles,
   },
   { patron: /^\/v1\/openapi\.json$/, manejar: fijo("/v1/openapi.json", "el documento OpenAPI") },
 ];
