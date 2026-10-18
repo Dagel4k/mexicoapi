@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 import { crearCalendario } from "../../src/dias-habiles/calendario.js";
 import {
@@ -166,9 +167,15 @@ describe("PLAZOS y revisarPlazos", () => {
 });
 
 describe("crearCalendarioCurado", () => {
-  it("arma un calendario por tipo de plazo, en el orden del shard", () => {
+  it("arma un calendario por tipo de plazo, en el orden de TIPOS_PLAZO aunque el shard traiga otro", () => {
     expect(SAT.autoridad).toBe("sat");
     expect([...SAT.plazos.keys()]).toEqual(["general", "declaraciones_pagos"]);
+    const { general, declaraciones_pagos } = SHARD_SAT.plazos;
+    const alReves = crearCalendarioCurado({
+      ...SHARD_SAT,
+      plazos: { declaraciones_pagos, general },
+    } as DatosCalendarioCurado);
+    expect([...alReves.plazos.keys()]).toEqual(["general", "declaraciones_pagos"]);
     expect(SAT.general).toBe(SAT.plazos.get("general"));
     expect(SAT.general.cobertura).toEqual(COBERTURA_GENERAL);
     expect(SAT.general.excluirTipos).toEqual([]);
@@ -239,6 +246,35 @@ describe("crearCalendarioCurado", () => {
     const plazos = calendario.plazos as unknown as Map<string, unknown>;
     expect(() => plazos.set("otro", {})).toThrow(TypeError);
     expect(() => Map.prototype.set.call(plazos, "otro", {})).toThrow(TypeError);
+  });
+
+  it("copia la fuente de los fines de semana de cada año: cambiar la entrada no cambia las citas", () => {
+    const fuente = { ...FUENTE_CFF, extra: "no es de la cita" };
+    const calendario = crearCalendarioCurado({
+      ...SHARD_SAT,
+      fuentes_fin_de_semana: { 2026: fuente },
+    });
+    fuente.nombre = "Otra";
+    fuente.fragmento = "cambiado después";
+    const sabado = calendario.general.calendario.inhabil("2026-01-03");
+    expect(sabado?.fuente).toEqual(FUENTE_CFF);
+    expect(Object.isFrozen(sabado?.fuente)).toBe(true);
+    expect(
+      calendario.plazos.get("declaraciones_pagos")?.calendario.inhabil("2026-12-26")?.fuente,
+    ).toEqual(FUENTE_CFF);
+  });
+
+  it("plazos se ve en JSON como un objeto y al inspeccionarlo como un Map", () => {
+    const json = JSON.parse(JSON.stringify(SAT.plazos)) as Record<string, Record<string, unknown>>;
+    expect(Object.keys(json)).toEqual(["general", "declaraciones_pagos"]);
+    expect(json.general?.cobertura).toEqual(COBERTURA_GENERAL);
+    expect(json.declaraciones_pagos?.excluirTipos).toEqual(["vacaciones"]);
+    expect(JSON.parse(JSON.stringify(CNBV)).plazos).toEqual({
+      general: JSON.parse(JSON.stringify(CNBV.general)),
+    });
+    expect(inspect(SAT.plazos, { depth: 0 })).toBe(
+      "Map(2) { 'general' => [Object], 'declaraciones_pagos' => [Object] }",
+    );
   });
 
   it("plazos se lee como un Map de solo lectura", () => {
@@ -313,6 +349,49 @@ describe("crearCalendarioCurado", () => {
     ["un día de fin de semana", conDia({ tipo: "fin_de_semana" })],
   ])("rechaza un calendario con %s", (_caso, datos) => {
     expect(() => crearCalendarioCurado(datos)).toThrow(RangeError);
+  });
+
+  it("exige los tipos de plazo y los excluir_tipos de PLAZOS de su autoridad", () => {
+    // Con excluir_tipos: [] el SAT contaría sus vacaciones en declaraciones_pagos (CFF art. 12).
+    expect(() =>
+      crearCalendarioCurado(
+        conPlazos({ general, declaraciones_pagos: { ...declaraciones_pagos, excluir_tipos: [] } }),
+      ),
+    ).toThrow(
+      new RangeError(
+        "El calendario de sat tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
+      ),
+    );
+    expect(() =>
+      crearCalendarioCurado({
+        ...SHARD_CNBV,
+        plazos: {
+          ...SHARD_CNBV.plazos,
+          declaraciones_pagos: { cobertura: COBERTURA_CNBV, excluir_tipos: ["vacaciones"] },
+        },
+      }),
+    ).toThrow(
+      new RangeError(
+        "El calendario de cnbv trae el tipo de plazo declaraciones_pagos, que no es suyo (solo general).",
+      ),
+    );
+    expect(PLAZOS.sat.declaraciones_pagos).toEqual(["vacaciones"]);
+    // Sin un plazo que no es general, solo ese plazo falta: general sigue respondiendo.
+    const soloGeneral = crearCalendarioCurado({
+      ...SHARD_SAT,
+      plazos: { general },
+      dias: DIAS_SAT.filter((d) => d.fecha <= "2026-11-30"),
+    });
+    expect([...soloGeneral.plazos.keys()]).toEqual(["general"]);
+  });
+
+  it("rechaza una autoridad sin calendario curado", () => {
+    expect(() => crearCalendarioCurado({ ...SHARD_SAT, autoridad: "lft" as "sat" })).toThrow(
+      new RangeError("No hay calendario curado de lft: solo de cnbv y sat."),
+    );
+    expect(() => crearCalendarioCurado({ ...SHARD_SAT, autoridad: "__proto__" as "sat" })).toThrow(
+      RangeError,
+    );
   });
 
   it("el error nombra la autoridad", () => {
@@ -472,8 +551,12 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     };
     // General empieza en febrero: enero solo lo cubre declaraciones_pagos.
     const desdeFebrero = conPlazos({ cobertura: { desde: "2026-02-01", hasta: "2026-11-30" } }, {});
-    // Declaraciones_pagos cuenta todo: fuera de general no falta ningún tipo de día.
-    const sinExcluir = conPlazos({}, { excluir_tipos: [] });
+    // General es la cobertura amplia y declaraciones_pagos empieza en febrero: en enero lo cubre
+    // general, que cuenta todos los tipos de día, así que a declaraciones_pagos no le falta ninguno.
+    const generalMasAmplio = conPlazos(
+      { cobertura: COBERTURA_DECLARACIONES },
+      { cobertura: { desde: "2026-02-01", hasta: "2026-12-31" } },
+    );
 
     it("un hueco al inicio de la cobertura: advertencia con permitirIncompleto y explicación sin él", () => {
       expect(sat("general", "2026-01-05", 1, true, desdeFebrero)).toMatchObject({
@@ -493,13 +576,15 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     });
 
     it("si ningún tipo de día puede faltar, ni advertencia ni explicación", () => {
-      expect(sat("general", "2026-12-24", 1, true, sinExcluir)).toMatchObject({
-        resultado: "2026-12-28",
+      expect(sat("declaraciones_pagos", "2026-01-05", 1, true, generalMasAmplio)).toMatchObject({
+        resultado: "2026-01-06",
         advertencias: [],
       });
-      const error = incompleto(() => sat("general", "2026-11-27", 2, false, sinExcluir));
+      const error = incompleto(() =>
+        sat("declaraciones_pagos", "2026-01-05", 1, false, generalMasAmplio),
+      );
       expect(error.detalle).toBe(
-        "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30.",
+        "El calendario del SAT para tipo_plazo=declaraciones_pagos no cubre 2026-01-06; cubre del 2026-02-01 al 2026-12-31.",
       );
     });
   });
@@ -588,13 +673,16 @@ describe("diasInhabilesCurados", () => {
     expect(diasInhabilesCurados(completo, 2026).advertencias).toEqual([]);
   });
 
-  it("sin advertencias si el plazo que cubre el año cuenta todos los tipos de día", () => {
+  it("un plazo que cubre el año y cuenta todos los tipos de día solo puede ser general", () => {
+    // Un declaraciones_pagos que cuente las vacaciones va contra PLAZOS: no se arma. Si general
+    // cubre el año, no hay advertencias (la prueba anterior).
     const declaraciones = { cobertura: COBERTURA_DECLARACIONES, excluir_tipos: [] };
-    const calendario = crearCalendarioCurado({
-      ...SHARD_SAT,
-      plazos: { ...SHARD_SAT.plazos, declaraciones_pagos: declaraciones },
-    });
-    expect(diasInhabilesCurados(calendario, 2026).advertencias).toEqual([]);
+    expect(() =>
+      crearCalendarioCurado({
+        ...SHARD_SAT,
+        plazos: { ...SHARD_SAT.plazos, declaraciones_pagos: declaraciones },
+      }),
+    ).toThrow(/excluir_tipos \[\] y la regla del núcleo pide \[vacaciones\]/);
   });
 
   it.each([
