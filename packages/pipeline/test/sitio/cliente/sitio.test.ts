@@ -231,11 +231,11 @@ describe("filasDeEstado", () => {
   });
 
   it.each([
-    ["null", null, "la respuesta no es un objeto"],
-    ["un texto", "<html>", "la respuesta no es un objeto"],
-    ["una lista", [], "la respuesta no es un objeto"],
-    ["sin data", {}, "data no es una lista"],
-    ["data objeto", { data: {} }, "data no es una lista"],
+    ["null", null, "(no es un objeto)."],
+    ["un texto", "<html>", "(no es un objeto)."],
+    ["una lista", [], "(no es un objeto)."],
+    ["sin data", {}, "(data no es una lista)."],
+    ["data objeto", { data: {} }, "(data no es una lista)."],
     ["fila null", { data: [null] }, "data[0] no es un objeto"],
     ["dataset número", { data: [fila({ dataset: 3 })] }, "data[0].dataset no es un texto"],
     ["dataset vacío", { data: [fila({ dataset: "" })] }, "data[0].dataset no es un texto"],
@@ -260,7 +260,7 @@ describe("filasDeEstado", () => {
   ])("una forma inesperada (%s) lanza un error en español", (_, cuerpo, donde) => {
     const intento = (): unknown => filasDeEstado(cuerpo, AHORA);
     expect(intento).toThrow(ErrorEstado);
-    expect(intento).toThrow(/^la respuesta no tiene la forma esperada: /);
+    expect(intento).toThrow(/^la respuesta no tiene la forma esperada \([^:()]+\)\.$/);
     expect(intento).toThrow(donde);
   });
 });
@@ -613,7 +613,7 @@ describe("actualizarEstado", () => {
     [
       "otra forma",
       async () => responder('{"datos":[]}'),
-      "No se pudo consultar el estado: la respuesta no tiene la forma esperada: data no es una lista.",
+      "No se pudo consultar el estado: la respuesta no tiene la forma esperada (data no es una lista).",
     ],
     [
       "sin red",
