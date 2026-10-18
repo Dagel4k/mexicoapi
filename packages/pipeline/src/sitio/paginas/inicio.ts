@@ -1,13 +1,6 @@
-import { URL_DOCS } from "../meta.js";
+import { URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
 import { describir } from "./catalogo.js";
-import {
-  documento,
-  enlaceSeguro,
-  escaparHtml,
-  navegacion,
-  URL_ARCHIVOS,
-  URL_REPO,
-} from "./html.js";
+import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
 
 /** Cambia a `true` con la primera publicación de `mexicoapi` y `mexicoapi-mcp` en npm. */
 export const PUBLICADO_EN_NPM = false;

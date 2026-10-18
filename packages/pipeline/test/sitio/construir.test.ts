@@ -31,14 +31,20 @@ import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
 import { coberturasDe } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
-import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
+import {
+  FRESCURA_HORAS,
+  type Meta,
+  type MetaInterna,
+  URL_ARCHIVOS,
+  URL_DOCS,
+} from "../../src/sitio/meta.js";
 import {
   archivoEncabezados,
   CSP_PAGINAS,
   RUTAS_SITIO,
 } from "../../src/sitio/paginas/encabezados.js";
 import { ESTILO } from "../../src/sitio/paginas/estilo.js";
-import { enlaceSeguro, URL_ARCHIVOS } from "../../src/sitio/paginas/html.js";
+import { enlaceSeguro } from "../../src/sitio/paginas/html.js";
 import { paginaNoEncontrada } from "../../src/sitio/paginas/no-encontrado.js";
 import { ROBOTS } from "../../src/sitio/paginas/robots.js";
 import * as verificar from "../../src/verificar.js";
