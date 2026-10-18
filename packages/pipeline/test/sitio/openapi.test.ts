@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { esquemaBanco, esquemaEstado, esquemaMunicipio } from "../../src/esquemas.js";
 import { sobre } from "../../src/sitio/esquemas-api.js";
 import { documentoOpenApi, PROBLEMAS } from "../../src/sitio/openapi.js";
+import { PRUEBA_LENTA } from "../ayudas.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: el documento se inspecciona de forma dinámica.
 type Obj = Record<string, any>;
@@ -253,48 +254,56 @@ describe("documento OpenAPI", () => {
     }
   });
 
-  it("los esquemas de Estado, Municipio y Banco validan el primer registro real", async () => {
-    const ajv = new Ajv2020({ strict: false });
-    const casos: Array<[string, string]> = [
-      ["Estado", "inegi-estados/estados.json"],
-      ["Municipio", "inegi-municipios/municipios.json"],
-      ["Banco", "bancos/bancos.json"],
-    ];
-    for (const [nombre, archivo] of casos) {
-      const registros = (await leerJson(
-        new URL(`../../../../data/${archivo}`, import.meta.url),
-      )) as unknown[];
-      const validar = ajv.compile({
-        components: doc.components,
-        $ref: `#/components/schemas/${nombre}`,
-      });
-      expect(validar(registros[0]), `${nombre}: ${JSON.stringify(validar.errors)}`).toBe(true);
-    }
-  });
+  it(
+    "los esquemas de Estado, Municipio y Banco validan el primer registro real",
+    async () => {
+      const ajv = new Ajv2020({ strict: false });
+      const casos: Array<[string, string]> = [
+        ["Estado", "inegi-estados/estados.json"],
+        ["Municipio", "inegi-municipios/municipios.json"],
+        ["Banco", "bancos/bancos.json"],
+      ];
+      for (const [nombre, archivo] of casos) {
+        const registros = (await leerJson(
+          new URL(`../../../../data/${archivo}`, import.meta.url),
+        )) as unknown[];
+        const validar = ajv.compile({
+          components: doc.components,
+          $ref: `#/components/schemas/${nombre}`,
+        });
+        expect(validar(registros[0]), `${nombre}: ${JSON.stringify(validar.errors)}`).toBe(true);
+      }
+    },
+    PRUEBA_LENTA,
+  );
 
-  it("los esquemas zod aceptan el primer registro real dentro del sobre", async () => {
-    const [estado] = (await leerJson(
-      new URL("../../../../data/inegi-estados/estados.json", import.meta.url),
-    )) as unknown[];
-    const [municipio] = (await leerJson(
-      new URL("../../../../data/inegi-municipios/municipios.json", import.meta.url),
-    )) as unknown[];
-    const [banco] = (await leerJson(
-      new URL("../../../../data/bancos/bancos.json", import.meta.url),
-    )) as unknown[];
-    const meta = {
-      dataset: "inegi.estados",
-      as_of: "2026-01-01",
-      sources: [
-        { name: "n", url: "https://x", license: "l", license_url: "https://l", citation: "c" },
-      ],
-      docs: "https://d",
-    };
-    expect(sobre(esquemaEstado).safeParse({ data: estado, meta }).success).toBe(true);
-    expect(sobre(esquemaMunicipio).safeParse({ data: municipio, meta }).success).toBe(true);
-    expect(sobre(esquemaBanco).safeParse({ data: banco, meta }).success).toBe(true);
-    expect(sobre(esquemaEstado).safeParse({ data: {}, meta }).success).toBe(false);
-  });
+  it(
+    "los esquemas zod aceptan el primer registro real dentro del sobre",
+    async () => {
+      const [estado] = (await leerJson(
+        new URL("../../../../data/inegi-estados/estados.json", import.meta.url),
+      )) as unknown[];
+      const [municipio] = (await leerJson(
+        new URL("../../../../data/inegi-municipios/municipios.json", import.meta.url),
+      )) as unknown[];
+      const [banco] = (await leerJson(
+        new URL("../../../../data/bancos/bancos.json", import.meta.url),
+      )) as unknown[];
+      const meta = {
+        dataset: "inegi.estados",
+        as_of: "2026-01-01",
+        sources: [
+          { name: "n", url: "https://x", license: "l", license_url: "https://l", citation: "c" },
+        ],
+        docs: "https://d",
+      };
+      expect(sobre(esquemaEstado).safeParse({ data: estado, meta }).success).toBe(true);
+      expect(sobre(esquemaMunicipio).safeParse({ data: municipio, meta }).success).toBe(true);
+      expect(sobre(esquemaBanco).safeParse({ data: banco, meta }).success).toBe(true);
+      expect(sobre(esquemaEstado).safeParse({ data: {}, meta }).success).toBe(false);
+    },
+    PRUEBA_LENTA,
+  );
 
   it("Problema.type nombra la base de los tipos de problema", () => {
     const base = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";

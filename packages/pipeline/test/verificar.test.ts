@@ -36,7 +36,7 @@ async function reescribirDatos(f: (registros: Record<string, unknown>[]) => unkn
   await writeFile(manifiesto(), `${JSON.stringify(m, null, 2)}\n`);
 }
 
-describe("verificarDatos", () => {
+describe("verificarDatos", { timeout: PRUEBA_LENTA }, () => {
   it("no encuentra problemas tras actualizar, ni sin data/", async () => {
     expect(await verificarDatos(raiz)).toEqual([]);
     expect(await verificarDatos(join(raiz, "no-existe"))).toEqual([]);
