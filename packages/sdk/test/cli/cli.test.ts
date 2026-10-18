@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejecutar } from "../../src/cli/cli.js";
 import type { ModuloSepomexCli } from "../../src/cli/tipos.js";
-import type { EstadoSepomex } from "../../src/sepomex/index.js";
+import type { ResumenSepomex } from "../../src/sepomex/index.js";
 import * as sepomexReal from "../../src/sepomex/index.js";
 import { SepomexError } from "../../src/sepomex/index.js";
 import { type Corrida, probarCli } from "./comun.js";
@@ -22,7 +22,7 @@ const enDirectorio: ModuloSepomexCli = {
   sync: (o) => sepomexReal.sync({ ...o, dir }),
   importar: (ruta, o) => sepomexReal.importar(ruta, { ...o, dir }),
   cp: (c, o) => sepomexReal.cp(c, { ...o, dir }),
-  estado: (o) => sepomexReal.estado({ ...o, dir }),
+  resumen: (o) => sepomexReal.resumen({ ...o, dir }),
 };
 
 async function correr(
@@ -50,7 +50,7 @@ describe("CLI (lógica)", () => {
   probarCli((argv, env) => correr(argv, env), "9.9.9");
 });
 
-const ESTADO: EstadoSepomex = {
+const ESTADO: ResumenSepomex = {
   dir: "/cache",
   descargado: "2026-10-18T10:00:00.000Z",
   origen: "descarga",
@@ -122,13 +122,13 @@ describe("CLI: sepomex sync con un falso", () => {
 describe("CLI: errores inesperados", () => {
   const roto: ModuloSepomexCli = {
     ...enDirectorio,
-    estado: async () => {
+    resumen: async () => {
       throw new Error("falla interna");
     },
   };
 
   it("sin --depurar no imprime la traza", async () => {
-    const c = await correr(["sepomex", "estado"], {}, roto);
+    const c = await correr(["sepomex", "resumen"], {}, roto);
     expect(c.codigo).toBe(1);
     expect(c.errores).toBe(
       "mexicoapi: error inesperado: falla interna\nUsa --depurar para ver el detalle.\n",
@@ -136,7 +136,7 @@ describe("CLI: errores inesperados", () => {
   });
 
   it("con --depurar imprime la traza", async () => {
-    const c = await correr(["sepomex", "estado", "--depurar"], {}, roto);
+    const c = await correr(["sepomex", "resumen", "--depurar"], {}, roto);
     expect(c.codigo).toBe(1);
     expect(c.errores).toContain("mexicoapi: error inesperado: falla interna");
     expect(c.errores).toContain("    at ");
@@ -145,9 +145,9 @@ describe("CLI: errores inesperados", () => {
   it("lo que no es un Error también se imprime", async () => {
     const raro: ModuloSepomexCli = {
       ...enDirectorio,
-      estado: () => Promise.reject("texto suelto"),
+      resumen: () => Promise.reject("texto suelto"),
     };
-    const c = await correr(["sepomex", "estado", "--depurar"], {}, raro);
+    const c = await correr(["sepomex", "resumen", "--depurar"], {}, raro);
     expect(c.errores).toBe("mexicoapi: error inesperado: texto suelto\ntexto suelto\n");
   });
 

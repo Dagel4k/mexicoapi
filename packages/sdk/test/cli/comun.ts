@@ -90,7 +90,7 @@ export function probarCli(correr: Correr, version: string): void {
       expect(c.codigo, comando).toBe(0);
       expect(c.salida, comando).toContain(`mexicoapi ${comando}`);
     }
-    for (const sub of ["sync", "importar", "cp", "estado"]) {
+    for (const sub of ["sync", "importar", "cp", "resumen"]) {
       const c = await correr(["sepomex", sub, "--help"]);
       expect(c.codigo, sub).toBe(0);
       expect(c.salida, sub).toContain(`mexicoapi sepomex ${sub}`);
@@ -120,7 +120,7 @@ export function probarCli(correr: Correr, version: string): void {
       [["sepomex"], /Falta el subcomando/],
       [["sepomex", "inventado"], /Subcomando de "sepomex" desconocido: inventado/],
       [["sepomex", "sync", "x"], /no recibe argumentos/],
-      [["sepomex", "estado", "x"], /no recibe argumentos/],
+      [["sepomex", "resumen", "x"], /no recibe argumentos/],
       [["sepomex", "importar"], /Falta la ruta/],
       [["sepomex", "cp"], /Falta el código postal/],
       [["uma"], /Falta el año \(o --fecha AAAA-MM-DD\) en "uma"/],
@@ -445,11 +445,11 @@ export function probarCli(correr: Correr, version: string): void {
     }
   });
 
-  it("sepomex estado y cp sin catálogo salen con 1 y explican qué hacer", async () => {
-    const estado = await correr(["sepomex", "estado"]);
+  it("sepomex resumen y cp sin catálogo salen con 1 y explican qué hacer", async () => {
+    const estado = await correr(["sepomex", "resumen"]);
     expect(estado.codigo).toBe(1);
     expect(estado.salida).toContain("mexicoapi sepomex sync");
-    expect((await correr(["sepomex", "estado", "--json"])).salida.trim()).toBe("null");
+    expect((await correr(["sepomex", "resumen", "--json"])).salida.trim()).toBe("null");
     const cp = await correr(["sepomex", "cp", "80000"]);
     expect(cp.codigo).toBe(1);
     expect(cp.errores).toContain(
@@ -460,7 +460,7 @@ export function probarCli(correr: Correr, version: string): void {
     expect(malo.errores).toContain("5 dígitos");
   });
 
-  it("sepomex importar, estado y cp con un TXT armado en la prueba", async () => {
+  it("sepomex importar, resumen y cp con un TXT armado en la prueba", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mexicoapi-cli-"));
     try {
       const ruta = join(dir, "CPdescarga.txt");
@@ -469,10 +469,10 @@ export function probarCli(correr: Correr, version: string): void {
       expect(importado.codigo).toBe(0);
       expect(importado.errores).toContain("Correos de México");
       expect(importado.salida).toContain("Catálogo importado.");
-      const estado = await correr(["sepomex", "estado"]);
+      const estado = await correr(["sepomex", "resumen"]);
       expect(estado.codigo).toBe(0);
       expect(estado.salida).toContain("códigos postales:");
-      const enJson = json(await correr(["sepomex", "estado", "--json"])) as { origen: string };
+      const enJson = json(await correr(["sepomex", "resumen", "--json"])) as { origen: string };
       expect(enJson.origen).toBe("archivo");
       const cp = await correr(["sepomex", "cp", "80010"]);
       expect(cp.codigo).toBe(0);

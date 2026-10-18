@@ -24,13 +24,13 @@ import {
 } from "./fuente.js";
 import { crearTransporte } from "./http.js";
 import type {
-  EstadoSepomex,
   FetchSepomex,
   InitFetchSepomex,
   OpcionesDirectorio,
   OpcionesGuardado,
   OpcionesSync,
   RespuestaFetchSepomex,
+  ResumenSepomex,
 } from "./tipos.js";
 import { leerTxt } from "./txt.js";
 import { esZip, LIMITE_TXT, LIMITE_ZIP, leerZip } from "./zip.js";
@@ -244,7 +244,7 @@ function txtDe(bytes: Uint8Array): Uint8Array {
 
 const normal = (texto: string) => texto.replace(/\s+/g, " ").trim();
 
-function estadoDe(dir: string, meta: MetaGuardada): EstadoSepomex {
+function resumenDe(dir: string, meta: MetaGuardada): ResumenSepomex {
   return Object.freeze({
     dir,
     descargado: meta.descargado,
@@ -319,14 +319,14 @@ async function guardarCatalogo(
   origen: "descarga" | "archivo",
   as_of: string | null,
   sqlite: boolean,
-): Promise<EstadoSepomex> {
+): Promise<ResumenSepomex> {
   const datos = txtDe(bytes);
   const { aviso, filas } = leerTxt(datos);
   const catalogo = armarCatalogo(filas);
   const advertencias = [...catalogo.resumen.advertencias];
   if (normal(aviso) !== normal(AVISO_SEPOMEX)) {
     advertencias.unshift(
-      "El aviso de uso del archivo es distinto del que conoce mexicoapi: léelo en estado().aviso antes de usar los datos.",
+      "El aviso de uso del archivo es distinto del que conoce mexicoapi: léelo en resumen().aviso antes de usar los datos.",
     );
   }
   const meta = await guardar(dir, {
@@ -348,7 +348,7 @@ async function guardarCatalogo(
       sha256: createHash("sha256").update(datos).digest("hex"),
     },
   });
-  return estadoDe(dir, meta);
+  return resumenDe(dir, meta);
 }
 
 /**
@@ -364,7 +364,7 @@ async function guardarCatalogo(
  * Memoria: leer, unir y guardar el catálogo completo (unas 160 mil filas) usa por un momento unos
  * 340 MB; tarda alrededor de 1.5 s además de la descarga.
  */
-export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> {
+export async function sync(opciones: OpcionesSync = {}): Promise<ResumenSepomex> {
   const dir = directorioDe(opciones);
   return conCandado(dir, async () => {
     (opciones.aviso ?? escribirAviso)(textoAviso(dir));
@@ -382,7 +382,7 @@ export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> 
 export async function importar(
   ruta: string,
   opciones: OpcionesGuardado = {},
-): Promise<EstadoSepomex> {
+): Promise<ResumenSepomex> {
   const dir = directorioDe(opciones);
   return conCandado(dir, async () => {
     (opciones.aviso ?? escribirAviso)(textoAviso(dir));
@@ -392,10 +392,10 @@ export async function importar(
 }
 
 /** Cómo quedó el catálogo guardado (fecha, filas, aviso...), o null si no hay. */
-export async function estado(opciones: OpcionesDirectorio = {}): Promise<EstadoSepomex | null> {
+export async function resumen(opciones: OpcionesDirectorio = {}): Promise<ResumenSepomex | null> {
   const dir = directorioDe(opciones);
   const meta = await leerMeta(dir);
-  return meta === null ? null : estadoDe(dir, meta);
+  return meta === null ? null : resumenDe(dir, meta);
 }
 
 function congelar<T>(valor: T): T {

@@ -7,9 +7,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import {
   cp,
-  type EstadoSepomex,
-  estado,
   importar,
+  type ResumenSepomex,
+  resumen,
   SepomexError,
   sync,
 } from "../../src/sepomex/index.js";
@@ -36,11 +36,11 @@ const archivo = async (nombre: string, bytes: Uint8Array) => {
 };
 
 /** Los archivos que nombra el estado, relativos al directorio. */
-const nombresDe = (e: EstadoSepomex) =>
+const nombresDe = (e: ResumenSepomex) =>
   [e.json, e.sqlite].filter((r): r is string => r !== null).map((r) => r.slice(e.dir.length + 1));
 
 async function cacheValida(): Promise<void> {
-  const e = (await estado({ dir })) as EstadoSepomex;
+  const e = (await resumen({ dir })) as ResumenSepomex;
   expect((await cp("80000", { dir }))?.cp).toBe("80000");
   expect((await readdir(dir)).sort()).toEqual(["meta.json", ...nombresDe(e)].sort());
 }
@@ -147,7 +147,7 @@ it("borra los archivos del catálogo reemplazado y los huérfanos viejos, no los
 it("repara una caché con meta.json dañado", async () => {
   await importar(await archivo("a.zip", zipOficial()), { dir, aviso });
   await writeFile(join(dir, "meta.json"), "{");
-  await rechazo(estado({ dir }), "cache-invalida", /dañado/);
+  await rechazo(resumen({ dir }), "cache-invalida", /dañado/);
   await importar(await archivo("a.zip", zipOficial()), { dir, aviso });
   expect((await cp("80000", { dir }))?.cp).toBe("80000");
 });

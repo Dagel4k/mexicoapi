@@ -227,12 +227,12 @@ const cp = await sepomex.cp("80000");
 // { cp: "80000", estado: { cve_ent: "25", nombre: "Sinaloa" },
 //   municipio: { cvegeo: "25006", nombre: "Culiacán" }, asentamientos: [...] }
 await sepomex.colonias("80000");
-await sepomex.estado(); // cuándo se descargó, cuántos códigos, el aviso, dónde quedó
+await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, dónde quedó
 ```
 
 - Si el sitio bloquea la descarga automática (un 403, un 429 o un CAPTCHA), no se intenta evadir: el error dice cómo bajar el archivo a mano (estado "Todos", formato TXT) y cargarlo con `sepomex.importar("CPdescarga.zip")`, que acepta el ZIP o el TXT.
 - La caché queda en `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y en `$XDG_CACHE_HOME/mexicoapi/sepomex` (o `~/.cache/mexicoapi/sepomex`) en los demás; la opción `dir` la cambia. Si algo falla, la caché anterior queda igual.
-- Se guarda en JSON y, con Node 22.13 o posterior (`node:sqlite`), también en SQLite. Con un Node anterior queda solo en JSON y `estado().sin_sqlite` lo dice.
+- Se guarda en JSON y, con Node 22.13 o posterior (`node:sqlite`), también en SQLite. Con un Node anterior queda solo en JSON y `resumen().sin_sqlite` lo dice.
 - Memoria: descargar o importar el catálogo completo (unas 160 mil filas) usa unos 340 MB por un momento. La primera consulta lee el JSON (unos 17 MB) y lo deja en la memoria del proceso.
 - Los errores son `SepomexError` con `tipo`: `bloqueado`, `sin-respuesta`, `pagina-inesperada`, `archivo-invalido`, `sin-datos`, `cache-invalida`, `ocupado` o `escritura`.
 

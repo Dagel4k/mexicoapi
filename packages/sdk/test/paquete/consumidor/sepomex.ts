@@ -5,9 +5,9 @@ import {
   AVISO_SEPOMEX,
   type CodigoPostal,
   colonias,
-  type EstadoSepomex,
   type FetchSepomex,
   LIMITES,
+  type ResumenSepomex,
   SepomexError,
   sepomex,
 } from "mexicoapi/sepomex";
@@ -20,7 +20,7 @@ const propio: FetchSepomex = async (_url, init) => ({
 
 export async function usar(): Promise<string | null> {
   try {
-    const estado: EstadoSepomex = await sepomex.sync({
+    const estado: ResumenSepomex = await sepomex.sync({
       dir: "cache",
       fetch: propio,
       sqlite: false,

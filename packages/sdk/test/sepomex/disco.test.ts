@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readdir, rm, truncate, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cp, estado, importar, LIMITES, sync } from "../../src/sepomex/index.js";
+import { cp, importar, LIMITES, resumen, sync } from "../../src/sepomex/index.js";
 import { cargarSqlite, nodeConSqlite } from "../../src/sepomex/sqlite.js";
 import { fetchFalso, txt, zipOficial } from "./ayudas.js";
 import { rechazo } from "./comun.js";
@@ -114,7 +114,7 @@ it("un disco lleno al escribir es SepomexError `escritura` y la caché anterior 
   );
   expect((error.cause as { code?: string }).code).toBe("ENOSPC");
   expect((await readdir(dir)).sort()).toEqual(archivos);
-  expect(await estado({ dir })).toEqual(antes);
+  expect(await resumen({ dir })).toEqual(antes);
 });
 
 it("sin permiso para crear el directorio o el candado: `escritura`, sin pedir nada", async () => {
@@ -191,7 +191,7 @@ it("no vuelve a leer meta.json en cada consulta si no cambió", async () => {
   fs.lecturasMeta = 0;
   await cp("80000", { dir });
   await cp("80010", { dir });
-  await estado({ dir });
+  await resumen({ dir });
   expect(fs.lecturasMeta).toBe(1);
   await importar(await archivo("cp.zip", zipOficial()), { dir, aviso });
   fs.lecturasMeta = 0;
@@ -214,12 +214,12 @@ it("sabe desde qué Node hay node:sqlite y lo dice si no lo hay", async () => {
   expect(await cargarSqlite()).toHaveProperty("modulo");
 });
 
-it("estado dice por qué no hay SQLite", async () => {
+it("resumen dice por qué no hay SQLite", async () => {
   const sin = await importar(await archivo("cp.zip", zipOficial()), { dir, aviso, sqlite: false });
   expect(sin.sqlite).toBeNull();
   expect(sin.sin_sqlite).toBe("Se guardó sin SQLite porque se pidió con sqlite: false.");
   const con = await importar(await archivo("cp.zip", zipOficial()), { dir, aviso });
   expect(con.sqlite).not.toBeNull();
   expect(con.sin_sqlite).toBeNull();
-  expect((await estado({ dir }))?.sin_sqlite).toBeNull();
+  expect((await resumen({ dir }))?.sin_sqlite).toBeNull();
 });

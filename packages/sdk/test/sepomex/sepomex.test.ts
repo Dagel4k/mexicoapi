@@ -8,11 +8,11 @@ import {
   type CodigoPostal,
   colonias,
   cp,
-  type EstadoSepomex,
-  estado,
   type FetchSepomex,
   importar,
   LIMITES,
+  type ResumenSepomex,
+  resumen,
   sync,
 } from "../../src/sepomex/index.js";
 import { fetchFalso, lineasTxt, txt, zipOficial } from "./ayudas.js";
@@ -84,7 +84,7 @@ describe("caché", () => {
       const e = await importar(await archivo("cp.zip", zipOficial()), { aviso });
       expect(e.dir).toBe(join(trabajo, "mexicoapi", "sepomex"));
       expect((await cp("80000"))?.cp).toBe("80000");
-      expect((await estado())?.dir).toBe(e.dir);
+      expect((await resumen())?.dir).toBe(e.dir);
     } finally {
       vi.unstubAllEnvs();
     }
@@ -158,13 +158,13 @@ describe("caché", () => {
         ? meta.replace(e.json.slice(dir.length + 1), "../../fuera.json")
         : contenido;
     await writeFile(join(dir, "meta.json"), nuevo);
-    await rechazo(estado({ dir }), "cache-invalida", /dañado.*sepomex\.sync\(\)/);
+    await rechazo(resumen({ dir }), "cache-invalida", /dañado.*sepomex\.sync\(\)/);
     await rechazo(cp("80000", { dir }), "cache-invalida", /dañado/);
   });
 
   it("dice que la caché está dañada si no puede leer meta.json", async () => {
     await mkdir(join(dir, "meta.json"), { recursive: true });
-    await rechazo(estado({ dir }), "cache-invalida", /dañado \(meta\.json\)/);
+    await rechazo(resumen({ dir }), "cache-invalida", /dañado \(meta\.json\)/);
   });
 
   it("dice que la caché está dañada si falta o se rompe el JSON del catálogo", async () => {
@@ -242,9 +242,9 @@ describe("caché", () => {
 });
 
 describe("tipos", () => {
-  it("cp da un CodigoPostal o null, y estado un EstadoSepomex o null", () => {
+  it("cp da un CodigoPostal o null, y resumen un ResumenSepomex o null", () => {
     expectTypeOf(cp).returns.resolves.toEqualTypeOf<CodigoPostal | null>();
-    expectTypeOf(estado).returns.resolves.toEqualTypeOf<EstadoSepomex | null>();
+    expectTypeOf(resumen).returns.resolves.toEqualTypeOf<ResumenSepomex | null>();
     expectTypeOf(colonias).returns.resolves.toEqualTypeOf<
       readonly CodigoPostal["asentamientos"][number][]
     >();

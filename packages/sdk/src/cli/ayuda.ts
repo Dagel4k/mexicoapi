@@ -127,7 +127,7 @@ Subcomandos:
   sync             descarga el catálogo del formulario público de Correos de México
   importar <ruta>  importa el ZIP o TXT que descargaste a mano
   cp <cp>          consulta un código postal de 5 dígitos
-  estado           muestra qué catálogo hay guardado`,
+  resumen          muestra qué catálogo hay guardado`,
   "sepomex sync": `Uso: mexicoapi sepomex sync [--json]
 
 Descarga el catálogo completo (puede tardar y usa unos 340 MB de memoria un momento). Si el
@@ -143,7 +143,7 @@ Consulta un código postal de 5 dígitos en el catálogo guardado. Sale con 1 si
 todavía no hay catálogo, y con 2 si no son 5 dígitos.
 
 Ejemplo: mexicoapi sepomex cp 80000`,
-  "sepomex estado": `Uso: mexicoapi sepomex estado [--json]
+  "sepomex resumen": `Uso: mexicoapi sepomex resumen [--json]
 
 Muestra cuándo se guardó el catálogo y cuántos códigos postales tiene. Sale con 1 si no hay.`,
 };
