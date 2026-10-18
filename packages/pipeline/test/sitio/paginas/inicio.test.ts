@@ -142,7 +142,7 @@ describe("página de inicio", () => {
     const [estados, uma, nuevo] = renglones(html, "tabla-datos") as [string, string, string];
     expect(estados).toContain(">Estados</a>");
     expect(estados).toContain("<code>/v1/estados</code>");
-    expect(uma).toContain("<code>/v1/constantes/uma</code>");
+    expect(uma).toContain("<code>/v1/constantes/uma?fecha={fecha}</code>");
     expect(nuevo).toContain(">nuevo.dataset</a>");
     expect(nuevo).toContain("Solo en descargas");
   });
