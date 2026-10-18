@@ -135,30 +135,33 @@ describe("metaInterna", () => {
   const conCobertura = (cobertura: unknown) => ({
     datasets: { bancos: { ...dataset, cobertura } },
   });
-  for (const [caso, valor] of [
-    ["JSON roto", "{"],
-    ["no es objeto", []],
-    ["sin datasets", {}],
-    ["datasets nulo", { datasets: null }],
-    ["dataset no objeto", { datasets: { bancos: 1 } }],
-    ["sin meta", conMeta(undefined)],
-    ["meta sin docs", conMeta({ ...META, docs: 1 })],
-    ["sources no lista", conMeta({ ...META, sources: {} })],
-    ["fuente incompleta", conMeta({ ...META, sources: [{ name: "x" }] })],
-    ["records no numérico", { datasets: { bancos: { ...dataset, records: "2" } } }],
-    ["sin data_sha256", { datasets: { bancos: { ...dataset, data_sha256: undefined } } }],
-    ["frescura no numérica", { datasets: { bancos: { ...dataset, frescura_horas: null } } }],
-    ["cobertura no objeto", conCobertura("2020-01-01")],
-    ["cobertura sin hasta", conCobertura({ desde: "2020-01-01" })],
+  const SIN_DATASETS = "El meta interno no tiene datasets.";
+  const FORMA = "El meta interno tiene un dataset con forma inesperada.";
+  for (const [caso, valor, mensaje] of [
+    ["JSON roto", "{", SyntaxError],
+    ["no es objeto", [], SIN_DATASETS],
+    ["sin datasets", {}, SIN_DATASETS],
+    ["datasets nulo", { datasets: null }, SIN_DATASETS],
+    ["dataset no objeto", { datasets: { bancos: 1 } }, FORMA],
+    ["sin meta", conMeta(undefined), FORMA],
+    ["meta sin docs", conMeta({ ...META, docs: 1 }), FORMA],
+    ["sources no lista", conMeta({ ...META, sources: {} }), FORMA],
+    ["fuente incompleta", conMeta({ ...META, sources: [{ name: "x" }] }), FORMA],
+    ["records no numérico", { datasets: { bancos: { ...dataset, records: "2" } } }, FORMA],
+    ["sin data_sha256", { datasets: { bancos: { ...dataset, data_sha256: undefined } } }, FORMA],
+    ["frescura no numérica", { datasets: { bancos: { ...dataset, frescura_horas: null } } }, FORMA],
+    ["cobertura no objeto", conCobertura("2020-01-01"), FORMA],
+    ["cobertura sin hasta", conCobertura({ desde: "2020-01-01" }), FORMA],
     [
       "cobertura con fecha que no existe",
       conCobertura({ desde: "2020-01-01", hasta: "2026-02-30" }),
+      FORMA,
     ],
-    ["cobertura invertida", conCobertura({ desde: "2026-10-16", hasta: "2020-01-02" })],
+    ["cobertura invertida", conCobertura({ desde: "2026-10-16", hasta: "2020-01-02" }), FORMA],
   ] as const) {
     it(`rechaza un meta interno con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ "/v1/_internos/meta.json": valor });
-      await expect(metaInterna(entorno)).rejects.toThrow();
+      await expect(metaInterna(entorno)).rejects.toThrow(mensaje);
     });
   }
 });
@@ -228,18 +231,20 @@ describe("catalogoBancos", () => {
   });
 
   const banco = { codigo: "002", nombre_corto: "BANAMEX", activo: true };
-  for (const [caso, valor] of [
-    ["no es objeto", "null"],
-    ["sin data", { meta: META }],
-    ["data no lista", { data: {} }],
-    ["registro nulo", { data: [null] }],
-    ["código no texto", { data: [{ ...banco, codigo: 2 }] }],
-    ["sin nombre corto", { data: [{ ...banco, nombre_corto: undefined }] }],
-    ["activo no booleano", { data: [{ ...banco, activo: "true" }] }],
+  const SIN_DATA = "El shard de bancos no tiene data.";
+  const REGISTRO = "El shard de bancos tiene un registro con forma inesperada.";
+  for (const [caso, valor, mensaje] of [
+    ["no es objeto", "null", SIN_DATA],
+    ["sin data", { meta: META }, SIN_DATA],
+    ["data no lista", { data: {} }, SIN_DATA],
+    ["registro nulo", { data: [null] }, REGISTRO],
+    ["código no texto", { data: [{ ...banco, codigo: 2 }] }, REGISTRO],
+    ["sin nombre corto", { data: [{ ...banco, nombre_corto: undefined }] }, REGISTRO],
+    ["activo no booleano", { data: [{ ...banco, activo: "true" }] }, REGISTRO],
   ] as const) {
     it(`rechaza un shard de bancos con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ "/v1/bancos.json": valor });
-      await expect(catalogoBancos(entorno)).rejects.toThrow();
+      await expect(catalogoBancos(entorno)).rejects.toThrow(mensaje);
     });
   }
 });
@@ -298,7 +303,9 @@ describe("shards anuales de las series", () => {
   it("un año fuera de la cobertura falla sin pedir nada", async () => {
     const { assets, entorno } = conAssets({ [RUTA_FIX]: SHARD_FIX });
     for (const anio of [2019, 2027, Number.NaN]) {
-      await expect(shardFix(entorno, anio, COBERTURA)).rejects.toThrow();
+      await expect(shardFix(entorno, anio, COBERTURA)).rejects.toThrow(
+        `El año ${anio} está fuera de la cobertura de fix.`,
+      );
     }
     expect(assets.pedidas).toEqual([]);
   });
@@ -327,43 +334,55 @@ describe("shards anuales de las series", () => {
     valor,
   });
   const conDatos = (datos: unknown) => ({ tramo: SHARD_FIX.tramo, datos });
-  for (const [caso, valor] of [
-    ["JSON roto", "{"],
-    ["no es objeto", []],
-    ["sin tramo", { datos: [] }],
-    ["tramo sin desde", { tramo: { hasta: "2026-10-16" }, datos: [] }],
+  const SIN_TRAMO = "El shard fix/2026 no tiene tramo y datos.";
+  const FUERA_DEL_ANIO = "El tramo del shard fix/2026 sale de su año.";
+  const REGISTRO = "El shard fix/2026 tiene un registro con forma inesperada.";
+  const ORDEN = "El shard fix/2026 tiene un registro fuera del tramo o fuera de orden.";
+  for (const [caso, valor, mensaje] of [
+    ["JSON roto", "{", SyntaxError],
+    ["no es objeto", [], SIN_TRAMO],
+    ["sin tramo", { datos: [] }, SIN_TRAMO],
+    ["tramo sin desde", { tramo: { hasta: "2026-10-16" }, datos: [] }, SIN_TRAMO],
     [
       "tramo con fecha que no existe",
       { tramo: { desde: "2026-01-01", hasta: "2026-02-30" }, datos: [] },
+      SIN_TRAMO,
     ],
-    ["tramo invertido", { tramo: { desde: "2026-10-16", hasta: "2026-01-01" }, datos: [] }],
+    [
+      "tramo invertido",
+      { tramo: { desde: "2026-10-16", hasta: "2026-01-01" }, datos: [] },
+      SIN_TRAMO,
+    ],
     [
       "tramo que empieza en otro año",
       { tramo: { desde: "2025-12-31", hasta: "2026-10-16" }, datos: [] },
+      FUERA_DEL_ANIO,
     ],
     [
       "tramo que termina en otro año",
       { tramo: { desde: "2026-01-01", hasta: "2027-01-01" }, datos: [] },
+      FUERA_DEL_ANIO,
     ],
-    ["datos no lista", conDatos({})],
-    ["registro nulo", conDatos([null])],
-    ["registro sin fecha", conDatos([{ valor: "18.4250" }])],
-    ["fecha que no existe", conDatos([fix("2026-02-30")])],
-    ["valor numérico", conDatos([fix("2026-01-02", 18.425)])],
-    ["valor con 3 decimales", conDatos([fix("2026-01-02", "18.425")])],
-    ["valor con 6 decimales", conDatos([fix("2026-01-02", "18.425000")])],
-    ["valor negativo", conDatos([fix("2026-01-02", "-18.4250")])],
+    ["datos no lista", conDatos({}), SIN_TRAMO],
+    ["registro nulo", conDatos([null]), REGISTRO],
+    ["registro sin fecha", conDatos([{ valor: "18.4250" }]), REGISTRO],
+    ["fecha que no existe", conDatos([fix("2026-02-30")]), REGISTRO],
+    ["valor numérico", conDatos([fix("2026-01-02", 18.425)]), REGISTRO],
+    ["valor con 3 decimales", conDatos([fix("2026-01-02", "18.425")]), REGISTRO],
+    ["valor con 6 decimales", conDatos([fix("2026-01-02", "18.425000")]), REGISTRO],
+    ["valor negativo", conDatos([fix("2026-01-02", "-18.4250")]), REGISTRO],
     [
       "registro antes del tramo",
       { tramo: { desde: "2026-01-05", hasta: "2026-10-16" }, datos: [fix("2026-01-02")] },
+      ORDEN,
     ],
-    ["registro después del tramo", conDatos([fix("2026-10-19")])],
-    ["fuera de orden", conDatos([fix("2026-01-05"), fix("2026-01-02")])],
-    ["fecha repetida", conDatos([fix("2026-01-02"), fix("2026-01-02")])],
+    ["registro después del tramo", conDatos([fix("2026-10-19")]), ORDEN],
+    ["fuera de orden", conDatos([fix("2026-01-05"), fix("2026-01-02")]), ORDEN],
+    ["fecha repetida", conDatos([fix("2026-01-02"), fix("2026-01-02")]), ORDEN],
   ] as const) {
     it(`rechaza un shard del FIX con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ [RUTA_FIX]: valor });
-      await expect(shardFix(entorno, 2026, COBERTURA)).rejects.toThrow();
+      await expect(shardFix(entorno, 2026, COBERTURA)).rejects.toThrow(mensaje);
     });
   }
 
@@ -375,7 +394,9 @@ describe("shards anuales de las series", () => {
     ]) {
       reiniciarCargas();
       const { entorno } = conAssets({ [RUTA_UDIS]: { tramo: SHARD_UDIS.tramo, datos } });
-      await expect(shardUdis(entorno, 2021, cobertura)).rejects.toThrow();
+      await expect(shardUdis(entorno, 2021, cobertura)).rejects.toThrow(
+        "El shard udis/2021 tiene un registro con forma inesperada.",
+      );
     }
   });
 });
@@ -399,18 +420,23 @@ describe("metaInterna con datos curados", () => {
     datasets: {},
     curados: { "dias-inhabiles.sat": valor },
   });
-  for (const [caso, valor] of [
-    ["curados no objeto", { datasets: {}, curados: [] }],
-    ["curados nulo", { datasets: {}, curados: null }],
-    ["curado no objeto", conCurado("x")],
-    ["curado sin meta", conCurado({ ...curado, meta: undefined })],
-    ["meta del curado sin sources", conCurado({ ...curado, meta: { ...curado.meta, sources: 1 } })],
-    ["records no numérico", conCurado({ ...curado, records: "18" })],
-    ["sin data_sha256", conCurado({ ...curado, data_sha256: undefined })],
+  const FORMA = "El meta interno tiene un dataset curado con forma inesperada.";
+  for (const [caso, valor, mensaje] of [
+    ["curados no objeto", { datasets: {}, curados: [] }, FORMA],
+    ["curados nulo", { datasets: {}, curados: null }, FORMA],
+    ["curado no objeto", conCurado("x"), FORMA],
+    ["curado sin meta", conCurado({ ...curado, meta: undefined }), FORMA],
+    [
+      "meta del curado sin sources",
+      conCurado({ ...curado, meta: { ...curado.meta, sources: 1 } }),
+      FORMA,
+    ],
+    ["records no numérico", conCurado({ ...curado, records: "18" }), FORMA],
+    ["sin data_sha256", conCurado({ ...curado, data_sha256: undefined }), FORMA],
   ] as const) {
     it(`rechaza un meta interno con curados de forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ "/v1/_internos/meta.json": valor });
-      await expect(metaInterna(entorno)).rejects.toThrow();
+      await expect(metaInterna(entorno)).rejects.toThrow(mensaje);
     });
   }
 });
@@ -544,47 +570,85 @@ describe("calendarios curados", () => {
     ...general,
     cobertura: { desde, hasta },
   });
-  for (const [caso, valor] of [
-    ["JSON roto", "{"],
-    ["no es objeto", []],
-    ["de otra autoridad", SHARD_CNBV],
-    ["sin autoridad", { ...SHARD_SAT, autoridad: undefined }],
-    ["sin plazos", conPlazos(undefined)],
-    ["plazos no objeto", conPlazos([])],
-    ["días no lista", conDias({})],
-    ["sin fuentes de fines de semana", { ...SHARD_SAT, fuentes_fin_de_semana: undefined }],
-    ["fuentes de fines de semana en lista", { ...SHARD_SAT, fuentes_fin_de_semana: [FUENTE_CFF] }],
+  const SIN_PARTES = "El shard calendarios/sat no tiene autoridad, plazos, fuentes y días.";
+  const FORMA =
+    "El shard calendarios/sat tiene un plazo, una fuente o un día con forma inesperada.";
+  const SIN_FINES_2026 = "El calendario de sat no cita los fines de semana de 2026.";
+  const SIN_GENERAL = "El calendario de sat no tiene un plazo general que cuente todos los días.";
+  for (const [caso, valor, mensaje] of [
+    ["JSON roto", "{", SyntaxError],
+    ["no es objeto", [], SIN_PARTES],
+    ["de otra autoridad", SHARD_CNBV, SIN_PARTES],
+    ["sin autoridad", { ...SHARD_SAT, autoridad: undefined }, SIN_PARTES],
+    ["sin plazos", conPlazos(undefined), SIN_PARTES],
+    ["plazos no objeto", conPlazos([]), SIN_PARTES],
+    ["días no lista", conDias({}), SIN_PARTES],
+    [
+      "sin fuentes de fines de semana",
+      { ...SHARD_SAT, fuentes_fin_de_semana: undefined },
+      SIN_PARTES,
+    ],
+    [
+      "fuentes de fines de semana en lista",
+      { ...SHARD_SAT, fuentes_fin_de_semana: [FUENTE_CFF] },
+      SIN_PARTES,
+    ],
     [
       "fuente de fines de semana sin fragmento",
       { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: { ...FUENTE_CFF, fragmento: undefined } } },
+      FORMA,
     ],
-    ["sin la fuente de un año de la cobertura", { ...SHARD_SAT, fuentes_fin_de_semana: {} }],
+    [
+      "sin la fuente de un año de la cobertura",
+      { ...SHARD_SAT, fuentes_fin_de_semana: {} },
+      SIN_FINES_2026,
+    ],
     [
       "fuente de fines de semana de un año fuera de la cobertura",
       { ...SHARD_SAT, fuentes_fin_de_semana: { 2026: FUENTE_CFF, 2027: FUENTE_CFF } },
+      "El calendario de sat cita fines de semana de años fuera de su cobertura.",
     ],
     [
       "fuente de fines de semana con otro año en la llave",
       { ...SHARD_SAT, fuentes_fin_de_semana: { "2026-01": FUENTE_CFF } },
+      SIN_FINES_2026,
     ],
-    ["plazo desconocido", conPlazos({ general, anual: general })],
-    ["plazo nulo", conPlazos({ general, declaraciones_pagos: null })],
-    ["plazo sin cobertura", conPlazos({ general: { excluir_tipos: [] } })],
+    [
+      "plazo desconocido",
+      conPlazos({ general, anual: general }),
+      "El calendario de sat tiene un tipo de plazo inesperado: anual.",
+    ],
+    ["plazo nulo", conPlazos({ general, declaraciones_pagos: null }), FORMA],
+    ["plazo sin cobertura", conPlazos({ general: { excluir_tipos: [] } }), FORMA],
     [
       "cobertura con fecha que no existe",
       conPlazos({ general: conCobertura("2026-01-01", "2026-02-30") }),
+      FORMA,
     ],
-    ["cobertura invertida", conPlazos({ general: conCobertura("2026-12-31", "2026-01-01") })],
-    ["excluir_tipos no lista", conPlazos({ general: { ...general, excluir_tipos: "vacaciones" } })],
+    [
+      "cobertura invertida",
+      conPlazos({ general: conCobertura("2026-12-31", "2026-01-01") }),
+      FORMA,
+    ],
+    [
+      "excluir_tipos no lista",
+      conPlazos({ general: { ...general, excluir_tipos: "vacaciones" } }),
+      FORMA,
+    ],
     [
       "excluir_tipos con fin de semana",
       conPlazos({
         general,
         declaraciones_pagos: { ...declaraciones_pagos, excluir_tipos: ["fin_de_semana"] },
       }),
+      FORMA,
     ],
-    ["sin general", conPlazos({ declaraciones_pagos })],
-    ["general que no cuenta las vacaciones", conPlazos({ general: declaraciones_pagos })],
+    ["sin general", conPlazos({ declaraciones_pagos }), SIN_GENERAL],
+    [
+      "general que no cuenta las vacaciones",
+      conPlazos({ general: declaraciones_pagos }),
+      SIN_GENERAL,
+    ],
     [
       "ningún plazo contiene a los demás",
       conPlazos({
@@ -594,24 +658,71 @@ describe("calendarios curados", () => {
           cobertura: { desde: "2026-02-01", hasta: "2026-12-31" },
         },
       }),
+      "El calendario de sat no tiene un plazo que contenga a los demás.",
     ],
-    ["día nulo", conDias([null])],
-    ["día sin motivo", conDia({ motivo: undefined })],
-    ["día de fin de semana", conDia({ tipo: "fin_de_semana" })],
-    ["día con fecha que no existe", conDia({ fecha: "2026-02-30" })],
-    ["día sin fuente", conDia({ fuente: undefined })],
-    ["fuente sin url", conFuente({ url: undefined })],
-    ["fuente sin fecha de publicación", conFuente({ fecha_publicacion: undefined })],
-    ["fuente con fecha de publicación inválida", conFuente({ fecha_publicacion: "28/12/2025" })],
-    ["días fuera de orden", conDias([DIAS_SAT[1], DIAS_SAT[0]])],
-    ["fecha repetida", conDias([diaUno, diaUno])],
-    ["día fuera de toda cobertura", conDia({ fecha: "2027-01-01" })],
+    ["día nulo", conDias([null]), FORMA],
+    ["día sin motivo", conDia({ motivo: undefined }), FORMA],
+    ["día de fin de semana", conDia({ tipo: "fin_de_semana" }), FORMA],
+    ["día con fecha que no existe", conDia({ fecha: "2026-02-30" }), FORMA],
+    ["día sin fuente", conDia({ fuente: undefined }), FORMA],
+    ["fuente sin url", conFuente({ url: undefined }), FORMA],
+    ["fuente sin fecha de publicación", conFuente({ fecha_publicacion: undefined }), FORMA],
+    [
+      "fuente con fecha de publicación inválida",
+      conFuente({ fecha_publicacion: "28/12/2025" }),
+      FORMA,
+    ],
+    [
+      "días fuera de orden",
+      conDias([DIAS_SAT[1], DIAS_SAT[0]]),
+      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
+    ],
+    [
+      "fecha repetida",
+      conDias([diaUno, diaUno]),
+      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
+    ],
+    [
+      "declaraciones_pagos que cuenta las vacaciones",
+      conPlazos({ general, declaraciones_pagos: { ...declaraciones_pagos, excluir_tipos: [] } }),
+      "El calendario de sat tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
+    ],
+    [
+      "día fuera de toda cobertura",
+      conDia({ fecha: "2027-01-01" }),
+      "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2027-01-01.",
+    ],
   ] as const) {
     it(`rechaza un calendario con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ [RUTA_SAT]: valor });
-      await expect(calendarioCurado(entorno, "sat")).rejects.toThrow();
+      await expect(calendarioCurado(entorno, "sat")).rejects.toThrow(mensaje);
     });
   }
+
+  it("una llave __proto__ en plazos o en las fuentes llega al núcleo, que la rechaza", async () => {
+    // JSON.parse deja `__proto__` como llave propia; cadaValor la conserva con fromEntries (una
+    // asignación la perdería en el prototipo) y así el núcleo la ve como un plazo o un año más.
+    const texto = JSON.stringify(SHARD_SAT);
+    const conLlave = (campo: string, valor: unknown) =>
+      texto.replace(`"${campo}":{`, `"${campo}":{"__proto__":${JSON.stringify(valor)},`);
+    for (const [cuerpo, mensaje] of [
+      [
+        conLlave("plazos", general),
+        "El calendario de sat tiene un tipo de plazo inesperado: __proto__.",
+      ],
+      [
+        conLlave("fuentes_fin_de_semana", FUENTE_CFF),
+        "El calendario de sat cita fines de semana de años fuera de su cobertura.",
+      ],
+    ] as const) {
+      expect(cuerpo).toContain('"__proto__":');
+      reiniciarCargas();
+      const { entorno } = conAssets({ [RUTA_SAT]: cuerpo });
+      await expect(calendarioCurado(entorno, "sat")).rejects.toThrow(mensaje);
+    }
+    expect(Object.hasOwn(Object.prototype, "general")).toBe(false);
+    expect(Object.hasOwn(Object.prototype, "cobertura")).toBe(false);
+  });
 });
 
 describe("lista de la UMA", () => {
@@ -646,31 +757,41 @@ describe("lista de la UMA", () => {
   const [u24, u25, u26] = UMAS as [RegistroUma, RegistroUma, RegistroUma];
   const conUmas = (data: unknown) => ({ ...LISTA_UMA, data });
   const conUma = (cambios: Record<string, unknown>) => conUmas([u24, { ...u25, ...cambios }, u26]);
-  for (const [caso, valor] of [
-    ["JSON roto", "{"],
-    ["no es objeto", []],
-    ["sin data", { meta: META_UMA }],
-    ["data vacía", conUmas([])],
-    ["sin meta", { data: UMAS }],
-    ["meta sin docs", { ...LISTA_UMA, meta: { ...META_UMA, docs: undefined } }],
-    ["registro nulo", conUmas([null])],
-    ["año no entero", conUma({ anio: 2025.5 })],
-    ["año como texto", conUma({ anio: "2025" })],
-    ["año antes de 1900", conUmas([{ ...u24, anio: 1899, vigencia_desde: "1899-02-01" }])],
-    ["año después de 2100", conUmas([{ ...u24, anio: 2101, vigencia_desde: "2101-02-01" }])],
-    ["diaria sin dos decimales", conUma({ diaria: "113.1" })],
-    ["mensual numérica", conUma({ mensual: 3439.46 })],
-    ["anual con cero a la izquierda", conUma({ anual: "041273.52" })],
-    ["vigencia que no es el 1 de febrero", conUma({ vigencia_desde: "2025-01-01" })],
-    ["sin fuente", conUma({ fuente: undefined })],
-    ["fuente sin fragmento", conUma({ fuente: { ...u25.fuente, fragmento: 1 } })],
-    ["años con hueco", conUmas([u24, u26])],
-    ["años repetidos", conUmas([u24, u24])],
-    ["años desordenados", conUmas([u25, u24])],
+  const SIN_DATA = "La lista de la UMA no tiene data y meta.";
+  const REGISTRO = "La lista de la UMA tiene un registro inesperado o años no consecutivos.";
+  for (const [caso, valor, mensaje] of [
+    ["JSON roto", "{", SyntaxError],
+    ["no es objeto", [], SIN_DATA],
+    ["sin data", { meta: META_UMA }, SIN_DATA],
+    ["data vacía", conUmas([]), SIN_DATA],
+    ["sin meta", { data: UMAS }, SIN_DATA],
+    ["meta sin docs", { ...LISTA_UMA, meta: { ...META_UMA, docs: undefined } }, SIN_DATA],
+    ["registro nulo", conUmas([null]), REGISTRO],
+    ["año no entero", conUma({ anio: 2025.5 }), REGISTRO],
+    ["año como texto", conUma({ anio: "2025" }), REGISTRO],
+    [
+      "año antes de 1900",
+      conUmas([{ ...u24, anio: 1899, vigencia_desde: "1899-02-01" }]),
+      REGISTRO,
+    ],
+    [
+      "año después de 2100",
+      conUmas([{ ...u24, anio: 2101, vigencia_desde: "2101-02-01" }]),
+      REGISTRO,
+    ],
+    ["diaria sin dos decimales", conUma({ diaria: "113.1" }), REGISTRO],
+    ["mensual numérica", conUma({ mensual: 3439.46 }), REGISTRO],
+    ["anual con cero a la izquierda", conUma({ anual: "041273.52" }), REGISTRO],
+    ["vigencia que no es el 1 de febrero", conUma({ vigencia_desde: "2025-01-01" }), REGISTRO],
+    ["sin fuente", conUma({ fuente: undefined }), REGISTRO],
+    ["fuente sin fragmento", conUma({ fuente: { ...u25.fuente, fragmento: 1 } }), REGISTRO],
+    ["años con hueco", conUmas([u24, u26]), REGISTRO],
+    ["años repetidos", conUmas([u24, u24]), REGISTRO],
+    ["años desordenados", conUmas([u25, u24]), REGISTRO],
   ] as const) {
     it(`rechaza una lista de la UMA con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ [RUTA_UMA]: valor });
-      await expect(listaUma(entorno)).rejects.toThrow();
+      await expect(listaUma(entorno)).rejects.toThrow(mensaje);
     });
   }
 });
@@ -702,21 +823,23 @@ describe("años de las constantes", () => {
     expect(assets.pedidas).toEqual([RUTA, RUTA]);
   });
 
-  for (const [caso, valor] of [
-    ["JSON roto", "{"],
-    ["no es objeto", [2026]],
-    ["lista vacía", { "constantes/uma": [] }],
-    ["años no lista", { "constantes/uma": 2026 }],
-    ["año como texto", { "constantes/uma": ["2026"] }],
-    ["año no entero", { "constantes/uma": [2026.5] }],
-    ["año antes de 1900", { "constantes/uma": [1899] }],
-    ["año después de 2100", { "constantes/uma": [2101] }],
-    ["años desordenados", { "constantes/uma": [2026, 2025] }],
-    ["años repetidos", { "constantes/uma": [2026, 2026] }],
+  const NO_OBJETO = "El índice de años de las constantes no es un objeto.";
+  const LISTA = "El índice de años de las constantes tiene una lista inesperada.";
+  for (const [caso, valor, mensaje] of [
+    ["JSON roto", "{", SyntaxError],
+    ["no es objeto", [2026], NO_OBJETO],
+    ["lista vacía", { "constantes/uma": [] }, LISTA],
+    ["años no lista", { "constantes/uma": 2026 }, LISTA],
+    ["año como texto", { "constantes/uma": ["2026"] }, LISTA],
+    ["año no entero", { "constantes/uma": [2026.5] }, LISTA],
+    ["año antes de 1900", { "constantes/uma": [1899] }, LISTA],
+    ["año después de 2100", { "constantes/uma": [2101] }, LISTA],
+    ["años desordenados", { "constantes/uma": [2026, 2025] }, LISTA],
+    ["años repetidos", { "constantes/uma": [2026, 2026] }, LISTA],
   ] as const) {
     it(`rechaza un índice de años con forma inesperada: ${caso}`, async () => {
       const { entorno } = conAssets({ [RUTA]: valor });
-      await expect(aniosConstantes(entorno)).rejects.toThrow();
+      await expect(aniosConstantes(entorno)).rejects.toThrow(mensaje);
     });
   }
 });
