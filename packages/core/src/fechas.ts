@@ -54,21 +54,34 @@ function diasDesdeCivil(anio: number, mes: number, dia: number): number {
   return era * 146_097 + doe - 719_468;
 }
 
+// Valor del dígito en la posición i, o -1 si el caracter no es un dígito ASCII.
 function digito(fecha: string, i: number): number {
   const c = fecha.charCodeAt(i) - 48;
-  return c >= 0 && c <= 9 ? c : -1000;
+  return c >= 0 && c <= 9 ? c : -1;
 }
 
 /** Días desde 1970-01-01; lanza RangeError si la fecha no es ISO válida. */
 export function aDias(fecha: FechaISO): number {
   // Misma validación que esFechaIsoValida, sin regex ni subcadenas.
   if (typeof fecha === "string" && fecha.length === 10) {
-    const anio =
-      digito(fecha, 0) * 1000 + digito(fecha, 1) * 100 + digito(fecha, 2) * 10 + digito(fecha, 3);
-    const mes = digito(fecha, 5) * 10 + digito(fecha, 6);
-    const dia = digito(fecha, 8) * 10 + digito(fecha, 9);
-    if (fecha.charCodeAt(4) === 45 && fecha.charCodeAt(7) === 45 && fechaValida(anio, mes, dia)) {
-      return diasDesdeCivil(anio, mes, dia);
+    const a0 = digito(fecha, 0);
+    const a1 = digito(fecha, 1);
+    const a2 = digito(fecha, 2);
+    const a3 = digito(fecha, 3);
+    const m0 = digito(fecha, 5);
+    const m1 = digito(fecha, 6);
+    const d0 = digito(fecha, 8);
+    const d1 = digito(fecha, 9);
+    // Cualquier posición no dígito deja el OR en negativo; los separadores deben ser "-".
+    if (
+      (a0 | a1 | a2 | a3 | m0 | m1 | d0 | d1) >= 0 &&
+      fecha.charCodeAt(4) === 45 &&
+      fecha.charCodeAt(7) === 45
+    ) {
+      const anio = a0 * 1000 + a1 * 100 + a2 * 10 + a3;
+      const mes = m0 * 10 + m1;
+      const dia = d0 * 10 + d1;
+      if (fechaValida(anio, mes, dia)) return diasDesdeCivil(anio, mes, dia);
     }
   }
   throw new RangeError(`Fecha ISO inválida: ${fecha}`);
