@@ -54,7 +54,12 @@ export interface DefinicionDataset<T extends object> {
     ctx: Contexto,
   ): Promise<Construccion<T>>;
   invariantes(registros: readonly T[]): string[];
-  revisar(diferencias: Diferencias<T>, anterior: readonly T[]): Revision;
+  /** Puede leer otros datos de `ctx.raizDatos` (el FIX lee el calendario de la CNBV). */
+  revisar(
+    diferencias: Diferencias<T>,
+    anterior: readonly T[],
+    ctx: Contexto,
+  ): Revision | Promise<Revision>;
 }
 
 export interface ResultadoCorrida {
@@ -191,7 +196,7 @@ export async function ejecutarDataset<T extends object>(
   if (!hayAnterior) {
     motivos.push("snapshot inicial");
   } else {
-    const revision = def.revisar(diferencias, anteriorDisco);
+    const revision = await def.revisar(diferencias, anteriorDisco, ctx);
     if (revision.requiereRevision) {
       requiere = true;
       motivos.push(...revision.motivos);

@@ -170,6 +170,17 @@ function ctx(fecha = HOY): Contexto {
   return { cliente, fecha, raizDatos: raiz };
 }
 
+const YAML_CNBV = new URL("../../../../data/curado/dias-inhabiles-cnbv.yaml", import.meta.url);
+
+/** Escribe en la raíz de prueba el calendario curado de la CNBV: el real o `texto`. */
+async function calendarioCnbvEnDisco(texto?: string) {
+  await mkdir(join(raiz, "curado"), { recursive: true });
+  await writeFile(
+    join(raiz, "curado", "dias-inhabiles-cnbv.yaml"),
+    texto ?? (await readFile(YAML_CNBV, "utf8")),
+  );
+}
+
 /** Escribe en disco el crudo de esos años, con lo que hoy sirve la fuente falsa. */
 async function crudosEnDisco(directorio: string, tipo: Tipo, anios: readonly number[]) {
   await mkdir(join(raiz, directorio, "raw"), { recursive: true });
@@ -890,17 +901,18 @@ describe("revisar", () => {
     valor,
   });
   const udi = (fecha: string, valor: string): Udi => ({ fecha, valor });
-  const revisarFix = (antes: TipoCambioFix[], despues: TipoCambioFix[]) =>
-    tipoCambioFix.revisar(diferenciar(antes, despues, tipoCambioFix.clave), antes);
-  const revisarUdis = (antes: Udi[], despues: Udi[]) =>
-    udis.revisar(diferenciar(antes, despues, udis.clave), antes);
+  // Sin data/curado en la raíz de prueba: no hay calendario de la CNBV, salvo donde se escribe.
+  const revisarFix = async (antes: TipoCambioFix[], despues: TipoCambioFix[]) =>
+    tipoCambioFix.revisar(diferenciar(antes, despues, tipoCambioFix.clave), antes, ctx());
+  const revisarUdis = async (antes: Udi[], despues: Udi[]) =>
+    udis.revisar(diferenciar(antes, despues, udis.clave), antes, ctx());
 
   it("la publicación de cada día no pide revisión", async () => {
     const r = await serieFix("158-2026.json");
-    expect(revisarFix(r.slice(0, -1), r)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarFix(r.slice(0, -1), r)).toEqual({ requiereRevision: false, motivos: [] });
     const u = await serieUdis();
     // El día 10 y el 25 de cada mes se publican de golpe unos 15 días por adelantado.
-    expect(revisarUdis(u.slice(0, -16), u)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarUdis(u.slice(0, -16), u)).toEqual({ requiereRevision: false, motivos: [] });
   });
 
   it("un valor ya publicado que cambia o desaparece pide revisión y lo dice", async () => {
@@ -908,18 +920,18 @@ describe("revisar", () => {
     const cambiado = r.map((x) =>
       x.fecha_publicacion === "2026-10-16" ? { ...x, valor: "18.4251" } : x,
     );
-    expect(revisarFix(r, cambiado)).toEqual({
+    expect(await revisarFix(r, cambiado)).toEqual({
       requiereRevision: true,
       motivos: ["cambió el valor de 2026-10-16: 18.4250 → 18.4251"],
     });
-    expect(revisarFix(r, r.slice(0, -1))).toEqual({
+    expect(await revisarFix(r, r.slice(0, -1))).toEqual({
       requiereRevision: true,
       motivos: ["desapareció 2026-10-16"],
     });
     const u = await serieUdis();
     const otra = u.filter((x) => x.fecha !== "2026-10-25");
     const conCambio = otra.map((x) => (x.fecha === "2026-03-01" ? { ...x, valor: "8.000000" } : x));
-    const rev = revisarUdis(u, conCambio);
+    const rev = await revisarUdis(u, conCambio);
     expect(rev.requiereRevision).toBe(true);
     expect(rev.motivos).toEqual([
       `cambió el valor de 2026-03-01: ${u.find((x) => x.fecha === "2026-03-01")?.valor} → 8.000000`,
@@ -929,132 +941,195 @@ describe("revisar", () => {
 
   it("más de 31 altas en el FIX o más de 45 en UDIS piden revisión", async () => {
     const r = await serieFix("158-2026.json");
-    expect(revisarFix(r.slice(0, -31), r)).toEqual({ requiereRevision: false, motivos: [] });
-    expect(revisarFix(r.slice(0, -32), r)).toEqual({
+    expect(await revisarFix(r.slice(0, -31), r)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarFix(r.slice(0, -32), r)).toEqual({
       requiereRevision: true,
       motivos: ["32 altas, más de 31: arranque o hueco recuperado"],
     });
     const u = await serieUdis();
-    expect(revisarUdis(u.slice(0, -45), u)).toEqual({ requiereRevision: false, motivos: [] });
-    expect(revisarUdis(u.slice(0, -46), u)).toEqual({
+    expect(await revisarUdis(u.slice(0, -45), u)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarUdis(u.slice(0, -46), u)).toEqual({
       requiereRevision: true,
       motivos: ["46 altas, más de 45: arranque o hueco recuperado"],
     });
   });
 
-  it("un FIX nuevo que se aleja más de 5 % de la publicación anterior pide revisión", () => {
+  it("un FIX nuevo que se aleja más de 5 % de la publicación anterior pide revisión", async () => {
     const antes = [fix("2026-10-09", "19.0000"), fix("2026-10-15", "20.0000")];
     const con = (valor: string) => revisarFix(antes, [...antes, fix("2026-10-16", valor)]);
-    expect(con("21.0000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(con("19.0000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(con("21.0001")).toEqual({
+    expect(await con("21.0000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("19.0000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("21.0001")).toEqual({
       requiereRevision: true,
       motivos: [
         "el FIX de 2026-10-16 (21.0001) se aleja más de 5 % de la publicación anterior (2026-10-15: 20.0000)",
       ],
     });
-    expect(con("18.9999").motivos).toEqual([
+    expect((await con("18.9999")).motivos).toEqual([
       "el FIX de 2026-10-16 (18.9999) se aleja más de 5 % de la publicación anterior (2026-10-15: 20.0000)",
     ]);
     // La publicación anterior puede ser de varios días antes (fin de semana o feriado).
     const viernes = [fix("2026-10-09", "19.0000")];
-    const lunes = revisarFix(viernes, [...viernes, fix("2026-10-12", "21.0000")]);
+    const lunes = await revisarFix(viernes, [...viernes, fix("2026-10-12", "21.0000")]);
     expect(lunes.motivos).toEqual([
       "el FIX de 2026-10-12 (21.0000) se aleja más de 5 % de la publicación anterior (2026-10-09: 19.0000)",
     ]);
   });
 
-  it("el FIX nuevo se compara con la publicación anterior aunque también sea nueva", () => {
+  it("el FIX nuevo se compara con la publicación anterior aunque también sea nueva", async () => {
     const antes = [fix("2026-10-14", "20.0000")];
     const exacto = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "22.0500")];
-    expect(revisarFix(antes, exacto)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarFix(antes, exacto)).toEqual({ requiereRevision: false, motivos: [] });
     const fuera = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "22.0501")];
-    expect(revisarFix(antes, fuera).motivos).toEqual([
+    expect((await revisarFix(antes, fuera)).motivos).toEqual([
       "el FIX de 2026-10-16 (22.0501) se aleja más de 5 % de la publicación anterior (2026-10-15: 21.0000)",
     ]);
     // Sin publicación anterior no hay con qué comparar: solo cuenta como relleno.
-    expect(revisarFix(antes, [fix("2026-10-13", "30.0000"), ...antes])).toEqual({
+    expect(await revisarFix(antes, [fix("2026-10-13", "30.0000"), ...antes])).toEqual({
       requiereRevision: true,
       motivos: ["alta dentro de la serie ya publicada: 2026-10-13 30.0000"],
     });
   });
 
-  it("un alta antes de la última fecha ya publicada es un relleno y pide revisión", () => {
+  it("un alta antes de la última fecha ya publicada es un relleno y pide revisión", async () => {
     // La API pudo haber respondido antes que ese día no hubo publicación, o otro FIX para una
     // operación.
     const antes = [fix("2026-10-14", "18.4000"), fix("2026-10-16", "18.4250")];
     const relleno = [antes[0] as TipoCambioFix, fix("2026-10-15", "18.4100"), ...antes.slice(1)];
-    expect(revisarFix(antes, relleno)).toEqual({
+    expect(await revisarFix(antes, relleno)).toEqual({
       requiereRevision: true,
       motivos: ["alta dentro de la serie ya publicada: 2026-10-15 18.4100"],
     });
     // La última fecha publicada no depende del orden de la serie anterior.
-    expect(revisarFix([...antes].reverse(), relleno).motivos).toEqual([
+    expect((await revisarFix([...antes].reverse(), relleno)).motivos).toEqual([
       "alta dentro de la serie ya publicada: 2026-10-15 18.4100",
     ]);
     const u = [udi("2026-10-14", "8.000000"), udi("2026-10-16", "8.000100")];
-    expect(revisarUdis(u, [u[0] as Udi, udi("2026-10-15", "8.000050"), ...u.slice(1)])).toEqual({
+    expect(
+      await revisarUdis(u, [u[0] as Udi, udi("2026-10-15", "8.000050"), ...u.slice(1)]),
+    ).toEqual({
       requiereRevision: true,
       motivos: ["alta dentro de la serie ya publicada: 2026-10-15 8.000050"],
     });
   });
 
-  it("un FIX nuevo en sábado o domingo pide revisión; una UDI no", () => {
+  it("un FIX nuevo en sábado o domingo pide revisión; una UDI no", async () => {
     const antes = [fix("2026-10-16", "18.4250")];
-    expect(revisarFix(antes, [...antes, fix("2026-10-17", "18.4300")])).toEqual({
+    expect(await revisarFix(antes, [...antes, fix("2026-10-17", "18.4300")])).toEqual({
       requiereRevision: true,
       motivos: ["FIX publicado en fin de semana: 2026-10-17"],
     });
     expect(
-      revisarFix(antes, [...antes, fix("2026-10-18", "18.4300"), fix("2026-10-19", "18.4400")]),
+      await revisarFix(antes, [
+        ...antes,
+        fix("2026-10-18", "18.4300"),
+        fix("2026-10-19", "18.4400"),
+      ]),
     ).toEqual({
       requiereRevision: true,
       motivos: ["FIX publicado en fin de semana: 2026-10-18"],
     });
     const u = [udi("2026-10-16", "8.000000")];
     const finDeSemana = [...u, udi("2026-10-17", "8.000100"), udi("2026-10-18", "8.000200")];
-    expect(revisarUdis(u, finDeSemana)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarUdis(u, finDeSemana)).toEqual({ requiereRevision: false, motivos: [] });
   });
 
-  it("las altas al final de la serie, entre semana, no son relleno ni fin de semana", () => {
+  it("las altas al final de la serie, entre semana, no son relleno ni fin de semana", async () => {
     const antes = [fix("2026-10-15", "18.4888"), fix("2026-10-16", "18.4250")];
     const semana = ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23"];
     const despues = [...antes, ...semana.map((f) => fix(f, "18.4300"))];
-    expect(revisarFix(antes, despues)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await revisarFix(antes, despues)).toEqual({ requiereRevision: false, motivos: [] });
     // Un relleno en fin de semana da los dos motivos.
-    expect(revisarFix(antes, [fix("2026-10-11", "18.4300"), ...antes]).motivos).toEqual([
+    expect((await revisarFix(antes, [fix("2026-10-11", "18.4300"), ...antes])).motivos).toEqual([
       "alta dentro de la serie ya publicada: 2026-10-11 18.4300",
       "FIX publicado en fin de semana: 2026-10-11",
     ]);
   });
 
-  it("una UDI nueva que se aleja más de 0.5 % del día anterior pide revisión", () => {
+  it("una UDI nueva que se aleja más de 0.5 % del día anterior pide revisión", async () => {
     const antes = [udi("2026-10-14", "7.990000"), udi("2026-10-15", "8.000000")];
     const con = (valor: string) => revisarUdis(antes, [...antes, udi("2026-10-16", valor)]);
-    expect(con("8.040000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(con("7.960000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(con("8.040001")).toEqual({
+    expect(await con("8.040000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("7.960000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("8.040001")).toEqual({
       requiereRevision: true,
       motivos: [
         "la UDI de 2026-10-16 (8.040001) se aleja más de 0.5 % del día anterior (2026-10-15: 8.000000)",
       ],
     });
-    expect(con("7.959999").motivos).toEqual([
+    expect((await con("7.959999")).motivos).toEqual([
       "la UDI de 2026-10-16 (7.959999) se aleja más de 0.5 % del día anterior (2026-10-15: 8.000000)",
     ]);
   });
 
-  it("los umbrales se comparan sin redondeo de punto flotante", () => {
+  it("los umbrales se comparan sin redondeo de punto flotante", async () => {
     // En punto flotante (0.315 - 0.3) / 0.3 da 0.05000000000000004 y pediría revisión.
     const antes = [fix("2026-10-15", "0.3000")];
-    expect(revisarFix(antes, [...antes, fix("2026-10-16", "0.3150")]).requiereRevision).toBe(false);
-    expect(revisarFix(antes, [...antes, fix("2026-10-16", "0.3151")]).requiereRevision).toBe(true);
+    expect(
+      (await revisarFix(antes, [...antes, fix("2026-10-16", "0.3150")])).requiereRevision,
+    ).toBe(false);
+    expect(
+      (await revisarFix(antes, [...antes, fix("2026-10-16", "0.3151")])).requiereRevision,
+    ).toBe(true);
     // Más allá de 2^53 en millonésimas, donde un number ya no distingue un dígito.
     const grandes = [udi("2026-10-15", "9007199254.740993")];
-    const conGrande = (valor: string) =>
-      revisarUdis(grandes, [...grandes, udi("2026-10-16", valor)]).requiereRevision;
-    expect(conGrande("9052235251.014697")).toBe(false);
-    expect(conGrande("9052235251.014698")).toBe(true);
+    const conGrande = async (valor: string) =>
+      (await revisarUdis(grandes, [...grandes, udi("2026-10-16", valor)])).requiereRevision;
+    expect(await conGrande("9052235251.014697")).toBe(false);
+    expect(await conGrande("9052235251.014698")).toBe(true);
+  });
+
+  describe("días inhábiles bancarios", () => {
+    const sinMotivos = { requiereRevision: false, motivos: [] };
+
+    it("un FIX nuevo en un día de descanso de la CNBV pide revisión", async () => {
+      await calendarioCnbvEnDisco();
+      const viernes = [fix("2026-10-30", "18.4250")];
+      expect(await revisarFix(viernes, [...viernes, fix("2026-11-02", "18.4300")])).toEqual({
+        requiereRevision: true,
+        motivos: ["FIX publicado en día inhábil bancario: 2026-11-02"],
+      });
+      const trece = [fix("2026-11-13", "18.4250")];
+      const despues = [...trece, fix("2026-11-16", "18.4300"), fix("2026-11-17", "18.4400")];
+      expect((await revisarFix(trece, despues)).motivos).toEqual([
+        "FIX publicado en día inhábil bancario: 2026-11-16",
+      ]);
+    });
+
+    it("un día hábil, o uno fuera de la cobertura de la CNBV, no pide revisión", async () => {
+      await calendarioCnbvEnDisco();
+      const trece = [fix("2026-11-13", "18.4250")];
+      expect(await revisarFix(trece, [...trece, fix("2026-11-17", "18.4300")])).toEqual(sinMotivos);
+      // El 1 de enero de 2027 es feriado, pero el calendario curado llega al 2026-12-31.
+      const fin = [fix("2026-12-31", "18.4250")];
+      expect(await revisarFix(fin, [...fin, fix("2027-01-01", "18.4300")])).toEqual(sinMotivos);
+    });
+
+    it("un feriado en sábado da solo el motivo de fin de semana; una UDI, ninguno", async () => {
+      await calendarioCnbvEnDisco();
+      const antes = [fix("2026-12-11", "18.4250")];
+      expect((await revisarFix(antes, [...antes, fix("2026-12-12", "18.4300")])).motivos).toEqual([
+        "FIX publicado en fin de semana: 2026-12-12",
+      ]);
+      const u = [udi("2026-11-15", "8.000000")];
+      expect(await revisarUdis(u, [...u, udi("2026-11-16", "8.000100")])).toEqual(sinMotivos);
+    });
+
+    it("sin el YAML de la CNBV no se revisa; con un YAML con problemas la corrida se detiene", async () => {
+      const antes = [fix("2026-10-30", "18.4250")];
+      const despues = [...antes, fix("2026-11-02", "18.4300")];
+      expect(await revisarFix(antes, despues)).toEqual(sinMotivos);
+      await calendarioCnbvEnDisco("dataset: dias-inhabiles.cnbv\n");
+      const e = await revisarFix(antes, despues).catch((x) => x);
+      expect(e).toBeInstanceOf(ErrorDatos);
+      expect(e.dataset).toBe("tipo-cambio.fix");
+      expect(e.message).toMatch(/^curado\/dias-inhabiles-cnbv\.yaml tiene problemas: /);
+      // Sin altas no hace falta el calendario.
+      const cambiado = [fix("2026-10-30", "18.4251")];
+      expect((await revisarFix(antes, cambiado)).motivos).toEqual([
+        "cambió el valor de 2026-10-30: 18.4250 → 18.4251",
+      ]);
+    });
   });
 });
 
@@ -1207,6 +1282,34 @@ describe("corrida completa", () => {
       estado: "requiere_revision",
       bajas: 1,
       motivos: ["desapareció 2026-10-16"],
+    });
+  });
+
+  it("un FIX publicado en un feriado bancario pide revisión, con el calendario de data/", async () => {
+    await calendarioCnbvEnDisco();
+    await ejecutarDataset(tipoCambioFix, ctx());
+    const conFeriado = (fechas: string[]) =>
+      variante("158-2026.json", (r) => {
+        for (const fecha of fechas) {
+          r.ListaIndicadores.push({
+            codIndicador: r.ListaIndicadores.length + 1,
+            codTipoIndicador: 158,
+            fecha: fecha.split("-").reverse().join("-"),
+            valor: "18.4300",
+          });
+        }
+        r.TotalIndicadores = r.ListaIndicadores.length;
+      });
+    fuenteFalsa.set(urlSidof(158, 2026), await conFeriado(["2026-10-19"]));
+    const lunes = await ejecutarDataset(tipoCambioFix, ctx("2026-10-19"));
+    expect(lunes.resultado).toMatchObject({ estado: "actualizado", altas: 1, motivos: [] });
+    fuenteFalsa.set(urlSidof(158, 2026), await conFeriado(["2026-10-19", "2026-11-02"]));
+    const { resultado } = await ejecutarDataset(tipoCambioFix, ctx("2026-11-02"));
+    expect(resultado).toMatchObject({
+      estado: "requiere_revision",
+      altas: 1,
+      motivos: ["FIX publicado en día inhábil bancario: 2026-11-02"],
+      escrito: true,
     });
   });
 
