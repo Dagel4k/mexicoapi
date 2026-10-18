@@ -1,5 +1,6 @@
 import type { Entorno, Opciones } from "./entorno.js";
 import { dentroDelLimite } from "./limite.js";
+import { nombreDeError } from "./registro.js";
 import {
   CACHE_DATOS,
   DETALLE_ERROR_INTERNO,
@@ -90,16 +91,12 @@ async function atender(
   });
 }
 
-/** Un `name` como los de las clases de error; cualquier otro texto podría traer datos. */
-const NOMBRE_DE_ERROR = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
-
 /**
  * Una línea por error interno, con prefijo fijo: el nombre del error y la plantilla de la ruta.
  * Nunca la URL, la query, la IP ni el mensaje, que pueden traer datos del usuario.
  */
 function registrarError(error: unknown, rastro: Rastro): void {
-  const nombre =
-    error instanceof Error && NOMBRE_DE_ERROR.test(error.name) ? error.name : "desconocido";
+  const nombre = nombreDeError(error);
   console.error(`mexicoapi: error interno: ${nombre} en ${rastro.plantilla ?? "(sin ruta)"}`);
 }
 

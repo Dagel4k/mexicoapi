@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { reiniciarCargas } from "../../src/cargas.js";
 import { reiniciarMemoriaStatus } from "../../src/computados/status.js";
 import { manejar } from "../../src/index.js";
 import { CACHE_STATUS } from "../../src/respuestas.js";
 import { crearAssets, entornoDe, peticion, SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const TIPO = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
 
@@ -291,6 +295,7 @@ describe("GET /v1/status", () => {
   }
 
   it("si KV lanza, ese dataset es unknown, los demás no, y la falla no se recuerda", async () => {
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
     const kv = crearKv(
       { "estado:bancos": corrida(hace(HORA)), "estado:inegi.estados": corrida(hace(HORA)) },
       ["estado:inegi.estados"],
@@ -302,6 +307,10 @@ describe("GET /v1/status", () => {
     const { data } = JSON.parse(texto) as { data: EstadoDataset[] };
     expect(data.map((d) => d.status)).toEqual(["ok", "unknown", "unknown"]);
     expect(data[1]).toMatchObject({ last_attempt: null, last_success: null });
+    // Una línea por falla, con el dataset y la clase del error, sin su mensaje.
+    expect(aviso.mock.calls).toEqual([
+      ["mexicoapi: aviso: KV no respondió el estado de inegi.estados (Error); queda unknown"],
+    ]);
 
     await pedir({ kv: kv.binding, ahora: new Date(AHORA.getTime() + 1000) });
     expect(kv.lecturas.map((l) => l.clave)).toEqual([

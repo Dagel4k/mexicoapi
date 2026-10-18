@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { manejar } from "../../src/index.js";
 import { CACHE_DATOS } from "../../src/respuestas.js";
 import {
@@ -9,6 +9,10 @@ import {
   SEGURIDAD_ESPERADA,
   seguridadDe,
 } from "./ayudas.js";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const TIPO = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
 
@@ -120,7 +124,8 @@ describe("recurso inexistente", () => {
 
 describe("estado inesperado del asset", () => {
   for (const status of [500, 503, 403, 206]) {
-    it(`${status} da 500 genérico y cancela el cuerpo`, async () => {
+    it(`${status} da 500 genérico, cancela el cuerpo y lo registra en una línea`, async () => {
+      const registro = vi.spyOn(console, "error").mockImplementation(() => {});
       const { respuesta, assets } = await pedir("/v1/estados", undefined, {
         "/v1/estados.json": { cuerpo: "detalle interno", etag: '"x"', status },
       });
@@ -133,6 +138,9 @@ describe("estado inesperado del asset", () => {
       });
       expect(texto).not.toContain("detalle interno");
       expect(assets.canceladas).toEqual(["/v1/estados.json"]);
+      expect(registro.mock.calls).toEqual([
+        [`mexicoapi: error interno: el asset respondió ${status} en /v1/estados`],
+      ]);
     });
   }
 
