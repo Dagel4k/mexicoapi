@@ -605,6 +605,10 @@ function siguienteHabil(desde: string, publicados: readonly DiaReal[]): string {
 }
 
 /** El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`. */
+/** El aviso de la prórroga del quinto párrafo del art. 12 del CFF en declaraciones_pagos. */
+const prorroga = (fecha: string, hechos: string) =>
+  `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
+
 function avisosDelNucleo(cobertura: Rango, resultado: string): string[] {
   const avisos: string[] = [];
   for (let anio = Number(anioDe(despues(cobertura))); anio <= Number(anioDe(resultado)); anio++) {
@@ -699,6 +703,25 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     }
   });
 
+  it("declaraciones_pagos avisa de la prórroga del art. 12 en viernes, vacaciones y cierres bancarios", async () => {
+    // Los casos de la auditoría: el resultado no cambia; se agrega la advertencia.
+    for (const [desde, resultado, hechos] of [
+      ["2026-10-30", "2026-11-02", "día de cierre bancario según la CNBV"],
+      [
+        "2026-04-01",
+        "2026-04-02",
+        "día de vacaciones del SAT y día de cierre bancario según la CNBV",
+      ],
+      ["2026-07-16", "2026-07-17", "viernes"],
+    ] as const) {
+      const { data } = await datos(sat("declaraciones_pagos", desde, 1));
+      expect(data.resultado, desde).toBe(resultado);
+      expect(data.advertencias, desde).toEqual([prorroga(resultado, hechos)]);
+    }
+    // Con general no aplica.
+    expect((await datos(sat("general", "2026-07-16", 1))).data.advertencias).toEqual([]);
+  });
+
   it("avisa de la transmisión del Poder Ejecutivo de 2030 y no descuenta el 1o. de octubre", async () => {
     const { data } = await datos(sat("declaraciones_pagos", "2030-09-30", 1));
     expect(data.resultado).toBe("2030-10-01");
@@ -721,10 +744,11 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       docs: `${DOCS_API}#dias-habiles`,
     });
     const declaraciones = await datos(sat("declaraciones_pagos", "2026-07-15", 10));
+    // Nuevo: vence en un día de vacaciones del SAT (hábil en este plazo): avisa de la prórroga.
     expect(declaraciones.data).toMatchObject({
       resultado: "2026-07-29",
       inhabiles_saltados: [],
-      advertencias: [],
+      advertencias: [prorroga("2026-07-29", "día de vacaciones del SAT")],
     });
     expect((await datos(sat("general", "2026-07-17", 1))).data.resultado).toBe("2026-08-03");
     expect((await datos(sat("declaraciones_pagos", "2026-07-17", 1))).data.resultado).toBe(
@@ -794,7 +818,12 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     );
     expect(data.inhabiles_saltados).toEqual([]);
     expect(esFinDeSemana(data.resultado)).toBe(false);
-    expect(data.advertencias).toEqual(avisosDelNucleo(declaraciones, data.resultado));
+    // Nuevo: si vence en viernes, también el aviso de la prórroga del art. 12.
+    const viernes = diaDeLaSemana(data.resultado) === 5;
+    expect(data.advertencias).toEqual([
+      ...avisosDelNucleo(declaraciones, data.resultado),
+      ...(viernes ? [prorroga(data.resultado, "viernes")] : []),
+    ]);
   });
 
   it("declaraciones_pagos salta el 25 de diciembre y da 422 al día siguiente de su cobertura", async () => {

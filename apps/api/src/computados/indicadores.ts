@@ -10,10 +10,9 @@ import {
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
-import { type CalendarioCurado, feriadosBancarios } from "@mexicoapi/core/curados";
 import {
   anioDe,
-  calendarioCurado,
+  feriadosDeLaCnbv,
   type Meta,
   metaInterna,
   type ShardSerie,
@@ -142,15 +141,10 @@ const AVISO_SIN_CNBV =
  * días. Si el calendario no carga, undefined y un aviso: la consulta sigue solo con los fines de
  * semana, que da menos respuestas pero ninguna vieja, en vez de un 500. La falla no se recuerda.
  */
-async function feriadosDeLaCnbv(entorno: Entorno): Promise<OpcionesFix["sinPublicacion"]> {
-  let cnbv: CalendarioCurado;
-  try {
-    cnbv = await calendarioCurado(entorno, "cnbv");
-  } catch {
-    console.warn(AVISO_SIN_CNBV);
-    return undefined;
-  }
-  return feriadosBancarios(cnbv);
+async function feriadosParaElFix(entorno: Entorno): Promise<OpcionesFix["sinPublicacion"]> {
+  const feriados = await feriadosDeLaCnbv(entorno);
+  if (feriados === undefined) console.warn(AVISO_SIN_CNBV);
+  return feriados;
 }
 
 /**
@@ -164,7 +158,7 @@ async function conFeriados(
 ): Promise<Consulta<TipoCambioFix>> {
   const consulta = consultar();
   if (consulta.tipo !== "no_disponible") return consulta;
-  const sinPublicacion = await feriadosDeLaCnbv(entorno);
+  const sinPublicacion = await feriadosParaElFix(entorno);
   return sinPublicacion === undefined ? consulta : consultar({ sinPublicacion });
 }
 

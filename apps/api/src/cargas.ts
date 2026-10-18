@@ -13,6 +13,7 @@ import {
   type CalendarioCurado,
   crearCalendarioCurado,
   type DatosCalendarioCurado,
+  feriadosBancarios,
   MapaCongelado,
   type PlazoCalendario,
 } from "@mexicoapi/core/curados";
@@ -454,6 +455,23 @@ export async function calendarioCurado(
     calendarios.set(autoridad, calendario);
   }
   return calendario;
+}
+
+/**
+ * Los feriados bancarios del calendario de la CNBV (`feriadosBancarios` del núcleo), o undefined
+ * si el calendario no carga: quien los usa sigue sin ellos en vez de responder un 500. La falla
+ * no se recuerda.
+ */
+export async function feriadosDeLaCnbv(
+  entorno: Entorno,
+): Promise<((fecha: FechaISO) => boolean) | undefined> {
+  let cnbv: CalendarioCurado;
+  try {
+    cnbv = await calendarioCurado(entorno, "cnbv");
+  } catch {
+    return undefined;
+  }
+  return feriadosBancarios(cnbv);
 }
 
 /** `v1/constantes/uma.json` (todas las UMA con su meta), leído una vez por isolate. */

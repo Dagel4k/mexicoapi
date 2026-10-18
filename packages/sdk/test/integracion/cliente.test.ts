@@ -277,6 +277,31 @@ function consultas(): Consulta[] {
       "días inhábiles SAT 2030",
       (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2030 }, op),
     ],
+    // declaraciones_pagos avisa de la prórroga del art. 12: viernes, vacaciones y cierres bancarios.
+    [
+      "días hábiles SAT declaraciones_pagos que vence en viernes",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-07-16", dias: 1 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT declaraciones_pagos que vence en un cierre bancario",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-10-30", dias: 1 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT declaraciones_pagos que vence en vacaciones del SAT",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-04-01", dias: 1 },
+          op,
+        ),
+    ],
     // La LFT avisa en cada respuesta que no tiene las suspensiones de labores (art. 715).
     [
       "días hábiles LFT por el Viernes Santo",

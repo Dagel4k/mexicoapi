@@ -58,6 +58,10 @@ const AVISO_GENERAL =
 const DETALLE_GENERAL = (fecha: string) =>
   `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.`;
 
+/** El aviso de la prórroga del quinto párrafo del art. 12 del CFF para `fecha`. */
+const PRORROGA = (fecha: string, hechos: string) =>
+  `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
+
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
 
@@ -561,12 +565,12 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     });
     expect(fechas(general.inhabiles_saltados)).toEqual(PRIMER_PERIODO);
     const declaraciones = sat("declaraciones_pagos", "2026-07-15", 10);
-    expect(declaraciones).toEqual(delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10));
-    expect(declaraciones).toMatchObject({
-      resultado: "2026-07-29",
-      inhabiles_saltados: [],
-      advertencias: [],
+    // Nuevo: el 29 de julio es de vacaciones del SAT (hábil en este plazo): avisa de la prórroga.
+    expect(declaraciones).toEqual({
+      ...delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10),
+      advertencias: [PRORROGA("2026-07-29", "día de vacaciones del SAT")],
     });
+    expect(declaraciones).toMatchObject({ resultado: "2026-07-29", inhabiles_saltados: [] });
   });
 
   it.each([
@@ -582,7 +586,81 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
   ] as const)("%s: %s más 1 día hábil es %s", (tipo, desde, resultado) => {
     const r = sat(tipo, desde, 1);
     expect(r.resultado).toBe(resultado);
-    expect(r).toEqual(delNucleo(SHARD_SAT, tipo, desde, 1));
+    // Nuevo: en declaraciones_pagos, un resultado en vacaciones del SAT avisa de la prórroga.
+    const vacaciones =
+      tipo === "declaraciones_pagos" && ["2026-07-20", "2026-04-02"].includes(resultado);
+    const nucleo = delNucleo(SHARD_SAT, tipo, desde, 1);
+    expect(r).toEqual(
+      vacaciones
+        ? { ...nucleo, advertencias: [PRORROGA(resultado, "día de vacaciones del SAT")] }
+        : nucleo,
+    );
+  });
+
+  describe("declaraciones_pagos y la prórroga del quinto párrafo del art. 12", () => {
+    const bancario = feriadosBancarios(CNBV);
+    const decl = (desde: string, feriadoBancario?: (fecha: string) => boolean) =>
+      sumarDiasHabilesCurado(SAT, {
+        tipoPlazo: "declaraciones_pagos",
+        desde,
+        dias: 1,
+        feriadoBancario,
+      });
+
+    it("un resultado en viernes avisa; el resultado no cambia", () => {
+      const r = decl("2026-07-16", bancario);
+      expect(r).toMatchObject({
+        resultado: "2026-07-17",
+        advertencias: [PRORROGA("2026-07-17", "viernes")],
+      });
+    });
+
+    it("un día de cierre bancario según la CNBV avisa, si se tiene su calendario", () => {
+      expect(decl("2026-10-30", bancario)).toMatchObject({
+        resultado: "2026-11-02",
+        advertencias: [PRORROGA("2026-11-02", "día de cierre bancario según la CNBV")],
+      });
+      // Sin el calendario de la CNBV esa parte no se revisa.
+      expect(decl("2026-10-30").advertencias).toEqual([]);
+    });
+
+    it("junta los hechos: viernes, vacaciones del SAT y cierre bancario", () => {
+      const cierra = (fecha: string) => fecha === "2026-04-03" || bancario(fecha);
+      expect(decl("2026-04-02", cierra).advertencias).toEqual([
+        PRORROGA(
+          "2026-04-03",
+          "viernes, día de vacaciones del SAT y día de cierre bancario según la CNBV",
+        ),
+      ]);
+      expect(decl("2026-04-02").advertencias).toEqual([
+        PRORROGA("2026-04-03", "viernes y día de vacaciones del SAT"),
+      ]);
+    });
+
+    it("un día hábil común no avisa, ni general aunque sea viernes", () => {
+      expect(decl("2026-07-14", bancario).advertencias).toEqual([]);
+      const general = sumarDiasHabilesCurado(SAT, {
+        tipoPlazo: "general",
+        desde: "2026-07-16",
+        dias: 1,
+        feriadoBancario: bancario,
+      });
+      expect(general).toMatchObject({ resultado: "2026-07-17", advertencias: [] });
+    });
+
+    it("va después de las demás advertencias", () => {
+      // 2030-10-04 es viernes: primero la transmisión del Poder Ejecutivo, luego la prórroga.
+      const r = sumarDiasHabilesCurado(SAT, {
+        tipoPlazo: "declaraciones_pagos",
+        desde: "2030-09-30",
+        dias: 4,
+      });
+      expect(r.resultado).toBe("2030-10-04");
+      expect(r.advertencias).toEqual([
+        avisoTransmisionCff(2030),
+        PRORROGA("2030-10-04", "viernes"),
+      ]);
+    });
   });
 
   it("el 25 de diciembre se salta con su cita del CFF", () => {
