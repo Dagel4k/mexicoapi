@@ -134,7 +134,7 @@ button:hover { background: var(--fondo); }
 .estado-ok::before { background: var(--acento); }
 .estado-stale::before { background: var(--aviso-borde); border-radius: 1px; }
 .estado-unknown::before { border: 2px solid var(--tenue); }
-.detalle { display: block; color: var(--tenue); font-size: 0.875rem; }
+.detalle { display: block; color: var(--tenue); font-size: 0.875rem; font-weight: 400; }
 /* relative: el texto .oculto de las celdas no se sale del contenedor que se desplaza */
 .tabla {
   position: relative;

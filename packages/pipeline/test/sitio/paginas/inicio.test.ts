@@ -150,7 +150,6 @@ describe("página de inicio", () => {
     );
     expect([...cabecera.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1])).toEqual([
       "Dataset",
-      "Tipo",
       "Datos al",
       "Registros",
       "Fuente y licencia",
@@ -158,9 +157,14 @@ describe("página de inicio", () => {
       "Descargas",
     ]);
     const [estados, uma, nuevo] = renglones(html, "tabla-datos") as [string, string, string];
-    expect(estados).toContain('<td class="junto">Automático</td>');
-    expect(uma).toContain('<td class="junto">Curado</td>');
-    expect(nuevo).toContain('<td class="junto">Automático</td>');
+    // Una etiqueta bajo el nombre y no otra columna: así la tabla cabe a 1280 px sin desplazarse.
+    expect(estados).toContain(
+      '<span class="id">inegi.estados</span><span class="detalle">Automático</span></th>',
+    );
+    expect(uma).toContain(
+      '<span class="id">constantes.uma</span><span class="detalle">Curado</span></th>',
+    );
+    expect(nuevo).toContain('<span class="detalle">Automático</span></th>');
     expect(html).not.toContain("Actualizado");
     expect(paginaEstado()).toContain('<th scope="col">Datos al</th>');
     expect(html).toContain("<em>Datos al</em>");
