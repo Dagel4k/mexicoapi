@@ -1,4 +1,10 @@
 import { PROBLEMAS, URL_PROBLEMAS } from "@mexicoapi/core/problemas";
+import {
+  CONSULTAS,
+  REGLAS_RUTA,
+  type ReglaParametro,
+  type RutaConConsulta,
+} from "@mexicoapi/core/rutas";
 import { z } from "zod";
 import {
   esquemaBanco,
@@ -160,9 +166,19 @@ const IF_NONE_MATCH: Json = {
   schema: { type: "string" },
 };
 
+/**
+ * El schema de un parámetro con su regla del núcleo, la que aplican la API y el paquete: `enum`
+ * si acepta una lista de valores y `pattern` si no. Lo que el patrón no puede decir (un máximo,
+ * una fecha que existe) va en la descripción.
+ */
+function esquemaDe(regla: ReglaParametro, format?: "date"): Json {
+  if (regla.valores !== undefined) return { type: "string", enum: [...regla.valores] };
+  const pattern = regla.patron.source;
+  return format === undefined ? { type: "string", pattern } : { type: "string", format, pattern };
+}
+
 const parametroRuta = (
-  name: string,
-  pattern: string,
+  name: keyof typeof REGLAS_RUTA,
   description: string,
   example: string,
 ): Json => ({
@@ -170,40 +186,42 @@ const parametroRuta = (
   in: "path",
   required: true,
   description,
-  schema: { type: "string", pattern },
+  schema: esquemaDe(REGLAS_RUTA[name]),
   example,
 });
 
+/** Un parámetro de la query de `ruta` con su regla del núcleo y si es obligatorio. */
+function parametroConsulta(
+  ruta: RutaConConsulta,
+  name: string,
+  description: string,
+  example: string,
+  format?: "date",
+): Json {
+  const regla = CONSULTAS[ruta][name];
+  if (regla === undefined) throw new Error(`El núcleo no tiene la regla de ${name} en ${ruta}.`);
+  return {
+    name,
+    in: "query",
+    required: regla.obligatorio === true,
+    description,
+    schema: esquemaDe(regla, format),
+    example,
+  };
+}
+
 const FECHA_EJEMPLO = "2026-01-05";
 
-const parametroFecha = (name: string, required: boolean, description: string): Json => ({
-  name,
-  in: "query",
-  required,
-  description,
-  schema: { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-  example: FECHA_EJEMPLO,
-});
+const parametroFecha = (ruta: RutaConConsulta, name: string, description: string): Json =>
+  parametroConsulta(ruta, name, description, FECHA_EJEMPLO, "date");
 
-const AUTORIDAD: Json = {
-  name: "autoridad",
-  in: "query",
-  required: true,
-  description:
+const autoridad = (ruta: "/v1/dias-habiles" | "/v1/dias-inhabiles"): Json =>
+  parametroConsulta(
+    ruta,
+    "autoridad",
     "Autoridad cuyo calendario se usa. lft: sábados, domingos y días de descanso obligatorio del art. 74 de la Ley Federal del Trabajo; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), y cada respuesta lo advierte. cnbv: calendario bancario, los días en que cierran las entidades supervisadas por la CNBV; no es el calendario de la CNBV como autoridad. sat: días del art. 12 del CFF, calculados por regla, y vacaciones de la regla 2.1.6 de la RMF.",
-  schema: { type: "string", enum: ["lft", "cnbv", "sat"] },
-  example: "lft",
-};
-
-const TIPO_PLAZO: Json = {
-  name: "tipo_plazo",
-  in: "query",
-  required: false,
-  description:
-    "Obligatorio con autoridad=sat y no se acepta con las demás. general cuenta las vacaciones generales del SAT como inhábiles; declaraciones_pagos no, porque en los plazos para presentar declaraciones y pagar contribuciones las vacaciones no son inhábiles (CFF art. 12, segundo párrafo).",
-  schema: { type: "string", enum: ["general", "declaraciones_pagos"] },
-  example: "general",
-};
+    "lft",
+  );
 
 interface Operacion {
   ruta: string;
@@ -254,21 +272,11 @@ function operacion(o: Operacion): [string, Json] {
 }
 
 function operaciones(): Operacion[] {
-  const cveEnt = parametroRuta(
-    "cve_ent",
-    "^\\d{2}$",
-    "Clave de entidad de INEGI, 2 dígitos.",
-    "09",
-  );
-  const cvegeo = parametroRuta(
-    "cvegeo",
-    "^\\d{5}$",
-    "Clave geoestadística del municipio, 5 dígitos.",
-    "09002",
-  );
-  const codigo = parametroRuta("codigo", "^\\d{3}$", "Código de banco, 3 dígitos.", "002");
-  const clabe = parametroRuta("clabe", "^\\d{18}$", "CLABE de 18 dígitos.", "002010077777777771");
-  const anio = parametroRuta("anio", "^\\d{4}$", "Año, 4 dígitos.", "2026");
+  const cveEnt = parametroRuta("cve_ent", "Clave de entidad de INEGI, 2 dígitos.", "09");
+  const cvegeo = parametroRuta("cvegeo", "Clave geoestadística del municipio, 5 dígitos.", "09002");
+  const codigo = parametroRuta("codigo", "Código de banco, 3 dígitos.", "002");
+  const clabe = parametroRuta("clabe", "CLABE de 18 dígitos.", "002010077777777771");
+  const anio = parametroRuta("anio", "Año, 4 dígitos.", "2026");
   const indice = respuestaDatosPlano("Datos de la API.", ref("Indice"));
   return [
     {
@@ -363,30 +371,25 @@ function operaciones(): Operacion[] {
         "Con autoridad=sat, tipo_plazo es obligatorio: sin él la respuesta es 400 parametro-faltante. Con lft o cnbv, tipo_plazo no se acepta (400). Si el cálculo sale de la cobertura del calendario, la respuesta es 422 calendario-incompleto, salvo con permitir_incompleto=true. El resultado es el último día del cómputo y no aplica la prórroga del quinto párrafo del art. 12 del CFF: con tipo_plazo=declaraciones_pagos, si cae en viernes, en vacaciones del SAT o en un cierre bancario, advertencias lo dice. Con lft, advertencias siempre dice que no se descuentan los festivos ni las suspensiones de labores del art. 715.",
       tag: "Cálculos",
       parametros: [
-        AUTORIDAD,
-        TIPO_PLAZO,
+        autoridad("/v1/dias-habiles"),
+        parametroConsulta(
+          "/v1/dias-habiles",
+          "tipo_plazo",
+          "Obligatorio con autoridad=sat y no se acepta con las demás. general cuenta las vacaciones generales del SAT como inhábiles; declaraciones_pagos no, porque en los plazos para presentar declaraciones y pagar contribuciones las vacaciones no son inhábiles (CFF art. 12, segundo párrafo).",
+          "general",
+        ),
         parametroFecha(
+          "/v1/dias-habiles",
           "desde",
-          true,
           "Fecha de partida (AAAA-MM-DD); no se cuenta. En un plazo que corre desde una notificación es el día en que surte efectos, no el día en que se hizo: si una notificación del lunes surte efectos el martes, desde es el martes.",
         ),
-        {
-          name: "dias",
-          in: "query",
-          required: true,
-          description: "Días hábiles a sumar, de 1 a 3650.",
-          schema: { type: "string", pattern: "^[1-9]\\d{0,3}$" },
-          example: "10",
-        },
-        {
-          name: "permitir_incompleto",
-          in: "query",
-          required: false,
-          description:
-            "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días del art. 12 del CFF después del último periodo de vacaciones del SAT capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana, y la advertencia dice qué puede faltar (con cnbv, días de cierre bancario como el 1 de enero; con sat, antes de 2026 o después de 2100, días del art. 12 del CFF).",
-          schema: { type: "string", enum: ["true", "false"] },
-          example: "false",
-        },
+        parametroConsulta("/v1/dias-habiles", "dias", "Días hábiles a sumar, de 1 a 3650.", "10"),
+        parametroConsulta(
+          "/v1/dias-habiles",
+          "permitir_incompleto",
+          "Con true, el cálculo sigue fuera de la cobertura del calendario con lo que está publicado: descuenta los días inhábiles publicados (por ejemplo, los días del art. 12 del CFF después del último periodo de vacaciones del SAT capturado) y los fines de semana, y agrega una advertencia por cada tramo incompleto. Donde no hay nada publicado solo descuenta los fines de semana, y la advertencia dice qué puede faltar (con cnbv, días de cierre bancario como el 1 de enero; con sat, antes de 2026 o después de 2100, días del art. 12 del CFF).",
+          "false",
+        ),
       ],
       ok: respuestaDatos("La fecha resultante.", ref("ResultadoDiasHabiles")),
       errores: [422],
@@ -399,15 +402,8 @@ function operaciones(): Operacion[] {
         "Lista los días inhábiles del año, sin los fines de semana, cada uno con su tipo y su fuente. Si la lista solo está completa para algunos tipos de plazo, la respuesta lo dice en advertencias. Es el caso del SAT desde diciembre de 2026 mientras no se publique su segundo periodo de vacaciones: los días del art. 12 del CFF se calculan por regla hasta 2100 y la lista está completa para tipo_plazo=declaraciones_pagos, que no cuenta las vacaciones, pero no para general. Con lft, advertencias dice que la lista no tiene los festivos ni las suspensiones de labores del art. 715. Un año fuera de la cobertura del calendario da 422 calendario-incompleto.",
       tag: "Cálculos",
       parametros: [
-        AUTORIDAD,
-        {
-          name: "anio",
-          in: "query",
-          required: true,
-          description: "Año de 0001 a 9999, 4 dígitos.",
-          schema: { type: "string", pattern: "^\\d{4}$" },
-          example: "2026",
-        },
+        autoridad("/v1/dias-inhabiles"),
+        parametroConsulta("/v1/dias-inhabiles", "anio", "Año de 0001 a 9999, 4 dígitos.", "2026"),
       ],
       ok: respuestaDatos("Los días inhábiles del año.", lista("DiaInhabil"), {
         advertencias: {
@@ -428,13 +424,13 @@ function operaciones(): Operacion[] {
       tag: "Indicadores",
       parametros: [
         parametroFecha(
+          "/v1/tipo-cambio/fix",
           "publicado",
-          false,
           "Fecha de publicación en el DOF (AAAA-MM-DD): responde el FIX publicado ese día.",
         ),
         parametroFecha(
+          "/v1/tipo-cambio/fix",
           "operacion",
-          false,
           "Fecha de una operación (AAAA-MM-DD): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20).",
         ),
       ],
@@ -459,7 +455,7 @@ function operaciones(): Operacion[] {
       operationId: "consultarUdi",
       summary: "Valor de la UDI en una fecha",
       tag: "Indicadores",
-      parametros: [parametroFecha("fecha", true, "Día del valor (AAAA-MM-DD).")],
+      parametros: [parametroFecha("/v1/udis", "fecha", "Día del valor (AAAA-MM-DD).")],
       ok: respuestaDatos("El valor de la UDI ese día.", ref("Udi")),
       errores: [404],
       respuestas: { 404: "SinDato" },
@@ -471,7 +467,9 @@ function operaciones(): Operacion[] {
       description:
         "Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente: en enero aplica la del año anterior.",
       tag: "Constantes",
-      parametros: [parametroFecha("fecha", true, "Día que se consulta (AAAA-MM-DD).")],
+      parametros: [
+        parametroFecha("/v1/constantes/uma", "fecha", "Día que se consulta (AAAA-MM-DD)."),
+      ],
       ok: respuestaDatos("La UMA vigente ese día.", ref("Uma")),
       errores: [404],
       respuestas: { 404: "SinDato" },
@@ -510,14 +508,11 @@ function operaciones(): Operacion[] {
       summary: "Tarifa de ISR de un periodo y un año",
       tag: "Constantes",
       parametros: [
-        {
-          name: "periodo",
-          in: "path",
-          required: true,
-          description: "Periodo de la tarifa: mensual (pagos provisionales) o anual (ejercicio).",
-          schema: { type: "string", enum: ["mensual", "anual"] },
-          example: "mensual",
-        },
+        parametroRuta(
+          "periodo",
+          "Periodo de la tarifa: mensual (pagos provisionales) o anual (ejercicio).",
+          "mensual",
+        ),
         anio,
       ],
       ok: respuestaDatos("La tarifa con sus tramos.", ref("TarifaIsr")),
