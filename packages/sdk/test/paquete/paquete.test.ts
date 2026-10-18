@@ -248,6 +248,34 @@ describe("dist", () => {
     }
   });
 
+  // Los comentarios no se ejecutan y pesan en cada entrada: el JS sale sin ellos. La
+  // documentación queda en los .d.ts, que es donde la leen los editores.
+  it("el JS sale sin comentarios y los .d.ts conservan el JSDoc", async () => {
+    const archivos = await archivosDeDist();
+    const js = archivos.filter((a) => a.endsWith(".js"));
+    expect(js.some((a) => a.endsWith(join("nucleo", "rutas", "consulta.js")))).toBe(true);
+    for (const archivo of js) {
+      const lineas = (await readFile(archivo, "utf8")).split("\n");
+      // Los módulos de datos no los compila tsc: su primera línea dice de qué archivo y de qué
+      // sha256 salen.
+      const generado = archivo.includes(join("datos", "generados"));
+      const comentarios = lineas.filter((l, i) => {
+        const t = l.trim();
+        if (i === 0 && (t.startsWith("#!") || (generado && t.startsWith("// Generado desde")))) {
+          return false;
+        }
+        return t.startsWith("//") || t.startsWith("/*") || t.startsWith("*");
+      });
+      expect(comentarios, archivo).toEqual([]);
+    }
+    const dts = async (ruta: string) => readFile(join(DIST, ...ruta.split("/")), "utf8");
+    expect(await dts("cliente/cliente.d.ts")).toContain("/**\n * Cliente de la API de MéxicoAPI.");
+    expect(await dts("nucleo/dias-habiles/lft.d.ts")).toContain(
+      "/** Fecha de la última reforma de la LFT en el DOF",
+    );
+    expect(await dts("nucleo/rutas/combinaciones.d.ts")).toContain("/**");
+  });
+
   it("solo trae .js y .d.ts, sin mapas ni pruebas", async () => {
     for (const archivo of await archivosDeDist()) {
       expect(archivo).toMatch(/\.(js|d\.ts)$/);
