@@ -121,7 +121,7 @@ Ejemplo: mexicoapi banco 002`,
 
 Catálogo de códigos postales de Correos de México (SEPOMEX), en este equipo. Los datos no
 vienen de MéxicoAPI: se descargan desde aquí, se guardan solo aquí y sync muestra antes el
-aviso de uso de Correos de México. Con Node anterior a 22.13 se guarda solo en JSON, sin SQLite.
+aviso de uso de Correos de México. Si node:sqlite no carga, se guarda solo en JSON, sin SQLite.
 
 Subcomandos:
   sync             descarga el catálogo del formulario público de Correos de México

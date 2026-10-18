@@ -14,9 +14,10 @@ type Listo = (
 ) => void;
 
 /**
- * `lookup` para node:net con las direcciones IPv4 primero. Pide todas y las ordena aquí (la
- * opción `order` de dns.lookup no existe antes de Node 20.13). Con la selección automática de
- * familia de Node, si la IPv4 no conecta se intenta la IPv6.
+ * `lookup` para node:net con las direcciones IPv4 primero. Pide todas y las ordena aquí en vez de
+ * pasar `order: "ipv4first"` a dns.lookup: el orden queda en este código y las pruebas lo revisan
+ * con un dns.lookup falso. Con la selección automática de familia de Node, si la IPv4 no conecta
+ * se intenta la IPv6.
  */
 export function buscarIpv4Primero(host: string, opciones: dns.LookupOptions, listo: Listo): void {
   dns.lookup(host, { ...opciones, all: true }, (error, direcciones) => {
