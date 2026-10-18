@@ -1,12 +1,14 @@
-// globalSetup de las pruebas del paquete: empaqueta mexicoapi con npm pack e instala el .tgz en un
-// proyecto nuevo de una carpeta temporal, como lo haría quien lo usa. Las pruebas reciben la
-// carpeta del proyecto y lo que npm dijo del paquete. Pide `pnpm -r build` antes.
+// globalSetup de las pruebas del paquete: arma el paquete como se publica (scripts/publicable.ts),
+// lo empaqueta con npm pack ahí e instala el .tgz en un proyecto nuevo de una carpeta temporal,
+// como lo haría quien lo usa. Las pruebas reciben la carpeta del proyecto y lo que npm dijo del
+// paquete. Pide `pnpm -r build` antes.
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
+import { armarPublicable } from "../../scripts/publicable.ts";
 
 /** Lo que dice `npm pack --json` de un paquete. */
 export interface Empaquetado {
@@ -38,8 +40,10 @@ function npm(comando: string, cwd: string): string {
 export default async function instalarPaquete(proyecto: TestProject): Promise<() => Promise<void>> {
   const temporal = await mkdtemp(join(tmpdir(), "mexicoapi-paquete-"));
   try {
+    const publicable = join(temporal, "publicable");
+    await armarPublicable(RAIZ, publicable);
     const [empaquetado] = JSON.parse(
-      npm(`pack --json --pack-destination "${temporal}"`, RAIZ),
+      npm(`pack --json --pack-destination "${temporal}"`, publicable),
     ) as Empaquetado[];
     if (empaquetado === undefined) throw new Error("npm pack no dijo qué empaquetó");
     const dir = join(temporal, "consumidor");

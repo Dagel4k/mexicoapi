@@ -36,35 +36,43 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./cliente": {
       "types": "./dist/cliente/index.d.ts",
-      "import": "./dist/cliente/index.js"
+      "import": "./dist/cliente/index.js",
+      "default": "./dist/cliente/index.js"
     },
     "./datos": {
       "types": "./dist/datos/index.d.ts",
-      "import": "./dist/datos/index.js"
+      "import": "./dist/datos/index.js",
+      "default": "./dist/datos/index.js"
     },
     "./datos/fix": {
       "types": "./dist/datos/fix.d.ts",
-      "import": "./dist/datos/fix.js"
+      "import": "./dist/datos/fix.js",
+      "default": "./dist/datos/fix.js"
     },
     "./datos/udis": {
       "types": "./dist/datos/udis.d.ts",
-      "import": "./dist/datos/udis.js"
+      "import": "./dist/datos/udis.js",
+      "default": "./dist/datos/udis.js"
     },
     "./datos/calendarios": {
       "types": "./dist/datos/calendarios.d.ts",
-      "import": "./dist/datos/calendarios.js"
+      "import": "./dist/datos/calendarios.js",
+      "default": "./dist/datos/calendarios.js"
     },
     "./datos/constantes": {
       "types": "./dist/datos/constantes.d.ts",
-      "import": "./dist/datos/constantes.js"
+      "import": "./dist/datos/constantes.js",
+      "default": "./dist/datos/constantes.js"
     },
     "./sepomex": {
       "types": "./dist/sepomex/index.d.ts",
-      "import": "./dist/sepomex/index.js"
+      "import": "./dist/sepomex/index.js",
+      "default": "./dist/sepomex/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -79,6 +87,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "build": "node scripts/empaquetar.ts preparar && tsc -p tsconfig.build.json && tsc -p tsconfig.build-node.json && node scripts/empaquetar.ts nucleo && node scripts/datos.ts",
+    "prepack": "node scripts/publicable.ts",
     "test:paquete": "vitest run --config vitest.paquete.config.ts",
     "test:integracion": "vitest run --config vitest.integracion.config.ts"
   },

@@ -500,7 +500,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - `datos.yml` (cron; un workflow con un grupo por dataset);
   - `despliegue.yml` (staging en cada merge a `main`, producción tras la prueba de humo, rollback si el humo de producción falla);
   - `frescura.yml` (diario, 13:00 de la Ciudad de México: consulta `/v1/status` con la variable `API_URL` y abre un issue por cada dataset desactualizado, o uno de "API sin respuesta"; un estado `unknown` no cuenta);
-  - `publicacion.yml` (changesets: npm con procedencia), pendiente;
+  - `publicacion.yml` (changesets: npm con procedencia), pendiente; mientras tanto se publica a mano desde la carpeta que arma `packages/sdk/scripts/publicable.ts` ([publicacion-npm.md](../operacion/publicacion-npm.md));
   - `seguridad.yml` (CodeQL, osv-scanner, Scorecard), pendiente.
 - **Ramas:** una por tarea, PR a `main` con CI verde. `main` siempre desplegable.
 - **Herramientas:** Node 24 LTS, pnpm (versión fijada en `packageManager`), TypeScript estricto, Biome, Vitest, Zod, Wrangler, Astro, `@modelcontextprotocol/sdk`. Las versiones exactas se fijan al crear el proyecto, consultando la documentación vigente.

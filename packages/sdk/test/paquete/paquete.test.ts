@@ -249,6 +249,12 @@ describe("dist", () => {
     }
   });
 
+  it("ningún archivo apunta a un mapa de fuentes", async () => {
+    for (const archivo of await archivosDeDist()) {
+      expect(await readFile(archivo, "utf8"), archivo).not.toMatch(/sourceMappingURL/);
+    }
+  });
+
   it.each([
     ["NodeNext", []],
     ["Bundler", ["--module", "preserve", "--moduleResolution", "bundler"]],

@@ -86,11 +86,13 @@ jobs:
       - name: Compilar mexicoapi y el núcleo
         run: pnpm --filter "mexicoapi..." build
 
+      # Como se publica: npm pack en la carpeta que arma publicable.ts, sin devDependencies ni scripts.
       - name: Empaquetar
         run: |
           set -euo pipefail
+          node packages/sdk/scripts/publicable.ts "${RUNNER_TEMP}/publicable"
           mkdir -p "${RUNNER_TEMP}/tgz"
-          cd packages/sdk
+          cd "${RUNNER_TEMP}/publicable"
           npm pack --pack-destination "${RUNNER_TEMP}/tgz"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -101,7 +103,8 @@ jobs:
           retention-days: 7
 
   # Instala el .tgz en un proyecto nuevo y corre la prueba de humo (sin Vitest) en cada línea de
-  # Node que soporta el paquete. Versiones exactas: la última de cada línea al fijarlas.
+  # Node que soporta el paquete. Versiones exactas: la última de cada línea al fijarlas. Con 20.19+
+  # y 22.12+ la prueba también carga el paquete con require().
   paquete-node:
     name: paquete en Node ${{ matrix.node }}
     needs: paquete
