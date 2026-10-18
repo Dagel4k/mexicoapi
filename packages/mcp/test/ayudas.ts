@@ -152,7 +152,8 @@ export interface Cliente {
 
 /** Conecta un servidor a flujos en memoria y da un cliente mínimo para hablarle por líneas. */
 export function conectar(
-  opciones: Partial<OpcionesServidor> & Pick<Partial<OpcionesStdio>, "maxBytesMensaje"> = {},
+  opciones: Partial<OpcionesServidor> &
+    Pick<Partial<OpcionesStdio>, "maxBytesMensaje" | "msGraciaCierre"> = {},
 ): Cliente {
   const entrada = new PassThrough();
   const salida = new PassThrough();

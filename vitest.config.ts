@@ -18,6 +18,7 @@ export default defineConfig({
         "packages/pipeline/src/bin.ts",
         "packages/sdk/src/cli/index.ts",
         "packages/mcp/src/index.ts",
+        "packages/mcp/src/binario.ts",
       ],
       thresholds: {
         "packages/core/src/**": {
