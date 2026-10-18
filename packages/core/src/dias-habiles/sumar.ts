@@ -49,7 +49,7 @@ export function sumarDiasHabiles(parametros: {
       if (!aniosAvisados.has(anio)) {
         aniosAvisados.add(anio);
         advertencias.push(
-          `Calendario incompleto: ${autoridad} ${anio}; solo se descontaron fines de semana.`,
+          `Calendario incompleto: ${autoridad.toUpperCase()} ${anio}; solo se descontaron fines de semana.`,
         );
       }
       const semana = diaSemanaDeDias(numero);

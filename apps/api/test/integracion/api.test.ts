@@ -558,7 +558,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     const hasta2027 = await datos(permitir("2026-12-24", 5));
     expect(hasta2027.data.advertencias).toEqual([
       aviso,
-      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
     ]);
   });
 
