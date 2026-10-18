@@ -34,6 +34,8 @@ export interface Contexto {
 }
 
 export interface Ruta {
+  /** La ruta como la escribe el OpenAPI (`/v1/estados/{cve_ent}`); es lo único que se registra. */
+  plantilla: string;
   /**
    * Expresión anclada sobre `url.pathname` sin decodificar. Cada grupo con nombre es un
    * parámetro y necesita su regla en `parametros`; un grupo sin regla no llega al manejador.
@@ -199,37 +201,55 @@ function shard(destino: (p: Parametros) => readonly [asset: string, recurso: str
 const fijo = (asset: string, recurso: string) => shard(() => [asset, recurso]);
 
 export const RUTAS: readonly Ruta[] = [
-  { patron: /^\/$/, manejar: indice },
-  { patron: /^\/v1$/, manejar: indice },
-  { patron: /^\/v1\/estados$/, manejar: fijo("/v1/estados.json", "la lista de estados") },
+  { plantilla: "/", patron: /^\/$/, manejar: indice },
+  { plantilla: "/v1", patron: /^\/v1$/, manejar: indice },
   {
+    plantilla: "/v1/estados",
+    patron: /^\/v1\/estados$/,
+    manejar: fijo("/v1/estados.json", "la lista de estados"),
+  },
+  {
+    plantilla: "/v1/estados/{cve_ent}",
     patron: /^\/v1\/estados\/(?<cve_ent>[^/]+)$/,
     parametros: { cve_ent: CVE_ENT },
     manejar: shard((p) => [`/v1/estados/${p.cve_ent}.json`, `el estado ${p.cve_ent}`]),
   },
   {
+    plantilla: "/v1/estados/{cve_ent}/municipios",
     patron: /^\/v1\/estados\/(?<cve_ent>[^/]+)\/municipios$/,
     parametros: { cve_ent: CVE_ENT },
     manejar: shard((p) => [`/v1/estados/${p.cve_ent}/municipios.json`, `el estado ${p.cve_ent}`]),
   },
-  { patron: /^\/v1\/municipios$/, manejar: fijo("/v1/municipios.json", "la lista de municipios") },
   {
+    plantilla: "/v1/municipios",
+    patron: /^\/v1\/municipios$/,
+    manejar: fijo("/v1/municipios.json", "la lista de municipios"),
+  },
+  {
+    plantilla: "/v1/municipios/{cvegeo}",
     patron: /^\/v1\/municipios\/(?<cvegeo>[^/]+)$/,
     parametros: { cvegeo: CVEGEO },
     manejar: shard((p) => [`/v1/municipios/${p.cvegeo}.json`, `el municipio ${p.cvegeo}`]),
   },
-  { patron: /^\/v1\/bancos$/, manejar: fijo("/v1/bancos.json", "la lista de bancos") },
   {
+    plantilla: "/v1/bancos",
+    patron: /^\/v1\/bancos$/,
+    manejar: fijo("/v1/bancos.json", "la lista de bancos"),
+  },
+  {
+    plantilla: "/v1/bancos/{codigo}",
     patron: /^\/v1\/bancos\/(?<codigo>[^/]+)$/,
     parametros: { codigo: CODIGO_BANCO },
     manejar: shard((p) => [`/v1/bancos/${p.codigo}.json`, `el banco ${p.codigo}`]),
   },
   {
+    plantilla: "/v1/clabe/{clabe}",
     patron: /^\/v1\/clabe\/(?<clabe>[^/]+)$/,
     parametros: { clabe: CLABE },
     manejar: clabe,
   },
   {
+    plantilla: "/v1/dias-habiles",
     patron: /^\/v1\/dias-habiles$/,
     consulta: {
       autoridad: AUTORIDAD,
@@ -240,10 +260,15 @@ export const RUTAS: readonly Ruta[] = [
     manejar: diasHabiles,
   },
   {
+    plantilla: "/v1/dias-inhabiles",
     patron: /^\/v1\/dias-inhabiles$/,
     consulta: { autoridad: AUTORIDAD, anio: ANIO },
     manejar: diasInhabiles,
   },
-  { patron: /^\/v1\/status$/, manejar: status },
-  { patron: /^\/v1\/openapi\.json$/, manejar: fijo("/v1/openapi.json", "el documento OpenAPI") },
+  { plantilla: "/v1/status", patron: /^\/v1\/status$/, manejar: status },
+  {
+    plantilla: "/v1/openapi.json",
+    patron: /^\/v1\/openapi\.json$/,
+    manejar: fijo("/v1/openapi.json", "el documento OpenAPI"),
+  },
 ];

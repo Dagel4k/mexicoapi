@@ -395,6 +395,7 @@ interface ReglaWorker {
 }
 
 interface RutaWorker {
+  plantilla: string;
   patron: RegExp;
   parametros?: Readonly<Record<string, ReglaWorker>>;
   consulta?: Readonly<Record<string, ReglaWorker>>;
@@ -418,6 +419,8 @@ describe("rutas del Worker y del documento", () => {
       const camino = new URL(ejemplo(o.ruta, o.op), "http://local").pathname;
       const delWorker = rutas.filter((r) => r.patron.test(camino));
       expect(delWorker.length, o.ruta).toBe(1);
+      // La plantilla que registra el Worker ante un error es la ruta del documento.
+      expect(delWorker[0]?.plantilla, o.ruta).toBe(o.ruta);
     }
     for (const r of rutas) {
       const documentadas = OPERACIONES.filter((o) =>

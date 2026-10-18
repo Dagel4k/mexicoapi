@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Entorno } from "../../src/entorno.js";
 import worker, { manejar } from "../../src/index.js";
+import * as respuestas from "../../src/respuestas.js";
 import { CACHE_DATOS } from "../../src/respuestas.js";
 import { crearAssets, entornoDe, peticion, SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
 
@@ -108,6 +109,23 @@ describe("barra final", () => {
       expect(respuesta.status, ruta).toBe(404);
       expect(respuesta.headers.get("location"), ruta).toBeNull();
       expect(assets.pedidas).toEqual([]);
+    }
+  });
+
+  it("una racha de 10 mil / antes de otro carácter se recorta en tiempo lineal", async () => {
+    const racha = "/".repeat(10_000);
+    const { respuesta } = await pedir(`/v1${racha}x/`);
+    expect(respuesta.status).toBe(308);
+    expect(respuesta.headers.get("location")).toBe(`/v1${racha}x`);
+    // Con /\/+$/ cada petición tarda de 60 a 100 ms (cuadrático); recorriendo desde el final,
+    // las diez juntas no llegan a 10 ms.
+    const inicio = performance.now();
+    for (let i = 0; i < 10; i++) await pedir(`/v1${racha}x/`);
+    expect(performance.now() - inicio).toBeLessThan(100);
+    for (const ruta of [`${racha}/`, `/${racha}evil.example/`]) {
+      const otra = (await pedir(ruta)).respuesta;
+      expect(otra.status).toBe(404);
+      expect(otra.headers.get("location")).toBeNull();
     }
   });
 });
@@ -268,6 +286,18 @@ describe("límite de peticiones", () => {
     expect(claves).toEqual(["ip:desconocida"]);
   });
 
+  it("las IPv6 de un mismo /64 comparten clave; las IPv4 van completas", async () => {
+    const { binding, claves } = limite(async () => ({ success: true }));
+    for (const ip of [
+      "2001:db8:1:2::5",
+      "2001:0DB8:0001:0002:aaaa:bbbb:cccc:dddd",
+      "203.0.113.7",
+    ]) {
+      await pedir("/v1", { headers: { "CF-Connecting-IP": ip } }, { LIMITE: binding });
+    }
+    expect(claves).toEqual(["ip:2001:db8:1:2::/64", "ip:2001:db8:1:2::/64", "ip:203.0.113.7"]);
+  });
+
   it("si el binding lanza, deja pasar", async () => {
     const { binding } = limite(async () => {
       throw new Error("sin servicio");
@@ -301,6 +331,73 @@ describe("errores no previstos", () => {
     expect(respuesta.status).toBe(500);
     expect(respuesta.body).toBeNull();
     expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+  });
+});
+
+describe("registro de errores internos", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const espiar = () => vi.spyOn(console, "error").mockImplementation(() => {});
+
+  it("deja una línea con el nombre del error y la plantilla, sin URL, query, IP ni mensaje", async () => {
+    const consola = espiar();
+    const assets = crearAssets({}, { fallar: true });
+    const respuesta = await manejar(
+      peticion("/v1/estados/25", { headers: { "CF-Connecting-IP": "203.0.113.7" } }),
+      entornoDe(assets),
+    );
+    expect(respuesta.status).toBe(500);
+    expect(consola.mock.calls).toEqual([
+      ["mexicoapi: error interno: Error en /v1/estados/{cve_ent}"],
+    ]);
+    const linea = String(consola.mock.calls[0]?.[0]);
+    for (const dato of ["25", "203.0.113.7", "ruta/interna", "binding", "api.test"]) {
+      expect(linea).not.toContain(dato);
+    }
+  });
+
+  it("un nombre de error raro o algo que no es Error se registra como desconocido", async () => {
+    const consola = espiar();
+    const raro = new Error("x");
+    raro.name = "Error con /v1/estados/25?x=1";
+    for (const lanzado of [raro, "texto", 42]) {
+      const binding = { fetch: () => Promise.reject(lanzado) } as unknown as Fetcher;
+      const respuesta = await manejar(peticion("/v1/bancos/012"), { ASSETS: binding });
+      expect(respuesta.status).toBe(500);
+    }
+    expect(consola.mock.calls).toEqual(
+      Array.from({ length: 3 }, () => [
+        "mexicoapi: error interno: desconocido en /v1/bancos/{codigo}",
+      ]),
+    );
+  });
+
+  it("una falla al quitar el cuerpo de un HEAD sale como 500 sin cuerpo", async () => {
+    const consola = espiar();
+    vi.spyOn(respuestas, "sinCuerpo").mockRejectedValue(new TypeError("cuerpo bloqueado"));
+    for (const [ruta, plantilla] of [
+      ["/v1", "/v1"],
+      ["/v1/no-existe", "(sin ruta)"],
+    ] as const) {
+      const respuesta = await manejar(peticion(ruta, { method: "HEAD" }), entornoDe(crearAssets()));
+      expect(respuesta.status, ruta).toBe(500);
+      expect(respuesta.body, ruta).toBeNull();
+      expect(respuesta.headers.get("content-type")).toBe("application/problem+json; charset=utf-8");
+      expect(respuesta.headers.get("cache-control")).toBe("no-store");
+      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+      expect(consola).toHaveBeenLastCalledWith(
+        `mexicoapi: error interno: TypeError en ${plantilla}`,
+      );
+    }
+  });
+
+  it("una respuesta normal no registra nada", async () => {
+    const consola = espiar();
+    await pedir("/v1/no-existe");
+    await pedir("/v1", { method: "HEAD" });
+    expect(consola).not.toHaveBeenCalled();
   });
 });
 
