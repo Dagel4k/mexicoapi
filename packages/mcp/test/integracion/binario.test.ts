@@ -1,7 +1,9 @@
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const RAIZ = new URL("../../", import.meta.url);
 const BINARIO = fileURLToPath(new URL("dist/index.js", RAIZ));
@@ -24,6 +26,13 @@ const INITIALIZE = {
   },
 };
 
+// Caché de SEPOMEX vacía para el binario: nunca la del equipo.
+const CACHE_VACIA = mkdtempSync(join(tmpdir(), "mexicoapi-mcp-integracion-"));
+
+afterAll(() => {
+  rmSync(CACHE_VACIA, { recursive: true, force: true });
+});
+
 beforeAll(() => {
   if (!existsSync(BINARIO)) {
     throw new Error(
@@ -32,9 +41,22 @@ beforeAll(() => {
   }
 });
 
-/** Lanza un proceso de Node y le habla por stdin/stdout reales, una línea JSON por mensaje. */
-function lanzar(archivo: string) {
-  const hijo = spawn(process.execPath, [archivo], { stdio: ["pipe", "pipe", "pipe"] });
+/**
+ * Lanza un proceso de Node y le habla por stdin/stdout reales, una línea JSON por mensaje. Sin
+ * MEXICOAPI_BASE (salvo que `env` la traiga) y con la caché de SEPOMEX en un directorio vacío.
+ */
+function lanzar(archivo: string, env: Record<string, string> = {}) {
+  const entorno: Record<string, string | undefined> = {
+    ...process.env,
+    LOCALAPPDATA: CACHE_VACIA,
+    XDG_CACHE_HOME: CACHE_VACIA,
+    ...env,
+  };
+  if (env.MEXICOAPI_BASE === undefined) delete entorno.MEXICOAPI_BASE;
+  const hijo = spawn(process.execPath, [archivo], {
+    stdio: ["pipe", "pipe", "pipe"],
+    env: entorno,
+  });
   const lineas: string[] = [];
   const pendientes: string[] = [];
   const esperando: Array<() => void> = [];
@@ -128,6 +150,95 @@ describe("binario por stdio real", () => {
       expect(await proceso.fin).toEqual({ codigo: 0, senal: null });
     },
   );
+});
+
+/** Inicia una sesión con el binario y devuelve cómo llamar herramientas. */
+async function sesion(env: Record<string, string> = {}) {
+  const proceso = lanzar(BINARIO, env);
+  proceso.enviar(INITIALIZE);
+  await proceso.recibir();
+  proceso.enviar({ jsonrpc: "2.0", method: "notifications/initialized" });
+  let id = 10;
+  return {
+    proceso,
+    async llamar(name: string, args: Record<string, unknown>) {
+      proceso.enviar({
+        jsonrpc: "2.0",
+        id: ++id,
+        method: "tools/call",
+        params: { name, arguments: args },
+      });
+      const respuesta = await proceso.recibir();
+      expect(respuesta.error).toBeUndefined();
+      return respuesta.result as {
+        content: Array<{ text: string }>;
+        structuredContent?: Record<string, unknown>;
+        isError?: boolean;
+      };
+    },
+    async terminar() {
+      proceso.hijo.stdin.end();
+      expect(await proceso.fin).toEqual({ codigo: 0, senal: null });
+      for (const linea of proceso.lineas) expect(() => JSON.parse(linea)).not.toThrow();
+    },
+  };
+}
+
+describe("herramientas en el binario compilado", () => {
+  it("publica las 13 herramientas y responde con mexicoapi compilado, sin red", async () => {
+    const s = await sesion();
+    s.proceso.enviar({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+    const lista = (await s.proceso.recibir()).result as { tools: Array<{ name: string }> };
+    expect(lista.tools).toHaveLength(13);
+    const clabe = await s.llamar("validar_clabe", { clabe: "002010077777777771" });
+    expect(clabe.structuredContent).toMatchObject({
+      datos: { valido: true, detalle: { banco: { nombre_corto: "BANAMEX" } } },
+      origen: "paquete",
+    });
+    const fix = await s.llamar("tipo_de_cambio_fix", { publicado: "2026-10-12" });
+    expect(fix.structuredContent).toMatchObject({
+      datos: { valor: "18.4163" },
+      origen: "paquete",
+      advertencias: [expect.stringContaining("no hay MEXICOAPI_BASE")],
+    });
+    const inhabil = await s.llamar("sumar_dias_habiles", {
+      autoridad: "sat",
+      tipo_plazo: "general",
+      desde: "2026-07-17",
+      dias: 3,
+    });
+    expect(inhabil.structuredContent).toMatchObject({ datos: { resultado: "2026-08-05" } });
+    const cp = await s.llamar("codigo_postal", { cp: "80000" });
+    expect(cp.isError).toBe(true);
+    expect(cp.content[0]?.text).toContain("npx mexicoapi sepomex sync");
+    expect(cp.content[0]?.text).not.toContain(CACHE_VACIA);
+    await s.terminar();
+    expect(s.proceso.errores()).toContain("datos del paquete, sin red");
+  });
+
+  it("con MEXICOAPI_BASE que no responde, usa el paquete y lo advierte", async () => {
+    // Un puerto local cerrado: la conexión se rechaza enseguida, sin salir del equipo.
+    const s = await sesion({ MEXICOAPI_BASE: "http://127.0.0.1:9" });
+    const udi = await s.llamar("udis", { fecha: "2026-10-01" });
+    expect(udi.structuredContent).toMatchObject({
+      datos: { valor: "8.836029" },
+      origen: "paquete",
+    });
+    const advertencias = udi.structuredContent?.advertencias as string[];
+    expect(advertencias[0]).toMatch(/^Respuesta de los datos del paquete porque la API falló/);
+    await s.terminar();
+    expect(s.proceso.errores()).toContain("consulta la API de MEXICOAPI_BASE");
+  }, 30_000);
+
+  it("una MEXICOAPI_BASE inválida sale con código 2 sin repetir la base", async () => {
+    const proceso = lanzar(BINARIO, {
+      MEXICOAPI_BASE: "https://usuario:CLAVE-SECRETA@api.example",
+    });
+    expect(await proceso.fin).toEqual({ codigo: 2, senal: null });
+    expect(proceso.lineas).toEqual([]);
+    expect(proceso.errores()).toContain("MEXICOAPI_BASE no es válida");
+    expect(proceso.errores()).not.toContain("CLAVE-SECRETA");
+  });
 });
 
 describe("servidor con herramientas de prueba por stdio real", () => {
