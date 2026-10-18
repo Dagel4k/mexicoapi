@@ -4,10 +4,10 @@ import { compilarEsquema, type EsquemaJson } from "../src/esquema.js";
 import { ErrorHerramienta, type Herramienta } from "../src/herramientas.js";
 import {
   AVISO_SIN_API,
+  aUnaLinea,
   conSalidaDeApiRevisada,
   consultar,
   DATOS_CON_OTRA_FORMA,
-  enLinea,
   esquemaSalida,
   type Origen,
   procedencia,
@@ -273,8 +273,8 @@ describe("conSalidaDeApiRevisada", () => {
 });
 
 describe("ayudas de texto", () => {
-  it("enLinea quita saltos y controles", () => {
-    expect(enLinea(" a\r\nb c\u0007d ")).toBe("a b c d");
+  it("aUnaLinea quita saltos y controles", () => {
+    expect(aUnaLinea(" a\r\nb c\u0007d ")).toBe("a b c d");
   });
 
   it("unicas quita las fuentes repetidas", () => {

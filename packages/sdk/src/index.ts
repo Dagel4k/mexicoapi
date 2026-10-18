@@ -41,6 +41,7 @@ export type {
 } from "@mexicoapi/core";
 export {
   AUTORIDADES,
+  aUnaLinea,
   CalendarioIncompletoError,
   COBERTURA_LFT,
   calendarioLft,
@@ -51,7 +52,6 @@ export {
   digitoVerificadorNss,
   digitoVerificadorRfc,
   ENTIDADES_CURP,
-  enLinea,
   esFechaIsoValida,
   FechaFueraDeRangoError,
   FUENTE_CFF_20,

@@ -8,9 +8,9 @@ import { compilarEsquema } from "../esquema.js";
 import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
+  aUnaLinea,
   consultar,
   ESQUEMA_FUENTE_DATO,
-  enLinea,
   esquemaSalida,
   FECHA,
   fuenteDe,
@@ -114,10 +114,10 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
           : "Última publicación del FIX";
       const linea =
         publicado !== undefined
-          ? `FIX publicado en el DOF el ${fix.fecha_publicacion}: ${enLinea(fix.valor)} pesos por dólar.`
+          ? `FIX publicado en el DOF el ${fix.fecha_publicacion}: ${aUnaLinea(fix.valor)} pesos por dólar.`
           : operacion !== undefined
-            ? `FIX para una operación del ${operacion}: ${enLinea(fix.valor)} pesos por dólar, el publicado en el DOF el ${fix.fecha_publicacion} (CFF, artículo 20).`
-            : `${masReciente}: ${enLinea(fix.valor)} pesos por dólar, en el DOF del ${fix.fecha_publicacion}.`;
+            ? `FIX para una operación del ${operacion}: ${aUnaLinea(fix.valor)} pesos por dólar, el publicado en el DOF el ${fix.fecha_publicacion} (CFF, artículo 20).`
+            : `${masReciente}: ${aUnaLinea(fix.valor)} pesos por dólar, en el DOF del ${fix.fecha_publicacion}.`;
       const sinApi = !conApi && (await cercaDelFinal(serieFix, publicado ?? operacion));
       const base = procedencia(r, { sinApi });
       const fuentes =
@@ -151,7 +151,7 @@ export function udisHerramienta({ cliente, conApi }: OpcionesHerramientas): Herr
       const udi = r.data;
       const sinApi = !conApi && (await cercaDelFinal(serieUdis, udi.fecha));
       return resultado(
-        [`UDI del ${udi.fecha}: ${enLinea(udi.valor)} pesos.`],
+        [`UDI del ${udi.fecha}: ${aUnaLinea(udi.valor)} pesos.`],
         udi,
         procedencia(r, { sinApi }),
       );

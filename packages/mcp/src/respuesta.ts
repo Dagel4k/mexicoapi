@@ -1,7 +1,7 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
 // (as_of, fuente, origen y advertencias), sus esquemas, el texto legible y cómo se traducen los
 // errores esperables del paquete y de la API.
-import { enLinea, esFechaIsoValida } from "mexicoapi";
+import { aUnaLinea, esFechaIsoValida } from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -160,7 +160,7 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
  * Quita los saltos y controles de un texto de los datos: cada dato queda en su línea. Es el de
  * mexicoapi, el mismo que usa su CLI.
  */
-export { enLinea };
+export { aUnaLinea };
 
 /** Un tipo de problema de la API como `no-encontrado`; otra forma no se copia al texto. */
 const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
@@ -171,7 +171,7 @@ const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
  * se publica (vuelve a intentar después) de uno que no existe. Sin tipo, solo el detalle.
  */
 export function textoDeProblema(tipo: string | undefined, detalle: string): string {
-  const texto = enLinea(detalle);
+  const texto = aUnaLinea(detalle);
   return tipo !== undefined && TIPO_PROBLEMA.test(tipo) ? `[${tipo}] ${texto}` : texto;
 }
 
@@ -252,13 +252,13 @@ const TEXTO_ORIGEN: Readonly<Record<Origen, string>> = {
 /** Las líneas de fuente, fecha, origen y advertencias que cierran el texto de un resultado. */
 function pie(p: Procedencia, sinFecha: string): string[] {
   const lineas = p.fuentes.map(
-    (f, i) => `${i === 0 ? "Fuente" : "Otra fuente"}: ${enLinea(f.nombre)} (${enLinea(f.url)})`,
+    (f, i) => `${i === 0 ? "Fuente" : "Otra fuente"}: ${aUnaLinea(f.nombre)} (${aUnaLinea(f.url)})`,
   );
   lineas.push(
     `as_of (corte de los datos): ${p.as_of ?? sinFecha}`,
     `Origen: ${TEXTO_ORIGEN[p.origen]}`,
   );
-  for (const a of p.advertencias) lineas.push(`Advertencia: ${enLinea(a)}`);
+  for (const a of p.advertencias) lineas.push(`Advertencia: ${aUnaLinea(a)}`);
   return lineas;
 }
 
@@ -298,7 +298,7 @@ export async function consultar<T extends { origen: Origen; data: unknown }>(
     if (signal.aborted) throw error;
     if (error instanceof MexicoApiError) {
       throw new ErrorHerramienta(
-        textoDeProblema(error.tipo, enLinea(error.detail) || enLinea(error.message)),
+        textoDeProblema(error.tipo, aUnaLinea(error.detail) || aUnaLinea(error.message)),
       );
     }
     throw error;

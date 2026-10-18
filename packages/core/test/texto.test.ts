@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { normalizarClabe, validarClabe } from "../src/clabe.js";
 import * as core from "../src/index.js";
-import { enLinea } from "../src/texto.js";
+import { aUnaLinea } from "../src/texto.js";
 
-describe("enLinea", () => {
+describe("aUnaLinea", () => {
   it("cambia cada racha de saltos y caracteres de control por un espacio y recorta", () => {
-    expect(enLinea("Banco\nde México")).toBe("Banco de México");
-    expect(enLinea("  a\r\n\tb  ")).toBe("a b");
+    expect(aUnaLinea("Banco\nde México")).toBe("Banco de México");
+    expect(aUnaLinea("  a\r\n\tb  ")).toBe("a b");
     const [linea, parrafo] = [String.fromCodePoint(0x2028), String.fromCodePoint(0x2029)];
-    expect(enLinea(`a${linea}b${parrafo}c`)).toBe("a b c");
-    expect(enLinea("sin cambios")).toBe("sin cambios");
+    expect(aUnaLinea(`a${linea}b${parrafo}c`)).toBe("a b c");
+    expect(aUnaLinea("sin cambios")).toBe("sin cambios");
   });
 
   it("quita las secuencias de escape de la terminal (ESC, CSI de 8 bits, OSC)", () => {
-    const texto = enLinea("\u001b[31mrojo\u001b[0m \u009b2J \u001b]8;;https://x\u0007enlace");
+    const texto = aUnaLinea("\u001b[31mrojo\u001b[0m \u009b2J \u001b]8;;https://x\u0007enlace");
     const control = (c: string) => (c.codePointAt(0) as number) < 0x20 || /\p{Cc}/u.test(c);
     expect([...texto].filter(control)).toEqual([]);
     // Los espacios que ya estaban se quedan: solo cambian los controles.
@@ -41,8 +41,8 @@ describe("normalizarClabe", () => {
 });
 
 describe("índice del núcleo", () => {
-  it("exporta enLinea y normalizarClabe, que usan la CLI y el MCP", () => {
-    expect(core.enLinea).toBe(enLinea);
+  it("exporta aUnaLinea y normalizarClabe, que usan la CLI y el MCP", () => {
+    expect(core.aUnaLinea).toBe(aUnaLinea);
     expect(core.normalizarClabe).toBe(normalizarClabe);
   });
 });

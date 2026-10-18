@@ -11,7 +11,7 @@ import type { EsquemaJson } from "../esquema.js";
 import { type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
-  enLinea,
+  aUnaLinea,
   esquemaSalida,
   FUENTE_VALIDADORES,
   type Procedencia,
@@ -121,7 +121,7 @@ function herramientaValidadora<D>(v: Validador<D>): Herramienta {
           `El dígito verificador no coincide; en el ${v.sigla} es informativo y no lo invalida.`,
         );
       }
-      lineas.push(enLinea(r.nota));
+      lineas.push(aUnaLinea(r.nota));
       return resultado(lineas, r, PROCEDENCIA, { sinFecha: SIN_FECHA });
     },
   };
@@ -176,7 +176,7 @@ export const validarCurpHerramienta = (): Herramienta =>
     },
     validar: validarCurp,
     valido: (d) =>
-      `: nacimiento ${d.fecha}, sexo ${d.sexo}, entidad ${d.entidad} (${enLinea(d.nombre_entidad)}).`,
+      `: nacimiento ${d.fecha}, sexo ${d.sexo}, entidad ${d.entidad} (${aUnaLinea(d.nombre_entidad)}).`,
   });
 
 export const validarNssHerramienta = (): Herramienta =>

@@ -28,7 +28,7 @@ export const FUNCIONES = [
   "revisarTipoPlazo",
   "revisarFix",
   "normalizarClabe",
-  "enLinea",
+  "aUnaLinea",
 ] as const;
 
 export const ERRORES = [
@@ -101,7 +101,7 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
       "Indica solo uno de publicado u operacion.",
     );
     expect(m.normalizarClabe("002 010-077777777771")).toBe("002010077777777771");
-    expect(m.enLinea("a\u001b[2Jb\nc")).toBe("a [2Jb c");
+    expect(m.aUnaLinea("a\u001b[2Jb\nc")).toBe("a [2Jb c");
   });
 
   describe("validadores", () => {
