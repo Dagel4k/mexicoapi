@@ -12,7 +12,7 @@ El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre 
 2. Instalar la App solo en el repositorio `mexicoapi`.
 3. Generar una clave privada (archivo `.pem`) desde la página de la App.
 4. Guardar dos secretos en el repo (Settings, Secrets and variables, Actions):
-   - `BOT_APP_ID`: el App ID de la página de la App.
+   - `BOT_CLIENT_ID`: el Client ID de la App, que aparece en la sección "About" de su página de ajustes (empieza con `Iv`). No es el App ID numérico.
    - `BOT_PRIVATE_KEY`: el contenido completo del `.pem`.
 5. Probar con Actions, Datos, "Run workflow", eligiendo `inegi` o `bancos`.
 
@@ -31,6 +31,7 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 - Si hay cambios dentro de los umbrales, abre un PR desde la rama `datos/<grupo>-<fecha>` con el resumen y activa el auto-merge. El PR se fusiona cuando pasa el check `verify`.
 - Si los cambios piden revisión humana, abre el PR con la etiqueta `revisar`, sin auto-merge, y un issue `Revisar datos: <grupo> <fecha>` con los motivos.
 - Si el pipeline pide revisión pero no hay cambios en `data/`, abre (o comenta en) un issue `Revisar datos: <grupo>`.
+- Si ya hay un PR con la etiqueta `revisar` abierto para el grupo, no abre otro: comenta en el issue `Revisar datos: <grupo>` con los motivos nuevos.
 - Si el pipeline falla, abre (o comenta en) un issue `Falla en datos: <grupo>` y la corrida queda en rojo.
 
 ## Qué nunca hace
@@ -40,3 +41,7 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 - Solo modifica archivos dentro de `data/`.
 - No reescribe historial ni hace push forzado; si la rama del día ya existe, usa otra con sufijo.
 - El resto del repositorio lo usa solo en lectura.
+
+## Nota sobre main
+
+`main` exige que las ramas estén al día. Si `main` avanza mientras un PR de datos espera el auto-merge, puede hacer falta pulsar "Update branch" en ese PR.
