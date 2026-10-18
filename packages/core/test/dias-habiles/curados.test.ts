@@ -814,7 +814,10 @@ describe("sumarDiasHabilesCurado con la CNBV", () => {
     }
     expect(cnbv("2026-12-31", 1, true)).toMatchObject({
       resultado: "2027-01-01",
-      advertencias: ["Calendario incompleto: CNBV 2027; solo se descontaron fines de semana."],
+      // Nombra el riesgo: el resultado cae justo en el 1 de enero, que los bancos suelen cerrar.
+      advertencias: [
+        "Calendario incompleto: CNBV 2027; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero.",
+      ],
     });
   });
 });

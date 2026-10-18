@@ -819,6 +819,11 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       fecha: despues(bancaria),
       cobertura: bancaria,
     });
+    // Nuevo: con permitir_incompleto, la advertencia nombra el riesgo de los cierres bancarios.
+    const { data } = await datos(`${cnbv(bancaria.hasta)}&permitir_incompleto=true`);
+    expect(data.advertencias).toEqual([
+      `Calendario incompleto: CNBV ${anioDe(despues(bancaria))}; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero.`,
+    ]);
   });
 
   it("con sat, sin tipo_plazo: 400 parametro-faltante", async () => {
