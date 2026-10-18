@@ -119,7 +119,7 @@ udiDeFecha(udis.serie, udis.tramo, udis.cobertura, "2026-10-01");
 fix.cobertura; // primera y última publicación que trae el paquete
 ```
 
-`feriadoBancario` le dice a la regla qué días entre semana no publica el DOF el FIX (los de descanso de la CNBV). Sin esa opción solo cuentan sábados y domingos, y un feriado después del último dato da `no_disponible`.
+`feriadoBancario` le dice a la regla qué días entre semana no publica el DOF el FIX (los de descanso de la CNBV). Sin esa opción solo cuentan sábados y domingos, y un feriado después del último dato da `no_disponible`. El tipo de las opciones es `OpcionesFix`, de `mexicoapi`.
 
 ## UMA, salario mínimo e ISR
 

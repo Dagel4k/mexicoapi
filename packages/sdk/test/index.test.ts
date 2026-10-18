@@ -15,6 +15,7 @@ import type {
   FechaISO,
   Fuente,
   Municipio,
+  OpcionesFix,
   PeriodoBanco,
   Plaza,
   ResultadoDiasHabiles,
@@ -54,6 +55,10 @@ describe("tipos públicos", () => {
     expectTypeOf(mexicoapi.fixPublicado).returns.toEqualTypeOf<Consulta<TipoCambioFix>>();
     expectTypeOf(mexicoapi.udiDeFecha).returns.toEqualTypeOf<Consulta<Udi>>();
     expectTypeOf(mexicoapi.udiDeFecha).parameter(1).toEqualTypeOf<CoberturaSerie>();
+    expectTypeOf(mexicoapi.fixParaOperacion).parameter(4).toEqualTypeOf<OpcionesFix | undefined>();
+    expectTypeOf<OpcionesFix["sinPublicacion"]>().toEqualTypeOf<
+      ((fecha: FechaISO) => boolean) | undefined
+    >();
   });
 
   it("exporta los tipos de los datos", () => {
