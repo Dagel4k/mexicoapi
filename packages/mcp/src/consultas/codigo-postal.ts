@@ -14,7 +14,7 @@ import {
 
 const COMANDO = "npx mexicoapi sepomex sync";
 
-/** Asentamientos que se listan en el texto; structuredContent los trae todos. */
+/** Asentamientos que el texto lista con tipo, zona y ciudad; los demás van solo con el nombre. */
 const MAX_EN_TEXTO = 30;
 
 const SIN_INEGI =
@@ -133,8 +133,13 @@ export function codigoPostalHerramienta({ dirSepomex }: OpcionesHerramientas): H
           return `- ${enLinea(a.nombre)} (${partes.join(", ")})`;
         }),
       ];
+      // Los demás van solo con el nombre: en 2025-03-26 y 2024-11-05 no hay structuredContent y
+      // muchos hosts solo le pasan el texto al modelo, así que el texto los trae todos.
       if (n > MAX_EN_TEXTO) {
-        lineas.push(`… y ${n - MAX_EN_TEXTO} más (todos vienen en structuredContent).`);
+        lineas.push(
+          `Los otros ${n - MAX_EN_TEXTO}, solo con el nombre:`,
+          ...asentamientos.slice(MAX_EN_TEXTO).map((a) => `- ${enLinea(a.nombre)}`),
+        );
       }
       lineas.push(`Aviso de Correos de México: ${enLinea(resumen.aviso)}`);
       const fuente: Fuente = { nombre: FUENTE_NOMBRE, url: resumen.fuente };
