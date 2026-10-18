@@ -339,6 +339,7 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 - **Errores:** `application/problem+json` (RFC 9457), con `type`, `title`, `status`, `detail` e `instance`. Nunca incluyen trazas. El `type` es la URI absoluta de la sección correspondiente de `docs/api/problemas.md` en GitHub (`https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#<tipo>`), estable sin dominio propio; si llega un dominio, los `type` se quedan como identificadores.
 - **Caché:**
   - Datos que cambian: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`. No lleva `s-maxage=86400`: un caché compartido de 24 h rompería la meta de frescura de 24 h.
+  - `/v1/tipo-cambio/fix/ultimo`: `public, max-age=300`, sin `stale-while-revalidate` ni `stale-if-error`, porque cambia con cada publicación.
   - `/v1/status`: `public, max-age=60`. Errores: `no-store`.
   - Históricos (cuando existan): `public, max-age=31536000, immutable`.
   - `ETag` = hash del contenido en los shards; con `If-None-Match` responde 304.

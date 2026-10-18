@@ -3,6 +3,9 @@ import { PROBLEMAS, type TipoProblema, URL_PROBLEMAS } from "./problemas.js";
 export const CACHE_DATOS =
   "public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800";
 export const CACHE_STATUS = "public, max-age=60";
+// `/v1/tipo-cambio/fix/ultimo` cambia con cada publicación: sin stale, un cliente no se queda
+// horas con el FIX de ayer.
+export const CACHE_ULTIMO = "public, max-age=300";
 
 const SEGURIDAD: ReadonlyArray<readonly [string, string]> = [
   ["Access-Control-Allow-Origin", "*"],

@@ -238,7 +238,10 @@ describe("tipo de cambio FIX y UDIS con los datos reales", () => {
     expect(de("udis")).toEqual(coberturaUdis);
   });
 
-  it("ultimo: la última publicación de la serie", async () => {
+  it("ultimo: la última publicación de la serie, con caché de 5 minutos y sin stale", async () => {
+    const respuesta = await pedir("/v1/tipo-cambio/fix/ultimo");
+    expect(respuesta.headers.get("Cache-Control")).toBe("public, max-age=300");
+    await respuesta.arrayBuffer();
     const { data, meta } = await datos("/v1/tipo-cambio/fix/ultimo");
     expect(data).toEqual(ultimoFix);
     expect(meta.dataset).toBe("tipo-cambio.fix");
