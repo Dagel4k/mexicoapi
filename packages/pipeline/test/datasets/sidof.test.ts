@@ -12,7 +12,7 @@ import {
 } from "../../src/datasets/sidof.js";
 import { diferenciar } from "../../src/diferencias.js";
 import { ErrorDatos } from "../../src/errores.js";
-import { crearCliente } from "../../src/http.js";
+import { crearCliente, ErrorHttp } from "../../src/http.js";
 import {
   type Contexto,
   type CrudoCapturado,
@@ -89,11 +89,18 @@ function udisSinteticas(): Map<number, { fecha: string; valor: string }[]> {
 let raiz: string;
 let pedidas: string[];
 let fuenteFalsa: Map<string, Uint8Array>;
+/** Respuestas no exitosas por URL; tienen prioridad sobre `fuenteFalsa`. */
+let erroresFalsos: Map<string, { estado: number; cuerpo: string }>;
+
+/** Lo que responde el SIDOF cuando el rango pedido no tiene publicaciones. */
+const NOT_FOUND = '{"messageCode":404,"response":"NOT_FOUND"}';
+const sinDatos = (url: string) => erroresFalsos.set(url, { estado: 404, cuerpo: NOT_FOUND });
 
 beforeEach(async () => {
   raiz = await mkdtemp(join(tmpdir(), "sidof-"));
   pedidas = [];
   fuenteFalsa = new Map();
+  erroresFalsos = new Map();
   const sinteticas = udisSinteticas();
   for (const anio of ANIOS) {
     fuenteFalsa.set(urlSidof(158, anio), respuesta(158, []));
@@ -113,6 +120,13 @@ function ctx(fecha = HOY): Contexto {
     const url = String(entrada);
     if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
     pedidas.push(url);
+    const error = erroresFalsos.get(url);
+    if (error !== undefined) {
+      return new Response(error.cuerpo, {
+        status: error.estado,
+        headers: { "content-type": "application/json" },
+      });
+    }
     const cuerpo = fuenteFalsa.get(url);
     return cuerpo === undefined ? new Response("no", { status: 404 }) : new Response(cuerpo);
   };
@@ -206,6 +220,30 @@ describe("interpretarSidof", () => {
       valor: "8.673506",
     });
     for (const x of r) expect(x.valor).toMatch(/^\d+\.\d{6}$/);
+  });
+
+  it("guarda la UDI sin los espacios de alrededor y rechaza cualquier otro blanco", async () => {
+    // El índice 8 del fixture es el 2026-01-09.
+    const con = (valor: string) =>
+      variante("159-2026.json", (r) => {
+        en(r, 8).valor = valor;
+      });
+    const r = interpretarSidof(await con("  8.673506  "), 159, 2026, 6);
+    expect(r[8]).toEqual({ fecha: "2026-01-09", valor: "8.673506" });
+    for (const malo of [
+      "8.673506\t",
+      "\t8.673506",
+      "8.673 506",
+      "8 .673506",
+      "8.673506\n",
+      "\u00a08.673506",
+      " 8.67350 ",
+    ]) {
+      const bytes = await con(malo);
+      expect(() => interpretarSidof(bytes, 159, 2026, 6), JSON.stringify(malo)).toThrow(
+        `valor inesperado el 2026-01-09: ${JSON.stringify(malo)}`,
+      );
+    }
   });
 
   it("acepta un año sin publicaciones", () => {
@@ -536,6 +574,64 @@ describe("capturar", () => {
     expect(pedidas).toEqual([]);
   });
 
+  it("un 404 NOT_FOUND del año en curso es un año sin publicaciones y no deja crudo", async () => {
+    await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
+    sinDatos(urlSidof(158, 2027));
+    const [f] = await tipoCambioFix.capturar(ctx("2027-01-02"));
+    expect(pedidas).toEqual(urls(158, [2026, 2027]));
+    expect(f?.crudos.map((c) => c.file)).toEqual(ANIOS.map((a) => archivo(158, a)));
+    expect(f?.crudos[6]?.bytes).toEqual(await fixture("158-2026.json"));
+    // Los del disco llevan la hora de la petición del año en curso, aunque haya dado 404.
+    const del2026 = f?.crudos[6]?.obtenido_en as string;
+    const delDisco = new Set(f?.crudos.slice(0, 6).map((c) => c.obtenido_en));
+    expect(delDisco.size).toBe(1);
+    const hora = [...delDisco][0] as string;
+    expect(hora).toMatch(/^2026-10-18T19:30:\d{2}\.000Z$/);
+    expect(hora > del2026).toBe(true);
+  });
+
+  it("un 404 con otro cuerpo es un error de datos", async () => {
+    for (const cuerpo of [
+      '{"messageCode":404,"response":"ERROR"}',
+      '{"messageCode":404,"response":"NOT_FOUND","detalle":"x"}',
+      '{"messageCode":"404","response":"NOT_FOUND"}',
+      '{"messageCode":200,"response":"OK","ListaIndicadores":[],"TotalIndicadores":0}',
+      '[{"messageCode":404,"response":"NOT_FOUND"}]',
+      "null",
+      "<html>404</html>",
+      "",
+    ]) {
+      erroresFalsos.set(urlSidof(158, 2026), { estado: 404, cuerpo });
+      await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
+      const e = await tipoCambioFix.capturar(ctx()).catch((x) => x);
+      expect(e, cuerpo).toBeInstanceOf(ErrorDatos);
+      expect(e.message).toContain("404");
+      expect(e.message).toContain("2026");
+    }
+  });
+
+  it("un 404 NOT_FOUND de un año que ya debe tener datos es un error", async () => {
+    // Un año cerrado que falta en disco.
+    sinDatos(urlSidof(158, 2021));
+    const pasado = await tipoCambioFix.capturar(ctx()).catch((x) => x);
+    expect(pasado).toBeInstanceOf(ErrorDatos);
+    expect(pasado.message).toContain("2021");
+    expect(pedidas).toEqual(urls(158, [2020, 2021]));
+    // El año anterior que se vuelve a pedir del 1 al 15 de enero.
+    await crudosEnDisco("tipo-cambio-fix", 158, [2020, 2021, 2022, 2023, 2024, 2025]);
+    sinDatos(urlSidof(158, 2026));
+    const enero = await tipoCambioFix.capturar(ctx("2027-01-05")).catch((x) => x);
+    expect(enero).toBeInstanceOf(ErrorDatos);
+    expect(enero.message).toContain("2026");
+  });
+
+  it("otros estados de error siguen siendo ErrorHttp", async () => {
+    erroresFalsos.set(urlSidof(158, 2020), { estado: 410, cuerpo: NOT_FOUND });
+    const e = await tipoCambioFix.capturar(ctx()).catch((x) => x);
+    expect(e).toBeInstanceOf(ErrorHttp);
+    expect(e.estado).toBe(410);
+  });
+
   it("una corrida anterior a 2020 es un error", async () => {
     await expect(tipoCambioFix.capturar(ctx("2019-12-31"))).rejects.toThrow(ErrorDatos);
     expect(pedidas).toEqual([]);
@@ -543,6 +639,17 @@ describe("capturar", () => {
 });
 
 describe("construir", () => {
+  it("el año en curso puede no tener crudo; los cerrados no", async () => {
+    const crudos = [2020, 2021, 2022, 2023, 2024, 2025].map((a) => crudoDe(158, a));
+    const { registros } = await tipoCambioFix.construir([fuenteCon(crudos)], null, ctx());
+    expect(registros).toHaveLength(252);
+    expect(registros.at(-1)).toEqual({ fecha_publicacion: "2020-12-31", valor: "19.9352" });
+    const sin2025 = crudos.slice(0, -1);
+    await expect(tipoCambioFix.construir([fuenteCon(sin2025)], null, ctx())).rejects.toThrow(
+      "raw/sidof-158-2025.json",
+    );
+  });
+
   it("une los años del FIX en orden de fecha", async () => {
     const crudos = [...ANIOS].reverse().map((a) => crudoDe(158, a));
     const { registros, avisos } = await tipoCambioFix.construir([fuenteCon(crudos)], null, ctx());
@@ -824,7 +931,59 @@ describe("corrida completa", () => {
       fecha: "2026-01-09",
       valor: "8.673506",
     });
+    // El crudo se guarda tal cual lo publica la fuente, con el espacio.
+    const crudo = await readFile(join(raiz, "udis", archivo(159, 2026)));
+    expect(crudo).toEqual(Buffer.from(await fixture("159-2026.json")));
+    expect(crudo.toString("utf8")).toContain('"valor":"8.673506 "');
     expect(await verificarDatos(raiz)).toEqual([]);
+  });
+
+  it("el año nuevo sin publicaciones no rompe la corrida ni deja crudo vacío", async () => {
+    await ejecutarDataset(tipoCambioFix, ctx("2026-12-31"));
+    sinDatos(urlSidof(158, 2027));
+    pedidas = [];
+    const enero = await ejecutarDataset(tipoCambioFix, ctx("2027-01-02"));
+    expect(pedidas).toEqual([urlSidof(158, 2026), urlSidof(158, 2027)]);
+    expect(enero.resultado.estado).toBe("sin_cambios");
+
+    erroresFalsos.delete(urlSidof(158, 2027));
+    fuenteFalsa.set(
+      urlSidof(158, 2027),
+      respuesta(158, [{ fecha: "2027-01-04", valor: "18.5000" }]),
+    );
+    const lunes = await ejecutarDataset(tipoCambioFix, ctx("2027-01-04"));
+    expect(lunes.resultado).toMatchObject({ estado: "actualizado", altas: 1, motivos: [] });
+    const m = JSON.parse(await readFile(join(dirFix(), "manifest.json"), "utf8"));
+    expect(m.sources[0].raw.map((x: { file: string }) => x.file)).toEqual(
+      [...ANIOS, 2027].map((a) => archivo(158, a)),
+    );
+    expect(await verificarDatos(raiz)).toEqual([]);
+  });
+
+  it("si a media corrida el año en curso da 404 NOT_FOUND, lo publicado no se pierde en silencio", async () => {
+    for (const [def, tipo, publicadas] of [
+      [tipoCambioFix, 158, 200],
+      [udis, 159, 298],
+    ] as const) {
+      await ejecutarDataset<TipoCambioFix | Udi>(def, ctx());
+      sinDatos(urlSidof(tipo, 2026));
+      const { resultado } = await ejecutarDataset<TipoCambioFix | Udi>(def, ctx("2026-10-19"));
+      expect(resultado).toMatchObject({
+        estado: "requiere_revision",
+        altas: 0,
+        bajas: publicadas,
+        cambios: 0,
+      });
+      expect(resultado.motivos).toHaveLength(publicadas);
+      for (const motivo of resultado.motivos)
+        expect(motivo).toMatch(/^desapareció 2026-\d{2}-\d{2}$/);
+      expect(resultado.motivos).toContain(
+        tipo === 158 ? "desapareció 2026-01-02" : "desapareció 2026-01-01",
+      );
+      expect(resultado.motivos).toContain(
+        tipo === 158 ? "desapareció 2026-10-16" : "desapareció 2026-10-25",
+      );
+    }
   });
 
   it("un valor publicado que cambia en la fuente pide revisión con el motivo", async () => {

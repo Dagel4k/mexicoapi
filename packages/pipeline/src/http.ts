@@ -32,8 +32,13 @@ export interface OpcionesCliente {
   reintentos?: number;
 }
 
+export interface OpcionesObtener {
+  /** Estados no exitosos que se devuelven con su cuerpo en lugar de lanzar; no se reintentan. */
+  aceptar?: readonly number[];
+}
+
 export interface Cliente {
-  obtener(url: string): Promise<RespuestaHttp>;
+  obtener(url: string, opciones?: OpcionesObtener): Promise<RespuestaHttp>;
 }
 
 const TOPE_RETRY_AFTER_MS = 60_000;
@@ -86,7 +91,10 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
     return actual;
   }
 
-  async function intento(url: string): Promise<{ res: Response; cuerpo: Uint8Array | null }> {
+  async function intento(
+    url: string,
+    aceptar: readonly number[],
+  ): Promise<{ res: Response; cuerpo: Uint8Array | null }> {
     const res = await limitado(new URL(url).host, () =>
       fetchFn(url, {
         headers: { "User-Agent": AGENTE },
@@ -94,17 +102,17 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
         signal: AbortSignal.timeout(timeoutMs),
       }),
     );
-    if (!res.ok) return { res, cuerpo: null };
+    if (!res.ok && !aceptar.includes(res.status)) return { res, cuerpo: null };
     return { res, cuerpo: new Uint8Array(await res.arrayBuffer()) };
   }
 
-  async function pedir(url: string): Promise<RespuestaHttp> {
+  async function pedir(url: string, aceptar: readonly number[] = []): Promise<RespuestaHttp> {
     let ultimoEstado: number | null = null;
     let ultimoMotivo = "";
     for (let i = 0; i <= reintentos; i++) {
       let espera = 1000 * 2 ** i;
       try {
-        const { res, cuerpo } = await intento(url);
+        const { res, cuerpo } = await intento(url, aceptar);
         if (cuerpo !== null) {
           return {
             url: res.url || url,
@@ -164,7 +172,7 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
   }
 
   return {
-    async obtener(url: string): Promise<RespuestaHttp> {
+    async obtener(url: string, opciones: OpcionesObtener = {}): Promise<RespuestaHttp> {
       const txt = await robotsDe(url);
       if (txt !== null) {
         const { pathname, search } = new URL(url);
@@ -172,7 +180,7 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
           throw new ErrorHttp(`robots.txt no permite pedir ${url}`, url, null);
         }
       }
-      return pedir(url);
+      return pedir(url, opciones.aceptar ?? []);
     },
   };
 }
