@@ -1,12 +1,12 @@
 // Arma en otra carpeta el paquete `mexicoapi-mcp` tal como se publica, con el mismo código que el
 // de `mexicoapi` (packages/sdk/scripts/publicable.ts): lo que lista `files` (dist, README.md,
-// LICENSE) y un package.json sin `devDependencies` ni `scripts`. La dependencia `mexicoapi`, que en
-// el monorepo es `workspace:*`, se publica como `^<versión de packages/sdk>`. Ese rango no basta
-// para que los datos nuevos lleguen a quien ya usó `npx -y mexicoapi-mcp`: npx no actualiza las
-// dependencias de un paquete que no cambió de versión. Por eso cada versión de mexicoapi va seguida
-// de un patch de mexicoapi-mcp armado con este script, cuyo piso sube a la versión nueva; la
-// instalación vieja ya no lo cumple y npx la reinstala. npm pack y npm publish se corren en esa
-// carpeta.
+// CHANGELOG.md, LICENSE) y un package.json sin `devDependencies` ni `scripts`. La dependencia
+// `mexicoapi`, que en el monorepo es `workspace:*`, se publica como `^<versión de packages/sdk>`.
+// Ese rango no basta para que los datos nuevos lleguen a quien ya usó `npx -y mexicoapi-mcp`: npx
+// no actualiza las dependencias de un paquete que no cambió de versión. Por eso cada versión de
+// mexicoapi va seguida de un patch de mexicoapi-mcp armado con este script, cuyo piso sube a la
+// versión nueva; la instalación vieja ya no lo cumple y npx la reinstala. npm pack y npm publish se
+// corren en esa carpeta.
 //
 //   node scripts/publicable.ts <destino>               después de pnpm --filter mexicoapi-mcp... build
 //   node scripts/publicable.ts --publicar <destino>    además revisa que mexicoapi@<versión> ya

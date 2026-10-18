@@ -35,7 +35,7 @@ export interface Liberacion {
   carpeta: string;
 }
 
-/** El paquete, la versión y la carpeta de una etiqueta `mexicoapi@X.Y.Z` o `mexicoapi-mcp@X.Y.Z`. */
+/** Paquete, versión y carpeta de una etiqueta `mexicoapi@X.Y.Z` o `mexicoapi-mcp@X.Y.Z`. */
 export function leerEtiqueta(etiqueta: string): Liberacion {
   const partes = ETIQUETA.exec(etiqueta);
   const nombre = partes?.[1];
@@ -91,7 +91,8 @@ export function revisarFecha(historial: string, version: string, archivo = "CHAN
     ? `: el PR de la versión cambia "sin publicar" por la fecha`
     : "";
   throw new Error(
-    `el primer encabezado de ${archivo} es "${encabezado}" y debe ser "## ${version} (AAAA-MM-DD)"${motivo}`,
+    `el primer encabezado de ${archivo} es "${encabezado}" y debe ser ` +
+      `"## ${version} (AAAA-MM-DD)"${motivo}`,
   );
 }
 
