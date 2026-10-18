@@ -349,13 +349,14 @@ jobs:
           export LC_ALL=C
           # Una ruta vale si está en una de esas carpetas, solo lleva letras ASCII, dígitos y
           # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
-          # vacío, es . o .., o empieza con .git (sin importar mayúsculas). Las rutas
+          # vacío ni empieza con punto (., .., .git, archivos ocultos). Es la misma regla de
+          # publicar en datos.yml; una prueba del pipeline revisa que sean iguales. Las rutas
           # rechazadas salen escapadas con %q.
           patron="^data/(${CARPETAS// /|})/[A-Za-z0-9._/-]+$"
           ruta_valida() {
             [[ "$1" =~ ${patron} ]] || return 1
-            case "/${1,,}/" in
-              */../* | */./* | *//* | */.git*) return 1 ;;
+            case "/$1/" in
+              */.* | *//*) return 1 ;;
             esac
           }
           # HEAD es el merge del PR con main y HEAD^1 la punta de main: su diferencia es lo que el
