@@ -1,6 +1,9 @@
 import { datos } from "./generados/bancos.js";
 import type { Banco, BancoClabe } from "./tipos.js";
 
+// Meta del dataset, para quien carga solo este módulo (el cliente HTTP).
+export { meta } from "./generados/bancos.js";
+
 export interface OpcionesBancos {
   /** `true`: solo los activos; `false`: solo los dados de baja. Sin la opción, todos. */
   activos?: boolean | undefined;

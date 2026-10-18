@@ -2,6 +2,9 @@ import { datos } from "./generados/inegi-municipios.js";
 import { normalizarBusqueda } from "./texto.js";
 import type { Municipio } from "./tipos.js";
 
+// Meta del dataset, para quien carga solo este módulo (el cliente HTTP).
+export { meta } from "./generados/inegi-municipios.js";
+
 export interface OpcionesBusquedaMunicipio {
   /** Clave de 2 dígitos de la entidad (`"25"`) para buscar solo en ella. */
   estado?: string | undefined;

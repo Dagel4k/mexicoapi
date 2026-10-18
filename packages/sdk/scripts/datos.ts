@@ -34,6 +34,8 @@ const CONGELAR =
   "for (const h of Object.values(v)) congelar(h); Object.freeze(v); } return v; };";
 
 const USO = "uso: node scripts/datos.ts\n";
+// La misma página que da la API en `meta.docs` para los datos de cada carpeta de data/.
+const URL_DOCS_DATOS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos";
 
 export interface FuenteMeta {
   name: string;
@@ -43,11 +45,12 @@ export interface FuenteMeta {
   citation: string;
 }
 
-/** Lo que el paquete publica del manifest de un dataset. */
+/** Lo que el paquete publica del manifest de un dataset, con su documentación como en la API. */
 export interface MetaDatos {
   dataset: string;
   as_of: string;
   sources: FuenteMeta[];
+  docs: string;
 }
 
 export interface DatasetLeido {
@@ -113,7 +116,15 @@ function metaDeManifiesto(
     license_url: f.license_url,
     citation: f.citation,
   }));
-  return { meta: { dataset: m.dataset, as_of: m.as_of, sources }, manifiesto: m };
+  return {
+    meta: {
+      dataset: m.dataset,
+      as_of: m.as_of,
+      sources,
+      docs: `${URL_DOCS_DATOS}/${directorio}.md`,
+    },
+    manifiesto: m,
+  };
 }
 
 /**

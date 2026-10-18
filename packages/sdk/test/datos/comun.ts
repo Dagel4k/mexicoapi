@@ -1,6 +1,7 @@
 // Pruebas de las entradas de datos que corren igual sobre src (con los módulos que sirve
 // pluginDatos) y sobre dist (con los que escribe el build). Todo se compara contra data/.
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { beforeAll, describe, expect, it } from "vitest";
 import type * as Fix from "../../src/datos/fix.js";
@@ -39,6 +40,8 @@ interface Manifiesto {
 }
 
 export interface DesdeData<T> {
+  /** Carpeta en data/. */
+  directorio: string;
   manifiesto: Manifiesto;
   /** Del archivo de datos tal como está en data/. */
   sha256: string;
@@ -58,14 +61,19 @@ export async function desdeData<T>(directorio: string): Promise<DesdeData<T>> {
   ) as Manifiesto;
   const bytes = await readFile(new URL(manifiesto.data_file, carpeta));
   return {
+    directorio,
     manifiesto,
     sha256: sha256(bytes),
     registros: JSON.parse(bytes.toString("utf8")) as T[],
   };
 }
 
-/** Lo que se espera en `meta`: el manifest sin lo interno del pipeline. */
-export function metaEsperada(m: Manifiesto) {
+/** Documentación de un dataset de data/, la misma que da la API en `meta.docs`. */
+export const docsDe = (directorio: string): string =>
+  `https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/${directorio}.md`;
+
+/** Lo que se espera en `meta`: el manifest sin lo interno del pipeline, más su documentación. */
+export function metaEsperada({ directorio, manifiesto: m }: DesdeData<unknown>) {
   return {
     dataset: m.dataset,
     as_of: m.as_of,
@@ -76,7 +84,15 @@ export function metaEsperada(m: Manifiesto) {
       license_url: s.license_url,
       citation: s.citation,
     })),
+    docs: docsDe(directorio),
   };
+}
+
+/** La página de `docs` existe en el repositorio. */
+export function esperarDocs(directorio: string): void {
+  expect(existsSync(new URL(`../../../../docs/datos/${directorio}.md`, import.meta.url))).toBe(
+    true,
+  );
 }
 
 /** Los mismos datos que data/: su JSON canónico tiene el sha256 del manifest. */
@@ -144,9 +160,10 @@ export function probarDatos(
 
   it("da la meta de cada dataset desde su manifest", () => {
     expect(Object.keys(m.meta)).toEqual(["estados", "municipios", "bancos"]);
-    expect(m.meta.estados).toEqual(metaEsperada(estados.manifiesto));
-    expect(m.meta.municipios).toEqual(metaEsperada(municipios.manifiesto));
-    expect(m.meta.bancos).toEqual(metaEsperada(bancos.manifiesto));
+    expect(m.meta.estados).toEqual(metaEsperada(estados));
+    expect(m.meta.municipios).toEqual(metaEsperada(municipios));
+    expect(m.meta.bancos).toEqual(metaEsperada(bancos));
+    for (const d of [estados, municipios, bancos]) esperarDocs(d.directorio);
   });
 
   describe("estados", () => {
@@ -366,7 +383,8 @@ function probarSerie<T extends TipoCambioFix | Udi>(
 
   it("trae la serie de data/ tal cual, con la meta de su manifest", () => {
     esperarIgualesAData(s.serie, d);
-    expect(s.meta).toEqual(metaEsperada(d.manifiesto));
+    expect(s.meta).toEqual(metaEsperada(d));
+    esperarDocs(directorio);
   });
 
   it("da la cobertura del primer al último registro, y el tramo es la serie completa", () => {
