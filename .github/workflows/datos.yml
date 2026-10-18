@@ -1,0 +1,227 @@
+name: Datos
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # INEGI, lunes 06:00 CDMX
+    - cron: "0 14 * * *" # bancos, diario 08:00 CDMX
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: Grupo de datos a actualizar
+        type: choice
+        options:
+          - inegi
+          - bancos
+        default: inegi
+
+permissions:
+  contents: read
+
+concurrency:
+  group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '0 12 * * 1' && 'inegi' || 'bancos') }}
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Comprobar secretos del bot
+        id: bot
+        env:
+          TIENE_BOT: ${{ secrets.BOT_APP_ID != '' && secrets.BOT_PRIVATE_KEY != '' }}
+        run: |
+          set -euo pipefail
+          echo "tiene_bot=${TIENE_BOT}" >> "${GITHUB_OUTPUT}"
+          if [ "${TIENE_BOT}" != "true" ]; then
+            echo "::notice::Faltan los secretos BOT_APP_ID y BOT_PRIVATE_KEY; no se actualizan datos. Ver docs/operacion/bot-de-datos.md"
+          fi
+
+      - name: Resolver grupo de datos
+        id: grupo
+        if: steps.bot.outputs.tiene_bot == 'true'
+        env:
+          DATASET_ENTRADA: ${{ github.event.inputs.dataset }}
+          CRON: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DATASET_ENTRADA}" ]; then
+            grupo="${DATASET_ENTRADA}"
+          elif [ "${CRON}" = "0 12 * * 1" ]; then
+            grupo="inegi"
+          else
+            grupo="bancos"
+          fi
+          case "${grupo}" in
+            inegi) ids="inegi.estados inegi.municipios" ;;
+            bancos) ids="bancos" ;;
+            *) echo "Grupo no válido: ${grupo}" >&2; exit 1 ;;
+          esac
+          {
+            echo "grupo=${grupo}"
+            echo "ids=${ids}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Token de la GitHub App
+        id: app
+        if: steps.bot.outputs.tiene_bot == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.bot.outputs.tiene_bot == 'true'
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.bot.outputs.tiene_bot == 'true'
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.bot.outputs.tiene_bot == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar y compilar
+        if: steps.bot.outputs.tiene_bot == 'true'
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm -r build
+
+      - name: Actualizar datos
+        id: cli
+        if: steps.bot.outputs.tiene_bot == 'true'
+        env:
+          IDS: ${{ steps.grupo.outputs.ids }}
+          RESUMEN_DIR: ${{ runner.temp }}
+        run: |
+          set -uo pipefail
+          # IDS son varios argumentos: se deja sin comillas a propósito.
+          # shellcheck disable=SC2086
+          node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${RESUMEN_DIR}/resumen"
+          codigo=$?
+          echo "codigo=${codigo}" >> "${GITHUB_OUTPUT}"
+          exit 0
+
+      - name: Publicar resultado
+        if: steps.bot.outputs.tiene_bot == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
+          GRUPO: ${{ steps.grupo.outputs.grupo }}
+          CODIGO: ${{ steps.cli.outputs.codigo }}
+          RESUMEN_DIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          resumen_md="${RESUMEN_DIR}/resumen.md"
+          resumen_json="${RESUMEN_DIR}/resumen.json"
+          url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          fecha="$(TZ=America/Mexico_City date +%F)"
+
+          # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él.
+          abrir_o_comentar() {
+            local titulo="$1" cuerpo="$2" numero
+            numero="$(gh issue list --state open --search "in:title \"${titulo}\"" --json number,title \
+              | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
+            if [ -n "${numero}" ]; then
+              gh issue comment "${numero}" --body-file "${cuerpo}"
+            else
+              gh issue create --title "${titulo}" --body-file "${cuerpo}"
+            fi
+          }
+
+          # Lista de motivos y errores del resumen JSON, una línea por elemento.
+          motivos() {
+            if [ -f "${resumen_json}" ]; then
+              jq -r '(.resultados[]?.motivos[]? | "- " + tostring), (.errores[]? | "- \(.dataset): \(.mensaje)")' "${resumen_json}"
+            fi
+          }
+
+          if [ "${CODIGO}" = "1" ]; then
+            cuerpo="${RUNNER_TEMP}/issue-falla.md"
+            {
+              echo "La corrida de datos de \`${GRUPO}\` falló y no se escribió nada en \`data/\`."
+              echo
+              motivos
+              echo
+              echo "Corrida: ${url_corrida}"
+            } > "${cuerpo}"
+            abrir_o_comentar "Falla en datos: ${GRUPO}" "${cuerpo}"
+            echo "::error::El pipeline terminó con error (código 1)."
+            exit 1
+          fi
+
+          if [ "${CODIGO}" != "0" ] && [ "${CODIGO}" != "3" ]; then
+            echo "::error::Código de salida inesperado: ${CODIGO}"
+            exit 1
+          fi
+
+          if [ -z "$(git status --porcelain data/)" ]; then
+            if [ "${CODIGO}" = "3" ]; then
+              cuerpo="${RUNNER_TEMP}/issue-revisar.md"
+              {
+                echo "La corrida de \`${GRUPO}\` pide revisión humana y no cambió \`data/\`."
+                echo
+                motivos
+                echo
+                echo "Corrida: ${url_corrida}"
+              } > "${cuerpo}"
+              abrir_o_comentar "Revisar datos: ${GRUPO}" "${cuerpo}"
+            else
+              echo "Sin cambios en data/."
+            fi
+            exit 0
+          fi
+
+          # Identidad del bot
+          id_bot="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${id_bot}+${APP_SLUG}[bot]@users.noreply.github.com"
+
+          # Rama del día; si ya existe en el remoto, se agrega un sufijo.
+          rama="datos/${GRUPO}-${fecha}"
+          n=2
+          while git ls-remote --exit-code --heads origin "${rama}" > /dev/null 2>&1; do
+            rama="datos/${GRUPO}-${fecha}-${n}"
+            n=$((n + 1))
+          done
+
+          git switch -c "${rama}"
+          git add data/
+          git commit -m "datos(${GRUPO}): ${fecha}"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${rama}"
+
+          cuerpo_pr="${RUNNER_TEMP}/pr.md"
+          {
+            cat "${resumen_md}"
+            echo
+            echo "Corrida: ${url_corrida}"
+          } > "${cuerpo_pr}"
+
+          if [ "${CODIGO}" = "3" ]; then
+            url_pr="$(gh pr create --base main --head "${rama}" --title "datos(${GRUPO}): ${fecha}" \
+              --body-file "${cuerpo_pr}" --label revisar)"
+            cuerpo="${RUNNER_TEMP}/issue-revisar.md"
+            {
+              echo "El PR ${url_pr} pide revisión humana y no se fusiona solo."
+              echo
+              motivos
+              echo
+              echo "Corrida: ${url_corrida}"
+            } > "${cuerpo}"
+            abrir_o_comentar "Revisar datos: ${GRUPO} ${fecha}" "${cuerpo}"
+          else
+            url_pr="$(gh pr create --base main --head "${rama}" --title "datos(${GRUPO}): ${fecha}" \
+              --body-file "${cuerpo_pr}")"
+            gh pr merge "${url_pr}" --auto --rebase
+          fi
