@@ -140,7 +140,11 @@ describe("dist", () => {
       archivos.map((a) => relative(DIST, a).split(sep).join("/"));
     const alImportar = enDist((await grafoDeModulos(entrada, { dinamicos: false })).archivos);
     const todo = enDist((await grafoDeModulos(entrada)).archivos);
-    expect(alImportar.every((a) => a.startsWith("cliente/"))).toBe(true);
+    // Del núcleo, al importar solo carga el catálogo de problemas, que no importa nada: el
+    // MexicoApiError de una respuesta de la API lo necesita. Lo demás del núcleo, al usarlo.
+    expect(alImportar.filter((a) => !a.startsWith("cliente/"))).toEqual([
+      "nucleo/rutas/problemas.js",
+    ]);
     expect(alImportar).not.toContain("cliente/paquete.js");
     const despues = todo.filter((a) => !alImportar.includes(a));
     expect(despues).toEqual(

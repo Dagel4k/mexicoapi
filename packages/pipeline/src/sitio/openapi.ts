@@ -1,3 +1,4 @@
+import { PROBLEMAS, URL_PROBLEMAS } from "@mexicoapi/core/problemas";
 import { z } from "zod";
 import {
   esquemaBanco,
@@ -24,24 +25,8 @@ import {
   esquemaTramoIsr,
   esquemaUma,
 } from "./esquemas-api.js";
-import { URL_DOCS } from "./meta.js";
 
 type Json = Record<string, unknown>;
-
-/** Tipos de problema que devuelve la API; el `type` es `<URL_PROBLEMAS>#<tipo>`. */
-export const PROBLEMAS = {
-  "parametro-invalido": { title: "Parámetro inválido", status: 400 },
-  "parametro-desconocido": { title: "Parámetro desconocido", status: 400 },
-  "parametro-faltante": { title: "Falta un parámetro obligatorio", status: 400 },
-  "no-encontrado": { title: "Recurso no encontrado", status: 404 },
-  "dato-no-disponible": { title: "Dato todavía no disponible", status: 404 },
-  "calendario-incompleto": { title: "Calendario incompleto", status: 422 },
-  "metodo-no-permitido": { title: "Método no permitido", status: 405 },
-  "demasiadas-peticiones": { title: "Demasiadas peticiones", status: 429 },
-  "error-interno": { title: "Error interno", status: 500 },
-} as const;
-
-const URL_PROBLEMAS = `${URL_DOCS}/api/problemas.md`;
 
 /**
  * Quita los `additionalProperties: false` que agrega `z.toJSONSchema`: el documento publica

@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { URL_DOCS } from "@mexicoapi/core/problemas";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   type DatasetLeido,
@@ -14,6 +15,7 @@ import {
   PREFIJO_VIRTUAL,
   pluginDatos,
   principal,
+  URL_DOCS_DATOS,
 } from "../../scripts/datos.ts";
 import { especificadores } from "../../scripts/revisar.ts";
 
@@ -87,6 +89,12 @@ async function importar(codigo: string, nombre = "modulo"): Promise<Record<strin
   await writeFile(ruta, codigo);
   return (await import(pathToFileURL(ruta).href)) as Record<string, unknown>;
 }
+
+describe("URL_DOCS_DATOS", () => {
+  it("es la carpeta de datos de la documentación del núcleo", () => {
+    expect(URL_DOCS_DATOS).toBe(`${URL_DOCS}/datos`);
+  });
+});
 
 describe("leerDataset", () => {
   it("lee el manifest y los registros, y deja en meta solo lo que se publica de las fuentes", async () => {

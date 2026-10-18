@@ -9,12 +9,12 @@ import type {
   TipoPlazo,
 } from "@mexicoapi/core";
 import { diasInhabilesCurados, exigirAnio, sumarDiasHabilesCurado } from "@mexicoapi/core/curados";
+import { URL_DOCS } from "@mexicoapi/core/problemas";
 import type { MetaDatos } from "../datos/tipos.js";
 import {
   type Contexto,
   conDocs,
   type Dato,
-  DOCS,
   falla,
   type Nucleo,
   type RutaPaquete,
@@ -38,7 +38,7 @@ const metaLft = (n: Nucleo, seccion: string): MetaDatos => ({
         "Ley Federal del Trabajo: del artículo 74, los días de descanso obligatorio; del artículo 715, solo los sábados y domingos. Texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
     },
   ],
-  docs: `${DOCS}/api/README.md#${seccion}`,
+  docs: `${URL_DOCS}/api/README.md#${seccion}`,
 });
 
 /**

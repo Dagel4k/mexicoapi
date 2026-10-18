@@ -1,10 +1,11 @@
+import {
+  PROBLEMAS,
+  type TipoProblema,
+  tipoDeProblema,
+  URL_PROBLEMAS,
+} from "@mexicoapi/core/problemas";
 import { congelar } from "./comun.js";
 import type { Origen } from "./tipos.js";
-
-/** Base del `type` de los problemas de la API: `${URL_PROBLEMAS}#<tipo>`. */
-export const URL_PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
-
-const PREFIJO = `${URL_PROBLEMAS}#`;
 
 /**
  * Cuerpo problem+json (RFC 9457), con las extensiones que agrega la API (`parametro`, `fecha`,
@@ -55,7 +56,7 @@ export class MexicoApiError extends Error {
     );
     this.status = status;
     this.type = type;
-    this.tipo = type.startsWith(PREFIJO) ? type.slice(PREFIJO.length) : undefined;
+    this.tipo = tipoDeProblema(type);
     this.title = title;
     this.detail = detail;
     this.problema = congelar(problema);
@@ -64,17 +65,11 @@ export class MexicoApiError extends Error {
   }
 }
 
-// Los problemas de la API que el cliente también encuentra con los datos del paquete.
-const PROBLEMAS = {
-  "parametro-invalido": [400, "Parámetro inválido"],
-  "parametro-faltante": [400, "Falta un parámetro obligatorio"],
-  "parametro-desconocido": [400, "Parámetro desconocido"],
-  "no-encontrado": [404, "Recurso no encontrado"],
-  "dato-no-disponible": [404, "Dato todavía no disponible"],
-  "calendario-incompleto": [422, "Calendario incompleto"],
-} as const;
-
-export type TipoLocal = keyof typeof PROBLEMAS;
+/** Los problemas de la API que el cliente también encuentra con los datos del paquete. */
+export type TipoLocal = Exclude<
+  TipoProblema,
+  "metodo-no-permitido" | "demasiadas-peticiones" | "error-interno"
+>;
 
 /** Lo que necesita un error que arma el cliente. */
 export interface ContextoLocal {
@@ -94,10 +89,10 @@ export function problemaLocal(
   detalle: string,
   extras?: Readonly<Record<string, unknown>>,
 ): MexicoApiError {
-  const [status, title] = PROBLEMAS[tipo];
+  const { status, title } = PROBLEMAS[tipo];
   return new MexicoApiError(
     {
-      type: PREFIJO + tipo,
+      type: `${URL_PROBLEMAS}#${tipo}`,
       title,
       status,
       detail: detalle,

@@ -1,5 +1,6 @@
 // Lector del TXT oficial de SEPOMEX: la primera línea es el aviso de uso de Correos de México, la
 // segunda los nombres de las columnas y después una fila por asentamiento, separadas con `|`.
+import { URL_REPOSITORIO } from "@mexicoapi/core/problemas";
 import { archivoInvalido } from "./error.js";
 
 /** Columnas del TXT oficial (CPdescarga.txt). Se leen por nombre: el orden puede cambiar. */
@@ -64,7 +65,7 @@ function indicesDeColumnas(cabecera: readonly string[]): number[] {
       sobran.length > 0 ? `sobran: ${mostrar(sobran)}` : "",
     ].filter((p) => p !== "");
     throw archivoInvalido(
-      `Las columnas del TXT de SEPOMEX cambiaron (${partes.join("; ")}). Actualiza mexicoapi o avisa en https://github.com/Dagel4k/mexicoapi/issues.`,
+      `Las columnas del TXT de SEPOMEX cambiaron (${partes.join("; ")}). Actualiza mexicoapi o avisa en ${URL_REPOSITORIO}/issues.`,
     );
   }
   return COLUMNAS.map((c) => cabecera.indexOf(c));

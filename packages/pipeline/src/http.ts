@@ -1,6 +1,7 @@
+import { URL_REPOSITORIO } from "@mexicoapi/core/problemas";
 import { permitidoPorRobots } from "./robots.js";
 
-export const AGENTE = "mexicoapi-bot/1 (+https://github.com/Dagel4k/mexicoapi)";
+export const AGENTE = `mexicoapi-bot/1 (+${URL_REPOSITORIO})`;
 
 /**
  * Tope del cuerpo de una respuesta. La fuente más grande, el PDF de participantes del SPEI,

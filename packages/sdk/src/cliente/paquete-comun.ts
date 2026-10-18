@@ -1,5 +1,6 @@
 // Lo que comparten las respuestas desde el paquete: el contexto de una consulta, la forma de una
 // ruta y cómo se arman sus problemas y su `meta`.
+import { URL_DOCS } from "@mexicoapi/core/problemas";
 import type { MetaDatos } from "../datos/tipos.js";
 import { type ContextoLocal, type MexicoApiError, problemaLocal, type TipoLocal } from "./error.js";
 
@@ -32,8 +33,6 @@ export interface RutaPaquete {
   responder(c: Contexto, n: Nucleo): Promise<Dato> | Dato;
 }
 
-export const DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
-
 export const falla = (
   c: Contexto,
   tipo: TipoLocal,
@@ -44,7 +43,7 @@ export const falla = (
 /** El `meta` de un dataset con el enlace a la sección de la API, como en las rutas calculadas. */
 export const conDocs = (meta: MetaDatos, seccion: string): MetaDatos => ({
   ...meta,
-  docs: `${DOCS}/api/README.md#${seccion}`,
+  docs: `${URL_DOCS}/api/README.md#${seccion}`,
 });
 
 /** El valor de un parámetro que ya pasó su regla. */
