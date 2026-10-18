@@ -296,7 +296,7 @@ Tres reglas aplican a todas las autoridades:
 
 | Autoridad | Inhábiles | Fundamento |
 | --- | --- | --- |
-| `lft` | Sábados, domingos y días de descanso obligatorio del art. 74, calculados por regla de 2007 a 2100 (incluye el 1 de octubre cada seis años, a partir de 2024). No incluye los días en que las autoridades laborales suspenden labores (art. 715): cada respuesta lo advierte | LFT art. 74; del art. 715, solo sábados y domingos |
+| `lft` | Sábados, domingos y días de descanso obligatorio del art. 74, calculados por regla de 2007 a 2100 (incluye el 1 de octubre cada seis años, a partir de 2024). No incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715): cada respuesta lo advierte | LFT art. 74; del art. 715, solo sábados y domingos |
 | `cnbv` (bancos) | Sábados, domingos y los días del calendario anual que la CNBV publica en el DOF. Es el calendario bancario, no el de la CNBV como autoridad | Disposiciones de la CNBV publicadas en el DOF de cada año |
 | `sat` | Sábados, domingos, días del primer párrafo del art. 12 del CFF, calculados por regla de 2026 a 2100, y periodos de vacaciones de la regla 2.1.6 de la RMF | CFF art. 12; RMF regla 2.1.6 |
 
@@ -548,7 +548,7 @@ Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas
 | SAT, días del art. 12 del CFF | Se calculan por regla de 2026 a 2100, con el texto vigente; el YAML solo trae las vacaciones | Si se reforma el art. 12, hay que cambiar la regla del núcleo; mientras, el calendario sigue el texto anterior |
 | SAT, transmisión del Poder Ejecutivo | Ni el 1o. de octubre ni el 1o. de diciembre de 2030 (y cada seis años) se descuentan, con advertencia | Si el SAT declara inhábil uno de los dos, un plazo que lo cruza vence un día hábil antes de lo legal hasta que se agregue |
 | SAT, prórroga del quinto párrafo del art. 12 | El resultado no la aplica; con `declaraciones_pagos` se advierte en viernes, vacaciones del SAT y cierres bancarios | Quien paga en un banco puede tener un día hábil más que el resultado |
-| LFT y el art. 715 | El calendario solo tiene sábados, domingos y los días del art. 74; cada respuesta `lft` advierte que no tiene las suspensiones de labores de las autoridades laborales | Un plazo procesal laboral vence antes que el real; un calendario de la autoridad laboral queda para después |
+| LFT y el art. 715 | El calendario solo tiene sábados, domingos y los días del art. 74; cada respuesta `lft` advierte que no tiene los festivos ni las suspensiones de labores de las autoridades laborales | Un plazo procesal laboral vence antes que el real; un calendario de la autoridad laboral queda para después |
 | Cobertura del SAT `general` | Termina el 2026-11-30 mientras no se publique el segundo periodo de vacaciones | Un plazo general que llega a diciembre da 422 hasta que se capture el periodo |
 | Bancos inactivos en `clabe` | La CLABE de un banco inactivo tiene formato válido y la respuesta lo marca con `activo: false` | El cliente decide; no se le oculta el banco |
 | CSV | RFC 4180: UTF-8 sin BOM y `\r\n`. El build falla ante campos que empiezan con `=`, `+`, `-` o `@` en vez de alterarlos | Excel en Windows puede mostrar mal los acentos con doble clic; se documenta importar como UTF-8 |

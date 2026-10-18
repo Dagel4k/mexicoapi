@@ -14,7 +14,7 @@ export interface Calendario {
   /**
    * Lo que el calendario no descuenta y conviene revisar en un cálculo de `desde` (sin contarlo)
    * a `resultado`. `sumarDiasHabiles` lo agrega al final de sus advertencias: la LFT avisa siempre
-   * que no tiene las suspensiones de labores del art. 715.
+   * que no tiene los festivos ni las suspensiones de labores del art. 715.
    */
   readonly avisos?: (desde: FechaISO, resultado: FechaISO) => readonly string[];
   /**

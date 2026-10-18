@@ -64,7 +64,7 @@ Con el catálogo, un código de banco que no existe es un error de formato (`ban
 
 ## Días hábiles
 
-La LFT se calcula por regla y viene en la entrada principal: sábados, domingos y los días de descanso obligatorio del artículo 74. No incluye los días en que las autoridades laborales suspenden labores (artículo 715), y cada resultado lo dice en `advertencias`:
+La LFT se calcula por regla y viene en la entrada principal: sábados, domingos y los días de descanso obligatorio del artículo 74. No incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715), y cada resultado lo dice en `advertencias`:
 
 ```ts
 import { calendarioLft, sumarDiasHabiles } from "mexicoapi";

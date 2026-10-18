@@ -23,7 +23,7 @@ const AUTORIDAD = {
   type: "string",
   enum: ["lft", "cnbv", "sat"],
   description:
-    "lft: sábados, domingos y días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, sin los días en que las autoridades laborales suspenden labores (artículo 715); cnbv: calendario bancario, los días en que cierran las entidades financieras (no el de la CNBV como autoridad); sat: Código Fiscal de la Federación, artículo 12, por regla, y vacaciones del SAT.",
+    "lft: sábados, domingos y días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, sin los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715); cnbv: calendario bancario, los días en que cierran las entidades financieras (no el de la CNBV como autoridad); sat: Código Fiscal de la Federación, artículo 12, por regla, y vacaciones del SAT.",
 } as const;
 
 const NOMBRE: Readonly<Record<Autoridad, string>> = {
@@ -67,7 +67,7 @@ export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramient
   return {
     name: "dias_inhabiles",
     title: "Días inhábiles",
-    description: `Días inhábiles de un año según una autoridad: lft, cnbv o sat. No lista los sábados y domingos por serlo, pero sí un día publicado que cae en fin de semana. Cada día trae su motivo, su tipo (descanso, o vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles) y su fuente. Si la lista de un año puede estar incompleta, lo advierte; con lft advierte siempre que no incluye las suspensiones de labores del artículo 715. ${RESPALDO_API}`,
+    description: `Días inhábiles de un año según una autoridad: lft, cnbv o sat. No lista los sábados y domingos por serlo, pero sí un día publicado que cae en fin de semana. Cada día trae su motivo, su tipo (descanso, o vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles) y su fuente. Si la lista de un año puede estar incompleta, lo advierte; con lft advierte siempre que no incluye los festivos ni las suspensiones de labores del artículo 715. ${RESPALDO_API}`,
     inputSchema: {
       type: "object",
       properties: {
@@ -108,7 +108,7 @@ export function sumarDiasHabilesHerramienta({
   return {
     name: "sumar_dias_habiles",
     title: "Sumar días hábiles",
-    description: `Calcula la fecha que resulta de sumar días hábiles a la fecha desde según el calendario de una autoridad (lft, cnbv o sat), contando desde el día hábil siguiente. En un plazo que corre desde una notificación, desde es el día en que surte efectos, no el día en que se hizo. Con sat, tipo_plazo es obligatorio: en declaraciones_pagos las vacaciones del SAT cuentan como hábiles (CFF, artículo 12) y en general no; con lft o cnbv no se acepta. Devuelve la fecha resultante y los días inhábiles saltados con su fuente. Las advertencias dicen lo que el cálculo no descuenta: con lft, las suspensiones de labores del artículo 715; con declaraciones_pagos, la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario. Si el calendario no cubre el periodo responde con error; con permitir_incompleto: true calcula de todos modos y lo advierte. Es una calculadora, no asesoría legal. ${RESPALDO_API}`,
+    description: `Calcula la fecha que resulta de sumar días hábiles a la fecha desde según el calendario de una autoridad (lft, cnbv o sat), contando desde el día hábil siguiente. En un plazo que corre desde una notificación, desde es el día en que surte efectos, no el día en que se hizo. Con sat, tipo_plazo es obligatorio: en declaraciones_pagos las vacaciones del SAT cuentan como hábiles (CFF, artículo 12) y en general no; con lft o cnbv no se acepta. Devuelve la fecha resultante y los días inhábiles saltados con su fuente. Las advertencias dicen lo que el cálculo no descuenta: con lft, los festivos y las suspensiones de labores del artículo 715; con declaraciones_pagos, la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario. Si el calendario no cubre el periodo responde con error; con permitir_incompleto: true calcula de todos modos y lo advierte. Es una calculadora, no asesoría legal. ${RESPALDO_API}`,
     inputSchema: {
       type: "object",
       properties: {

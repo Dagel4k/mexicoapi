@@ -323,7 +323,7 @@ describe("documento OpenAPI", () => {
     expect(habiles.tipo_plazo.description).toContain("vacaciones");
     // Lo que cada calendario aplica y lo que no, y qué fecha va en desde.
     expect(habiles.autoridad.description).toContain(
-      "no incluye los días en que las autoridades laborales suspenden labores (art. 715)",
+      "no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715)",
     );
     expect(habiles.autoridad.description).toContain(
       "no es el calendario de la CNBV como autoridad",

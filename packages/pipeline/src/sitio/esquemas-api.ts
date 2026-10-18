@@ -71,7 +71,7 @@ export const esquemaResultadoDiasHabiles = z.object({
   advertencias: z
     .array(z.string())
     .describe(
-      "Avisos: un calendario incompleto, lo que el calendario no descuenta (con lft, las suspensiones de labores del art. 715) o la prórroga del art. 12 del CFF que el resultado no aplica.",
+      "Avisos: un calendario incompleto, lo que el calendario no descuenta (con lft, los festivos y las suspensiones de labores del art. 715) o la prórroga del art. 12 del CFF que el resultado no aplica.",
     ),
 });
 

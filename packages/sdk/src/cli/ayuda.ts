@@ -64,8 +64,8 @@ Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autorida
 Federal del Trabajo, por omisión), la CNBV (calendario bancario) o el SAT. Con el SAT,
 --tipo-plazo es obligatorio (sin él sale con 2): en declaraciones_pagos sus vacaciones cuentan
 como hábiles (CFF art. 12). La LFT solo descuenta sábados, domingos y los días del art. 74, no
-las suspensiones de labores del art. 715; los avisos lo dicen. Fuera de la cobertura del
-calendario sale con 1.
+los festivos ni las suspensiones de labores del art. 715; los avisos lo dicen. Fuera de la
+cobertura del calendario sale con 1.
 
 Opciones:
   --desde AAAA-MM-DD   fecha de partida, que no se cuenta: en un plazo que corre desde una
