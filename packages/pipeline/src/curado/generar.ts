@@ -57,6 +57,7 @@ export function archivosCurado<T extends { fuente: FuenteDof }>(
     dataset: def.id,
     schema_version: 1,
     as_of: asOf,
+    // Instante sintético: no hubo descarga y así `curar` es reproducible.
     fetched_at: `${asOf}T00:00:00Z`,
     data_file: def.archivo,
     data_sha256: sha256Hex(datos),

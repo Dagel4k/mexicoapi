@@ -8,6 +8,7 @@ import type {
 } from "@mexicoapi/core";
 import type { z } from "zod";
 import {
+  type ExcepcionCuotaFija,
   esquemaDiaInhabilCurado,
   esquemaSalarioMinimo,
   esquemaTarifaIsr,
@@ -22,6 +23,12 @@ import {
 
 /** Carpeta de `data/` con los YAML que captura una persona. */
 export const DIRECTORIO_CURADO = "curado";
+
+/** Lo que el YAML declara además de los registros, para los invariantes. */
+export interface ContextoCurado {
+  cobertura: CoberturaCurada | null;
+  excepciones: readonly ExcepcionCuotaFija[];
+}
 
 /**
  * Dataset que una persona transcribe del DOF a `data/curado/<yaml>`. El comando `curar` genera
@@ -38,7 +45,9 @@ export interface DefinicionCurado<T extends { fuente: FuenteDof }> {
   clave(r: T): string;
   /** Los calendarios declaran en el YAML el rango en que su lista está completa. */
   conCobertura: boolean;
-  invariantes(registros: readonly T[], cobertura: CoberturaCurada | null): string[];
+  /** Las tarifas de ISR pueden declarar `excepciones_cuota_fija` en el YAML. */
+  conExcepciones: boolean;
+  invariantes(registros: readonly T[], contexto: ContextoCurado): string[];
 }
 
 function dias(autoridad: DiaInhabilCurado["autoridad"]): DefinicionCurado<DiaInhabilCurado> {
@@ -50,7 +59,8 @@ function dias(autoridad: DiaInhabilCurado["autoridad"]): DefinicionCurado<DiaInh
     esquema: esquemaDiaInhabilCurado,
     clave: (r) => r.fecha,
     conCobertura: true,
-    invariantes: invariantesDias(autoridad),
+    conExcepciones: false,
+    invariantes: (registros, { cobertura }) => invariantesDias(autoridad)(registros, cobertura),
   };
 }
 
@@ -65,6 +75,7 @@ export const curadoUma: DefinicionCurado<Uma> = {
   esquema: esquemaUma,
   clave: (r) => String(r.anio),
   conCobertura: false,
+  conExcepciones: false,
   invariantes: invariantesUma,
 };
 
@@ -76,6 +87,7 @@ export const curadoSalarioMinimo: DefinicionCurado<SalarioMinimo> = {
   esquema: esquemaSalarioMinimo,
   clave: (r) => `${r.anio}|${r.zona}`,
   conCobertura: false,
+  conExcepciones: false,
   invariantes: invariantesSalarioMinimo,
 };
 
@@ -87,7 +99,8 @@ export const curadoTarifasIsr: DefinicionCurado<TarifaIsr> = {
   esquema: esquemaTarifaIsr,
   clave: (r) => `${r.anio}|${r.periodo}`,
   conCobertura: false,
-  invariantes: invariantesIsr,
+  conExcepciones: true,
+  invariantes: (registros, { excepciones }) => invariantesIsr(registros, excepciones),
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: la lista mezcla datasets de distintos tipos

@@ -6,6 +6,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { describe, expect, it } from "vitest";
+import type { ExcepcionCuotaFija } from "../../src/curado/esquemas.js";
 import {
   invariantesDias,
   invariantesIsr,
@@ -15,6 +16,7 @@ import {
 } from "../../src/curado/invariantes.js";
 import {
   DIAS_CNBV_OFICIALES,
+  EXCEPCIONES_OFICIALES,
   SALARIOS_OFICIALES,
   TARIFAS_OFICIALES,
   UMA_OFICIALES,
@@ -116,16 +118,95 @@ describe("tarifas de ISR", () => {
   const mensual = (): TarifaIsr => structuredClone(TARIFAS_OFICIALES[2] as TarifaIsr);
   const tramo = (t: TarifaIsr, i: number) => t.tramos[i] as TarifaIsr["tramos"][number];
 
-  it("las tarifas mensual 2026, anual 2026 y anual 2025 publicadas cumplen", () => {
-    expect(TARIFAS_OFICIALES.map((t) => t.tramos.length)).toEqual([11, 11, 11]);
-    expect(invariantesIsr(TARIFAS_OFICIALES)).toEqual([]);
+  const anual2025 = (): TarifaIsr => structuredClone(TARIFAS_OFICIALES[0] as TarifaIsr);
+  const excepcion = (cambios: Partial<ExcepcionCuotaFija> = {}): ExcepcionCuotaFija => ({
+    ...(EXCEPCIONES_OFICIALES[0] as ExcepcionCuotaFija),
+    ...cambios,
   });
 
-  it("la tolerancia de la cuota fija es de 2 centavos y la anual 2025 la necesita", () => {
-    expect(TOLERANCIA_CUOTA_FIJA).toBe(2n);
+  it("las tarifas mensual 2026, anual 2026 y anual 2025 publicadas cumplen con su excepción", () => {
+    expect(TARIFAS_OFICIALES.map((t) => t.tramos.length)).toEqual([11, 11, 11]);
+    expect(invariantesIsr(TARIFAS_OFICIALES, EXCEPCIONES_OFICIALES)).toEqual([]);
+    expect(invariantesIsr([])).toEqual([]);
+  });
+
+  it("la tolerancia es de 1 centavo y la excepción de la anual 2025 hace falta, solo ahí", () => {
+    expect(TOLERANCIA_CUOTA_FIJA).toBe(1n);
     // Tramo 10 de la anual 2025: 271,981.99 + 375,975.61 × 32 % = 392,294.19; se publicó 392,294.17.
-    const anual2025 = TARIFAS_OFICIALES[0] as TarifaIsr;
-    expect(tramo(anual2025, 9).cuota_fija).toBe("392294.17");
+    expect(invariantesIsr(TARIFAS_OFICIALES, [])).toEqual([
+      "2025 anual, tramo 10: cuota_fija es 392294.17, se esperaba 392294.19 ± 0.01",
+    ]);
+  });
+
+  it("fija el límite: −1 pasa, −2 solo con excepción, −3 falla aunque haya excepción", () => {
+    const t = mensual();
+    // Tramo 6 de la mensual 2026: se calcula 1856.85 y se publicó 1856.84 (−1).
+    expect(invariantesIsr([t])).toEqual([]);
+    tramo(t, 5).cuota_fija = "1856.83";
+    expect(invariantesIsr([t])).toContain(
+      "2026 mensual, tramo 6: cuota_fija es 1856.83, se esperaba 1856.85 ± 0.01",
+    );
+    const conExcepcion = excepcion({
+      anio: 2026,
+      periodo: "mensual",
+      tramo: 6,
+      publicada: "1856.83",
+      calculada: "1856.85",
+    });
+    expect(invariantesIsr([t], [conExcepcion]).join("\n")).not.toContain("tramo 6");
+    const a = anual2025();
+    tramo(a, 9).cuota_fija = "392294.16";
+    expect(invariantesIsr([a], EXCEPCIONES_OFICIALES)).toContain(
+      "2025 anual, tramo 10: la excepción dice publicada 392294.17 y calculada 392294.19; el YAML trae 392294.16 y se calcula 392294.19",
+    );
+  });
+
+  it("un error de 3 centavos en la cuota fija ya no pasa", () => {
+    const t = mensual();
+    tramo(t, 5).cuota_fija = "1856.87";
+    expect(invariantesIsr([t])).toContain(
+      "2026 mensual, tramo 6: cuota_fija es 1856.87, se esperaba 1856.85 ± 0.01",
+    );
+  });
+
+  it("rechaza excepciones sin usar, innecesarias o repetidas", () => {
+    expect(invariantesIsr([mensual()], EXCEPCIONES_OFICIALES)).toEqual([
+      "2025 anual, tramo 10: excepción de cuota_fija sin usar",
+    ]);
+    const innecesaria = excepcion({
+      anio: 2026,
+      periodo: "mensual",
+      tramo: 6,
+      publicada: "1856.84",
+      calculada: "1856.85",
+    });
+    expect(invariantesIsr([mensual()], [innecesaria])).toEqual([
+      "2026 mensual, tramo 6: la excepción no hace falta (diferencia de -0.01)",
+    ]);
+    expect(invariantesIsr([anual2025()], [excepcion(), excepcion()])).toEqual([
+      "2025 anual, tramo 10: excepción de cuota_fija repetida",
+    ]);
+  });
+
+  it("exige la misma columna de tasas en todas las tarifas", () => {
+    const t = mensual();
+    tramo(t, 10).tasa_excedente = "53.00";
+    expect(invariantesIsr([anual2025(), t], EXCEPCIONES_OFICIALES)).toEqual([
+      "2026 mensual, tramo 11: la tasa 53.00 no coincide con la de 2025 anual (35.00)",
+    ]);
+    const corta = mensual();
+    corta.tramos.pop();
+    (corta.tramos.at(-1) as TarifaIsr["tramos"][number]).limite_superior = null;
+    expect(invariantesIsr([anual2025(), corta], EXCEPCIONES_OFICIALES)).toEqual([
+      "2026 mensual: tiene 10 tramos y 2025 anual tiene 11",
+    ]);
+  });
+
+  it("exige que el fragmento mencione el año de la tarifa", () => {
+    const comoDe2026 = { ...anual2025(), anio: 2026 };
+    expect(invariantesIsr([comoDe2026], [])).toContain(
+      "2026 anual: el fragmento de la fuente no menciona el año 2026",
+    );
   });
 
   it("detecta un tramo que no empata con el anterior", () => {
@@ -146,7 +227,7 @@ describe("tarifas de ISR", () => {
     tramo(t, 5).cuota_fija = "1865.84";
     const fallas = invariantesIsr([t]);
     expect(fallas).toContain(
-      "2026 mensual, tramo 6: cuota_fija es 1865.84, se esperaba 1856.85 ± 0.02",
+      "2026 mensual, tramo 6: cuota_fija es 1865.84, se esperaba 1856.85 ± 0.01",
     );
     expect(fallas.join("\n")).toContain("tramo 7: cuota_fija es 5665.16");
     const u = mensual();
@@ -221,10 +302,39 @@ describe("días inhábiles", () => {
     expect(cnbv([dia("2026-10-25", "Cuarto domingo de octubre")], cobertura)).toEqual([]);
     expect(cnbv([dia("2026-10-28", "el CUARTO miércoles de Octubre")], cobertura)).toEqual([]);
     expect(cnbv([dia("2026-10-27", "Cuarto miércoles de octubre")], cobertura)).toHaveLength(1);
+    expect(cnbv([dia("2025-11-17", "Tercer lunes del mes de noviembre")], cobertura)).toEqual([]);
     // No existe un quinto lunes en febrero de 2026.
     expect(cnbv([dia("2026-02-23", "Quinto lunes de febrero")], cobertura)).toEqual([
       "2026-02-23: el motivo dice quinto lunes de febrero, que no existe en 2026",
     ]);
+  });
+
+  it("no deja pasar una regla que no reconoce", () => {
+    const aviso = (fecha: string, mencion: string) =>
+      `${fecha}: regla no reconocida ("${mencion}"); nombra el mes y el día de la semana, por ejemplo "tercer lunes de noviembre"`;
+    // Las cuatro redacciones con una fecha equivocada (el tercer lunes es 2025-11-17).
+    expect(
+      cnbv([dia("2025-11-16", "El 2 de noviembre y el tercer lunes de dicho mes")], cobertura),
+    ).toEqual([aviso("2025-11-16", "tercer lunes")]);
+    expect(cnbv([dia("2025-11-16", "Tercer lunes del mes de noviembre")], cobertura)).toEqual([
+      "2025-11-16: el motivo dice tercer lunes del mes de noviembre, que en 2025 es 2025-11-17",
+    ]);
+    expect(cnbv([dia("2025-11-16", "3er lunes de noviembre")], cobertura)).toEqual([
+      aviso("2025-11-16", "3er lunes"),
+    ]);
+    expect(cnbv([dia("2025-11-16", "Lunes 17 de noviembre (tercer lunes)")], cobertura)).toEqual([
+      aviso("2025-11-16", "tercer lunes"),
+    ]);
+    // Aunque la fecha sea la correcta, la regla debe nombrar el mes con el ordinal en letra.
+    expect(cnbv([dia("2025-11-17", "3er lunes de noviembre")], cobertura)).toEqual([
+      aviso("2025-11-17", "3er lunes"),
+    ]);
+    expect(cnbv([dia("2025-11-17", "Último lunes antes del 20 de noviembre")], cobertura)).toEqual([
+      aviso("2025-11-17", "último lunes"),
+    ]);
+    // La redacción literal del DOF sí se reconoce.
+    const literal = "El primer lunes de febrero en conmemoración del 5 de febrero";
+    expect(cnbv([dia("2025-02-03", literal)], cobertura)).toEqual([]);
   });
 
   it("exige la autoridad del dataset y fechas dentro de la cobertura de su tipo", () => {

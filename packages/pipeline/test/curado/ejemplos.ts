@@ -6,6 +6,7 @@ import type {
   TramoIsr,
   Uma,
 } from "@mexicoapi/core";
+import type { ExcepcionCuotaFija } from "../../src/curado/esquemas.js";
 
 // Valores y fragmentos tal como se publicaron en el DOF (consultados el 2026-10-17).
 
@@ -144,16 +145,40 @@ const FUENTE_ANEXO_8_ANUAL: FuenteDof = {
   fragmento:
     "II. Tarifa para el cálculo del impuesto correspondiente al ejercicio de 2026 a que se refieren los artículos 97 y 152 de la Ley del ISR, así como la regla 3.17.1.",
 };
+// La investigación no trae el literal de la fracción I: texto de prueba, solo con el año.
+const FUENTE_ANEXO_8_ANUAL_2025: FuenteDof = {
+  ...FUENTE_ANEXO_8_MENSUAL,
+  fragmento: "Tarifa del ejercicio de 2025 (apartado C, fracción I)",
+};
 
 export const TARIFAS_OFICIALES: TarifaIsr[] = [
-  // Del apartado C, fracción I; aquí solo importan los tramos, no el fragmento.
-  { anio: 2025, periodo: "anual", tramos: tramos(TARIFA_ANUAL_2025), fuente: FUENTE_ANEXO_8_ANUAL },
+  {
+    anio: 2025,
+    periodo: "anual",
+    tramos: tramos(TARIFA_ANUAL_2025),
+    fuente: FUENTE_ANEXO_8_ANUAL_2025,
+  },
   { anio: 2026, periodo: "anual", tramos: tramos(TARIFA_ANUAL_2026), fuente: FUENTE_ANEXO_8_ANUAL },
   {
     anio: 2026,
     periodo: "mensual",
     tramos: tramos(TARIFA_MENSUAL_2026),
     fuente: FUENTE_ANEXO_8_MENSUAL,
+  },
+];
+
+const MOTIVO_EXCEPCION =
+  "El SAT actualiza cada cantidad de la tarifa por separado; el encadenamiento da 392,294.19 y el DOF publica 392,294.17.";
+
+/** La única cuota fija publicada que no empata a ±0.01 con el tramo anterior. */
+export const EXCEPCIONES_OFICIALES: ExcepcionCuotaFija[] = [
+  {
+    anio: 2025,
+    periodo: "anual",
+    tramo: 10,
+    publicada: "392294.17",
+    calculada: "392294.19",
+    motivo: MOTIVO_EXCEPCION,
   },
 ];
 
@@ -180,6 +205,19 @@ ${LICENCIA_DOF}
     fecha_publicacion: 2025-12-28
     fragmento: "${FUENTE_ANEXO_8_ANUAL.fragmento}"
 ${LICENCIA_DOF}
+  anexo-8-anual-2025:
+    nombre: "${FUENTE_ANEXO_8_ANUAL_2025.nombre}"
+    url: ${URL_ANEXO_8}
+    fecha_publicacion: 2025-12-28
+    fragmento: "${FUENTE_ANEXO_8_ANUAL_2025.fragmento}"
+${LICENCIA_DOF}
+excepciones_cuota_fija:
+  - anio: 2025
+    periodo: anual
+    tramo: 10
+    publicada: "392294.17"
+    calculada: "392294.19"
+    motivo: "${MOTIVO_EXCEPCION}"
 registros:
   - anio: 2026
     periodo: mensual
@@ -191,6 +229,11 @@ ${yamlTramos(TARIFA_MENSUAL_2026)}
     tramos:
 ${yamlTramos(TARIFA_ANUAL_2026)}
     fuente: anexo-8-anual-2026
+  - anio: 2025
+    periodo: anual
+    tramos:
+${yamlTramos(TARIFA_ANUAL_2025)}
+    fuente: anexo-8-anual-2025
 `;
 
 const FRAGMENTO_CNBV_2026 =

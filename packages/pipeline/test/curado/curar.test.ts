@@ -59,7 +59,7 @@ describe("curar", () => {
     expect(e.salida).toEqual([
       "dias-inhabiles.sat: actualizado (8 registros)\n",
       "constantes.uma: actualizado (2 registros)\n",
-      "isr.tarifas: actualizado (2 registros)\n",
+      "isr.tarifas: actualizado (3 registros)\n",
     ]);
     expect((await readdir(join(raiz, "constantes-uma"))).sort()).toEqual([
       "manifest.json",
