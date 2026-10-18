@@ -2,10 +2,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    projects: ["packages/*"],
+    projects: ["packages/*", "apps/*"],
     coverage: {
       provider: "v8",
-      include: ["packages/core/src/**", "packages/pipeline/src/**"],
+      include: ["packages/core/src/**", "packages/pipeline/src/**", "apps/api/src/**"],
       exclude: ["packages/pipeline/src/bin.ts"],
       thresholds: {
         "packages/core/src/**": {
@@ -19,6 +19,12 @@ export default defineConfig({
           branches: 85,
           functions: 85,
           statements: 85,
+        },
+        "apps/api/src/**": {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
         },
       },
     },

@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mexicoapi",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/v1", "/v1/*"]
+  },
+  // No se guardan consultas ni se envían métricas de uso de wrangler.
+  "observability": { "enabled": false },
+  "send_metrics": false,
+  "workers_dev": true,
+  "preview_urls": false
+}
