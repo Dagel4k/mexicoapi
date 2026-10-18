@@ -38,8 +38,13 @@ function esBlanco(linea: Buffer): boolean {
 export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
   const { entrada, salida } = opciones;
   const maxBytes = opciones.maxBytesMensaje ?? MAX_BYTES_MENSAJE;
-  const registrar = (mensaje: string): void =>
-    opciones.registrar?.(`${opciones.info.name}: ${mensaje}`);
+  const registrar = (mensaje: string): void => {
+    try {
+      opciones.registrar?.(`${opciones.info.name}: ${mensaje}`);
+    } catch {
+      // Registro de mejor esfuerzo.
+    }
+  };
   const servidor = crearServidor(opciones);
   const decodificador = new TextDecoder("utf-8", { fatal: true });
   const pendientes = new Set<Promise<void>>();
