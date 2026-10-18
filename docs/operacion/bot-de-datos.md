@@ -10,7 +10,7 @@ El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre 
    - Issues: lectura y escritura.
    - Metadata: lectura.
 
-   No le des el permiso Workflows: sin él, la App no puede cambiar nada en `.github/workflows/`, donde está el job `solo-datos` que limita sus PRs a `data/`.
+   No le des el permiso Workflows: sin él, la App no puede cambiar nada en `.github/workflows/`, donde está el job `solo-datos` que limita sus PRs a las carpetas de sus datasets.
 2. Instalar la App solo en el repositorio `mexicoapi`.
 3. Generar una clave privada (archivo `.pem`) desde la página de la App.
 4. Crear el Environment `datos` (Settings, Environments, New environment). En Deployment branches and tags elegir Selected branches and tags y agregar solo `main`; no hacen falta revisores obligatorios. En ese Environment, sección Environment secrets, guardar:
@@ -18,11 +18,17 @@ El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre 
    - `BOT_PRIVATE_KEY`: el contenido completo del `.pem`.
 
    Si ya estaban como secretos del repositorio (Settings, Secrets and variables, Actions), crearlos en el Environment y borrar los del repositorio: así solo los jobs que corren desde `main` en ese Environment pueden leer la clave.
-5. Probar con Actions, Datos, "Run workflow", desde `main`, eligiendo `inegi`, `bancos`, `fix` o `udis`.
+5. Crear una regla de ramas (Settings, Rules, Rulesets, New ruleset, New branch ruleset), activa (Enforcement status: Active):
+   - Bypass list: el rol Repository admin.
+   - Target branches: Include all branches, y excluir por patrón `main`, `datos/**` y `dependabot/**`.
+   - Reglas: Restrict creations, Restrict updates y Restrict deletions.
+
+   Con esa regla, quien no es administrador, la App incluida, solo puede crear, actualizar y borrar ramas `datos/**` (y Dependabot las suyas); `main` sigue con su propia protección. Sin ella, la App puede hacer push a cualquier rama, también a la de un PR de una persona: `solo-datos` solo mira quién disparó cada corrida de CI, así que si después esa persona hace push, la corrida nueva pasa con el commit de la App adentro. Con la regla, la App solo escribe en ramas `datos/**`, y esas siempre pasan por `solo-datos`. Queda `dependabot/**`, que la regla no puede cerrar sin frenar a Dependabot: un push de la App ahí deja `verify` en rojo (lo disparó una cuenta Bot), Dependabot no vuelve a tocar una rama que editó otro, y sus PRs se revisan a mano.
+6. Probar con Actions, Datos, "Run workflow", desde `main`, eligiendo `inegi`, `bancos`, `fix` o `udis`.
 
 Además, el repo necesita tener activos "Allow auto-merge" y "Automatically delete head branches", y la etiqueta `revisar`.
 
-El workflow ya declara `environment: datos` en los jobs que leen la clave. Si el Environment no existe, GitHub lo crea vacío y sin reglas en la primera corrida, y los secretos del repositorio siguen funcionando: el bot no se detiene mientras se hace el paso 4. Hasta entonces la única barrera de rama es la condición del workflow, que solo corre esos jobs desde `main`.
+El workflow ya declara `environment: datos` en los jobs que leen la clave. Si el Environment no existe, GitHub lo crea vacío y sin reglas en la primera corrida, y los secretos del repositorio siguen funcionando: el bot no se detiene mientras se hace el paso 4. Hasta entonces la única barrera de rama es la condición del workflow, que solo corre esos jobs desde `main`. Los pasos 4 y 5 no cambian nada en el código: solo cierran lo que el workflow no puede cerrar solo.
 
 ## Cuándo corre
 
@@ -40,17 +46,22 @@ El pipeline procesa archivos de terceros (PDF, JSON y HTML de las fuentes oficia
 | Job | Qué hace | A qué tiene acceso |
 | --- | --- | --- |
 | `preparar` | Elige el grupo y revisa que existan `BOT_CLIENT_ID` y `BOT_PRIVATE_KEY` | Environment `datos`, sin checkout ni permisos de `GITHUB_TOKEN`. No crea el token |
-| `generar` | Instala el pipeline, descarga y valida los datos y sube el artefacto `resumen` (`resumen.md`, `resumen.json` y `datos.patch`, el parche de `data/`) por un día | Sin secretos; `GITHUB_TOKEN` solo de lectura. Sin caché de pnpm, para no dejar nada que lean otros workflows |
-| `publicar` | Crea el token de la App, aplica el parche en un checkout limpio de `main` y hace commit, push, PR, auto-merge e issues | Environment `datos`, token de la App (contenidos, PRs e issues, una hora). No instala dependencias ni corre nada que venga de `generar` |
+| `generar` | Instala el pipeline, descarga y valida los datos y sube el artefacto `resumen` (`resumen.md`, `resumen.json` y `datos.patch`, el parche de `data/`) por un día | Sin secretos; `GITHUB_TOKEN` solo de lectura; sin caché de pnpm (ver abajo) |
+| `publicar` | Crea el token de la App, aplica el parche en un checkout limpio de `main`, solo en las carpetas del grupo, y hace commit, push, PR, auto-merge e issues | Environment `datos`, token de la App (contenidos, PRs e issues, una hora). No instala dependencias ni corre nada que venga de `generar` |
 | `estado-kv` | Escribe el estado de cada dataset en KV | Environment `produccion`, token de Cloudflare ([Despliegue en Cloudflare](cloudflare.md)) |
 
-`publicar` solo corre si hay algo que publicar o reportar: cambios en `data/`, un código de salida distinto de 0 o una falla de `generar`. Antes de aplicar el parche exige que:
+`publicar` solo corre si hay algo que publicar o reportar: cambios en `data/`, un código de salida distinto de 0 o una falla de `generar`, antes o después del CLI. Antes de aplicar el parche exige que:
 
-- toque solo rutas dentro de `data/`, sin `..` ni archivos que empiecen con `.git`;
+- toque solo archivos de las carpetas del grupo: `data/inegi-estados/` y `data/inegi-municipios/` para `inegi`, `data/bancos/`, `data/tipo-cambio-fix/` o `data/udis/`. La lista sale de `preparar`, que no corre código del repo ni de las fuentes, y una prueba del pipeline (`test/workflows.test.ts`) la compara con el registro de datasets;
+- cada ruta lleve solo letras ASCII, dígitos y `. _ / -` (nada de espacios, controles ni saltos de línea), sin componentes vacíos, `.` o `..`, ni que empiecen con `.git`;
 - no renombre ni copie archivos, ni cree enlaces simbólicos o submódulos;
 - se aplique limpio (`git apply --check`).
 
-Después de aplicarlo revisa otra vez el índice. Si algo no cumple, no publica nada, abre (o comenta en) `Falla en datos: <grupo>` y la corrida queda en rojo. Para el push, `gh auth setup-git` le pasa el token a git desde el entorno del paso: el token no va en la URL ni queda en `.git/config`.
+Las rutas se revisan antes de que git pueda imprimirlas. git corre con su salida de error en un archivo, y lo que muestra al fallar, como las rutas rechazadas, sale escapado y con prefijo: nada del parche llega crudo al log, donde una línea que empiece con `::` sería un comando del runner. Después de aplicarlo revisa otra vez el índice. Si algo no cumple, no publica nada, abre (o comenta en) `Falla en datos: <grupo>` y la corrida queda en rojo. Para el push, `gh auth setup-git` le pasa el token a git desde el entorno del paso: el token no va en la URL ni queda en `.git/config`.
+
+Los datos curados (`data/curado/` y las carpetas que arma `curar`) nunca pasan por el bot: se cambian en un PR de una persona ([Datos curados](datos-curados.md)).
+
+`generar` no usa la caché de pnpm. Eso no basta para aislarla: un `generar` comprometido podría escribir en la caché de Actions de `main` con el token del runner. Por eso `despliegue.yml`, que tiene el token de Cloudflare, tampoco la usa. Los jobs de `ci.yml` sí: no tienen secretos, y `solo-datos` no instala nada.
 
 Los textos que vienen de las fuentes (motivos, registros, claves y mensajes de error) llegan a los PRs, comentarios e issues como código, en línea o en bloque, y las `@` llevan un espacio de ancho cero: no se vuelven menciones, enlaces ni encabezados.
 
@@ -72,14 +83,15 @@ El cliente HTTP del pipeline solo pide por `https` a los hosts de cada dataset (
 La API responde la operación del día siguiente a un feriado bancario con la última publicación cargada, porque da por hecho que el DOF no publica el FIX en los días de descanso de la CNBV (ver [Publicado y operación](../api/README.md#publicado-y-operación)). Si la corrida trae un FIX en uno de esos días, el bot abre el PR de datos con la etiqueta `revisar` y el motivo `FIX publicado en día inhábil bancario: <fecha>`. En ese PR `verificacion`, y con él `verify`, queda en rojo: falla la prueba de integración que exige que ningún feriado bancario entre semana ya cargado tenga FIX. Qué hacer:
 
 1. Confirmar en el DOF que ese día hubo publicación del tipo de cambio, con la fecha y el valor del SIDOF.
-2. Si la CNBV modificó sus disposiciones y ese día ya no es de cierre, quitar la fecha de `data/curado/dias-inhabiles-cnbv.yaml` con la cita de la modificación (ver [Datos curados](datos-curados.md)). Si el día sigue siendo de cierre y aun así hubo FIX, el supuesto de la API ya no vale: ajustar la regla (que el Worker no salte ese día) y la prueba de integración antes de seguir. Ese ajuste va en un PR propio: en la rama `datos/…`, `solo-datos` deja `verify` en rojo si el PR toca algo fuera de `data/`.
+2. Si la CNBV modificó sus disposiciones y ese día ya no es de cierre, quitar la fecha de `data/curado/dias-inhabiles-cnbv.yaml` con la cita de la modificación (ver [Datos curados](datos-curados.md)). Si el día sigue siendo de cierre y aun así hubo FIX, el supuesto de la API ya no vale: ajustar la regla (que el Worker no salte ese día) y la prueba de integración antes de seguir. El cambio del YAML curado, o el de la regla y la prueba, va en un PR propio de una persona, no en la rama `datos/…`: los datos curados nunca pasan por el bot, y `solo-datos` deja `verify` en rojo si un PR del bot toca algo fuera de las carpetas de sus datasets. Ya en `main`, pulsar "Update branch" en el PR de datos para que vuelva a correr CI.
 3. Con `verify` en verde, fusionar el PR de datos. Mientras tanto la serie no avanza y el bot comenta en el mismo PR cada día. Las respuestas de `operacion` del día siguiente que se dieron antes de la corrida usaron el FIX anterior.
 
 ## Qué nunca hace
 
 - Nunca hace push a `main`.
 - Nunca fusiona un PR que necesita revisión.
-- Solo modifica archivos dentro de `data/`. Un PR que toque algo más no se fusiona: el job `solo-datos` de `ci.yml` deja `verify` en rojo. Cuenta como PR del bot si su rama empieza con `datos/` o si lo abrió o le hizo push una cuenta Bot que no es Dependabot; si algún día se suma otra App que deba tocar código, hay que agregarla como excepción en ese job.
+- Solo modifica archivos de las carpetas de sus datasets en `data/`, y solo abre PRs a `main`. Un PR del bot que toque algo más, o que vaya a otra base, no se fusiona: el job `solo-datos` de `ci.yml` deja `verify` en rojo. Cuenta como PR del bot si su rama empieza con `datos/`, si lo abrió una cuenta Bot que no es Dependabot, o si el evento que disparó esa corrida de CI (abrir, reabrir o hacer push) lo hizo una de esas cuentas. Solo cuenta quién disparó la corrida, no quién hizo push antes: por eso hace falta la regla de ramas del paso 5. Si algún día se suma otra App que deba tocar código, hay que agregarla como excepción en ese job.
+- Cambiar la base de un PR no vuelve a correr CI (`ci.yml` no escucha el evento `edited`, que también llega con cada cambio de título o descripción). No hace falta: un PR del bot con otra base ya falla en `solo-datos`, y ese rojo se queda en su commit hasta un push nuevo o una reapertura, que vuelven a revisarlo contra `main`.
 - No reescribe historial ni hace push forzado; si la rama del día ya existe, usa otra con sufijo.
 - El resto del repositorio lo usa solo en lectura.
 
