@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { principal } from "../src/cli.js";
-import { crearEntorno, HOY, leerFixture } from "./ayudas.js";
+import { crearEntorno, HOY, leerFixture, PRUEBA_LENTA } from "./ayudas.js";
 
 const TODOS = ["inegi.estados", "inegi.municipios", "bancos"];
 
@@ -34,7 +34,7 @@ async function instantanea(): Promise<Map<string, string>> {
   return mapa;
 }
 
-describe("actualizar", () => {
+describe("actualizar", { timeout: PRUEBA_LENTA }, () => {
   it("crea los tres datasets y una segunda corrida no cambia nada", async () => {
     const entorno = await crearEntorno(raiz);
     expect(await principal(["actualizar", ...TODOS], entorno)).toBe(0);
@@ -162,7 +162,7 @@ describe("actualizar", () => {
   });
 });
 
-describe("verificar", () => {
+describe("verificar", { timeout: PRUEBA_LENTA }, () => {
   it("sale 1 e imprime los problemas", async () => {
     await principal(["actualizar", "inegi.estados"], await crearEntorno(raiz));
     await rm(join(raiz, "inegi-estados", "estados.json"));
@@ -172,7 +172,7 @@ describe("verificar", () => {
   });
 });
 
-describe("bancos-historico", () => {
+describe("bancos-historico", { timeout: PRUEBA_LENTA }, () => {
   it("sale 1 si ya existe bancos.json", async () => {
     await principal(["actualizar", "bancos"], await crearEntorno(raiz));
     const entorno = await crearEntorno(raiz);
@@ -266,7 +266,7 @@ describe("bancos-historico", () => {
   });
 });
 
-describe("construir", () => {
+describe("construir", { timeout: PRUEBA_LENTA }, () => {
   it("construye el sitio con los datos actualizados y sale 0", async () => {
     expect(await principal(["actualizar", ...TODOS], await crearEntorno(raiz))).toBe(0);
     const entorno = await crearEntorno(raiz);

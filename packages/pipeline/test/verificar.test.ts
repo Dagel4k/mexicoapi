@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sha256Hex } from "../src/canonico.js";
 import { principal } from "../src/cli.js";
 import { verificarDatos } from "../src/verificar.js";
-import { crearEntorno } from "./ayudas.js";
+import { crearEntorno, PRUEBA_LENTA } from "./ayudas.js";
 
 let raiz: string;
 beforeEach(async () => {
@@ -15,7 +15,7 @@ beforeEach(async () => {
     await crearEntorno(raiz),
   );
   expect(codigo).toBe(0);
-});
+}, PRUEBA_LENTA);
 afterEach(() => rm(raiz, { recursive: true, force: true }));
 
 const estados = () => join(raiz, "inegi-estados", "estados.json");

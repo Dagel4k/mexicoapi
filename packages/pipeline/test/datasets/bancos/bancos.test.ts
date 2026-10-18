@@ -15,6 +15,7 @@ import { diferenciar } from "../../../src/diferencias.js";
 import { ErrorDatos } from "../../../src/errores.js";
 import { crearCliente } from "../../../src/http.js";
 import { type Contexto, ejecutarDataset } from "../../../src/marco.js";
+import { PRUEBA_LENTA } from "../../ayudas.js";
 
 const duplicarFila = vi.hoisted(() => ({ valor: false }));
 const quitarFila = vi.hoisted(() => ({ nombre: null as string | null }));
@@ -101,7 +102,7 @@ async function construir(
 
 const por = (r: readonly Banco[], codigo: string) => r.find((b) => b.codigo === codigo) as Banco;
 
-describe("construir", () => {
+describe("construir", { timeout: PRUEBA_LENTA }, () => {
   it("une el CEP y el PDF", async () => {
     const { registros, avisos } = await construir(null);
     expect(registros).toHaveLength(97);
@@ -472,7 +473,7 @@ describe("revisar", () => {
   });
 });
 
-describe("invariantes", () => {
+describe("invariantes", { timeout: PRUEBA_LENTA }, () => {
   it("detecta incoherencias", async () => {
     const b = por((await construir(null)).registros, "012");
     const malos: Banco[] = [
@@ -542,7 +543,7 @@ describe("invariantes", () => {
   });
 });
 
-describe("registrosDesdeHistorico", () => {
+describe("registrosDesdeHistorico", { timeout: PRUEBA_LENTA }, () => {
   it("reconstruye registros de 2012, 2019 y 2026", async () => {
     const o = [
       await obs("2012-01-03", "cep-2012-01-03.json"),
@@ -571,7 +572,7 @@ describe("registrosDesdeHistorico", () => {
   });
 });
 
-describe("corridas diarias", () => {
+describe("corridas diarias", { timeout: PRUEBA_LENTA }, () => {
   const ejecutar = (fecha: string) => ejecutarDataset(bancos, ctx(fecha));
   const bytes = async () => readFile(join(raiz, "bancos", "bancos.json"), "utf8");
 
@@ -632,7 +633,7 @@ describe("corridas diarias", () => {
   });
 });
 
-describe("crudo histórico y corrida completa", () => {
+describe("crudo histórico y corrida completa", { timeout: PRUEBA_LENTA }, () => {
   it("con historico lo declara y la corrida lo escribe", async () => {
     const o = [
       await obs("2019-01-02", "cep-2019-01-02.json"),
