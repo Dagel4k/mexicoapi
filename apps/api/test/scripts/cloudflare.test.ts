@@ -506,6 +506,26 @@ describe("configuracionDespliegue", () => {
     await access(join(RAIZ_API, config.main as string));
     expect((config.assets as { directory: string }).directory).toBe("./public");
   });
+
+  // Lo que no es un asset ni está en /v1 lo responden los assets con 404.html, sin el Worker:
+  // cada entorno debe llevar el bloque `assets` completo de wrangler.jsonc.
+  it.each(["staging", "produccion"] as const)(
+    "%s conserva el bloque assets de wrangler.jsonc, con el 404 de los assets",
+    async (entorno) => {
+      const real = leerJsonc(await readFile(join(RAIZ_API, "wrangler.jsonc"), "utf8")) as Record<
+        string,
+        unknown
+      >;
+      const config = configuracionDespliegue(real, entorno, KV);
+      expect(config.assets).toStrictEqual({
+        directory: "./public",
+        binding: "ASSETS",
+        run_worker_first: ["/v1", "/v1/*"],
+        not_found_handling: "404-page",
+      });
+      expect(config.assets).toStrictEqual(real.assets);
+    },
+  );
 });
 
 const PREVIO = {

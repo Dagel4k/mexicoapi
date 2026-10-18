@@ -213,6 +213,8 @@ export const esquemaIndice = z.object({
   openapi: z.string().describe("Ruta del documento OpenAPI."),
   status: z.string().describe("Ruta del estado de los datasets."),
   descargas: z.string().describe("Ruta de las sumas de verificación de las descargas."),
+  sitio: z.string().describe("Ruta de la página de inicio del sitio."),
+  llms: z.string().describe("Ruta del resumen para herramientas que leen llms.txt."),
 });
 
 /** Sobre de las respuestas de datos: `{ data, meta }`. */

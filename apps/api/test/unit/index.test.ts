@@ -14,6 +14,8 @@ const INDICE = {
   openapi: "/v1/openapi.json",
   status: "/v1/status",
   descargas: "/descargas/SHA256SUMS",
+  sitio: "/",
+  llms: "/llms.txt",
 };
 
 async function pedir(ruta: string, init?: RequestInit, extra: Partial<Entorno> = {}) {

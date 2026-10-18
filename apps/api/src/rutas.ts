@@ -144,6 +144,8 @@ const INDICE = {
   openapi: "/v1/openapi.json",
   status: "/v1/status",
   descargas: "/descargas/SHA256SUMS",
+  sitio: "/",
+  llms: "/llms.txt",
 };
 
 const indice = (): Response => respuestaJson(INDICE, { cache: CACHE_DATOS });

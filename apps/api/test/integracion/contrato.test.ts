@@ -645,8 +645,6 @@ describe("rutas del Worker y del documento", () => {
     "/v1/isr/tarifa/mensual",
     "/v1/isr/tarifa/mensual/2026/1",
     "/v1/openapi",
-    "/v2",
-    "/descargas",
   ])("%s no es una ruta: 404 problem+json", async (ruta) => {
     const respuesta = await pedir(ruta);
     expect(respuesta.status).toBe(404);
@@ -669,4 +667,15 @@ describe("rutas del Worker y del documento", () => {
       instance: ruta,
     });
   });
+
+  // El documento solo describe /v1: lo demás que no existe lo responden los assets con 404.html.
+  it.each(["/v2", "/descargas"])(
+    "%s está fuera de /v1: 404 en HTML de los assets, no problem+json",
+    async (ruta) => {
+      const respuesta = await pedir(ruta);
+      expect(respuesta.status).toBe(404);
+      expect(tipoDeMedio(respuesta)).toBe("text/html");
+      expect(await respuesta.text()).toBe(await readFile(new URL("404.html", PUBLICO), "utf8"));
+    },
+  );
 });
