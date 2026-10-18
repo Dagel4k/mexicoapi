@@ -1145,6 +1145,21 @@ describe("de dónde sale cada respuesta", () => {
     );
   });
 
+  it("status() sin red es un error de uso: TypeError", async () => {
+    const { fetch, llamadas } = fetchFalso();
+    const esperado = new TypeError("El paquete no trae /v1/status: solo la API la responde.");
+    for (const consulta of [
+      conFetch(fetch).status({ fuente: "paquete" }),
+      crearCliente({ offline: true }).status(),
+      crearCliente({ offline: true }).consultar("/v1/status"),
+    ]) {
+      const error = await rechazo(consulta);
+      expect(error).toBeInstanceOf(TypeError);
+      expect(error).toEqual(esperado);
+    }
+    expect(llamadas).toHaveLength(0);
+  });
+
   it("sin base ni offline: true, crearCliente lanza un TypeError que lo explica", () => {
     for (const opciones of [undefined, {}, { offline: false }, { base: undefined }]) {
       expect(() => crearCliente(opciones as never)).toThrow(
