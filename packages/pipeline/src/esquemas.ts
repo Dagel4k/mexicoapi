@@ -1,4 +1,4 @@
-import type { Estado, Municipio } from "@mexicoapi/core";
+import type { Banco, Estado, Municipio, PeriodoBanco } from "@mexicoapi/core";
 import { z } from "zod";
 
 const cveEnt = z.string().regex(/^\d{2}$/);
@@ -21,4 +21,27 @@ export const esquemaMunicipio: z.ZodType<Municipio> = z.object({
     .string()
     .regex(/^\d{4}$/)
     .nullable(),
+});
+
+const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const codigoSpei = z.string().regex(/^\d{4,5}$/);
+
+const esquemaPeriodoBanco: z.ZodType<PeriodoBanco> = z.object({
+  codigo_spei: codigoSpei,
+  nombre_corto: z.string().min(1),
+  visto_desde: fechaIso,
+  visto_hasta: fechaIso,
+});
+
+export const esquemaBanco: z.ZodType<Banco> = z.object({
+  codigo: z.string().regex(/^\d{3}$/),
+  codigo_spei: codigoSpei,
+  nombre_corto: z.string().min(1),
+  razon_social: z.string().min(1).nullable(),
+  sector: z.string().min(1).nullable(),
+  tipo: z.enum(["banca_multiple", "banca_desarrollo", "otra_entidad", "banco_central"]),
+  participacion: z.enum(["directa", "no_confirmada"]),
+  activo: z.boolean(),
+  baja_detectada: fechaIso.nullable(),
+  historial: z.array(esquemaPeriodoBanco),
 });
