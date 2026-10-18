@@ -23,7 +23,8 @@ export default defineProject({
   test: {
     name: "mcp",
     include: ["test/**/*.test.ts"],
-    // Las de integración levantan el binario compilado; van aparte, después del build.
-    exclude: ["test/integracion/**"],
+    // Las de integración levantan el binario compilado y las de test/paquete instalan su .tgz:
+    // van aparte, después del build, con vitest.integracion.config.ts y vitest.paquete.config.ts.
+    exclude: ["test/integracion/**", "test/paquete/**"],
   },
 });
