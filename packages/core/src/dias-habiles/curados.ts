@@ -228,11 +228,10 @@ const esRango = (r: Rango): boolean =>
  * Arma el calendario de una autoridad: un `Calendario` por tipo de plazo con los días de su
  * cobertura y, si el plazo es más corto que la cobertura amplia, su respaldo. Lanza RangeError si
  * los datos no cumplen las reglas: cada plazo es de `PLAZOS` para su autoridad y trae sus mismos
- * `excluir_tipos` (falta uno distinto de `general` y solo ese plazo no existe); `general` cuenta
- * todos los tipos de día, un plazo contiene las
- * coberturas de los demás, cada año de esa cobertura cita sus fines de semana (y ningún otro) y
- * los días van en orden estricto y dentro de ella. Copia y congela lo que recibe, con solo los
- * campos de cada cita.
+ * `excluir_tipos` (si falta uno distinto de `general`, solo ese plazo no existe); `general`
+ * cuenta todos los tipos de día, un plazo contiene las coberturas de los demás, cada año de esa
+ * cobertura cita sus fines de semana (y ningún otro) y los días van en orden estricto y dentro de
+ * ella. Copia y congela lo que recibe, con solo los campos de cada cita.
  */
 export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioCurado {
   const { autoridad } = datos;
