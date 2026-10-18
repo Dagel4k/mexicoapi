@@ -157,31 +157,68 @@ export interface OpcionesCache {
   maxEntradas?: number | undefined;
 }
 
-export interface OpcionesCliente {
+/** Origen de la API: un texto o un objeto con `href`, como un `URL`. */
+export type Base = string | { readonly href: string };
+
+/** Opciones que valen con y sin red. */
+export interface OpcionesComunes {
   /**
-   * Origen de la API, como `https://mexicoapi.example.workers.dev` (con o sin `/v1` al final).
-   * Sin ella, el cliente solo responde desde el paquete: una consulta que necesita la red falla
-   * con un TypeError que lo explica.
+   * Tiempo máximo de cada intento, incluida la lectura del cuerpo, en milisegundos (10 000 por
+   * omisión). Un intento que se pasa no se reintenta: la consulta falla o, si se puede, responde
+   * con la caché o con el paquete.
    */
-  base?: string | { readonly href: string } | undefined;
-  /** Tiempo máximo de cada intento, incluida la lectura del cuerpo (10 000 ms por omisión). */
   timeoutMs?: number | undefined;
-  /** Reintentos ante fallos de red, 5xx y 429, de 0 a 10 (2 por omisión). */
+  /**
+   * Reintentos ante fallos de red, 5xx y 429, de 0 a 10 (2 por omisión), mientras quepan en
+   * `esperaMaximaMs`. Un intento que agotó el tiempo no se reintenta.
+   */
   reintentos?: number | undefined;
+  /**
+   * Lo más que espera en total una consulta entre reintentos, en milisegundos (10 000 por
+   * omisión; 0 para no esperar nunca). Nunca reintenta antes de lo que pide un `Retry-After`,
+   * que se respeta hasta 60 s: si no cabe en lo que queda, no reintenta y responde de inmediato
+   * con el error, la caché o el paquete. La API pide 60 s en un 429, así que con el valor por
+   * omisión un 429 no se reintenta.
+   */
+  esperaMaximaMs?: number | undefined;
   /** `fetch` a usar; por omisión, el global. */
   fetch?: FetchCompatible | undefined;
   /** `true` para la caché con sus valores por omisión; sin ella, no se guarda nada. */
   cache?: boolean | OpcionesCache | undefined;
-  /** Nunca usa la red: todo sale del paquete, como con `fuente: "paquete"` en cada consulta. */
-  offline?: boolean | undefined;
 }
+
+/**
+ * Opciones de `crearCliente`: `base` para consultar la API, u `offline: true` para responder
+ * solo con el paquete. Sin ninguna de las dos, crearCliente lanza TypeError.
+ */
+export type OpcionesCliente = OpcionesComunes &
+  (
+    | {
+        /**
+         * Origen de la API, como `https://mexicoapi.example.workers.dev` (con o sin `/v1` al
+         * final).
+         */
+        base: Base;
+        offline?: boolean | undefined;
+      }
+    | {
+        base?: Base | undefined;
+        /** Nunca usa la red: todo sale del paquete, como con `fuente: "paquete"` en cada consulta. */
+        offline: true;
+      }
+  );
 
 export interface OpcionesConsulta {
   /**
-   * `"api"`: solo la API, sin respaldo. `"paquete"`: solo los datos del paquete, sin red. Sin
-   * ella, los datos estables (estados, municipios, bancos y la validación de la CLABE) salen del
-   * paquete, y los que caducan (días hábiles e inhábiles, FIX, UDIS) de la API, con los del
-   * paquete de respaldo si la API no responde.
+   * `"api"`: solo la API, sin respaldo en el paquete. `"paquete"`: solo los datos del paquete, sin
+   * red. Sin ella, los datos estables (estados, municipios, bancos y la validación de la CLABE)
+   * salen del paquete, y los que caducan (días hábiles e inhábiles, FIX, UDIS) de la API, con los
+   * del paquete de respaldo si la API no responde.
+   *
+   * Los estables del paquete no traen advertencia de antigüedad: su `meta.as_of` es la fecha del
+   * último cambio en la fuente, no de la última revisión (un catálogo que no cambió en años tiene
+   * un `as_of` viejo y está al día), y el paquete no guarda cuándo se construyó. Para tenerlos al
+   * día con la fuente, `fuente: "api"`.
    */
   fuente?: "api" | "paquete" | undefined;
   /** Cancela la consulta, también durante las esperas entre reintentos. */

@@ -8,6 +8,7 @@ import {
   type FetchCompatible,
   type FixOperacion,
   MexicoApiError,
+  type OpcionesComunes,
   type OpcionesConsulta,
   type Respuesta,
   type RespuestaSinMeta,
@@ -42,7 +43,7 @@ afterEach(() => {
 });
 
 /** Cliente con base y el fetch falso. */
-const conFetch = (fetch: FetchCompatible, opciones: Parameters<typeof crearCliente>[0] = {}) =>
+const conFetch = (fetch: FetchCompatible, opciones: OpcionesComunes & { offline?: boolean } = {}) =>
   crearCliente({ base: BASE, fetch, ...opciones });
 
 /** Si la promesa ya se resolvió o rechazó, sin esperarla. */
@@ -210,6 +211,55 @@ describe("consulta a la API", () => {
     expect((red.cause as Error).name).toBe("TypeError");
     expect((errores[2] as MexicoApiError).problema.instance).toBe("/v1/clabe/{clabe}");
     expect((errores[2] as MexicoApiError).detail).toBe("Falló {clabe}.");
+  });
+
+  it("oculta la ruta en toda la cadena de causas y en las extensiones del problema", async () => {
+    const anidada = new TypeError("fetch failed", {
+      cause: Object.assign(new Error(`proxy: GET ${BASE}/v1/clabe/${CLABE} rechazada`), {
+        code: `E_${CLABE}`,
+        cause: new Error(`socket para /v1/clabe/${CLABE}`, { cause: `texto ${CLABE}` }),
+      }),
+    });
+    const { fetch } = fetchFalso(anidada, () =>
+      problema("error-interno", 500, "Error interno", "Ocurrió un error interno.", {
+        instance: `/v1/clabe/${CLABE}`,
+        ruta: `/v1/clabe/${CLABE}`,
+        detalles: [{ valor: CLABE, n: 1 }, CLABE, 3],
+      }),
+    );
+    const api = conFetch(fetch, { reintentos: 0 });
+    const red = (await rechazo(api.clabe(CLABE, { fuente: "api" }))) as MexicoApiError;
+    const caido = (await rechazo(api.clabe(CLABE, { fuente: "api" }))) as MexicoApiError;
+    for (const error of [red, caido]) {
+      expect(inspect(error, { depth: 10 })).not.toContain(CLABE);
+    }
+    const primera = red.cause as Error & { code?: string };
+    const segunda = primera.cause as Error & { code?: string };
+    expect(segunda.message).toBe(`proxy: GET ${BASE}/v1/clabe/{clabe} rechazada`);
+    expect(segunda.code).toBe("E_{clabe}");
+    expect((segunda.cause as Error).message).toBe("socket para /v1/clabe/{clabe}");
+    expect(((segunda.cause as Error).cause as Error).message).toBe("texto {clabe}");
+    expect(caido.problema).toEqual({
+      type: `${PROBLEMAS}error-interno`,
+      title: "Error interno",
+      status: 500,
+      detail: "Ocurrió un error interno.",
+      instance: "/v1/clabe/{clabe}",
+      ruta: "/v1/clabe/{clabe}",
+      detalles: [{ valor: "{clabe}", n: 1 }, "{clabe}", 3],
+    });
+  });
+
+  it("corta una cadena de causas circular", async () => {
+    const circular = new Error("uno") as Error & { cause?: unknown };
+    circular.cause = circular;
+    const { fetch } = fetchFalso(circular);
+    const error = (await rechazo(
+      conFetch(fetch, { reintentos: 0 }).estados({ fuente: "api" }),
+    )) as MexicoApiError;
+    let profundidad = 0;
+    for (let c: unknown = error.cause; c instanceof Error; c = c.cause) profundidad++;
+    expect(profundidad).toBeLessThanOrEqual(6);
   });
 
   it("una respuesta de error sin problem+json da about:blank con el estado HTTP", async () => {
@@ -450,7 +500,63 @@ describe("reintentos", () => {
     await consulta;
   });
 
-  it("espera hasta 60 s; con un Retry-After mayor no reintenta", async () => {
+  it("por omisión no espera un Retry-After de 60 s: entrega el 429 de inmediato", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      problema(
+        "demasiadas-peticiones",
+        429,
+        "Demasiadas peticiones",
+        "Espera.",
+        {},
+        {
+          "Retry-After": "60",
+        },
+      ),
+    );
+    const consulta = seguir(conFetch(fetch).estados({ fuente: "api" }));
+    await avanzar(0);
+    expect(consulta.listo).toBe(true);
+    expect((consulta.error as MexicoApiError).status).toBe(429);
+    expect(llamadas).toHaveLength(1);
+  });
+
+  it("la espera total no pasa de esperaMaximaMs y nunca reintenta antes del Retry-After", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      json({}, 429, { "Retry-After": "6" }),
+      json({}, 429, { "Retry-After": "5" }),
+    );
+    // 6 s caben en los 10 s por omisión; después, 6 + 5 ya no.
+    const consulta = seguir(conFetch(fetch).estados({ fuente: "api" }));
+    await avanzar(5_999);
+    expect(llamadas).toHaveLength(1);
+    await avanzar(1);
+    expect(llamadas).toHaveLength(2);
+    await avanzar(0);
+    expect(consulta.listo).toBe(true);
+    expect((consulta.error as MexicoApiError).status).toBe(429);
+  });
+
+  it("las esperas exponenciales también cuentan, y con 0 no se reintenta", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(errorInterno(), errorInterno(), errorInterno());
+    const consulta = seguir(conFetch(fetch, { esperaMaximaMs: 300 }).estados({ fuente: "api" }));
+    await avanzar(125);
+    expect(llamadas).toHaveLength(2);
+    // 125 + 250 > 300: no hay tercer intento.
+    await avanzar(0);
+    expect(consulta.listo).toBe(true);
+    expect((consulta.error as MexicoApiError).status).toBe(500);
+    const caido = new TypeError("fetch failed");
+    const red = fetchFalso(caido);
+    const sinEspera = seguir(conFetch(red.fetch, { esperaMaximaMs: 0 }).estados({ fuente: "api" }));
+    await avanzar(0);
+    expect((sinEspera.error as MexicoApiError).status).toBe(0);
+    expect(red.llamadas).toHaveLength(1);
+  });
+
+  it("con esperaMaximaMs mayor espera hasta 60 s; un Retry-After de más no se reintenta", async () => {
     relojFalso();
     const { fetch, llamadas } = fetchFalso(
       json({}, 429, { "Retry-After": "60" }),
@@ -465,7 +571,8 @@ describe("reintentos", () => {
         },
       ),
     );
-    const consulta = seguir(conFetch(fetch).estados({ fuente: "api" }));
+    const api = conFetch(fetch, { esperaMaximaMs: 600_000 });
+    const consulta = seguir(api.estados({ fuente: "api" }));
     await avanzar(59_999);
     expect(llamadas).toHaveLength(1);
     await avanzar(1);
@@ -708,10 +815,122 @@ describe("caché", () => {
   });
 });
 
+describe("respuesta guardada si la API falla (stale-if-error)", () => {
+  const CONTROL = "public, max-age=60, stale-if-error=600";
+
+  it("al caducar, si la API no responde, usa la guardada dentro de stale-if-error", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": CONTROL, ETag: '"a"' }),
+      errorInterno(),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    const primera = await api.estados({ fuente: "api" });
+    vi.advanceTimersByTime(90_000);
+    const rancia = await api.estados({ fuente: "api" });
+    expect(llamadas).toHaveLength(2);
+    expect(rancia.origen).toBe("api");
+    expect(rancia.data).toBe(primera.data);
+    expect(rancia.meta).toBe(primera.meta);
+    expect(rancia.advertencias).toEqual([
+      "Respuesta guardada de la API, de hace 1 min y caducada hace 30 s, porque la API falló: 500 Error interno: Ocurrió un error interno.",
+    ]);
+    esperarCongelado(rancia, "respuesta");
+    expect(primera.advertencias).toEqual([]);
+  });
+
+  it("prefiere la respuesta guardada de la API a los datos del paquete", async () => {
+    relojFalso();
+    const viejo = { fecha: "2026-10-20", valor: "1.000000" };
+    const { fetch } = fetchFalso(
+      respuestaDatos(viejo, { "Cache-Control": CONTROL }),
+      new TypeError("fetch failed"),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    await api.udi("2026-10-20");
+    vi.advanceTimersByTime(3 * 3_600_000);
+    // Más de 600 s después de caducar ya no vale: sale del paquete.
+    const r = await api.udi("2026-10-20");
+    expect(r.origen).toBe("paquete");
+
+    const otra = fetchFalso(
+      respuestaDatos(viejo, { "Cache-Control": CONTROL }),
+      new TypeError("fetch failed"),
+    );
+    const api2 = conFetch(otra.fetch, { cache: true, reintentos: 0 });
+    await api2.udi("2026-10-20");
+    vi.advanceTimersByTime(120_000);
+    const guardada = await api2.udi("2026-10-20");
+    expect(guardada.origen).toBe("api");
+    expect(guardada.data).toEqual(viejo);
+    expect(guardada.advertencias[0]).toMatch(
+      /^Respuesta guardada de la API, de hace 2 min y caducada hace 1 min, porque la API falló: Sin respuesta de la API/,
+    );
+  });
+
+  it("sin stale-if-error, con un problema definitivo o sin caché, no la usa", async () => {
+    relojFalso();
+    const sinDirectiva = fetchFalso(
+      respuestaDatos([], { "Cache-Control": "public, max-age=60" }),
+      errorInterno(),
+    );
+    const api = conFetch(sinDirectiva.fetch, { cache: true, reintentos: 0 });
+    await api.estados({ fuente: "api" });
+    vi.advanceTimersByTime(61_000);
+    expect(((await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(500);
+
+    const definitivo = fetchFalso(
+      respuestaDatos([], { "Cache-Control": CONTROL }),
+      problema("no-encontrado", 404, "Recurso no encontrado", "Ya no existe."),
+    );
+    const api2 = conFetch(definitivo.fetch, { cache: true });
+    await api2.estados({ fuente: "api" });
+    vi.advanceTimersByTime(61_000);
+    expect(((await rechazo(api2.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(404);
+  });
+
+  it("la respuesta guardada sigue caducada: la siguiente consulta vuelve a la API", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": CONTROL }),
+      errorInterno(),
+      respuestaDatos([], { "Cache-Control": CONTROL }),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    await api.estados({ fuente: "api" });
+    vi.advanceTimersByTime(61_000);
+    expect((await api.estados({ fuente: "api" })).advertencias).toHaveLength(1);
+    const nueva = await api.estados({ fuente: "api" });
+    expect(nueva.data).toEqual([]);
+    expect(nueva.advertencias).toEqual([]);
+    expect(llamadas).toHaveLength(3);
+  });
+
+  it("dice la edad en segundos, minutos, horas o días", async () => {
+    relojFalso();
+    // [tiempo desde que se guardó, max-age en segundos, texto esperado]
+    const casos: [number, number, string][] = [
+      [65_000, 60, "de hace 1 min y caducada hace 5 s"],
+      [2 * 3_600_000, 3_600, "de hace 2 h y caducada hace 1 h"],
+      [3 * 86_400_000, 86_400, "de hace 3 días y caducada hace 2 días"],
+    ];
+    for (const [ms, maxAge, texto] of casos) {
+      const { fetch } = fetchFalso(
+        respuestaDatos([], { "Cache-Control": `max-age=${maxAge}, stale-if-error=999999` }),
+        errorInterno(),
+      );
+      const api = conFetch(fetch, { cache: { ttlMs: 10 * 86_400_000 }, reintentos: 0 });
+      await api.estados({ fuente: "api" });
+      vi.advanceTimersByTime(ms);
+      expect((await api.estados({ fuente: "api" })).advertencias[0]).toContain(texto);
+    }
+  });
+});
+
 describe("de dónde sale cada respuesta", () => {
-  it("los datos estables salen del paquete sin red, aun sin base", async () => {
+  it("los datos estables salen del paquete sin red", async () => {
     const { fetch, llamadas } = fetchFalso();
-    for (const api of [conFetch(fetch), crearCliente({ fetch })]) {
+    for (const api of [conFetch(fetch), crearCliente({ fetch, offline: true })]) {
       expect((await api.estados()).origen).toBe("paquete");
       expect((await api.municipio("25006")).origen).toBe("paquete");
       expect((await api.banco("002")).origen).toBe("paquete");
@@ -756,6 +975,34 @@ describe("de dónde sale cada respuesta", () => {
       );
       esperarCongelado(r, "respuesta");
     }
+  });
+
+  it("con la API limitando (429 de 60 s), los que caducan salen del paquete sin esperar", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      problema(
+        "demasiadas-peticiones",
+        429,
+        "Demasiadas peticiones",
+        "Espera.",
+        {},
+        {
+          "Retry-After": "60",
+        },
+      ),
+    );
+    const consulta = seguir(conFetch(fetch).udi("2026-10-20"));
+    await avanzar(0);
+    expect(consulta.listo).toBe(true);
+    expect(consulta.error).toBeUndefined();
+    expect(llamadas).toHaveLength(1);
+    const r = await conFetch(fetchFalso(json({}, 429, { "Retry-After": "60" })).fetch).udi(
+      "2026-10-20",
+    );
+    expect(r.origen).toBe("paquete");
+    expect(r.advertencias[0]).toBe(
+      "Respuesta de los datos del paquete porque la API falló: 429 Respuesta inesperada de la API: La API respondió 429 sin problem+json.",
+    );
   });
 
   it("la advertencia de respaldo nombra el fallo sin la ruta pedida", async () => {
@@ -814,15 +1061,15 @@ describe("de dónde sale cada respuesta", () => {
     );
   });
 
-  it("sin base, lo que necesita la red falla con un TypeError que lo explica", async () => {
-    const { fetch, llamadas } = fetchFalso();
-    const api = crearCliente({ fetch });
-    for (const consulta of [api.fixPublicado("2026-10-16"), api.estados({ fuente: "api" })]) {
-      const error = await rechazo(consulta);
-      expect(error).toBeInstanceOf(TypeError);
-      expect((error as Error).message).toMatch(/base.*offline: true/);
+  it("sin base ni offline: true, crearCliente lanza un TypeError que lo explica", () => {
+    for (const opciones of [undefined, {}, { offline: false }, { base: undefined }]) {
+      expect(() => crearCliente(opciones as never)).toThrow(
+        new TypeError(
+          "crearCliente necesita base (el origen de la API) o offline: true para responder solo con el paquete.",
+        ),
+      );
     }
-    expect(llamadas).toHaveLength(0);
+    expect(Object.isFrozen(crearCliente({ offline: true, base: BASE }))).toBe(true);
   });
 
   it("valida los valores de la ruta antes de pedirlos a la API", async () => {
@@ -898,9 +1145,13 @@ describe("opciones", () => {
     [{ cache: { ttlMs: -1 } }, RangeError, "ttlMs"],
     [{ cache: { maxEntradas: 0 } }, RangeError, "maxEntradas"],
     [{ fetch: "fetch" }, TypeError, "fetch"],
+    [{ esperaMaximaMs: -1 }, RangeError, "esperaMaximaMs"],
+    [{ esperaMaximaMs: Number.NaN }, RangeError, "esperaMaximaMs"],
+    [{ esperaMaximaMs: 2 ** 31 }, RangeError, "esperaMaximaMs"],
   ])("rechaza %o", (opciones, clase, texto) => {
-    expect(() => crearCliente(opciones as never)).toThrow(clase);
-    expect(() => crearCliente(opciones as never)).toThrow(texto);
+    const conOffline = { offline: true, ...opciones } as never;
+    expect(() => crearCliente(conOffline)).toThrow(clase);
+    expect(() => crearCliente(conOffline)).toThrow(texto);
   });
 
   it("rechaza una fuente desconocida", async () => {
@@ -910,7 +1161,7 @@ describe("opciones", () => {
   });
 
   it("el cliente está congelado", () => {
-    expect(Object.isFrozen(crearCliente())).toBe(true);
+    expect(Object.isFrozen(crearCliente({ offline: true }))).toBe(true);
   });
 
   it("sin fetch en el entorno, lo dice", async () => {
@@ -955,6 +1206,22 @@ describe("MexicoApiError", () => {
 });
 
 describe("tipos", () => {
+  it("las opciones piden base u offline: true", () => {
+    const crear = (): unknown => [
+      crearCliente({ base: BASE }),
+      crearCliente({ base: new URL(BASE), offline: false }),
+      crearCliente({ offline: true }),
+      crearCliente({ offline: true, base: BASE, timeoutMs: 1_000 }),
+      // @ts-expect-error sin opciones
+      crearCliente(),
+      // @ts-expect-error sin base ni offline
+      crearCliente({ timeoutMs: 1_000 }),
+      // @ts-expect-error offline: false necesita base
+      crearCliente({ offline: false }),
+    ];
+    expectTypeOf(crear).toBeFunction();
+  });
+
   it("cada método da el tipo de su ruta", () => {
     const api: Cliente = crearCliente({ offline: true });
     expectTypeOf(api.estado).returns.resolves.toEqualTypeOf<Respuesta<Estado>>();

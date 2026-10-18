@@ -5,6 +5,7 @@ export { crearCliente } from "./cliente.js";
 export { type ContextoError, MexicoApiError, type Problema } from "./error.js";
 export type {
   ArgumentosDe,
+  Base,
   Cliente,
   ConsultaDiasHabiles,
   ConsultaDiasInhabiles,
@@ -15,6 +16,7 @@ export type {
   Meta,
   OpcionesCache,
   OpcionesCliente,
+  OpcionesComunes,
   OpcionesConsulta,
   Origen,
   Respuesta,

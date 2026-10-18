@@ -419,16 +419,17 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - `mexicoapi/datos`: datos offline de los datasets estables (estados, municipios, bancos, constantes, días inhábiles) incluidos en el paquete.
   - `mexicoapi/sepomex`: descarga local (sección 7).
   - `mexicoapi/cli`: binario `mexicoapi`.
-- **Cliente** (`crearCliente({ base, timeoutMs, reintentos, fetch, cache, offline })`):
-  - `fetch` nativo; el timeout es por intento y cubre la lectura del cuerpo;
-  - todas las rutas son GET: se reintentan los fallos de red, los 5xx y los 429, con espera exponencial y variación al azar, y un `Retry-After` de hasta 60 s se respeta; un intento que agota el tiempo no se repite;
-  - errores tipados (`MexicoApiError` con el problem+json); ni el mensaje ni la URL del error traen los valores de la ruta (una CLABE aparece como `{clabe}`);
-  - caché opcional en memoria con TTL (sin pasar del `max-age` de la API), límite de entradas y revalidación con `ETag`;
-  - el núcleo, las respuestas del paquete y cada dataset se cargan con un import dinámico al usarlos.
+- **Cliente** (`crearCliente({ base, timeoutMs, reintentos, esperaMaximaMs, fetch, cache, offline })`; pide `base` u `offline: true`, si no lanza TypeError):
+  - `fetch` nativo; el timeout es por intento y cubre la lectura del cuerpo; un intento que agota el tiempo no se repite;
+  - todas las rutas son GET: se reintentan los fallos de red, los 5xx y los 429, con espera exponencial y variación al azar, sin pasar de `esperaMaximaMs` de espera total (10 s por omisión). Nunca se reintenta antes de lo que pide un `Retry-After` (se respeta hasta 60 s): si no cabe en lo que queda, no se reintenta y la consulta responde ya con el error, la caché o el paquete. El Worker pide 60 s en un 429, así que por omisión un 429 no espera: una plataforma serverless cortaría la función antes;
+  - errores tipados (`MexicoApiError` con el problem+json); ni el mensaje, ni la URL, ni las extensiones del problema, ni la cadena de causas traen los valores de la ruta (una CLABE aparece como `{clabe}`); los textos fijos de las reglas no se tocan;
+  - caché opcional en memoria con TTL (sin pasar del `max-age` de la API), límite de entradas y revalidación con `ETag`. Si al revalidar la API no responde, se usa la respuesta guardada mientras no pase su `stale-if-error`, con `origen: "api"` y una advertencia con su edad: es más nueva que los datos del paquete;
+  - el núcleo, las respuestas del paquete y cada dataset se cargan con un import dinámico al usarlos;
+  - las respuestas del paquete siguen las reglas de la API para la query: parámetro sin nombre, desconocido, faltante, vacío o inválido, en ese orden.
 - **Versionado:** semver para la API del SDK. Los datos incluidos se actualizan con versiones *patch* semanales automáticas (changesets) cuando hay cambios.
 - **Tamaño:** la entrada `mexicoapi` (núcleo) ≤ 15 KB gzip, y el cliente ≤ 15 KB gzip sin lo que carga al responder desde el paquete. Los datos van en entradas separadas para no inflar a quien no los usa.
 - **Datos que caducan** (FIX, UDIS, días hábiles e inhábiles, constantes): por defecto se consultan en la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), se usan los datos del paquete y la respuesta lo dice con `origen: "paquete"`, su `as_of` y advertencias: la del fallo y, en las series, otra si el último dato del paquete tiene más de 7 días. Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
-  - Los datos estables (estados, municipios, bancos, plazas) y la validación de la CLABE se leen del paquete sin red; con `fuente: "api"` se piden a la API.
+  - Los datos estables (estados, municipios, bancos, plazas) y la validación de la CLABE se leen del paquete sin red; con `fuente: "api"` se piden a la API. No llevan advertencia de antigüedad: su `as_of` es la fecha del último cambio en la fuente, no de la última revisión (un catálogo sin cambios en años tiene un `as_of` viejo y está al día), y el paquete no guarda cuándo se construyó. Quien necesite el catálogo al día con la fuente usa `fuente: "api"`.
   - `{ offline: true }` fuerza el modo sin red; `/v1/status` solo existe en la API.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
   - `mexicoapi/sepomex` y la CLI requieren Node ≥ 22.13: la caché se guarda en JSON y, si `node:sqlite` está disponible, también en SQLite.
