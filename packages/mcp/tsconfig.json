@@ -11,5 +11,7 @@
       "mexicoapi/sepomex": ["../sdk/src/sepomex/index.ts"]
     }
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  // Los scripts y sus pruebas importan archivos .ts: los revisa scripts/tsconfig.json.
+  "exclude": ["test/scripts", "test/paquete"]
 }
