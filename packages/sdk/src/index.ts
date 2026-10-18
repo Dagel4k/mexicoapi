@@ -21,6 +21,7 @@ export type {
   FuenteDof,
   FuenteFinDeSemana,
   Municipio,
+  OpcionesFix,
   PeriodoBanco,
   Plaza,
   ResultadoDiasHabiles,

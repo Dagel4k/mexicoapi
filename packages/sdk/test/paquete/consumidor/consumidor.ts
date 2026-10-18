@@ -8,6 +8,7 @@ import {
   calendarioLft,
   type DetalleClabe,
   fixParaOperacion,
+  type OpcionesFix,
   type ResultadoDiasHabiles,
   type ResultadoValidacion,
   sumarDiasHabiles,
@@ -63,11 +64,13 @@ const culiacan: Municipio | undefined = buscarMunicipio("culiacan", {
 const sinaloa: readonly Municipio[] = municipios(estado("25")?.cve_ent);
 const asOf: string = meta.municipios.as_of;
 const fuentes: MetaDatos["sources"] = datosFix.meta.sources;
+const sinFeriados: OpcionesFix = { sinPublicacion: () => false };
 const fixPaquete: Consulta<TipoCambioFix> = fixParaOperacion(
   datosFix.serie,
   datosFix.tramo,
   datosFix.cobertura,
   "2026-10-19",
+  sinFeriados,
 );
 const udiPaquete: Consulta<Udi> = udiDeFecha(
   datosUdis.serie,
