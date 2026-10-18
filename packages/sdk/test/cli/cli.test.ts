@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AYUDA } from "../../src/cli/ayuda.js";
 import { ejecutar } from "../../src/cli/cli.js";
 import type { ModuloSepomexCli } from "../../src/cli/tipos.js";
 import { type FetchCompatible, URL_API } from "../../src/cliente/index.js";
@@ -55,6 +56,11 @@ describe("CLI (lógica)", () => {
 });
 
 describe("CLI: a qué API pregunta", () => {
+  it("la ayuda nombra la API pública con URL_API, la misma que usa el cliente", () => {
+    expect(AYUDA).toContain(`(${URL_API})`);
+    expect(AYUDA.match(/https:\/\/[^\s)]+workers\.dev/g)).toEqual([URL_API]);
+  });
+
   const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
   const respuesta = () =>
     new Response(

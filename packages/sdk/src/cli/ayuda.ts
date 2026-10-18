@@ -1,4 +1,6 @@
 // Textos de ayuda de la CLI.
+import { URL_API } from "@mexicoapi/core/problemas";
+
 const OPCIONES_GLOBALES = `Opciones:
   --json                 imprime el resultado completo como JSON (los errores, por stderr)
   --depurar              muestra el detalle técnico de un error
@@ -27,7 +29,7 @@ Comandos:
 ${OPCIONES_GLOBALES}
 
 dias-habiles, uma, salario-minimo e isr consultan primero la API pública
-(https://mexicoapi.dagel4k.workers.dev), o la de --base <url> o la variable MEXICOAPI_BASE, y si
+(${URL_API}), o la de --base <url> o la variable MEXICOAPI_BASE, y si
 no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 todo sale
 del paquete, sin red (--base gana a esa variable). municipio y banco salen siempre del paquete,
 como los validadores.
