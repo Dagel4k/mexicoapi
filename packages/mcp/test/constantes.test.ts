@@ -210,3 +210,13 @@ describe("constantes con la API", () => {
     ]);
   });
 });
+
+describe("constantes: respuestas vacías", () => {
+  it("un salario mínimo sin zonas es error, no un texto a medias", async () => {
+    const { herramientas } = herramientasConApi(() => apiOk([]));
+    esError(
+      await (await servidor(herramientas))("constantes", { tipo: "salario_minimo", anio: 2028 }),
+      "La respuesta no trae el salario mínimo de 2028.",
+    );
+  });
+});
