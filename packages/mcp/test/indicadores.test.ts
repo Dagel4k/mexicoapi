@@ -82,9 +82,11 @@ describe("tipo_de_cambio_fix sin API", () => {
     const ultimo = fix.serie.at(-1);
     const r = await sinRed("tipo_de_cambio_fix", {});
     expect(contenido(r).datos).toEqual(ultimo);
+    // Del paquete: es la más reciente que trae, que puede no ser la última publicada.
     expect(texto(r)).toContain(
-      `Última publicación del FIX: ${ultimo?.valor} pesos por dólar, en el DOF del ${ultimo?.fecha_publicacion}.`,
+      `Publicación más reciente del FIX en los datos del paquete: ${ultimo?.valor} pesos por dólar, en el DOF del ${ultimo?.fecha_publicacion}.`,
     );
+    expect(texto(r)).not.toContain("Última publicación");
   });
 
   it("rechaza publicado y operacion juntos, fechas imposibles y días sin dato", async () => {
@@ -144,7 +146,10 @@ describe("tipo_de_cambio_fix con la API", () => {
     );
     const llamar = await servidor(herramientas);
     await llamar("tipo_de_cambio_fix", { operacion: "2026-10-20" });
-    await llamar("tipo_de_cambio_fix", {});
+    // De la API sí es la última publicación.
+    expect(texto(await llamar("tipo_de_cambio_fix", {}))).toContain(
+      "Última publicación del FIX: 18.5000 pesos por dólar, en el DOF del 2026-10-19.",
+    );
     expect(urls).toEqual([
       `${BASE}/v1/tipo-cambio/fix?operacion=2026-10-20`,
       `${BASE}/v1/tipo-cambio/fix/ultimo`,
