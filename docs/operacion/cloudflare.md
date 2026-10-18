@@ -40,7 +40,7 @@ Solo corre desde `main`, en el Environment `produccion`.
 2. `cloudflare.ts configurar` busca (o crea) el namespace de KV titulado `mexicoapi-estado`, genera la configuración del entorno y devuelve la URL de `workers.dev`.
 3. Despliega el Worker `mexicoapi-staging`.
 4. Corre `humo.ts` contra staging. Un Worker recién desplegado tarda en propagarse, así que hace hasta 5 intentos, con esperas de 10, 20, 30 y 60 segundos entre ellos.
-5. Repite lo mismo con el Worker `mexicoapi` (producción). Si staging falla, producción no se toca. El humo de producción corre también si el paso de despliegue falló, porque pudo fallar después de subir la versión.
+5. Repite lo mismo con el Worker `mexicoapi` (producción). Si staging falla, producción no se toca. El humo de producción corre solo si la versión llegó a subirse, aunque el paso de despliegue fallara después; si falló antes de subirla, producción no cambió, no hay humo ni reversión y la corrida queda en rojo.
 6. Si el humo de producción falla, corre `wrangler rollback --yes` y deja la corrida en rojo. En el primer despliegue no hay versión anterior: la reversión falla, producción se queda con ese commit y el resumen lo dice.
 7. Escribe un resumen con el commit, las URLs, los IDs de versión, si se revirtió y la salida del humo.
 
@@ -60,7 +60,7 @@ Lee `/v1/status` con `GITHUB_TOKEN`, sin secretos de Cloudflare.
 
 El job `estado-kv` de `datos.yml` guarda `estado:<dataset>` con la última corrida. Va aparte del job que actualiza los datos: recibe el resumen de la corrida como artefacto, no instala dependencias y es el único que ve el token de Cloudflare. Si falla, deja una advertencia y no cambia el resultado de la corrida de datos.
 
-`last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida publicó el cambio (el paso "Publicar resultado" terminó bien). Si la corrida falló, no se publica nada y no avanza. Con `requiere_revision` tampoco avanza: lo publicado se queda atrás hasta que una persona revisa, y pasada su ventana de frescura el dataset pasa a desactualizado, que es lo esperado.
+`last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida publicó el cambio: el paso "Publicar resultado" terminó bien y la corrida salió con código 0. Con código 3 el PR lleva la etiqueta `revisar` y no se fusiona solo, así que ni los datasets `actualizado` de ese grupo cuentan como publicados. Si la corrida falló, no se publica nada y no avanza. Con `requiere_revision` tampoco avanza: lo publicado se queda atrás hasta que una persona revisa, y pasada su ventana de frescura el dataset pasa a desactualizado, que es lo esperado.
 
 ## Revertir a mano
 
