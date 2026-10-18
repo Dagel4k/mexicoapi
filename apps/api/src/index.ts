@@ -16,8 +16,11 @@ interface Rastro {
   plantilla?: string;
 }
 
-/** `camino` sin las `/` del final. Recorre desde el final: lineal con cualquier racha de `/`. */
-function sinBarrasFinales(camino: string): string {
+/**
+ * `camino` sin las `/` del final. Recorre desde el final y lee cada carácter una vez: lineal con
+ * cualquier racha de `/`, a diferencia de `/\/+$/`.
+ */
+export function sinBarrasFinales(camino: string): string {
   let fin = camino.length;
   while (fin > 0 && camino.charCodeAt(fin - 1) === 0x2f) fin -= 1;
   return camino.slice(0, fin);

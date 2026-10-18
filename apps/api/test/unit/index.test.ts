@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Entorno } from "../../src/entorno.js";
-import worker, { manejar } from "../../src/index.js";
+import worker, { manejar, sinBarrasFinales } from "../../src/index.js";
 import * as respuestas from "../../src/respuestas.js";
 import { CACHE_DATOS } from "../../src/respuestas.js";
 import { crearAssets, entornoDe, peticion, SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
@@ -112,21 +112,37 @@ describe("barra final", () => {
     }
   });
 
-  it("una racha de 10 mil / antes de otro carácter se recorta en tiempo lineal", async () => {
+  it("una racha de 10 mil / antes de otro carácter redirige a la ruta sin la barra final", async () => {
     const racha = "/".repeat(10_000);
     const { respuesta } = await pedir(`/v1${racha}x/`);
     expect(respuesta.status).toBe(308);
     expect(respuesta.headers.get("location")).toBe(`/v1${racha}x`);
-    // Con /\/+$/ cada petición tarda de 60 a 100 ms (cuadrático); recorriendo desde el final,
-    // las diez juntas no llegan a 10 ms.
-    const inicio = performance.now();
-    for (let i = 0; i < 10; i++) await pedir(`/v1${racha}x/`);
-    expect(performance.now() - inicio).toBeLessThan(100);
     for (const ruta of [`${racha}/`, `/${racha}evil.example/`]) {
       const otra = (await pedir(ruta)).respuesta;
       expect(otra.status).toBe(404);
       expect(otra.headers.get("location")).toBeNull();
     }
+  });
+
+  it("sinBarrasFinales lee cada carácter del final una sola vez, aunque haya otra racha antes", () => {
+    // Con /\/+$/ el motor prueba desde cada / de la primera racha (cuadrático); aquí se cuentan
+    // las lecturas: las 10 mil / del final más la x que corta.
+    const racha = "/".repeat(10_000);
+    const real = `/v1${racha}x${racha}`;
+    let lecturas = 0;
+    const espia = {
+      length: real.length,
+      charCodeAt: (i: number) => {
+        lecturas += 1;
+        return real.charCodeAt(i);
+      },
+      slice: (desde: number, hasta?: number) => real.slice(desde, hasta),
+    } as unknown as string;
+    expect(sinBarrasFinales(espia)).toBe(`/v1${racha}x`);
+    expect(lecturas).toBe(10_001);
+    expect(sinBarrasFinales("/")).toBe("");
+    expect(sinBarrasFinales("/v1")).toBe("/v1");
+    expect(sinBarrasFinales("")).toBe("");
   });
 });
 
