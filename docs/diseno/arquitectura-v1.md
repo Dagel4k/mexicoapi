@@ -256,9 +256,9 @@ Además, cada dataset pasa invariantes que atrapan errores de captura, con monto
 - UMA: mensual igual a la diaria por 30.4, anual igual a la mensual por 12, vigencia el 1 de febrero, y el fragmento contiene los montos;
 - salario mínimo: vigencia el 1 de enero, el fragmento contiene el monto y la zona de la Frontera Norte es mayor que la general;
 - ISR: los tramos encadenan, las tasas crecen y son las mismas en todas las tarifas, y cada cuota fija es la anterior más el impuesto completo del tramo anterior, con una tolerancia de un centavo. Lo que pase de eso se declara en `excepciones_cuota_fija` con el valor publicado y el recalculado, y falla si no hace falta;
-- días inhábiles: cada día cae dentro de la cobertura de su tipo, y los días de regla ("tercer lunes de noviembre") se recalculan a partir del `motivo`.
+- días inhábiles: cada día cae dentro de la cobertura de su tipo y en la de algún `tipo_plazo` (el Worker rechaza el calendario entero si un día queda fuera), los días de regla ("tercer lunes de noviembre") se recalculan a partir del `motivo`, y un `motivo` que empieza con día y mes ("16 de septiembre") debe coincidir con la fecha.
 
-**Cobertura.** Los calendarios declaran en el YAML el rango en que su lista está completa, por tipo de día. El build la lleva a la API junto con la cobertura de cada `tipo_plazo`, que es la intersección de las coberturas de los tipos de día que ese plazo cuenta. Hoy el SAT tiene `descanso` hasta el 2026-12-31 y `vacaciones` hasta el 2026-11-30, porque el segundo periodo de vacaciones de 2026 no se ha publicado: `declaraciones_pagos`, que no cuenta las vacaciones, llega al 2026-12-31 y `general` al 2026-11-30. La CNBV cubre 2025 y 2026.
+**Cobertura.** Los calendarios declaran en el YAML el rango en que su lista está completa, por tipo de día. El build la lleva a la API junto con la cobertura de cada `tipo_plazo`, que es la intersección de las coberturas de los tipos de día que ese plazo cuenta. Hoy el SAT tiene `descanso` hasta el 2026-12-31 y `vacaciones` hasta el 2026-11-30, porque el segundo periodo de vacaciones de 2026 no se ha publicado: `declaraciones_pagos`, que no cuenta las vacaciones, llega al 2026-12-31 y `general` al 2026-11-30. La CNBV cubre 2025 y 2026. Como la lista de días por sí sola no dice hasta dónde está completa, las descargas traen la cobertura de cada `tipo_plazo` aparte (`dias-inhabiles-coberturas.json` y `.csv`, y la tabla `coberturas_calendario` del SQLite).
 
 Las reglas fijas de la LFT (por ejemplo, el primer lunes de febrero) se calculan con una función del núcleo y se prueban año por año.
 
@@ -289,7 +289,7 @@ Estas reglas son la parte con más riesgo legal. Cada una lleva su fundamento en
 Tres reglas aplican a todas las autoridades:
 
 - **Cuándo empieza el conteo:** el plazo empieza a contar **el día hábil siguiente** a `desde`, sea `desde` hábil o no. Es el criterio general de cómputo de plazos.
-- **Fines de semana:** sábado y domingo son inhábiles en las tres autoridades de v1.
+- **Fines de semana:** sábado y domingo son inhábiles en las tres autoridades de v1. Cada fin de semana se cita con la publicación de su año: en la CNBV, las disposiciones de ese año.
 - **El resultado:** siempre es un día hábil.
 
 | Autoridad | Inhábiles | Fundamento |

@@ -34,8 +34,13 @@ La zona general cambia de nombre según la resolución: "área de Salarios Míni
 
 | Forma | Ruta |
 | --- | --- |
+| API | `GET /v1/constantes/salario-minimo/{anio}` |
+| Descarga | `/descargas/constantes-salario-minimo.json`, `.csv` y `.manifest.json` |
+| SQLite | tabla `salario_minimo` de `/descargas/mexicoapi.sqlite` |
 | Repositorio | `data/constantes-salario-minimo/salario-minimo.json` y `manifest.json` |
 | Transcripción con citas | `data/curado/constantes-salario-minimo.yaml` |
+
+Ver [API v1](../api/README.md#salario-mínimo).
 
 ## Fuente y licencia
 

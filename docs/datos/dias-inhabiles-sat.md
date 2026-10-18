@@ -56,8 +56,13 @@ La lista de días por sí sola no dice hasta dónde está completa: en diciembre
 
 | Forma | Ruta |
 | --- | --- |
+| API | `GET /v1/dias-habiles?autoridad=sat&tipo_plazo=` y `GET /v1/dias-inhabiles?autoridad=sat&anio=` |
+| Descarga | `/descargas/dias-inhabiles-sat.json`, `.csv` y `.manifest.json`; la cobertura, en `/descargas/dias-inhabiles-coberturas.json` y `.csv` |
+| SQLite | tablas `dias_inhabiles` y `coberturas_calendario` de `/descargas/mexicoapi.sqlite`, con `autoridad = 'sat'` |
 | Repositorio | `data/dias-inhabiles-sat/dias-inhabiles.json` y `manifest.json` |
 | Transcripción con citas | `data/curado/dias-inhabiles-sat.yaml` |
+
+Ver [API v1](../api/README.md#sat-y-tipo-de-plazo).
 
 ## Fuentes y licencia
 

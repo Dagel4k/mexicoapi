@@ -63,7 +63,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 | Campo de `meta` | Significado |
 | --- | --- |
 | `dataset` | Identificador del dataset |
-| `as_of` | Fecha de la última corrida que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status) |
+| `as_of` | Fecha de la última corrida que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status). En los datos curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR), que no los baja un bot, es la fecha de publicación más reciente entre sus fuentes |
 | `sources` | Lista de fuentes: `name`, `url`, `license`, `license_url` y `citation`. Bancos tiene dos fuentes |
 | `docs` | Documentación del dataset o de la ruta |
 
@@ -442,7 +442,7 @@ curl "https://<base>/v1/dias-inhabiles?autoridad=cnbv&anio=2026"
 curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
-Lista los días inhábiles de un año, sin sábados ni domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
+Lista los días inhábiles publicados de un año. Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
 
 | `autoridad` | Para 2026 devuelve |
 | --- | --- |
@@ -450,7 +450,7 @@ Lista los días inhábiles de un año, sin sábados ni domingos. Los parámetros
 | `cnbv` | 11 fechas: 01-01, 02-02, 03-16, 04-02, 04-03, 05-01, 09-16, 11-02, 11-16, 12-12 y 12-25 |
 | `sat` | 23 fechas, entre días de descanso del artículo 12 y días de vacaciones |
 
-`tipo` es `descanso` para los días que no cuentan en ningún plazo y `vacaciones` para los periodos de vacaciones del SAT, que en los plazos de declaraciones y pagos cuentan como hábiles ([SAT y tipo de plazo](#sat-y-tipo-de-plazo)). La LFT y la CNBV solo tienen `descanso`.
+`tipo` es `descanso` para los días que no cuentan en ningún plazo y `vacaciones` para los periodos de vacaciones del SAT y el 2 y 3 de abril de 2026 (días inhábiles de la regla 2.1.6 que se tratan igual), que en los plazos de declaraciones y pagos cuentan como hábiles ([SAT y tipo de plazo](#sat-y-tipo-de-plazo)). La LFT y la CNBV solo tienen `descanso`.
 
 ```json
 {
@@ -754,7 +754,7 @@ Un año que no está cargado da 404, y el `type` dice cuál de los dos casos es:
 
 | `type` | Cuándo | Ejemplo |
 | --- | --- | --- |
-| [`no-encontrado`](problemas.md#no-encontrado) | El año es anterior al primero cargado. Los datos no lo tienen y no lo tendrán | `/v1/constantes/uma/2016` |
+| [`no-encontrado`](problemas.md#no-encontrado) | El año es anterior al primero cargado. Hoy no está en los datos y no llega con las publicaciones nuevas; podría agregarse si se captura su publicación | `/v1/constantes/uma/2016` |
 | [`dato-no-disponible`](problemas.md#dato-no-disponible) | El año es posterior al último cargado. Puede llegar cuando el DOF lo publique | `/v1/constantes/uma/2030` |
 
 ```bash
@@ -921,7 +921,7 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 Cada `.json` es la lista de registros, sin `meta`; el `.manifest.json` trae la fuente, la licencia y el hash. El manifiesto es el mismo archivo de `data/`, así que su `data_file` conserva el nombre original: `estados.json`, `municipios.json` y `fix.json`, que en `/descargas/` se llaman `inegi-estados.json`, `inegi-municipios.json` y `tipo-cambio-fix.json` (`bancos.json` y `udis.json` no cambian). El hash `data_sha256` es el del archivo descargado.
 
-Las listas de días inhábiles no dicen por sí solas hasta dónde están completas: un día que no aparece puede ser hábil o caer fuera de lo que se ha cargado. `dias-inhabiles-coberturas` trae un renglón por autoridad y tipo de plazo, con `autoridad`, `tipo_plazo`, `desde` y `hasta`: el rango en que la lista de esa autoridad está completa para ese plazo. Es la misma cobertura que usa `/v1/dias-habiles` (ver [Cobertura del calendario](#cobertura-del-calendario)).
+Las listas de días inhábiles no dicen por sí solas hasta dónde están completas: un día que no aparece puede ser hábil o caer fuera de lo que se ha cargado. `dias-inhabiles-coberturas` trae un renglón por autoridad y tipo de plazo, con `autoridad`, `tipo_plazo`, `desde` y `hasta`: el rango en que la lista de esa autoridad está completa para ese plazo. Es la misma cobertura que usa `/v1/dias-habiles` (ver [Cobertura de la CNBV y el SAT](#cobertura-de-la-cnbv-y-el-sat)).
 
 Los CSV siguen el RFC 4180: UTF-8 sin BOM y saltos de línea `\r\n`. Las claves van como texto, con sus ceros a la izquierda. Para abrirlos en Excel, no uses doble clic (en Windows puede mostrar mal los acentos): usa Datos, Obtener datos, Desde un archivo de texto o CSV y elige UTF-8 como origen. Antes de cargar, en Transformar datos cambia a Texto las columnas de claves (`cve_ent`, `cve_mun`, `cvegeo`, `cve_cabecera`, `codigo` y `codigo_spei`); si Excel las toma como número, pierden los ceros a la izquierda. Si un campo empezara con `=`, `+`, `-`, `@` (también en su forma de ancho completo, `＝＋－＠`), un tabulador, un retorno de carro o un salto de línea, el build falla en vez de alterarlo.
 
