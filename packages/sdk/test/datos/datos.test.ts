@@ -118,7 +118,7 @@ describe("tipos de mexicoapi/datos", () => {
   });
 
   it("acepta undefined en las opciones, como pide exactOptionalPropertyTypes", () => {
-    expectTypeOf<{ estado: undefined; limite: undefined }>().toExtend<OpcionesBusquedaMunicipio>();
+    expectTypeOf<{ cve_ent: undefined; limite: undefined }>().toExtend<OpcionesBusquedaMunicipio>();
     expectTypeOf<{ activos: undefined }>().toExtend<OpcionesBancos>();
   });
 

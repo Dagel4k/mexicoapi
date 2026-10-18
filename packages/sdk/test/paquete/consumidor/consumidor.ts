@@ -56,7 +56,10 @@ const catalogo: ReadonlyMap<string, BancoCatalogo> = catalogoClabe();
 const conCatalogo: ResultadoValidacion<DetalleClabe> = validarClabe("002010077777777771", {
   bancos: catalogo,
 });
-const culiacan: Municipio | undefined = buscarMunicipio("culiacan", { estado: "25", limite: 1 })[0];
+const culiacan: Municipio | undefined = buscarMunicipio("culiacan", {
+  cve_ent: "25",
+  limite: 1,
+})[0];
 const sinaloa: readonly Municipio[] = municipios(estado("25")?.cve_ent);
 const asOf: string = meta.municipios.as_of;
 const fuentes: MetaDatos["sources"] = datosFix.meta.sources;

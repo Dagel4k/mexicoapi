@@ -7,7 +7,7 @@ export { meta } from "./generados/inegi-municipios.js";
 
 export interface OpcionesBusquedaMunicipio {
   /** Clave de 2 dígitos de la entidad (`"25"`) para buscar solo en ella. */
-  estado?: string | undefined;
+  cve_ent?: string | undefined;
   /** Máximo de resultados, un entero desde 0. Sin él, todos. */
   limite?: number | undefined;
 }
@@ -55,7 +55,7 @@ export function buscarMunicipio(
   texto: string,
   opciones: OpcionesBusquedaMunicipio = {},
 ): readonly Municipio[] {
-  const { estado, limite } = opciones;
+  const { cve_ent, limite } = opciones;
   if (limite !== undefined && !(Number.isInteger(limite) && limite >= 0)) {
     throw new RangeError("limite debe ser un entero desde 0");
   }
@@ -66,7 +66,7 @@ export function buscarMunicipio(
   const empiezan: Municipio[] = [];
   const contienen: Municipio[] = [];
   datos.forEach((m, i) => {
-    if (estado !== undefined && m.cve_ent !== estado) return;
+    if (cve_ent !== undefined && m.cve_ent !== cve_ent) return;
     const nombre = (nombres as readonly string[])[i] as string;
     if (nombre === consulta) exactos.push(m);
     else if (nombre.startsWith(consulta)) empiezan.push(m);
