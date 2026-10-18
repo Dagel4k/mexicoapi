@@ -243,7 +243,7 @@ async function ejecutar(
   const desde = c.offline ? "paquete" : fuente;
   if (desde === "paquete" || (desde === undefined && modo === "estable")) {
     if (paquete === null) {
-      throw new Error(`El paquete no trae ${plantilla}: solo la API la responde.`);
+      throw new TypeError(`El paquete no trae ${plantilla}: solo la API la responde.`);
     }
     return desdePaquete(paquete, pedido);
   }

@@ -342,6 +342,9 @@ export interface Cliente {
     anio: number,
     opciones?: OpcionesConsulta,
   ): Promise<Respuesta<TarifaIsr>>;
-  /** Frescura de cada dataset. Solo la API la tiene. */
+  /**
+   * Frescura de cada dataset. Solo la API la tiene: con `fuente: "paquete"` u `offline: true`
+   * lanza TypeError sin pedir nada.
+   */
   status(opciones?: OpcionesConsulta): Promise<RespuestaSinMeta<readonly EstadoDataset[]>>;
 }

@@ -175,7 +175,7 @@ Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `cl
 
 - Datos estables (estados, municipios, bancos) y la validación de la CLABE: salen del paquete por omisión, también cuando el cliente tiene `base`, sin red. Con `{ fuente: "api" }` en la consulta se piden a la API.
 - Datos que caducan (FIX, UDIS, días hábiles e inhábiles, UMA, salario mínimo y tarifas de ISR): se piden a la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), responde el paquete con `origen: "paquete"`, su `meta.as_of` y advertencias: que la API falló y, en las series, que el último dato del paquete tiene más de 7 días. Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
-- `{ fuente: "paquete" }` en una consulta, u `offline: true` en el cliente, nunca usan la red. `status()` solo existe en la API.
+- `{ fuente: "paquete" }` en una consulta, u `offline: true` en el cliente, nunca usan la red. `status()` solo existe en la API: sin red lanza `TypeError`.
 
 Los datos estables del paquete no llevan advertencia de antigüedad: su `as_of` es la fecha del último cambio en la fuente, no de la última revisión, y el paquete no guarda cuándo se construyó. Un catálogo que no cambió en años tiene un `as_of` viejo y está al día. Por eso tampoco avisa `bancos`, aunque es el que más cambia: Banxico actualiza la lista de participantes y la API la revisa cada día, mientras que el paquete trae la de su versión. Si necesitas la lista al día, pide `{ fuente: "api" }`.
 
