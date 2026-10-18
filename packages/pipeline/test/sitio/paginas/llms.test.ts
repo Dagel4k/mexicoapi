@@ -1,8 +1,9 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../../../src/sitio/meta.js";
+import { documentoOpenApi } from "../../../src/sitio/openapi.js";
 import { CATALOGO } from "../../../src/sitio/paginas/catalogo.js";
 import {
   archivoLlms,
@@ -73,14 +74,69 @@ describe("llms.txt", () => {
     expect(intro).toContain("`https://<base>`");
   });
 
-  it("Docs: la referencia, los errores, el OpenAPI y llms-full.txt", () => {
+  it("Docs: la referencia, los errores, las rutas de cálculo, el OpenAPI y llms-full.txt", () => {
     const docs = seccion("Docs");
     expect(docs.map((l) => enlaces(l)[0])).toEqual([
       `${URL_DOCS}/api/README.md`,
       `${URL_DOCS}/api/problemas.md`,
+      `${URL_DOCS}/api/README.md#clabe`,
+      `${URL_DOCS}/api/README.md#dias-habiles`,
+      `${URL_DOCS}/api/README.md#último`,
       "/v1/openapi.json",
       "/llms-full.txt",
     ]);
+    expect(docs[2]).toMatch(/^- \[GET \/v1\/clabe\/\{clabe\}\]\(/);
+    expect(docs[3]).toMatch(
+      /^- \[GET \/v1\/dias-habiles\?autoridad=\{lft\|cnbv\|sat\}&desde=\{fecha\}&dias=\{n\}\]\(/,
+    );
+    expect(docs[3]).toContain(
+      "con `autoridad=sat`, `tipo_plazo` (`general` o `declaraciones_pagos`) es obligatorio",
+    );
+    expect(docs[4]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\/ultimo\]\(/);
+    expect(texto).toContain("Las fechas van en `AAAA-MM-DD`.");
+  });
+
+  // Quien arme una petición con estos renglones no debe adivinar parámetros ni seguir un ancla rota.
+  it("las rutas de cálculo existen en el OpenAPI con sus obligatorios y sus anclas en la referencia", async () => {
+    const doc = documentoOpenApi() as unknown as {
+      paths: Record<
+        string,
+        { get: { parameters?: { name?: string; required?: boolean; $ref?: string }[] } }
+      >;
+      components: { parameters?: Record<string, { name: string; required?: boolean }> };
+    };
+    const rutas = seccion("Docs")
+      .map((l) => /^- \[GET ([^\]]+)\]/.exec(l)?.[1])
+      .filter((r): r is string => r !== undefined);
+    expect(rutas).toHaveLength(3);
+    for (const ruta of rutas) {
+      const [camino, consulta = ""] = ruta.split("?") as [string, string?];
+      expect(Object.keys(doc.paths), ruta).toContain(camino);
+      const obligatorios = (doc.paths[camino]?.get.parameters ?? [])
+        .map((p) =>
+          p.$ref === undefined ? p : doc.components.parameters?.[p.$ref.split("/").at(-1) ?? ""],
+        )
+        .filter((p) => p?.required === true)
+        .map((p) => p?.name as string);
+      const mostrados = [...camino.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+      for (const nombre of new URLSearchParams(consulta).keys()) mostrados.push(nombre);
+      for (const nombre of obligatorios) expect(mostrados, `${ruta}: ${nombre}`).toContain(nombre);
+    }
+    const referencia = await readFile(`${RAIZ}docs/api/README.md`, "utf8");
+    const anclas = new Set(
+      [...referencia.matchAll(/^#{2,3} (.+)$/gm)].map((m) =>
+        (m[1] as string)
+          .replaceAll("`", "")
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\- ]/gu, "")
+          .replaceAll(" ", "-"),
+      ),
+    );
+    for (const destino of enlaces(texto).filter((e) =>
+      e.startsWith(`${URL_DOCS}/api/README.md#`),
+    )) {
+      expect([...anclas], destino).toContain(destino.split("#")[1]);
+    }
   });
 
   it("Datos: un renglón por dataset con nombre, as_of, ruta con sus parámetros y su doc", () => {
@@ -164,7 +220,7 @@ describe("llms.txt", () => {
     ]);
     const delRepo = enlaces(texto)
       .filter((e) => e.startsWith(`${URL_ARCHIVOS}/`))
-      .map((e) => e.slice(URL_ARCHIVOS.length + 1));
+      .map((e) => e.slice(URL_ARCHIVOS.length + 1).split("#")[0] as string);
     expect(delRepo.length).toBeGreaterThanOrEqual(6);
     for (const ruta of delRepo)
       await expect(access(`${RAIZ}${ruta}`), ruta).resolves.toBeUndefined();
