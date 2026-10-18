@@ -1,0 +1,8 @@
+# Configuración de osv-scanner.
+# Sin excepciones: cualquier vulnerabilidad conocida en pnpm-lock.yaml hace fallar el job.
+# Para ignorar una, agrega un bloque con su justificación y fecha límite:
+#
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
+# ignoreUntil = 2027-01-01
+# reason = "por qué no aplica o qué mitigación hay"
