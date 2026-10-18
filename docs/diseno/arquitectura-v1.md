@@ -488,7 +488,7 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - Parsers: fixtures reales anonimizados donde aplique.
 - **Pruebas del Worker.** Dos capas:
   - unidad, en Node, con un `ASSETS` falso;
-  - integración y contrato, en workerd real con `unstable_startWorker`: arrancan el Worker construido y comparan cada respuesta contra el OpenAPI.
+  - integración y contrato, en workerd real con `unstable_startWorker`: arrancan el Worker construido y comparan cada respuesta contra el OpenAPI. Antes de arrancarlo revisan que el build haya salido de los `data/` de hoy (el `data_sha256` de cada manifiesto y las coberturas de los calendarios); si no, fallan y piden `pnpm -r build`.
 
   No se usa `@cloudflare/vitest-pool-workers`, que exige Vitest 4. Si wrangler cambia esa API inestable, se ajusta la prueba. Además hay una prueba de humo contra el despliegue de staging antes de producción (sección 9).
 - **`scripts/verify.sh`** (definición de terminado) corre:
