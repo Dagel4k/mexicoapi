@@ -1,0 +1,380 @@
+// Respuestas del cliente sin red, que corren igual sobre src (con los módulos que sirve
+// pluginDatos) y sobre dist (con los import() del build): cada ruta da lo mismo que los datos y
+// el núcleo del paquete, con la forma de la API.
+import { beforeAll, expect, it } from "vitest";
+import type * as ClienteMod from "../../src/cliente/index.js";
+import type { Cliente, MexicoApiError } from "../../src/cliente/index.js";
+import type { FechaISO } from "../../src/index.js";
+import type { Modulo } from "../comun.js";
+import type { ModuloDatos, ModuloFix, ModuloUdis } from "../datos/comun.js";
+import { esperarCongelado } from "../datos/comun.js";
+import { PROBLEMAS, rechazo } from "./ayudas.js";
+
+export type ModuloCliente = typeof ClienteMod;
+
+export interface Modulos {
+  cliente: ModuloCliente;
+  datos: ModuloDatos;
+  fix: ModuloFix;
+  udis: ModuloUdis;
+  mexicoapi: Modulo;
+}
+
+const DOCS_API = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#";
+
+const CLABE_VALIDA = "002010077777777771";
+
+/** Fecha ISO `dias` después (o antes) de `fecha`. */
+export const mover = (fecha: FechaISO, dias: number): FechaISO =>
+  new Date(Date.parse(fecha) + dias * 86_400_000).toISOString().slice(0, 10);
+
+const diaDeLaSemana = (fecha: FechaISO): number => new Date(Date.parse(fecha)).getUTCDay();
+
+/** El primer día después de `fecha` que cumple `cumple`. */
+function siguiente(fecha: FechaISO, cumple: (f: FechaISO) => boolean): FechaISO {
+  let f = mover(fecha, 1);
+  while (!cumple(f)) f = mover(f, 1);
+  return f;
+}
+
+/** El error de la consulta, revisado como MexicoApiError del paquete con el tipo dado. */
+async function problemaDe(
+  m: Modulos,
+  consulta: Promise<unknown>,
+  tipo: string,
+  status: number,
+): Promise<MexicoApiError> {
+  const error = (await rechazo(consulta)) as MexicoApiError;
+  expect(error).toBeInstanceOf(m.cliente.MexicoApiError);
+  expect(error.origen).toBe("paquete");
+  expect(error.tipo).toBe(tipo);
+  expect(error.type).toBe(PROBLEMAS + tipo);
+  expect(error.status).toBe(status);
+  expect(error.problema.status).toBe(status);
+  return error;
+}
+
+export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
+  let m: Modulos;
+  let api: Cliente;
+
+  beforeAll(async () => {
+    m = await cargar();
+    api = m.cliente.crearCliente({ offline: true });
+  });
+
+  it("exporta exactamente crearCliente y MexicoApiError", () => {
+    expect(Object.keys(m.cliente).sort()).toEqual(["MexicoApiError", "crearCliente"]);
+  });
+
+  it("responde estados, municipios y bancos con los datos y la meta del paquete", async () => {
+    const estados = await api.estados();
+    expect(estados).toEqual({
+      data: m.datos.estados(),
+      meta: m.datos.meta.estados,
+      origen: "paquete",
+      advertencias: [],
+    });
+    expect(estados.data).toBe(m.datos.estados());
+    esperarCongelado(estados, "respuesta");
+
+    expect((await api.estado("25")).data).toBe(m.datos.estado("25"));
+    const deSinaloa = await api.municipios("25");
+    expect(deSinaloa.data).toEqual(m.datos.municipios("25"));
+    expect(deSinaloa.meta).toEqual(m.datos.meta.municipios);
+    expect((await api.municipios()).data).toBe(m.datos.municipios());
+    expect((await api.municipio("25006")).data).toBe(m.datos.municipio("25006"));
+    const bancos = await api.bancos();
+    expect(bancos.data).toBe(m.datos.bancos());
+    expect(bancos.meta).toEqual(m.datos.meta.bancos);
+    expect((await api.banco("002")).data).toBe(m.datos.banco("002"));
+  });
+
+  it("da no-encontrado con el texto de la API y sin el valor pedido", async () => {
+    const estado = await problemaDe(m, api.estado("33"), "no-encontrado", 404);
+    expect(estado.detail).toBe("No existe el estado {cve_ent}.");
+    expect(estado.problema.instance).toBe("/v1/estados/{cve_ent}");
+    expect(estado.url).toBe("/v1/estados/{cve_ent}");
+    expect(estado.message).not.toContain("33");
+    const municipios = await problemaDe(m, api.municipios("33"), "no-encontrado", 404);
+    expect(municipios.detail).toBe("No existe el estado {cve_ent}.");
+    expect(municipios.problema.instance).toBe("/v1/estados/{cve_ent}/municipios");
+    const municipio = await problemaDe(m, api.municipio("99999"), "no-encontrado", 404);
+    expect(municipio.detail).toBe("No existe el municipio {cvegeo}.");
+    const banco = await problemaDe(m, api.banco("999"), "no-encontrado", 404);
+    expect(banco.detail).toBe("No existe el banco {codigo}.");
+  });
+
+  it("revisa los valores de la ruta con las reglas de la API", async () => {
+    const casos: [Promise<unknown>, string, string][] = [
+      [api.estado("1"), "cve_ent", "La clave de estado (cve_ent) debe tener 2 dígitos."],
+      [api.municipios("251"), "cve_ent", "La clave de estado (cve_ent) debe tener 2 dígitos."],
+      [api.municipio("2500"), "cvegeo", "La clave de municipio (cvegeo) debe tener 5 dígitos."],
+      [api.banco("02"), "codigo", "El código de banco debe tener 3 dígitos."],
+      [api.clabe("0020100777777777"), "clabe", "La CLABE debe tener 18 dígitos."],
+    ];
+    for (const [consulta, parametro, detalle] of casos) {
+      const error = await problemaDe(m, consulta, "parametro-invalido", 400);
+      expect(error.detail).toBe(detalle);
+      expect(error.problema.parametro).toBe(parametro);
+    }
+  });
+
+  it("valida la CLABE con el catálogo de bancos del paquete, como la API", async () => {
+    const r = await api.clabe(CLABE_VALIDA);
+    expect(r.data).toEqual(
+      m.mexicoapi.validarClabe(CLABE_VALIDA, { bancos: m.datos.catalogoClabe() }),
+    );
+    expect(r.data.valido).toBe(true);
+    expect(r.data.detalle?.banco).toEqual({ codigo: "002", nombre_corto: "BANAMEX", activo: true });
+    expect(r.meta).toEqual({ ...m.datos.meta.bancos, docs: `${DOCS_API}clabe` });
+    const digito = await api.clabe("002010077777777772");
+    expect(digito.data.valido).toBe(false);
+    expect(digito.data.errores).toEqual(["digito_verificador"]);
+    const inactivo = m.datos.bancos({ activos: false })[0];
+    if (inactivo !== undefined) {
+      const primeros = `${inactivo.codigo}${"0".repeat(14)}`;
+      const r2 = await api.clabe(primeros + m.mexicoapi.digitoControlClabe(primeros));
+      expect(r2.data.valido).toBe(true);
+      expect(r2.data.detalle?.banco?.activo).toBe(false);
+    }
+  });
+
+  it("suma días hábiles y lista los inhábiles de la LFT con el núcleo", async () => {
+    const r = await api.diasHabiles({ desde: "2026-11-13", dias: 3 });
+    expect(r.data).toEqual(
+      m.mexicoapi.sumarDiasHabiles({
+        calendario: m.mexicoapi.calendarioLft(),
+        desde: "2026-11-13",
+        dias: 3,
+      }),
+    );
+    expect(r.data.resultado).toBe("2026-11-19");
+    expect(r.meta).toEqual({
+      dataset: "dias-inhabiles.lft",
+      as_of: m.mexicoapi.VIGENCIA_LFT,
+      sources: [
+        {
+          name: "Ley Federal del Trabajo, artículos 74 y 715",
+          url: m.mexicoapi.FUENTE_LFT_74.url,
+          license:
+            "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
+          license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
+          citation:
+            "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
+        },
+      ],
+      docs: `${DOCS_API}dias-habiles`,
+    });
+    esperarCongelado(r, "respuesta");
+    const inhabiles = await api.diasInhabiles({ anio: 2026 });
+    expect(inhabiles.data).toEqual(m.mexicoapi.diasDescansoLft(2026));
+    expect(inhabiles.meta.docs).toBe(`${DOCS_API}dias-inhabiles`);
+    const incompleto = await api.diasHabiles({
+      desde: "2100-12-30",
+      dias: 2,
+      permitirIncompleto: true,
+    });
+    expect(incompleto.data.advertencias).toHaveLength(1);
+  });
+
+  it("da los problemas de días hábiles e inhábiles con su forma de la API", async () => {
+    const fuera = await problemaDe(
+      m,
+      api.diasHabiles({ desde: "2100-12-30", dias: 2 }),
+      "calendario-incompleto",
+      422,
+    );
+    expect(fuera.detail).toBe(
+      "El calendario de lft no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+    );
+    expect(fuera.problema).toMatchObject({
+      instance: "/v1/dias-habiles",
+      autoridad: "lft",
+      fecha: "2101-01-01",
+      cobertura: { desde: "2007-01-01", hasta: "2100-12-31" },
+    });
+    const anio = await problemaDe(
+      m,
+      api.diasInhabiles({ anio: 2200 }),
+      "calendario-incompleto",
+      422,
+    );
+    expect(anio.detail).toBe(
+      "El calendario de lft no cubre el año 2200; cubre del 2007-01-01 al 2100-12-31.",
+    );
+    expect(anio.problema.fecha).toBe("2200-01-01");
+
+    const invalidos: [Promise<unknown>, string, string][] = [
+      [
+        api.diasHabiles({ desde: "2026-02-30", dias: 3 }),
+        "desde",
+        "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
+      ],
+      [
+        api.diasHabiles({ desde: "2026-11-13", dias: 0 }),
+        "dias",
+        "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
+      ],
+      [
+        api.diasHabiles({ desde: "2026-11-13", dias: 3651 }),
+        "dias",
+        "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
+      ],
+      [
+        api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "sat" }),
+        "autoridad",
+        "Autoridades disponibles: lft.",
+      ],
+      [
+        api.diasHabiles({ desde: "9999-12-30", dias: 5, permitirIncompleto: true }),
+        "desde",
+        "Con estos días, el resultado pasaría del año 9999.",
+      ],
+      [
+        api.diasInhabiles({ anio: 0 }),
+        "anio",
+        "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
+      ],
+      [
+        api.consultar("/v1/dias-habiles", {
+          autoridad: "lft",
+          desde: "2026-11-13",
+          dias: 3,
+          permitir_incompleto: "si" as unknown as boolean,
+        }),
+        "permitir_incompleto",
+        "El parámetro permitir_incompleto debe ser true o false.",
+      ],
+      [api.udi(""), "fecha", "El parámetro fecha está vacío."],
+    ];
+    for (const [consulta, parametro, detalle] of invalidos) {
+      const error = await problemaDe(m, consulta, "parametro-invalido", 400);
+      expect(error.detail).toBe(detalle);
+      expect(error.problema.parametro).toBe(parametro);
+    }
+    const falta = await problemaDe(
+      m,
+      api.consultar("/v1/dias-habiles", { autoridad: "lft", desde: "2026-11-13" } as never),
+      "parametro-faltante",
+      400,
+    );
+    expect(falta.detail).toBe("Falta el parámetro dias.");
+    expect(falta.problema.parametro).toBe("dias");
+  });
+
+  it("consulta el FIX y las UDIS en las series del paquete", async () => {
+    const { serie, cobertura } = m.fix;
+    const registro = serie[Math.floor(serie.length / 2)];
+    if (registro === undefined) throw new Error("Serie del FIX vacía");
+    const publicado = await api.fixPublicado(registro.fecha_publicacion);
+    expect(publicado.data).toBe(registro);
+    expect(publicado.origen).toBe("paquete");
+    expect(publicado.meta).toEqual({ ...m.fix.meta, docs: `${DOCS_API}tipo-de-cambio-fix` });
+
+    const operacion = await api.fixParaOperacion(mover(registro.fecha_publicacion, 1));
+    expect(operacion.data).toEqual({
+      fecha_operacion: mover(registro.fecha_publicacion, 1),
+      fecha_publicacion: registro.fecha_publicacion,
+      valor: registro.valor,
+      fundamento: m.mexicoapi.FUENTE_CFF_20,
+    });
+    esperarCongelado(operacion, "respuesta");
+
+    const ultimo = await api.fixUltimo();
+    expect(ultimo.data).toBe(serie.at(-1));
+    expect(ultimo.data.fecha_publicacion).toBe(cobertura.hasta);
+
+    const dia = m.udis.serie[Math.floor(m.udis.serie.length / 2)];
+    if (dia === undefined) throw new Error("Serie de UDIS vacía");
+    const udi = await api.udi(dia.fecha);
+    expect(udi.data).toBe(dia);
+    expect(udi.meta).toEqual({ ...m.udis.meta, docs: `${DOCS_API}udis` });
+  });
+
+  it("dice no-encontrado o dato-no-disponible como la API, nunca un valor viejo", async () => {
+    const { cobertura } = m.fix;
+    const antes = mover(cobertura.desde, -1);
+    const sinSerie = await problemaDe(m, api.fixPublicado(antes), "no-encontrado", 404);
+    expect(sinSerie.detail).toBe(
+      `La serie del paquete empieza el ${cobertura.desde}; no incluye el ${antes}.`,
+    );
+    expect(sinSerie.problema).toMatchObject({
+      fecha: antes,
+      cobertura: { desde: cobertura.desde, hasta: cobertura.hasta },
+    });
+    const sabado = siguiente(cobertura.desde, (f) => diaDeLaSemana(f) === 6);
+    const fds = await problemaDe(m, api.fixPublicado(sabado), "no-encontrado", 404);
+    expect(fds.detail).toBe(`No hubo publicación del FIX en el DOF el ${sabado}.`);
+
+    const futuro = await problemaDe(m, api.fixPublicado("2100-01-04"), "dato-no-disponible", 404);
+    expect(futuro.detail).toBe(
+      `El FIX del 2100-01-04 no está en los datos del paquete; la última publicación que traen es del ${cobertura.hasta}.`,
+    );
+    expect(futuro.problema).toMatchObject({
+      instance: "/v1/tipo-cambio/fix",
+      fecha: "2100-01-04",
+      cobertura: { desde: cobertura.desde, hasta: cobertura.hasta },
+    });
+    const operacion = await problemaDe(
+      m,
+      api.fixParaOperacion("2100-01-04"),
+      "dato-no-disponible",
+      404,
+    );
+    expect(operacion.detail).toBe(
+      `Los datos del paquete no traen el FIX que aplica a una operación del 2100-01-04; la última publicación que traen es del ${cobertura.hasta}.`,
+    );
+    const primera = await problemaDe(
+      m,
+      api.fixParaOperacion(cobertura.desde),
+      "no-encontrado",
+      404,
+    );
+    expect(primera.detail).toBe(
+      `La serie del paquete empieza el ${cobertura.desde}; no incluye la publicación que aplica a una operación del ${cobertura.desde}.`,
+    );
+
+    const udis = m.udis.cobertura;
+    const udiFutura = await problemaDe(m, api.udi("2100-01-04"), "dato-no-disponible", 404);
+    expect(udiFutura.detail).toBe(
+      `El valor de la UDI del 2100-01-04 no está en los datos del paquete; el último que traen es del ${udis.hasta}.`,
+    );
+    const udiAntes = mover(udis.desde, -1);
+    const udiPasada = await problemaDe(m, api.udi(udiAntes), "no-encontrado", 404);
+    expect(udiPasada.detail).toBe(
+      `La serie del paquete empieza el ${udis.desde}; no incluye el ${udiAntes}.`,
+    );
+  });
+
+  it("pide exactamente publicado u operacion en el FIX", async () => {
+    const ambos = await problemaDe(
+      m,
+      api.consultar("/v1/tipo-cambio/fix", {
+        publicado: "2026-10-16",
+        operacion: "2026-10-16",
+      } as never),
+      "parametro-invalido",
+      400,
+    );
+    expect(ambos.detail).toBe("Indica solo uno de publicado u operacion.");
+    expect(ambos.problema.parametro).toBeUndefined();
+    const ninguno = await problemaDe(
+      m,
+      api.consultar("/v1/tipo-cambio/fix", {} as never),
+      "parametro-faltante",
+      400,
+    );
+    expect(ninguno.detail).toBe("Indica publicado u operacion.");
+    const invalida = await problemaDe(m, api.fixPublicado("2026-13-01"), "parametro-invalido", 400);
+    expect(invalida.detail).toBe(
+      "La fecha de publicación (publicado) debe ser una fecha válida con formato AAAA-MM-DD.",
+    );
+    const operacion = await problemaDe(m, api.fixParaOperacion("ayer"), "parametro-invalido", 400);
+    expect(operacion.problema.parametro).toBe("operacion");
+  });
+
+  it("sin red, /v1/status no tiene respuesta del paquete", async () => {
+    await expect(api.status()).rejects.toThrow("El paquete no trae /v1/status");
+  });
+}

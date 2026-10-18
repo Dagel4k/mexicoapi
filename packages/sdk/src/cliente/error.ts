@@ -1,0 +1,106 @@
+import { congelar } from "./comun.js";
+import type { Origen } from "./tipos.js";
+
+/** Base del `type` de los problemas de la API: `${URL_PROBLEMAS}#<tipo>`. */
+export const URL_PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
+
+const PREFIJO = `${URL_PROBLEMAS}#`;
+
+/**
+ * Cuerpo problem+json (RFC 9457), con las extensiones que agrega la API (`parametro`, `fecha`,
+ * `cobertura`, `autoridad`).
+ */
+export interface Problema {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  instance?: string;
+  [extension: string]: unknown;
+}
+
+export interface ContextoError {
+  /** URL consultada, con `{nombre}` en lugar de cada valor de la ruta. */
+  url: string;
+  origen: Origen;
+  cause?: unknown;
+}
+
+/**
+ * Una consulta que no dio datos: la API, o el paquete con las mismas reglas, respondió con un
+ * problema, o la API no respondió (`status` 0). Ni el mensaje, ni `url`, ni `problema` traen los
+ * valores de la ruta: una CLABE aparece como `{clabe}`.
+ */
+export class MexicoApiError extends Error {
+  override readonly name = "MexicoApiError";
+  /** Estado HTTP de la respuesta; 0 si la API no respondió (sin conexión o tiempo agotado). */
+  readonly status: number;
+  /** URI del tipo de problema; `about:blank` si la respuesta no traía un problem+json. */
+  readonly type: string;
+  /** El tipo de problema de la API sin su URL: `no-encontrado`, `dato-no-disponible`... */
+  readonly tipo: string | undefined;
+  readonly title: string;
+  readonly detail: string;
+  /** El problem+json completo y congelado; si la respuesta no traía uno, el que arma el cliente. */
+  readonly problema: Readonly<Problema>;
+  readonly url: string;
+  /** `paquete` si el problema lo encontró el cliente con los datos o las reglas del paquete. */
+  readonly origen: Origen;
+
+  constructor(problema: Problema, contexto: ContextoError) {
+    const { type, title, status, detail } = problema;
+    super(
+      status > 0 ? `${status} ${title}: ${detail}` : `${title}: ${detail}`,
+      contexto.cause === undefined ? undefined : { cause: contexto.cause },
+    );
+    this.status = status;
+    this.type = type;
+    this.tipo = type.startsWith(PREFIJO) ? type.slice(PREFIJO.length) : undefined;
+    this.title = title;
+    this.detail = detail;
+    this.problema = congelar(problema);
+    this.url = contexto.url;
+    this.origen = contexto.origen;
+  }
+}
+
+// Los problemas de la API que el cliente también encuentra con los datos del paquete.
+const PROBLEMAS = {
+  "parametro-invalido": [400, "Parámetro inválido"],
+  "parametro-faltante": [400, "Falta un parámetro obligatorio"],
+  "no-encontrado": [404, "Recurso no encontrado"],
+  "dato-no-disponible": [404, "Dato todavía no disponible"],
+  "calendario-incompleto": [422, "Calendario incompleto"],
+} as const;
+
+export type TipoLocal = keyof typeof PROBLEMAS;
+
+/** Lo que necesita un error que arma el cliente. */
+export interface ContextoLocal {
+  urlOculta: string;
+  /** La plantilla de la ruta: lo que la API da en `instance`, sin los valores. */
+  instancia: string;
+  ocultar(texto: string): string;
+  causa?: MexicoApiError | undefined;
+}
+
+/** Un problema del catálogo de la API, con su forma, encontrado con lo que trae el paquete. */
+export function problemaLocal(
+  contexto: ContextoLocal,
+  tipo: TipoLocal,
+  detalle: string,
+  extras?: Readonly<Record<string, unknown>>,
+): MexicoApiError {
+  const [status, title] = PROBLEMAS[tipo];
+  return new MexicoApiError(
+    {
+      type: PREFIJO + tipo,
+      title,
+      status,
+      detail: contexto.ocultar(detalle),
+      instance: contexto.instancia,
+      ...extras,
+    },
+    { url: contexto.urlOculta, origen: "paquete", cause: contexto.causa },
+  );
+}

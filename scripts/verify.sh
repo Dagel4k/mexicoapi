@@ -30,6 +30,9 @@ pnpm --filter mexicoapi test:paquete
 echo "verify: integración de la API"
 pnpm --filter @mexicoapi/api test:integracion
 
+echo "verify: cliente contra el Worker"
+pnpm --filter mexicoapi test:integracion
+
 echo "verify: datos"
 pnpm datos:verificar
 
