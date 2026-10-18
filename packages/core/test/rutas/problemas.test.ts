@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PROBLEMAS,
   tipoDeProblema,
+  URL_API,
   URL_DOCS,
   URL_PROBLEMAS,
   URL_REPOSITORIO,
@@ -20,6 +21,12 @@ describe("direcciones", () => {
     expect(URL_PROBLEMAS).toBe(
       "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md",
     );
+  });
+});
+
+describe("URL_API", () => {
+  it("es el origen de la API en producción, sin barra final ni /v1", () => {
+    expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
   });
 });
 

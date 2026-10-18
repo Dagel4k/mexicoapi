@@ -1,6 +1,13 @@
-// Los problemas (RFC 9457) que responde la API y las direcciones de su documentación. Los usan la
-// API, el OpenAPI, el cliente del paquete y el MCP. Tiene su propia subruta del núcleo (problemas)
-// y no importa nada: el cliente lo carga al importarse sin traer el resto del núcleo.
+// Los problemas (RFC 9457) que responde la API y las direcciones de la API y de su documentación.
+// Los usan la API, el OpenAPI, el cliente del paquete y el MCP. Tiene su propia subruta del
+// núcleo (problemas) y no importa nada: el cliente lo carga al importarse sin traer el resto del
+// núcleo.
+
+/**
+ * El origen de la API pública en producción, sin `/v1`: la base que usan el cliente del paquete y
+ * el MCP si no se les da otra.
+ */
+export const URL_API = "https://mexicoapi.dagel4k.workers.dev";
 
 /** El repositorio: la documentación y el catálogo de problemas viven en su rama main. */
 export const URL_REPOSITORIO = "https://github.com/Dagel4k/mexicoapi";
