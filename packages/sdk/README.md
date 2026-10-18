@@ -99,7 +99,7 @@ const sat = calendarioCurado("sat");
 sat.plazos.get("general")?.cobertura; // { desde: "2026-01-01", hasta: "..." }
 ```
 
-`calendarioCurado(autoridad).plazos` es un `ReadonlyMap`: cada plazo trae su `cobertura`, su `calendario` y, si aplica, un `respaldo`. Fuera de la cobertura, `sumarDiasHabiles` lanza `CalendarioIncompletoError`; con `permitirIncompleto: true` calcula de todos modos con lo publicado (o solo con los fines de semana) y lo dice en `advertencias`.
+`calendarioCurado(autoridad).plazos` es un `ReadonlyMap`: cada plazo trae su `cobertura`, su `calendario` y, si aplica, un `respaldo`. Fuera de la cobertura, `sumarDiasHabiles` lanza `CalendarioIncompletoError`; con `permitirIncompleto: true` calcula de todos modos descontando solo los fines de semana y lo dice en `advertencias`, con lo que puede faltar (en el SAT, los días del art. 12 y las vacaciones; en la CNBV, los cierres bancarios). Con `calendario(...)`, `sumarDiasHabiles` no usa el `respaldo` del plazo, que sí usa la API: del 23 de diciembre de 2026, 2 días hábiles con `calendario("sat", "general")` dan el 25, con esa advertencia, y la API da el 28. El respaldo solo no sabe hasta dónde están publicadas las vacaciones, así que no se usa sin el aviso que agrega la API.
 
 El cliente (`crearCliente`, también sin red) da las mismas advertencias que la API, además de las del calendario: con `declaraciones_pagos`, la de la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un día de cierre bancario, que `resultado` no aplica.
 

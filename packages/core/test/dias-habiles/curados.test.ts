@@ -62,6 +62,12 @@ const DETALLE_GENERAL = (fecha: string) =>
 const PRORROGA = (fecha: string, hechos: string) =>
   `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 
+/** Lo que nombra el SAT fuera de la cobertura, con o sin sus vacaciones. */
+const FALTA_ART_12 =
+  "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero.";
+const FALTA_ART_12_Y_VACACIONES =
+  "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero, y vacaciones del SAT.";
+
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
 
@@ -722,14 +728,19 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       // La cobertura amplia del SAT llega a 2100 (la de la regla del art. 12).
       expect(sat("general", "2100-12-31", 1, true)).toMatchObject({
         resultado: "2101-01-03",
-        advertencias: ["Calendario incompleto: SAT 2101; solo se descontaron fines de semana."],
+        // Nombra lo que puede faltar después de 2100 (antes, solo "fines de semana").
+        advertencias: [
+          `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+        ],
       });
     });
 
     it("antes de la cobertura amplia, solo la advertencia del núcleo para ese año", () => {
       expect(sat("general", "2025-12-30", 2, true)).toMatchObject({
         resultado: "2026-01-02",
-        advertencias: ["Calendario incompleto: SAT 2025; solo se descontaron fines de semana."],
+        advertencias: [
+          `Calendario incompleto: SAT 2025; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+        ],
       });
     });
   });
@@ -759,8 +770,32 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     );
     // Sin respaldo: con permitirIncompleto solo descuenta fines de semana después de 2100.
     expect(sat("declaraciones_pagos", "2100-12-31", 1, true).advertencias).toEqual([
-      "Calendario incompleto: SAT 2101; solo se descontaron fines de semana.",
+      `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. ${FALTA_ART_12}`,
     ]);
+  });
+
+  it("sumarDiasHabiles con el calendario de un plazo, sin respaldo, nombra lo que puede faltar", () => {
+    // El camino de bajo nivel: el calendario del plazo general no sigue con el respaldo, así que
+    // el 25 de diciembre cuenta como hábil; la advertencia lo dice. El cliente usa el respaldo.
+    const general = sumarDiasHabiles({
+      calendario: SAT.general.calendario,
+      desde: "2026-12-23",
+      dias: 2,
+      permitirIncompleto: true,
+    });
+    expect(general).toMatchObject({
+      resultado: "2026-12-25",
+      advertencias: [
+        `Calendario incompleto: SAT 2026; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+      ],
+    });
+    expect(sat("general", "2026-12-23", 2, true).resultado).toBe("2026-12-28");
+    expect(SAT.general.calendario.faltaFuera).toBe(FALTA_ART_12_Y_VACACIONES);
+    expect(SAT.general.respaldo?.faltaFuera).toBe(FALTA_ART_12_Y_VACACIONES);
+    expect(SAT.plazos.get("declaraciones_pagos")?.calendario.faltaFuera).toBe(FALTA_ART_12);
+    expect(CNBV.general.calendario.faltaFuera).toBe(
+      "Pueden faltar días de cierre bancario, como el 1 de enero.",
+    );
   });
 
   it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre de 2030", () => {
