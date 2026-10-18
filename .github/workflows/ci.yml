@@ -277,14 +277,91 @@ jobs:
             "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz "${RUNNER_TEMP}"/tgz-mcp/mexicoapi-mcp-*.tgz
           node humo.mjs
 
+  # Un PR del bot de datos solo puede tocar archivos comunes de data/: el auto-merge lo fusiona sin
+  # revisión. Cuenta como del bot si su rama empieza con datos/ o si lo abrió o le hizo push una
+  # cuenta Bot que no es Dependabot (el nombre de la App no está en el repo). Para los demás PRs y
+  # para los push a main pasa enseguida. Solo lee nombres y modos de archivo del merge del PR, sin
+  # correr nada de él. La App no tiene el permiso Workflows, así que no puede cambiar este archivo.
+  solo-datos:
+    name: solo-datos
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Ver si el PR es del bot de datos
+        id: bot
+        env:
+          EVENTO: ${{ github.event_name }}
+          RAMA: ${{ github.head_ref }}
+          AUTOR: ${{ github.event.pull_request.user.login }}
+          AUTOR_TIPO: ${{ github.event.pull_request.user.type }}
+          EMISOR: ${{ github.event.sender.login }}
+          EMISOR_TIPO: ${{ github.event.sender.type }}
+        run: |
+          set -euo pipefail
+          es_bot=no
+          if [ "${EVENTO}" = "pull_request" ]; then
+            case "${RAMA}" in
+              datos/*) es_bot=si ;;
+            esac
+            if [ "${AUTOR_TIPO}" = "Bot" ] && [ "${AUTOR}" != "dependabot[bot]" ]; then
+              es_bot=si
+            fi
+            if [ "${EMISOR_TIPO}" = "Bot" ] && [ "${EMISOR}" != "dependabot[bot]" ]; then
+              es_bot=si
+            fi
+          fi
+          echo "es_bot=${es_bot}" >> "${GITHUB_OUTPUT}"
+          if [ "${es_bot}" = "no" ]; then
+            echo "No es un PR del bot de datos: no hay nada que revisar."
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.bot.outputs.es_bot == 'si'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Exigir que solo toque data/
+        if: steps.bot.outputs.es_bot == 'si'
+        run: |
+          set -euo pipefail
+          # HEAD es el merge del PR con main y HEAD^1 la punta de main: su diferencia es lo que el
+          # PR metería. --raw -z da el modo final y la ruta sin comillas; solo valen archivos
+          # comunes (100644 o 100755) o borrados (000000).
+          if ! git rev-parse --verify --quiet 'HEAD^2' > /dev/null; then
+            echo "::error::Se esperaba el commit de merge del PR."
+            exit 1
+          fi
+          lista="${RUNNER_TEMP}/cambios-pr"
+          git diff --raw --no-renames -z 'HEAD^1' HEAD > "${lista}"
+          mal=0
+          n=0
+          while IFS= read -r -d '' meta && IFS= read -r -d '' ruta; do
+            n=$((n + 1))
+            modo="${meta#:* }"
+            modo="${modo%% *}"
+            case "${ruta}" in
+              data/?*) ;;
+              *) printf '::error::El PR del bot toca una ruta fuera de data/: %q\n' "${ruta}"; mal=1 ;;
+            esac
+            case "${modo}" in
+              100644 | 100755 | 000000) ;;
+              *) printf '::error::Modo no permitido (%s) en %q\n' "${modo}" "${ruta}"; mal=1 ;;
+            esac
+          done < "${lista}"
+          echo "${n} archivos revisados."
+          exit "${mal}"
+
   # El check que exige la protección de main. Pasa solo si la verificación, el empaquetado, cada
-  # Node de las matrices, la prueba en Bun, Deno y navegador y la del servidor MCP terminaron bien:
-  # con always() corre aunque alguno falle, se salte o se cancele, y en ese caso falla en vez de
-  # quedar saltado (un check saltado cuenta como aprobado).
+  # Node de las matrices, la prueba en Bun, Deno y navegador, la del servidor MCP y la revisión de
+  # los PRs del bot de datos terminaron bien: con always() corre aunque alguno falle, se salte o se
+  # cancele, y en ese caso falla en vez de quedar saltado (un check saltado cuenta como aprobado).
   verify:
     name: verify
     if: always()
-    needs: [verificacion, paquete, paquete-node, paquete-runtimes, paquete-mcp]
+    needs: [verificacion, paquete, paquete-node, paquete-runtimes, paquete-mcp, solo-datos]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions: {}
@@ -296,10 +373,11 @@ jobs:
           PAQUETE_NODE: ${{ needs.paquete-node.result }}
           PAQUETE_RUNTIMES: ${{ needs.paquete-runtimes.result }}
           PAQUETE_MCP: ${{ needs.paquete-mcp.result }}
+          SOLO_DATOS: ${{ needs.solo-datos.result }}
         run: |
           set -euo pipefail
           falla=0
-          for par in "verificacion=${VERIFICACION}" "paquete=${PAQUETE}" "paquete-node=${PAQUETE_NODE}" "paquete-runtimes=${PAQUETE_RUNTIMES}" "paquete-mcp=${PAQUETE_MCP}"; do
+          for par in "verificacion=${VERIFICACION}" "paquete=${PAQUETE}" "paquete-node=${PAQUETE_NODE}" "paquete-runtimes=${PAQUETE_RUNTIMES}" "paquete-mcp=${PAQUETE_MCP}" "solo-datos=${SOLO_DATOS}"; do
             echo "${par}"
             if [ "${par#*=}" != "success" ]; then
               falla=1
