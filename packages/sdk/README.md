@@ -300,8 +300,9 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 | Node 20, 22, 24 y 26 | Probado en CI con el paquete instalado desde su `.tgz` |
 | CommonJS (`require`) | Desde Node 20.19 y 22.12, que cargan ESM con `require()`; antes, solo `import` |
 | Cloudflare Workers | Probado en workerd, sin `nodejs_compat` |
-| Navegador con bundler | Entradas universales, sin módulos de Node; `sideEffects: false` |
-| Deno y Bun | Entradas universales; sin pruebas propias |
+| Navegador con bundler | Probado en CI: esbuild empaqueta cada entrada universal con `platform: "browser"` sin módulos de Node; `sideEffects: false` |
+| Bun | Probado en CI (Bun 1.4.3) con el paquete instalado desde su `.tgz`: las entradas universales |
+| Deno | Probado en CI (Deno 2.9.7) con el paquete instalado desde su `.tgz` en `node_modules` y sin permisos: las entradas universales |
 | TypeScript | Tipos incluidos, probados con `moduleResolution` NodeNext y Bundler. Las subrutas (`mexicoapi/datos`, `mexicoapi/cliente`...) piden `node16`, `nodenext` o `bundler`: con `node10` TypeScript no lee `exports` y da TS2307 |
 
 `mexicoapi/sepomex` y la CLI piden Node. El SQLite de SEPOMEX pide Node 22.13 o posterior.
