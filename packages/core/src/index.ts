@@ -18,7 +18,11 @@ export {
 export type { ResultadoDiasHabiles } from "./dias-habiles/sumar.js";
 export { sumarDiasHabiles } from "./dias-habiles/sumar.js";
 export type { Autoridad, DiaInhabil, Fuente } from "./dias-habiles/tipos.js";
-export { CalendarioIncompletoError, FechaFueraDeRangoError } from "./errores.js";
+export {
+  CalendarioIncompletoError,
+  FechaFueraDeRangoError,
+  SerieIncompletaError,
+} from "./errores.js";
 export type { DiaSemana, FechaISO } from "./fechas.js";
 export {
   diaDeLaSemana,

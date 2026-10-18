@@ -12,6 +12,32 @@ export class FechaFueraDeRangoError extends RangeError {
   }
 }
 
+/**
+ * El tramo de una serie (FIX o UDIS) que recibió una consulta no alcanza para responder con
+ * certeza, o trae registros fuera de las fechas que dice cubrir. Es un error de quien carga los
+ * datos, no de quien consulta.
+ */
+export class SerieIncompletaError extends Error {
+  /** Código fijo para mapear el error sin depender de instanceof. */
+  readonly codigo = "serie-incompleta";
+  readonly fecha: FechaISO;
+  /** Fechas que dice cubrir el tramo recibido. */
+  readonly tramo: { readonly desde: FechaISO; readonly hasta: FechaISO };
+
+  constructor(
+    fecha: FechaISO,
+    tramo: { readonly desde: FechaISO; readonly hasta: FechaISO },
+    motivo: string,
+  ) {
+    super(
+      `Serie incompleta para ${fecha}: ${motivo}; tramo cargado ${tramo.desde} a ${tramo.hasta}.`,
+    );
+    this.name = "SerieIncompletaError";
+    this.fecha = fecha;
+    this.tramo = Object.freeze({ desde: tramo.desde, hasta: tramo.hasta });
+  }
+}
+
 /** Se consultó una fecha que el calendario de la autoridad no cubre. */
 export class CalendarioIncompletoError extends Error {
   /** Código fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
