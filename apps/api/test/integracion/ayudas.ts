@@ -42,3 +42,16 @@ export const tipoDeMedio = (respuesta: Response): string =>
 export async function leerPublico(ruta: string): Promise<Buffer> {
   return readFile(new URL(ruta, PUBLICO));
 }
+
+/** `records` del manifiesto de `data/<directorio>`: los conteos no se fijan en las pruebas. */
+export async function registrosDe(directorio: string): Promise<number> {
+  const texto = await readFile(
+    new URL(`../../../../data/${directorio}/manifest.json`, import.meta.url),
+    "utf8",
+  );
+  const { records } = JSON.parse(texto) as { records: unknown };
+  if (typeof records !== "number" || records <= 0) {
+    throw new Error(`El manifiesto de ${directorio} no tiene records.`);
+  }
+  return records;
+}
