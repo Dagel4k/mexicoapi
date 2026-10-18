@@ -13,6 +13,7 @@ import {
   type CalendarioCurado,
   crearCalendarioCurado,
   type DatosCalendarioCurado,
+  MapaCongelado,
   type PlazoCalendario,
 } from "@mexicoapi/core/curados";
 import type { Entorno } from "./entorno.js";
@@ -128,51 +129,6 @@ export function congelar<T>(valor: T): T {
     Object.freeze(valor);
   }
   return valor;
-}
-
-/**
- * Vista de solo lectura de un Map: no tiene `set`, `delete` ni `clear`, y como no es un Map,
- * `Map.prototype.set.call(vista, …)` lanza TypeError.
- */
-class MapaCongelado<K, V> implements ReadonlyMap<K, V> {
-  readonly #mapa: Map<K, V>;
-
-  constructor(mapa: Map<K, V>) {
-    this.#mapa = mapa;
-    Object.freeze(this);
-  }
-
-  get size(): number {
-    return this.#mapa.size;
-  }
-
-  get(clave: K): V | undefined {
-    return this.#mapa.get(clave);
-  }
-
-  has(clave: K): boolean {
-    return this.#mapa.has(clave);
-  }
-
-  forEach(fn: (valor: V, clave: K, mapa: ReadonlyMap<K, V>) => void, thisArg?: unknown): void {
-    for (const [clave, valor] of this.#mapa) fn.call(thisArg, valor, clave, this);
-  }
-
-  entries(): MapIterator<[K, V]> {
-    return this.#mapa.entries();
-  }
-
-  keys(): MapIterator<K> {
-    return this.#mapa.keys();
-  }
-
-  values(): MapIterator<V> {
-    return this.#mapa.values();
-  }
-
-  [Symbol.iterator](): MapIterator<[K, V]> {
-    return this.#mapa.entries();
-  }
 }
 
 function aCatalogo(valor: unknown): ReadonlyMap<string, BancoCatalogo> {
