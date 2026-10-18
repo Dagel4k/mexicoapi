@@ -134,6 +134,7 @@ interface Operacion {
   tag: string;
   parametros?: Json[];
   ok: Json;
+  /** Errores propios de la ruta; los de ERRORES_COMUNES se agregan siempre. */
   errores: number[];
 }
 
@@ -146,9 +147,12 @@ const CODIGOS: Record<number, string> = {
   500: "ErrorInterno",
 };
 
+/** Toda ruta valida su query: un parámetro que no declara es un 400, aunque no tenga ninguno. */
+const ERRORES_COMUNES = [400, 405, 429, 500];
+
 function operacion(o: Operacion): [string, Json] {
   const responses: Record<string, Json> = { "200": o.ok };
-  for (const codigo of [...o.errores, 405, 429, 500].sort((a, b) => a - b)) {
+  for (const codigo of [...o.errores, ...ERRORES_COMUNES].sort((a, b) => a - b)) {
     responses[String(codigo)] = refRespuesta(CODIGOS[codigo] as string);
   }
   const op: Json = { operationId: o.operationId, summary: o.summary, tags: [o.tag] };
@@ -205,7 +209,7 @@ function operaciones(): Operacion[] {
       tag: "Estados",
       parametros: [cveEnt],
       ok: respuestaDatos("El estado.", ref("Estado")),
-      errores: [400, 404],
+      errores: [404],
     },
     {
       ruta: "/v1/estados/{cve_ent}/municipios",
@@ -214,7 +218,7 @@ function operaciones(): Operacion[] {
       tag: "Municipios",
       parametros: [cveEnt],
       ok: respuestaDatos("Los municipios del estado.", lista("Municipio")),
-      errores: [400, 404],
+      errores: [404],
     },
     {
       ruta: "/v1/municipios",
@@ -231,7 +235,7 @@ function operaciones(): Operacion[] {
       tag: "Municipios",
       parametros: [cvegeo],
       ok: respuestaDatos("El municipio.", ref("Municipio")),
-      errores: [400, 404],
+      errores: [404],
     },
     {
       ruta: "/v1/bancos",
@@ -248,7 +252,7 @@ function operaciones(): Operacion[] {
       tag: "Bancos",
       parametros: [codigo],
       ok: respuestaDatos("El banco.", ref("Banco")),
-      errores: [400, 404],
+      errores: [404],
     },
     {
       ruta: "/v1/clabe/{clabe}",
@@ -257,7 +261,7 @@ function operaciones(): Operacion[] {
       tag: "Cálculos",
       parametros: [clabe],
       ok: respuestaDatos("Resultado de la validación.", ref("ResultadoClabe")),
-      errores: [400],
+      errores: [],
     },
     {
       ruta: "/v1/dias-habiles",
@@ -293,7 +297,7 @@ function operaciones(): Operacion[] {
         },
       ],
       ok: respuestaDatos("La fecha resultante.", ref("ResultadoDiasHabiles")),
-      errores: [400, 422],
+      errores: [422],
     },
     {
       ruta: "/v1/dias-inhabiles",
@@ -312,7 +316,7 @@ function operaciones(): Operacion[] {
         },
       ],
       ok: respuestaDatos("Los días inhábiles del año.", lista("DiaInhabil")),
-      errores: [400, 422],
+      errores: [422],
     },
     {
       ruta: "/v1/status",
@@ -369,7 +373,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       schemas: esquemas(),
       responses: {
         ParametroInvalido: respuestaProblema(
-          "Un parámetro es inválido, desconocido o falta (tipos parametro-invalido, parametro-desconocido y parametro-faltante).",
+          "Un parámetro es inválido, desconocido o falta (tipos parametro-invalido, parametro-desconocido y parametro-faltante). Toda ruta rechaza los parámetros de consulta que no declara.",
         ),
         NoEncontrado: respuestaProblema("El recurso o la ruta no existe."),
         MetodoNoPermitido: respuestaProblema("Solo se permite GET."),
