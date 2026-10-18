@@ -297,7 +297,7 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 
 | Entorno | Estado |
 | --- | --- |
-| Node 20, 22 y 24 | Probado en CI con el paquete instalado desde su `.tgz` |
+| Node 20, 22, 24 y 26 | Probado en CI con el paquete instalado desde su `.tgz` |
 | CommonJS (`require`) | Desde Node 20.19 y 22.12, que cargan ESM con `require()`; antes, solo `import` |
 | Cloudflare Workers | Probado en workerd, sin `nodejs_compat` |
 | Navegador con bundler | Entradas universales, sin módulos de Node; `sideEffects: false` |
