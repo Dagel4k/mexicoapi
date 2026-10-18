@@ -96,6 +96,10 @@ Cada día tiene que caer en la cobertura de su tipo y, además, en la de algún 
 
 Cuando se amplía la cobertura de un tipo para un año completo, hay que capturar todos los días de ese tipo en el año, no solo los de la publicación nueva.
 
+## Calendario de la CNBV y el FIX
+
+La API usa los días de la CNBV para responder el [FIX de una operación](../api/README.md#publicado-y-operación): da por hecho que en un día de descanso de la CNBV el DOF no publica el FIX. Un día capturado por error en `dias-inhabiles-cnbv.yaml` hace que, la mañana siguiente a ese día, `operacion` responda la publicación anterior, un valor viejo, en vez de `dato-no-disponible`. Revisa dos veces cada fecha de la CNBV contra las disposiciones del DOF antes de fusionar: la verificación recalcula los días de regla y revisa el día y el mes con que empieza el motivo, pero no sabe si sobra un día. Por lo mismo, la CNBV solo admite días de tipo `descanso` (los de cierre); unas vacaciones administrativas, con los bancos abiertos, no se capturan aquí.
+
 ## Qué atrapa la verificación
 
 `verificar` y `curar` rechazan el YAML si:
@@ -104,7 +108,7 @@ Cuando se amplía la cobertura de un tipo para un año completo, hay que captura
 - una URL no es https o no está en `dof.gob.mx`, `sidof.segob.gob.mx` o `www.diputados.gob.mx`;
 - la fecha de una nota del DOF no coincide con la de su URL;
 - una fecha, una clave o un registro están duplicados, o una fuente declarada no se usa;
-- en un calendario, un día cae fuera de la cobertura de su tipo o de la de todos los tipos de plazo, un plazo se queda sin cobertura, o su `autoridad` no es la del archivo;
+- en un calendario, un día cae fuera de la cobertura de su tipo o de la de todos los tipos de plazo, un plazo se queda sin cobertura, o su `autoridad` no es la del archivo; en el de la CNBV, además, un día o una cobertura de un tipo que no sea `descanso`;
 - el `motivo` de un día de regla ("tercer lunes de noviembre") no da la fecha capturada. El motivo debe nombrar el mes ("tercer lunes de noviembre"); un ordinal con día de la semana que no se pueda leer (como "3er lunes") también falla, para que ninguna regla pase sin revisar;
 - un `motivo` que empieza con un día y un mes ("16 de septiembre", "1o. de enero", "17 y 18 de abril") no coincide con la fecha capturada (con alguna de ellas, si nombra varias);
 - en la UMA, la mensual no es la diaria por 30.4, la anual no es la mensual por 12, la vigencia no es el 1 de febrero del año, o el `fragmento` no contiene los montos capturados;

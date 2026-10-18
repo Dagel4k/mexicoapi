@@ -38,6 +38,14 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 - Si el pipeline falla, abre (o comenta en) un issue `Falla en datos: <grupo>` y la corrida queda en rojo.
 - Al terminar, el job `estado-kv` escribe en KV el estado de cada dataset para `/v1/status`, con los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` y solo desde `main`. Corre aparte: recibe el resumen de la corrida como artefacto y no instala dependencias, así que el token no convive con los pasos que procesan datos externos. Sin esos secretos deja un aviso y sigue (cómo crearlos: [Despliegue en Cloudflare](cloudflare.md)); si la escritura falla, deja una advertencia y no cambia el resultado de la corrida. Si la corrida falla antes del CLI no hay resumen y no se escribe nada.
 
+## FIX publicado en un día inhábil bancario
+
+La API responde la operación del día siguiente a un feriado bancario con la última publicación cargada, porque da por hecho que el DOF no publica el FIX en los días de descanso de la CNBV (ver [Publicado y operación](../api/README.md#publicado-y-operación)). Si la corrida trae un FIX en uno de esos días, el bot abre el PR de datos con la etiqueta `revisar` y el motivo `FIX publicado en día inhábil bancario: <fecha>`. En ese PR `verify` queda en rojo: falla la prueba de integración que exige que ningún feriado bancario entre semana ya cargado tenga FIX. Qué hacer:
+
+1. Confirmar en el DOF que ese día hubo publicación del tipo de cambio, con la fecha y el valor del SIDOF.
+2. Si la CNBV modificó sus disposiciones y ese día ya no es de cierre, quitar la fecha de `data/curado/dias-inhabiles-cnbv.yaml` con la cita de la modificación (ver [Datos curados](datos-curados.md)). Si el día sigue siendo de cierre y aun así hubo FIX, el supuesto de la API ya no vale: ajustar la regla (que el Worker no salte ese día) y la prueba de integración antes de seguir.
+3. Con `verify` en verde, fusionar el PR de datos. Mientras tanto la serie no avanza y el bot comenta en el mismo PR cada día. Las respuestas de `operacion` del día siguiente que se dieron antes de la corrida usaron el FIX anterior.
+
 ## Qué nunca hace
 
 - Nunca hace push a `main`.
