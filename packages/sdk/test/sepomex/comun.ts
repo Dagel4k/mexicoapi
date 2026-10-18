@@ -30,8 +30,8 @@ export const EXPORTACIONES_SEPOMEX = [
   "colonias",
   "cp",
   "directorio",
-  "estado",
   "importar",
+  "resumen",
   "sepomex",
   "sync",
 ] as const;
@@ -82,8 +82,8 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
       "colonias",
       "cp",
       "directorio",
-      "estado",
       "importar",
+      "resumen",
       "sync",
     ]);
     expect(m.sepomex.cp).toBe(m.cp);
@@ -128,7 +128,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     });
     expect(Date.parse(estado.descargado)).toBeGreaterThan(Date.now() - 60_000);
     expect(estado.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(await m.estado({ dir })).toEqual(estado);
+    expect(await m.resumen({ dir })).toEqual(estado);
   });
 
   it("muestra el aviso de Correos de México y la nota de MéxicoAPI antes de pedir nada", async () => {
@@ -263,12 +263,12 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
   /** Una caché buena y su contenido, para revisar que un fallo no la toca. */
   async function cacheBuena() {
     await m.importar(await archivo("bueno.zip", zipOficial()), { dir, aviso });
-    return { estado: await m.estado({ dir }), archivos: (await readdir(dir)).sort() };
+    return { estado: await m.resumen({ dir }), archivos: (await readdir(dir)).sort() };
   }
 
   async function sinCambios(antes: Awaited<ReturnType<typeof cacheBuena>>) {
     expect((await readdir(dir)).sort()).toEqual(antes.archivos);
-    expect(await m.estado({ dir })).toEqual(antes.estado);
+    expect(await m.resumen({ dir })).toEqual(antes.estado);
     expect((await m.cp("80000", { dir }))?.cp).toBe("80000");
   }
 
@@ -362,7 +362,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
       "bloqueado",
       /CAPTCHA/,
     );
-    await expect(m.estado({ dir })).resolves.toBeNull();
+    await expect(m.resumen({ dir })).resolves.toBeNull();
   });
 
   it("dice si el sitio no responde", async () => {
@@ -401,8 +401,8 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     );
   });
 
-  it("sin caché: estado da null y cp dice cómo descargarla", async () => {
-    await expect(m.estado({ dir })).resolves.toBeNull();
+  it("sin caché: resumen da null y cp dice cómo descargarla", async () => {
+    await expect(m.resumen({ dir })).resolves.toBeNull();
     await rechazo(
       m.cp("80000", { dir }),
       "sin-datos",
@@ -424,7 +424,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     expect(Object.isFrozen(r?.asentamientos)).toBe(true);
     expect(Object.isFrozen(r?.asentamientos[0])).toBe(true);
     expect(Object.isFrozen(r?.municipio)).toBe(true);
-    expect(Object.isFrozen(await m.estado({ dir }))).toBe(true);
+    expect(Object.isFrozen(await m.resumen({ dir }))).toBe(true);
     expect(Object.isFrozen(await m.colonias("99998", { dir }))).toBe(true);
   });
 }

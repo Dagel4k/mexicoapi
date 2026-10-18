@@ -122,7 +122,7 @@ try {
   const dir = join(temporal, "cache");
   await sepomex.importar(archivo, { dir, aviso: (texto) => avisos.push(texto) });
   ok(avisos.join("").includes("Correos de México"));
-  const estado = await sepomex.estado({ dir });
+  const estado = await sepomex.resumen({ dir });
   equal(estado.codigos_postales, 33);
   deepEqual(estado.advertencias, []);
   if (conSqlite) {

@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { estado, importar, SepomexError } from "../../src/sepomex/index.js";
+import { importar, resumen, SepomexError } from "../../src/sepomex/index.js";
 import { lineasTxt, txt, zipOficial } from "./ayudas.js";
 
 const sqlite = vi.hoisted(() => ({ falla: false }));
@@ -51,5 +51,5 @@ it("si el SQLite falla, borra lo nuevo y deja la caché anterior", async () => {
   );
   expect(((error as SepomexError).cause as Error).message).toBe("database or disk is full");
   expect((await readdir(dir)).sort()).toEqual(archivos);
-  expect(await estado({ dir })).toEqual(antes);
+  expect(await resumen({ dir })).toEqual(antes);
 });

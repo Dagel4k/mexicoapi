@@ -11,10 +11,10 @@ import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
   bancoTexto,
   diasHabilesTexto,
-  estadoSepomexTexto,
   municipiosTexto,
   municipioTexto,
   pieTexto,
+  resumenSepomexTexto,
   salarioMinimoTexto,
   tarifaIsrTexto,
   umaTexto,
@@ -76,7 +76,7 @@ const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
 };
 
 const VALIDADORES = ["clabe", "rfc", "curp", "nss"] as const;
-const SUBCOMANDOS_SEPOMEX = ["sync", "importar", "cp", "estado"] as const;
+const SUBCOMANDOS_SEPOMEX = ["sync", "importar", "cp", "resumen"] as const;
 /** Una clave de municipio (cvegeo) o un código postal. */
 const CINCO_DIGITOS = /^\d{5}$/;
 const ENTERO = /^\d+$/;
@@ -287,33 +287,33 @@ async function sepomex(
   if (sub === undefined || !(SUBCOMANDOS_SEPOMEX as readonly string[]).includes(sub)) {
     throw new ErrorUso(
       sub === undefined
-        ? 'Falta el subcomando de "sepomex": sync, importar, cp o estado.'
+        ? 'Falta el subcomando de "sepomex": sync, importar, cp o resumen.'
         : `Subcomando de "sepomex" desconocido: ${sub}`,
     );
   }
   const lib = e.sepomex ?? (await import("../sepomex/index.js"));
   // El aviso de Correos de México va a stderr: con --json, stdout queda solo con el resultado.
   const aviso = (texto: string): void => e.errores(`${texto}\n`);
-  if (sub === "sync" || sub === "estado") sinArgumentos(resto, `sepomex ${sub}`);
+  if (sub === "sync" || sub === "resumen") sinArgumentos(resto, `sepomex ${sub}`);
   if (sub === "sync") {
-    const estado = await lib.sync({ aviso });
-    if (opciones.json) json(e, estado);
-    else imprimir(e, `Catálogo descargado.\n${estadoSepomexTexto(estado)}`);
+    const guardado = await lib.sync({ aviso });
+    if (opciones.json) json(e, guardado);
+    else imprimir(e, `Catálogo descargado.\n${resumenSepomexTexto(guardado)}`);
     return 0;
   }
   if (sub === "importar") {
     const ruta = unValor(resto, "la ruta del archivo", "sepomex importar");
-    const estado = await lib.importar(ruta, { aviso });
-    if (opciones.json) json(e, estado);
-    else imprimir(e, `Catálogo importado.\n${estadoSepomexTexto(estado)}`);
+    const guardado = await lib.importar(ruta, { aviso });
+    if (opciones.json) json(e, guardado);
+    else imprimir(e, `Catálogo importado.\n${resumenSepomexTexto(guardado)}`);
     return 0;
   }
-  if (sub === "estado") {
-    const estado = await lib.estado();
-    if (opciones.json) json(e, estado);
-    else if (estado === null) imprimir(e, SIN_CATALOGO);
-    else imprimir(e, estadoSepomexTexto(estado));
-    return estado === null ? 1 : 0;
+  if (sub === "resumen") {
+    const guardado = await lib.resumen();
+    if (opciones.json) json(e, guardado);
+    else if (guardado === null) imprimir(e, SIN_CATALOGO);
+    else imprimir(e, resumenSepomexTexto(guardado));
+    return guardado === null ? 1 : 0;
   }
   const codigo = unValor(resto, "el código postal", "sepomex cp");
   if (!CINCO_DIGITOS.test(codigo)) {

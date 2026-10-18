@@ -12,7 +12,7 @@ import type {
   TipoPlazo,
   Uma,
 } from "../index.js";
-import type { EstadoSepomex } from "../sepomex/index.js";
+import type { ResumenSepomex } from "../sepomex/index.js";
 
 const ERRORES: Readonly<Record<CodigoError, string>> = {
   vacio: "el valor está vacío",
@@ -159,7 +159,7 @@ export function bancoTexto(b: Banco): string {
   return lineas.join("\n");
 }
 
-export function estadoSepomexTexto(s: EstadoSepomex): string {
+export function resumenSepomexTexto(s: ResumenSepomex): string {
   const lineas = [
     `Directorio: ${s.dir}`,
     `Guardado: ${s.descargado} (${s.origen})`,

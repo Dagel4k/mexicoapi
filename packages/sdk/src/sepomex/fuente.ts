@@ -6,7 +6,7 @@ export const URL_DESCARGA =
 
 /**
  * Aviso de uso que Correos de México pone en la primera línea del TXT. Se muestra antes de
- * descargar; el del archivo descargado queda en `estado().aviso`.
+ * descargar; el del archivo descargado queda en `resumen().aviso`.
  */
 export const AVISO_SEPOMEX =
   "El Catálogo Nacional de Códigos Postales, es elaborado por Correos de México y se proporciona en forma gratuita para uso particular, no estando permitida su comercialización, total o parcial, ni su distribución a terceros bajo ningún concepto.";

@@ -73,7 +73,7 @@ export interface OpcionesSync extends OpcionesGuardado {
 }
 
 /** Cómo quedó el catálogo guardado en la caché. */
-export interface EstadoSepomex {
+export interface ResumenSepomex {
   /** Directorio de la caché. */
   readonly dir: string;
   /** Cuándo se descargó o importó (ISO 8601, UTC). */
