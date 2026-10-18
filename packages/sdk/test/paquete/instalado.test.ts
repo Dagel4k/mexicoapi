@@ -25,6 +25,7 @@ describe("npm pack", () => {
     expect(rutas).toEqual(
       expect.arrayContaining([
         "LICENSE",
+        "README.md",
         "package.json",
         "dist/index.js",
         "dist/index.d.ts",
