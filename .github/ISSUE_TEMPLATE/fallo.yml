@@ -1,0 +1,56 @@
+name: Fallo
+description: Algo no funciona en la API, el paquete, el servidor MCP, las descargas o el sitio.
+title: "Fallo: "
+labels: ["fallo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Si el problema es un valor distinto al dato oficial, usa el formulario "Error en los datos". Para una vulnerabilidad, no abras un issue: usa el reporte privado de seguridad.
+
+        No pegues datos personales. Usa valores de ejemplo en lugar de CURP, RFC o CLABE reales.
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente
+      options:
+        - API
+        - Paquete mexicoapi
+        - Servidor MCP (mexicoapi-mcp)
+        - Descargas
+        - Sitio
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión o dirección
+      description: La versión del paquete o del servidor, o la dirección que falló.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperabas que pasara
+    validations:
+      required: true
+  - type: textarea
+    id: obtenido
+    attributes:
+      label: Qué pasó en realidad
+      description: Incluye el mensaje de error completo si lo hay.
+    validations:
+      required: true
+  - type: input
+    id: entorno
+    attributes:
+      label: Entorno
+      description: Sistema operativo y versión de Node, si aplica.
+    validations:
+      required: false
