@@ -286,6 +286,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "_headers",
       "descargas",
       "estilo.css",
+      "favicon.svg",
       "index.html",
       "robots.txt",
       "v1",

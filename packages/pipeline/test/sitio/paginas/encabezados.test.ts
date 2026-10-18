@@ -49,6 +49,7 @@ describe("_headers", () => {
       "/estado/",
       "/estilo.css",
       "/sitio.js",
+      "/favicon.svg",
       "/robots.txt",
       "/llms.txt",
       "/llms-full.txt",
@@ -80,8 +81,8 @@ describe("_headers", () => {
     });
   });
 
-  it("robots.txt se guarda un día", () => {
-    expect(efectivos("/robots.txt")).toEqual({
+  it.each(["/robots.txt", "/favicon.svg"])("%s se guarda un día", (ruta) => {
+    expect(efectivos(ruta)).toEqual({
       "content-security-policy": NINGUNO,
       ...SEGURIDAD,
       "cache-control": "public, max-age=86400",

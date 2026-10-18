@@ -44,6 +44,7 @@ import {
 import { documentoOpenApi } from "./openapi.js";
 import { archivoEncabezados } from "./paginas/encabezados.js";
 import { ESTILO } from "./paginas/estilo.js";
+import { FAVICON } from "./paginas/favicon.js";
 import { paginaInicio } from "./paginas/inicio.js";
 import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
 import { ROBOTS } from "./paginas/robots.js";
@@ -406,6 +407,7 @@ export async function construirSitio(opciones: {
   );
   archivos.set("404.html", paginaNoEncontrada());
   archivos.set("estilo.css", ESTILO);
+  archivos.set("favicon.svg", FAVICON);
   archivos.set("robots.txt", ROBOTS);
 
   await escribirDirectorioAtomico(opciones.salida, archivos);
