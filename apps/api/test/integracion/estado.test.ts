@@ -14,7 +14,10 @@ describe("página de estado en el Worker local", () => {
     expect(filas.map((f) => f.dataset)).toEqual(data.map((d) => d.dataset));
     expect(filas.length).toBeGreaterThan(0);
     for (const fila of filas) {
-      expect(fila, fila.dataset).toMatchObject({ estado: "Sin registro", ultimoExito: "Ninguno" });
+      expect(fila, fila.dataset).toMatchObject({
+        estado: "Sin registro",
+        ultimoExito: "Ninguna registrada",
+      });
     }
   });
 
