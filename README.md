@@ -12,7 +12,7 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 
 Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, y los mantiene al día de forma automática.
 
-> En desarrollo. Todavía no hay versión publicada.
+> En desarrollo. Los primeros datos ya están en [`data/`](data/); la API y el paquete de npm vienen después. Todavía no hay versión publicada.
 
 ## Qué va a incluir
 
@@ -34,6 +34,16 @@ Cada respuesta indica de dónde salió el dato, su licencia y la fecha en que se
 | UMA, salario mínimo y tarifas de ISR | INEGI, CONASAMI, SAT |
 
 Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá un comando para descargarlos directamente de Correos de México en tu máquina y dejarlos listos para usar.
+
+## Datos disponibles hoy
+
+| Dataset | Carpeta | Fuente | Se actualiza |
+| --- | --- | --- | --- |
+| Estados | `data/inegi-estados/` | INEGI | semanal |
+| Municipios | `data/inegi-municipios/` | INEGI | semanal |
+| Bancos, con historial | `data/bancos/` | Banxico | diario |
+
+Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los originales descargados en `raw/`. Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
 
 ## Documentación
 

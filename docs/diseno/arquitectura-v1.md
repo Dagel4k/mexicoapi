@@ -114,8 +114,9 @@ mexicoapi/
 │  ├─ api/         # Cloudflare Worker (wrangler) + assets estáticos generados
 │  └─ docs/        # Astro: docs por dataset, referencia OpenAPI, changelog, status, llms.txt
 ├─ data/
-│  ├─ inegi-geo/   # estados.json, municipios.json, manifest.json
-│  ├─ bancos/      # bancos.json, manifest.json
+│  ├─ inegi-estados/    # estados.json, manifest.json, raw/
+│  ├─ inegi-municipios/ # municipios.json, manifest.json, raw/
+│  ├─ bancos/      # bancos.json, manifest.json, raw/
 │  ├─ tipo-cambio/ # fix/2026.json, udis/2026.json, manifest.json
 │  └─ curado/      # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
 ├─ scripts/verify.sh
@@ -136,17 +137,22 @@ mexicoapi/
   "schema_version": 1,
   "as_of": "2026-10-17",
   "fetched_at": "2026-10-17T06:12:03Z",
-  "status": "ok",
-  "source": {
-    "name": "INEGI, Catálogo Único de Claves Geoestadísticas",
-    "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/",
-    "license": "INEGI: libre uso con crédito",
-    "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
-    "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas…"
-  },
-  "raw_file": "raw/mgem.json",
-  "raw_sha256": "…",
-  "records": 2478
+  "data_file": "municipios.json",
+  "data_sha256": "…",
+  "records": 2478,
+  "sources": [
+    {
+      "name": "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
+      "url": "https://gaia.inegi.org.mx/wscatgeo/v2/",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas…",
+      "published_at": null,
+      "raw": [
+        { "file": "raw/mgem-01.json", "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/01", "sha256": "…" }
+      ]
+    }
+  ]
 }
 ```
 
@@ -163,8 +169,8 @@ Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura s
 | Dataset | Campos | Clave |
 | --- | --- | --- |
 | `inegi.estados` | `cve_ent` (2), `nombre`, `abreviatura`, `cvegeo` | `cve_ent` |
-| `inegi.municipios` | `cvegeo` (5), `cve_ent`, `cve_mun` (3), `nombre`, `cve_cabecera` | `cvegeo` |
-| `bancos` | `codigo` (3, el de la CLABE), `codigo_spei` (5), `nombre_corto` (CEP), `nombre` (PDF oficial o mapeo curado), `tipo` (por prefijo del código SPEI: `40` banca múltiple, `37` banca de desarrollo, `90` otras entidades; Banxico aparte), `participacion` (`directa` si aparece en el PDF, `no_confirmada` si solo aparece en el CEP), `activo`, `baja_detectada` (fecha, si dejó de aparecer) | `codigo` |
+| `inegi.municipios` | `cvegeo` (5), `cve_ent`, `cve_mun` (3), `nombre`, `cve_cabecera` (`null` en las 16 alcaldías de la CDMX, que la fuente no trae) | `cvegeo` |
+| `bancos` | `codigo` (3, el de la CLABE), `codigo_spei` (5), `nombre_corto` (CEP), `razon_social` (PDF oficial; `null` si no aparece), `sector` (PDF), `tipo` (por prefijo del código SPEI: `40` banca múltiple, `37` banca de desarrollo, `90` otras entidades; Banxico aparte), `participacion` (`directa` si aparece en el PDF, `no_confirmada` si solo aparece en el CEP), `activo`, `baja_detectada` (fecha de muestreo, si dejó de aparecer), `historial` (periodos observados `{codigo_spei, nombre_corto, desde, hasta}` como intervalos `[desde, hasta)`; `hasta: null` es el vigente) | `codigo` |
 | `plazas-clabe` | `codigo` (3), `plaza`, `estado` | `codigo` |
 | `tipo-cambio.fix` | `fecha_publicacion_dof`, `valor` (decimal como string), `fuente_dof` | `fecha_publicacion_dof` |
 | `udis` | `fecha`, `valor` (string, 6 decimales) | `fecha` |
@@ -247,7 +253,7 @@ El bot actúa con una **GitHub App propia** (tokens que duran una hora y permiso
 
 **Bancos:** las altas y las bajas de instituciones siempre van a revisión humana. Los cambios de nombre se fusionan solos.
 
-Una institución que deja de aparecer no se borra: queda con `activo: false` y su `baja_detectada`, para que las CLABE antiguas se sigan decodificando. Si el JSON del CEP y el PDF oficial no coinciden en membresía, se abre un issue. Los nombres se cruzan con un mapeo curado (`data/curado/bancos-nombres.yaml`), porque los dos documentos no escriben igual.
+Una institución que deja de aparecer no se borra: queda con `activo: false` y su `baja_detectada`, para que las CLABE antiguas se sigan decodificando. Si el JSON del CEP y el PDF oficial no coinciden en membresía, se abre un issue. Los nombres del CEP y del PDF coinciden, así que no hay mapeo curado: si un nombre no cruza, se abre un issue.
 
 ## 8.1 Reglas de cálculo (contratos del núcleo)
 
