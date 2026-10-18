@@ -130,11 +130,29 @@ describe("_headers", () => {
     ).toBe(true);
   });
 
-  // Una regla `/*` chocaría con la CSP, el nosniff y la caché de `/descargas/*` y de cada ruta
-  // del sitio. El 404 lleva su CSP y su referrer en meta (prueba de no-encontrado).
-  it("las rutas que no existen no reciben reglas", () => {
-    expect(reglas.some((r) => r.ruta === "/*")).toBe(false);
-    for (const ruta of ["/wp-admin", "/v2", "/404.html", "/index.html", "/estado"]) {
+  it("cada descarga tiene una sola regla, con todo lo suyo, y ninguna regla usa comodines", () => {
+    expect(reglas.map((r) => r.ruta)).toEqual([
+      ...DESCARGAS.map((n) => `/descargas/${n}`),
+      ...RUTAS_SITIO,
+    ]);
+    expect(reglas.filter((r) => r.ruta.includes("*"))).toEqual([]);
+  });
+
+  // Una regla con comodín (`/*` o `/descargas/*`) alcanzaría también al 404: chocaría con su CSP
+  // en meta o, bajo /descargas/, le bloquearía la hoja de estilo y le daría la caché de las
+  // descargas. El 404 lleva su CSP y su referrer en meta (prueba de no-encontrado).
+  it("las rutas que no existen no reciben reglas, tampoco bajo /descargas/", () => {
+    for (const ruta of [
+      "/wp-admin",
+      "/v2",
+      "/404.html",
+      "/index.html",
+      "/estado",
+      "/descargas",
+      "/descargas/",
+      "/descargas/nada.csv",
+      "/descargas/bancos.csv/x",
+    ]) {
       expect(efectivos(ruta), ruta).toEqual({});
     }
   });

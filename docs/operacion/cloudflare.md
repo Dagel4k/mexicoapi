@@ -58,7 +58,7 @@ El mismo despliegue publica el sitio que genera el build (`/`, `/estado/`, `/llm
 
 Nada de eso invoca al Worker: los rastreadores que prueban rutas al azar no gastan la cuota diaria ni el límite por IP. Si un despliegue pierde `not_found_handling`, esas direcciones vuelven a llegar al Worker y el humo falla en `/v2`.
 
-Un 404 bajo `/descargas/` recibe los encabezados de `/descargas/*`: su CSP bloquea la hoja de estilo, así que la página se ve sin estilo, y queda en caché una hora como el resto de las descargas.
+`_headers` tiene una regla por archivo, sin comodines: un 404 no recibe ninguna, tampoco bajo `/descargas/`, y lleva su CSP en `<meta>`.
 
 ### Frescura
 

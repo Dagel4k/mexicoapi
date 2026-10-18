@@ -3,9 +3,9 @@
  * reglas que coinciden con la URL pedida y junta con coma un encabezado repetido, así que cada
  * ruta tiene una sola regla con todo lo suyo.
  *
- * No hay regla `/*`: chocaría con la CSP, el nosniff y la caché de `/descargas/*` y de cada ruta
- * del sitio. El 404 (cualquier URL que no es un asset) no recibe reglas, así que lleva `CSP_404`
- * y su política de referrer en `<meta>`.
+ * Ninguna regla lleva comodín (`/*`, `/descargas/*`): alcanzaría también al 404, que se sirve en
+ * la URL pedida. Así ninguna URL que no es un asset recibe reglas, tampoco bajo `/descargas/`, y
+ * el 404 lleva `CSP_404` y su política de referrer en `<meta>`.
  */
 
 type Encabezados = readonly (readonly [string, string])[];
@@ -79,12 +79,12 @@ function tipoContenido(nombre: string): string {
 const texto = ({ ruta, encabezados }: Regla): string =>
   `${ruta}\n${encabezados.map(([nombre, valor]) => `  ${nombre}: ${valor}\n`).join("")}`;
 
-/** El archivo completo: una regla por descarga con su tipo, la general de descargas y el sitio. */
+/** El archivo completo: una regla por descarga, con su tipo y lo de todas, y las del sitio. */
 export function archivoEncabezados(descargas: readonly string[]): string {
   const reglas: Regla[] = descargas.map((nombre) => ({
     ruta: `/descargas/${nombre}`,
-    encabezados: [["Content-Type", tipoContenido(nombre)]],
+    encabezados: [["Content-Type", tipoContenido(nombre)], ...SEGURIDAD_DESCARGAS],
   }));
-  reglas.push({ ruta: "/descargas/*", encabezados: SEGURIDAD_DESCARGAS }, ...REGLAS_SITIO);
+  reglas.push(...REGLAS_SITIO);
   return reglas.map(texto).join("\n");
 }
