@@ -1,0 +1,164 @@
+name: Despliegue
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: despliegue
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Comprobar secretos de Cloudflare
+        id: cf
+        env:
+          TIENE_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          set -euo pipefail
+          echo "tiene_cf=${TIENE_CF}" >> "${GITHUB_OUTPUT}"
+          if [ "${TIENE_CF}" != "true" ]; then
+            echo "::notice::Faltan los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID; no se despliega. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.cf.outputs.tiene_cf == 'true'
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: steps.cf.outputs.tiene_cf == 'true'
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.cf.outputs.tiene_cf == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Instalar y compilar
+        if: steps.cf.outputs.tiene_cf == 'true'
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm -r build
+
+      - name: Configurar staging
+        id: conf_staging
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          url="$(node apps/api/scripts/cloudflare.ts configurar --entorno staging --salida apps/api/wrangler.staging.json)"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Desplegar a staging
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          cd apps/api
+          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.staging.json
+
+      - name: Prueba de humo en staging
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          URL_STAGING: ${{ steps.conf_staging.outputs.url }}
+          SALIDA_DIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          node apps/api/scripts/humo.ts "${URL_STAGING}" 2>&1 | tee "${SALIDA_DIR}/humo-staging.txt"
+
+      - name: Configurar producción
+        id: conf_prod
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          url="$(node apps/api/scripts/cloudflare.ts configurar --entorno produccion --salida apps/api/wrangler.produccion.json)"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Desplegar a producción
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          cd apps/api
+          pnpm --filter @mexicoapi/api exec wrangler deploy --config wrangler.produccion.json
+
+      - name: Prueba de humo en producción
+        id: humo_prod
+        if: steps.cf.outputs.tiene_cf == 'true'
+        env:
+          URL_PROD: ${{ steps.conf_prod.outputs.url }}
+          SALIDA_DIR: ${{ runner.temp }}
+        run: |
+          set -uo pipefail
+          # El humo fallido no aborta el paso: el rollback del siguiente paso necesita el resultado.
+          codigo=0
+          node apps/api/scripts/humo.ts "${URL_PROD}" > "${SALIDA_DIR}/humo-produccion.txt" 2>&1 || codigo=$?
+          cat "${SALIDA_DIR}/humo-produccion.txt"
+          if [ "${codigo}" -eq 0 ]; then
+            echo "ok=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "ok=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Revertir producción
+        id: rollback
+        if: steps.cf.outputs.tiene_cf == 'true' && steps.humo_prod.outputs.ok == 'false'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          cd apps/api
+          pnpm --filter @mexicoapi/api exec wrangler rollback --config wrangler.produccion.json --message "humo fallido en ${GITHUB_SHA}"
+          echo "::error::La prueba de humo de producción falló; se revirtió al despliegue anterior."
+          exit 1
+
+      - name: Resumen
+        if: always() && steps.cf.outputs.tiene_cf == 'true'
+        env:
+          URL_STAGING: ${{ steps.conf_staging.outputs.url }}
+          URL_PROD: ${{ steps.conf_prod.outputs.url }}
+          REVERTIDO: ${{ steps.rollback.outcome }}
+          SALIDA_DIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Despliegue"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Staging: ${URL_STAGING:-sin configurar}"
+            echo "- Producción: ${URL_PROD:-sin configurar}"
+            if [ "${REVERTIDO}" != "skipped" ]; then
+              echo "- Producción revertida al despliegue anterior (resultado: ${REVERTIDO})"
+            fi
+            for entorno in staging produccion; do
+              archivo="${SALIDA_DIR}/humo-${entorno}.txt"
+              if [ -f "${archivo}" ]; then
+                echo
+                echo "### Humo en ${entorno}"
+                echo
+                echo '```'
+                cat "${archivo}"
+                echo '```'
+              fi
+            done
+          } >> "${GITHUB_STEP_SUMMARY}"
