@@ -93,6 +93,18 @@ describe("probarHumo", () => {
     expect(r.tiempos["/v1/status"]).toBeGreaterThanOrEqual(15);
   });
 
+  it("un cuerpo que no termina de llegar también vence", async () => {
+    const bueno = falso(rutasBuenas());
+    const atascado = (async (entrada: string, init?: RequestInit) => {
+      if (!String(entrada).endsWith("/v1/status")) return bueno(entrada, init);
+      return new Response(new ReadableStream({ start() {} }), {
+        headers: { "content-type": "application/json", ...SEGURIDAD },
+      });
+    }) as typeof fetch;
+    const r = await probarHumo(BASE, { fetch: atascado, timeoutMs: 50 });
+    expect(r.fallas).toEqual(["/v1/status: sin respuesta en 50 ms"]);
+  });
+
   it("un fetch que ignora la señal también vence", async () => {
     const mudo = (() => new Promise(() => {})) as typeof fetch;
     const r = await probarHumo(BASE, { fetch: mudo, timeoutMs: 5 });
