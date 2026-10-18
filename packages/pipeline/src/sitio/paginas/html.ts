@@ -76,6 +76,8 @@ export interface Documento {
    * referrer van en `<meta>`, antes de cualquier recurso.
    */
   seguridadEnMeta?: boolean;
+  /** `false` pide a los buscadores no indexarla (el 404 se sirve en cualquier URL). */
+  indexable?: boolean;
 }
 
 const SEGURIDAD_EN_META = `<meta http-equiv="Content-Security-Policy" content="${CSP_404}">
@@ -88,6 +90,7 @@ export function documento({
   cuerpo,
   scripts = [],
   seguridadEnMeta = false,
+  indexable = true,
 }: Documento): string {
   const modulos = scripts.map((src) => {
     if (!RUTA_SCRIPT.test(src)) throw new Error(`script fuera del sitio: ${src}`);
@@ -100,7 +103,7 @@ export function documento({
 ${seguridadEnMeta ? SEGURIDAD_EN_META : ""}<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escaparHtml(titulo)}</title>
 <meta name="description" content="${escaparHtml(descripcion)}">
-<meta name="color-scheme" content="light dark">
+${indexable ? "" : '<meta name="robots" content="noindex">\n'}<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/estilo.css">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${modulos.join("")}</head>
