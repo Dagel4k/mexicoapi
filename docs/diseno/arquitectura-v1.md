@@ -253,7 +253,7 @@ GitHub Actions por dataset con `schedule`:
 
 - INEGI: semanal.
 - Bancos: diario.
-- FIX y UDIS: diario, después de su publicación; el FIX a las 13:30 y las UDIS a las 13:40 hora de Ciudad de México, en grupos separados para que una falla de una serie no detenga la otra.
+- FIX y UDIS: diario, después de su publicación; el FIX a las 13:30 y las UDIS a las 14:30 hora de Ciudad de México, en grupos separados para que una falla de una serie no detenga la otra; la hora de diferencia evita que los dos PRs compitan por estar al día con `main`.
 
 Si hay cambios, el bot abre un PR `datos(<dataset>): AAAA-MM-DD` con el resumen del diff. Se auto-fusiona si pasa CI y está dentro de los umbrales.
 
