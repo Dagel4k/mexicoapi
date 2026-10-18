@@ -41,7 +41,7 @@ function resolverRef(ref: string): unknown {
 }
 
 describe("documento OpenAPI", () => {
-  it("valida contra el esquema oficial de OAS 3.1", async () => {
+  async function validadorOas() {
     const texto = await readFile(
       new URL("../fixtures/openapi-3.1-schema.json", import.meta.url),
       "utf8",
@@ -55,13 +55,37 @@ describe("documento OpenAPI", () => {
         '{"$ref":"#/$defs/schema"}',
       ),
     );
-    const dinamicos = JSON.stringify(esquema).includes("$dynamicRef") ? 1 : 0;
-    expect(dinamicos).toBe(0);
+    expect(JSON.stringify(esquema)).not.toContain("$dynamicRef");
     const ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
-    const validar = ajv.compile(esquema);
+    return ajv.compile(esquema);
+  }
+
+  it("valida contra el esquema oficial de OAS 3.1", async () => {
+    const validar = await validadorOas();
     const ok = validar(doc);
     expect(validar.errors ?? []).toEqual([]);
     expect(ok).toBe(true);
+  });
+
+  it("el validador rechaza documentos inválidos", async () => {
+    const validar = await validadorOas();
+    const sinInfo = structuredClone(doc);
+    delete sinInfo.info;
+    expect(validar(sinInfo)).toBe(false);
+    const rutaInvalida = structuredClone(doc);
+    rutaInvalida.paths["/x"] = 5;
+    expect(validar(rutaInvalida)).toBe(false);
+  });
+
+  it("/v1/status responde solo { data }, sin meta", () => {
+    const op = operaciones.find((o) => o.ruta === "/v1/status")?.op as Obj;
+    const schema = op.responses["200"].content["application/json"].schema;
+    expect(schema.required).toEqual(["data"]);
+    expect(Object.keys(schema.properties)).toEqual(["data"]);
+    expect(schema.properties.data).toEqual({
+      type: "array",
+      items: { $ref: "#/components/schemas/EstadoDataset" },
+    });
   });
 
   it("cada esquema de componentes es un JSON Schema 2020-12 válido", () => {
