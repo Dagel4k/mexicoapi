@@ -43,6 +43,10 @@ const VALORES_PUBLICOS = [
   "FUENTE_LFT_74",
   "FUENTE_LFT_715",
   "VIGENCIA_LFT",
+  "COBERTURA_CFF",
+  "diasDescansoCff",
+  "FUENTE_CFF_12",
+  "VIGENCIA_CFF",
   "RFC_GENERICOS",
   "NOTA_VALIDACION",
   "fixPublicado",
@@ -61,6 +65,7 @@ describe("API pública", () => {
     "calendarioLft",
     "crearCalendario",
     "diasDescansoLft",
+    "diasDescansoCff",
     "CalendarioIncompletoError",
     "FechaFueraDeRangoError",
     "SerieIncompletaError",
@@ -90,6 +95,9 @@ describe("API pública", () => {
     expect(core.FUENTE_LFT_715).toBeDefined();
     expect(core.VIGENCIA_LFT).toBe("2026-05-14");
     expect(core.FUENTE_CFF_20.fragmento).toContain("el día anterior a aquél");
+    expect(core.COBERTURA_CFF).toEqual({ desde: "2026-01-01", hasta: "2100-12-31" });
+    expect(core.FUENTE_CFF_12.fragmento).toContain("no se contarán los sábados");
+    expect(core.VIGENCIA_CFF).toBe("2026-04-09");
   });
 
   test("no expone VERSION ni los ayudantes internos", () => {
