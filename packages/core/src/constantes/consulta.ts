@@ -10,8 +10,10 @@ export interface Vigencia {
 }
 
 /**
- * `sin_dato` es definitivo: la fecha o el año es anterior a los datos (o cae en un hueco).
- * `no_disponible` puede cambiar: todavía no se carga. `detalle` es el texto de la API.
+ * Lo que da `umaVigente`. `sin_dato` es definitivo: la fecha es anterior a la primera UMA de los
+ * datos. `no_disponible` puede cambiar: es posterior a la última y todavía no se carga. `detalle`
+ * es el texto de la API. Una fecha que cae en un hueco de la lista no da ninguno de los dos:
+ * `umaVigente` lanza RangeError porque la lista está mal formada.
  */
 export type ConsultaUma =
   | { tipo: "encontrado"; registro: Uma }
