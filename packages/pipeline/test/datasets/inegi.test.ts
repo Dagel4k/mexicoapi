@@ -111,7 +111,11 @@ describe("estados", () => {
   it("cualquier diferencia pide revisión", async () => {
     const r = await estados();
     const cambiado = r.map((e) => (e.cve_ent === "01" ? { ...e, nombre: "Otro" } : e));
-    const rev = estadosInegi.revisar(diferenciar(r, cambiado, estadosInegi.clave), r);
+    const rev = await estadosInegi.revisar(
+      diferenciar(r, cambiado, estadosInegi.clave),
+      r,
+      ctxVacio,
+    );
     expect(rev).toEqual({
       requiereRevision: true,
       motivos: ["cambio en el catálogo de estados"],
@@ -196,10 +200,18 @@ describe("municipios", () => {
   it("revisar: 13 cambios sobre 2,478 piden revisión y 12 no", async () => {
     const r = await municipios();
     const con = (n: number) => r.map((m, i) => (i < n ? { ...m, nombre: `${m.nombre} X` } : m));
-    const rev13 = municipiosInegi.revisar(diferenciar(r, con(13), municipiosInegi.clave), r);
+    const rev13 = await municipiosInegi.revisar(
+      diferenciar(r, con(13), municipiosInegi.clave),
+      r,
+      ctxVacio,
+    );
     expect(rev13.requiereRevision).toBe(true);
     expect(rev13.motivos[0]).toContain("0.52 %");
-    const rev12 = municipiosInegi.revisar(diferenciar(r, con(12), municipiosInegi.clave), r);
+    const rev12 = await municipiosInegi.revisar(
+      diferenciar(r, con(12), municipiosInegi.clave),
+      r,
+      ctxVacio,
+    );
     expect(rev12).toEqual({ requiereRevision: false, motivos: [] });
   });
 });

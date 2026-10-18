@@ -259,7 +259,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       razon_social: null,
     });
     const d = diferenciar(base, registros, (b) => b.codigo);
-    expect(bancos.revisar(d, base)).toEqual({
+    expect(await bancos.revisar(d, base, ctx())).toEqual({
       requiereRevision: true,
       motivos: ["sale del PDF de participantes: 012 BBVA MEXICO"],
     });
@@ -287,7 +287,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
     });
     const d = diferenciar(base, registros, (b) => b.codigo);
     expect(d.cambios).toHaveLength(1);
-    expect(bancos.revisar(d, base)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await bancos.revisar(d, base, ctx())).toEqual({ requiereRevision: false, motivos: [] });
   });
 
   it("no empareja por el nombre anterior si hoy es el nombre de otro código", async () => {
@@ -319,7 +319,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       participacion: "directa",
     });
     const d = diferenciar(dia1, dia2, (b) => b.codigo);
-    expect(bancos.revisar(d, dia1)).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await bancos.revisar(d, dia1, ctx())).toEqual({ requiereRevision: false, motivos: [] });
   });
 
   it("empareja con un nombre de hace varios periodos", async () => {
@@ -435,41 +435,42 @@ describe("revisar", () => {
     bancos.revisar(
       diferenciar(antes, despues, (b) => b.codigo),
       antes,
+      ctx(),
     );
 
-  it("un alta pide revisión", () => {
-    expect(rev([mk("001")], [mk("001"), mk("002")])).toEqual({
+  it("un alta pide revisión", async () => {
+    expect(await rev([mk("001")], [mk("001"), mk("002")])).toEqual({
       requiereRevision: true,
       motivos: ["alta: 002 B002"],
     });
   });
 
-  it("2 cambios de nombre no, 4 sí", () => {
+  it("2 cambios de nombre no, 4 sí", async () => {
     const a = ["001", "002", "003", "004"].map((c) => mk(c));
     const ren = (b: Banco) => ({ ...b, nombre_corto: `${b.nombre_corto}X` });
-    expect(rev(a, [ren(a[0] as Banco), ren(a[1] as Banco), ...a.slice(2)]).requiereRevision).toBe(
-      false,
-    );
-    const r = rev(a, a.map(ren));
+    expect(
+      (await rev(a, [ren(a[0] as Banco), ren(a[1] as Banco), ...a.slice(2)])).requiereRevision,
+    ).toBe(false);
+    const r = await rev(a, a.map(ren));
     expect(r.requiereRevision).toBe(true);
     expect(r.motivos).toEqual(["más de 3 cambios (4)"]);
   });
 
-  it("un participante directo que sigue activo y sale del PDF pide revisión", () => {
+  it("un participante directo que sigue activo y sale del PDF pide revisión", async () => {
     const a = mk("012", { participacion: "directa", razon_social: "R", sector: "S" });
     const sin = { ...a, participacion: "no_confirmada" as const, razon_social: null, sector: null };
-    expect(rev([a], [sin])).toEqual({
+    expect(await rev([a], [sin])).toEqual({
       requiereRevision: true,
       motivos: ["sale del PDF de participantes: 012 B012"],
     });
   });
 
-  it("baja y reactivación piden revisión; eliminar también", () => {
+  it("baja y reactivación piden revisión; eliminar también", async () => {
     const a = mk("001");
     const baja = { ...a, activo: false, baja_detectada: HOY };
-    expect(rev([a], [baja]).motivos).toEqual(["baja: 001 B001"]);
-    expect(rev([baja], [a]).motivos).toEqual(["reactivación: 001 B001"]);
-    expect(rev([a], [mk("002")]).motivos).toEqual(["alta: 002 B002", "baja: 001 B001"]);
+    expect((await rev([a], [baja])).motivos).toEqual(["baja: 001 B001"]);
+    expect((await rev([baja], [a])).motivos).toEqual(["reactivación: 001 B001"]);
+    expect((await rev([a], [mk("002")])).motivos).toEqual(["alta: 002 B002", "baja: 001 B001"]);
   });
 });
 

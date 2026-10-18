@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  type CoberturaCurada,
   diaDeLaSemana,
   esFechaIsoValida,
   type FechaISO,
@@ -9,6 +10,9 @@ import {
   type Udi,
 } from "@mexicoapi/core";
 import { z } from "zod";
+import { leerCurado } from "../curado/leer.js";
+import { PLAZOS, type PlazoCalendario, revisarPlazos } from "../curado/plazos.js";
+import { curadoDiasCnbv, DIRECTORIO_CURADO } from "../curado/registro.js";
 import { ErrorDatos } from "../errores.js";
 import { esquemaTipoCambioFix, esquemaUdi } from "../esquemas.js";
 import { anioDe } from "../fecha.js";
@@ -196,6 +200,31 @@ const repetidos = (valores: readonly string[]): string[] => {
   return [...dup];
 };
 
+/**
+ * Los días de descanso de la CNBV dentro de la cobertura de su calendario (la del plazo
+ * `general`, la misma que usa la API), según el YAML curado de `raizDatos`. Sin el YAML no hay
+ * días que revisar; un YAML con problemas detiene la corrida.
+ */
+async function diasInhabilesBancarios(
+  raizDatos: string,
+  dataset: string,
+): Promise<(fecha: FechaISO) => boolean> {
+  const lectura = await leerCurado(curadoDiasCnbv, raizDatos);
+  if (lectura === null) return () => false;
+  if (lectura.documento === null) {
+    throw new ErrorDatos(
+      `${DIRECTORIO_CURADO}/${curadoDiasCnbv.yaml} tiene problemas: ${lectura.problemas.join("; ")}`,
+      dataset,
+    );
+  }
+  const { cobertura, registros } = lectura.documento;
+  // leerCurado ya revisó la cobertura y los plazos del calendario (invariantesDias).
+  const { plazos } = revisarPlazos(PLAZOS.cnbv, cobertura as CoberturaCurada, registros);
+  const { desde, hasta } = (plazos.general as PlazoCalendario).cobertura;
+  const fechas = new Set(registros.map((r) => r.fecha));
+  return (fecha) => fecha >= desde && fecha <= hasta && fechas.has(fecha);
+}
+
 interface ConfigSidof<T extends { valor: string }> {
   id: string;
   directorio: string;
@@ -218,6 +247,11 @@ interface ConfigSidof<T extends { valor: string }> {
    * (la consulta del FIX supone que no las hay); null si la serie los incluye.
    */
   finDeSemana: string | null;
+  /**
+   * Si la consulta supone que no hay publicación en los días de descanso de la CNBV (dentro de
+   * su calendario), el motivo para un alta entre semana en uno de ellos; null si no aplica.
+   */
+  diaInhabilBancario: string | null;
   /** Variación máxima contra el registro anterior: `numerador / denominador`. */
   umbral: { numerador: bigint; denominador: bigint; texto: string };
   /** Cómo se nombra un registro y su anterior en los motivos. */
@@ -356,7 +390,7 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       return fallas;
     },
 
-    revisar(diferencias, anterior): Revision {
+    async revisar(diferencias, anterior, ctx): Promise<Revision> {
       const motivos: string[] = [];
       for (const x of diferencias.cambios) {
         motivos.push(`cambió el valor de ${x.clave}: ${x.antes.valor} → ${x.despues.valor}`);
@@ -373,6 +407,11 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       for (const r of anterior) {
         if (c.fechaDe(r) > ultimaPublicada) ultimaPublicada = c.fechaDe(r);
       }
+      // La consulta del FIX da por hecho que no hay publicación en los feriados bancarios.
+      const esInhabilBancario =
+        c.diaInhabilBancario !== null && diferencias.altas.length > 0
+          ? await diasInhabilesBancarios(ctx.raizDatos, c.id)
+          : () => false;
       for (const a of diferencias.altas) {
         const fecha = c.fechaDe(a);
         if (fecha < ultimaPublicada) {
@@ -381,6 +420,8 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
         const dia = diaDeLaSemana(fecha);
         if (c.finDeSemana !== null && (dia === 0 || dia === 6)) {
           motivos.push(`${c.finDeSemana}: ${fecha}`);
+        } else if (esInhabilBancario(fecha)) {
+          motivos.push(`${c.diaInhabilBancario}: ${fecha}`);
         }
       }
 
@@ -422,6 +463,7 @@ export const tipoCambioFix: DefinicionDataset<TipoCambioFix> = crearDatasetSidof
   diaria: false,
   porAdelantado: false,
   finDeSemana: "FIX publicado en fin de semana",
+  diaInhabilBancario: "FIX publicado en día inhábil bancario",
   maximoAltas: 31,
   umbral: { numerador: 5n, denominador: 100n, texto: "5 %" },
   nombre: "el FIX",
@@ -443,6 +485,7 @@ export const udis: DefinicionDataset<Udi> = crearDatasetSidof({
   diaria: true,
   porAdelantado: true,
   finDeSemana: null,
+  diaInhabilBancario: null,
   maximoAltas: 45,
   umbral: { numerador: 5n, denominador: 1000n, texto: "0.5 %" },
   nombre: "la UDI",
