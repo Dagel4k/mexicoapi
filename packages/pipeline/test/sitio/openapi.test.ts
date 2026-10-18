@@ -151,22 +151,24 @@ describe("documento OpenAPI", () => {
   it("declara los códigos de error por ruta", () => {
     const codigos = (ruta: string) =>
       Object.keys(operaciones.find((o) => o.ruta === ruta)?.op.responses ?? {}).sort();
-    expect(codigos("/v1/estados/{cve_ent}")).toEqual(["200", "400", "404", "405", "429", "500"]);
+    expect(codigos("/v1/estados/{cve_ent}")).toEqual([
+      "200",
+      "304",
+      "400",
+      "404",
+      "405",
+      "429",
+      "500",
+    ]);
     expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "400", "405", "429", "500"]);
     expect(codigos("/v1/dias-habiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
     expect(codigos("/v1/dias-inhabiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
-    const sinParametros = [
-      "/",
-      "/v1",
-      "/v1/estados",
-      "/v1/municipios",
-      "/v1/bancos",
-      "/v1/status",
-      "/v1/openapi.json",
-    ];
-    for (const ruta of sinParametros) {
+    for (const ruta of ["/", "/v1", "/v1/status"]) {
       expect(codigos(ruta), ruta).toEqual(["200", "400", "405", "429", "500"]);
+    }
+    for (const ruta of ["/v1/estados", "/v1/municipios", "/v1/bancos", "/v1/openapi.json"]) {
+      expect(codigos(ruta), ruta).toEqual(["200", "304", "400", "405", "429", "500"]);
     }
   });
 
@@ -309,6 +311,87 @@ describe("documento OpenAPI", () => {
       "parametro-faltante",
       "parametro-invalido",
     ]);
+  });
+
+  it("Problema.type lista cada tipo con su status y su título", () => {
+    const descripcion = doc.components.schemas.Problema.properties.type.description as string;
+    const listados = Object.fromEntries(
+      [...descripcion.matchAll(/([a-z-]+) \((\d{3}), ([^;)]+)\)/g)].map(
+        ([, tipo, status, title]) => [tipo, { title, status: Number(status) }],
+      ),
+    );
+    expect(listados).toEqual(PROBLEMAS);
+  });
+
+  it("publica esquemas abiertos: ningún objeto lleva additionalProperties: false", () => {
+    const cerrados: string[] = [];
+    let conPropiedades = 0;
+    const recorrer = (valor: unknown, camino: string): void => {
+      if (Array.isArray(valor)) {
+        valor.forEach((v, i) => {
+          recorrer(v, `${camino}/${i}`);
+        });
+      } else if (valor !== null && typeof valor === "object") {
+        const objeto = valor as Obj;
+        if ("properties" in objeto) conPropiedades += 1;
+        if (objeto.additionalProperties === false) cerrados.push(camino);
+        for (const [k, v] of Object.entries(objeto)) recorrer(v, `${camino}/${k}`);
+      }
+    };
+    recorrer(JSON.parse(JSON.stringify(doc)), "#");
+    expect(cerrados).toEqual([]);
+    expect(conPropiedades).toBeGreaterThan(10);
+  });
+
+  it("la 405 dice los métodos permitidos y trae Allow; la 429 trae Retry-After", () => {
+    const { MetodoNoPermitido, DemasiadasPeticiones } = doc.components.responses;
+    expect(MetodoNoPermitido.description).toBe("Métodos permitidos: GET, HEAD y OPTIONS.");
+    expect(MetodoNoPermitido.headers.Allow).toMatchObject({
+      required: true,
+      schema: { type: "string" },
+      example: "GET, HEAD, OPTIONS",
+    });
+    expect(DemasiadasPeticiones.headers["Retry-After"]).toMatchObject({
+      required: true,
+      schema: { type: "integer", minimum: 0 },
+      example: 60,
+    });
+  });
+
+  it("las rutas que sirven shards documentan ETag, If-None-Match y la 304 sin cuerpo", () => {
+    const shards = [
+      "/v1/estados",
+      "/v1/estados/{cve_ent}",
+      "/v1/estados/{cve_ent}/municipios",
+      "/v1/municipios",
+      "/v1/municipios/{cvegeo}",
+      "/v1/bancos",
+      "/v1/bancos/{codigo}",
+      "/v1/openapi.json",
+    ];
+    const conEtag = operaciones
+      .filter((o) => o.op.responses["304"] !== undefined)
+      .map((o) => o.ruta);
+    expect(conEtag).toEqual(shards);
+    for (const { ruta, op } of operaciones) {
+      const condicion = ((op.parameters ?? []) as Obj[]).filter((p) => p.in === "header");
+      if (!shards.includes(ruta)) {
+        expect(condicion, ruta).toEqual([]);
+        expect(op.responses["200"].headers, ruta).toBeUndefined();
+        continue;
+      }
+      expect(condicion, ruta).toEqual([
+        expect.objectContaining({
+          name: "If-None-Match",
+          required: false,
+          schema: { type: "string" },
+        }),
+      ]);
+      expect(op.responses["200"].headers.ETag, ruta).toMatchObject({ schema: { type: "string" } });
+      const r304 = resolverRef(op.responses["304"].$ref) as Obj;
+      expect(r304.content, ruta).toBeUndefined();
+      expect(r304.headers.ETag, ruta).toMatchObject({ required: true, schema: { type: "string" } });
+    }
   });
 
   it("Problema declara las extensiones opcionales", () => {

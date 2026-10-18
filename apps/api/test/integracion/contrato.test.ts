@@ -1,11 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { PROBLEMAS } from "../../src/problemas.js";
 import { BASE_PROBLEMAS, PUBLICO, pedir, tipoDeMedio } from "./ayudas.js";
 
 interface Parametro {
   name: string;
-  in: "path" | "query";
+  in: "path" | "query" | "header";
   required?: boolean;
   example?: string;
   schema: { pattern?: string; enum?: string[] };
@@ -13,6 +14,7 @@ interface Parametro {
 
 interface Respuesta {
   $ref?: string;
+  headers?: Record<string, { required?: boolean }>;
   content?: Record<string, { schema: unknown }>;
 }
 
@@ -41,10 +43,27 @@ const OPERACIONES: OperacionDoc[] = Object.entries(doc.paths).flatMap(([ruta, it
   Object.entries(item).map(([metodo, op]) => ({ ruta, metodo, op })),
 );
 
+/**
+ * Copia cerrada del documento: a todo objeto con `properties` y sin `additionalProperties` le
+ * pone `false`. El documento publica esquemas abiertos (un campo nuevo no rompe a los clientes);
+ * aquí el Worker no puede mandar nada que el documento no declare.
+ */
+function cerrar(valor: unknown): unknown {
+  if (Array.isArray(valor)) return valor.map(cerrar);
+  if (valor === null || typeof valor !== "object") return valor;
+  const copia: Record<string, unknown> = {};
+  for (const [clave, hijo] of Object.entries(valor)) copia[clave] = cerrar(hijo);
+  if ("properties" in copia && !("additionalProperties" in copia)) {
+    copia.additionalProperties = false;
+  }
+  return copia;
+}
+
 // `validateFormats: false`: los instantes declaran `format: date-time` y además un `pattern`
 // que sí se valida.
-const ajv = new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
-ajv.addSchema(doc, "openapi");
+const nuevoAjv = () => new Ajv2020({ strict: false, allErrors: true, validateFormats: false });
+const ajv = nuevoAjv();
+ajv.addSchema(cerrar(doc) as object, "openapi");
 
 /** Puntero JSON (RFC 6901) dentro del documento, escapado para ir en el fragmento de la URI. */
 const puntero = (...partes: string[]): string =>
@@ -212,6 +231,11 @@ async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void
   if (declarada === undefined) {
     throw new Error(`${o.ruta} no declara la respuesta ${estado}.`);
   }
+  for (const [nombre, encabezado] of Object.entries(declarada.respuesta.headers ?? {})) {
+    if (encabezado.required === true) {
+      expect(respuesta.headers.get(nombre), `${o.ruta} ${estado} ${nombre}`).not.toBeNull();
+    }
+  }
   const tipo = tipoDeMedio(respuesta);
   expect(Object.keys(declarada.respuesta.content ?? {})).toContain(tipo);
 
@@ -262,6 +286,88 @@ describe("documento OpenAPI del build", () => {
       return o.op.responses[String(c.estado)] === undefined;
     }).map((c) => `${c.ruta} ${c.estado}`);
     expect(sinDeclarar).toEqual([]);
+  });
+
+  it("el documento publica esquemas abiertos; la copia cerrada rechaza un campo de más", async () => {
+    expect(texto).not.toContain('"additionalProperties": false');
+    const abierto = nuevoAjv();
+    abierto.addSchema(doc, "openapi");
+    const esquema = puntero(
+      "paths",
+      "/v1/estados/{cve_ent}",
+      "get",
+      "responses",
+      "200",
+      "content",
+      "application/json",
+      "schema",
+    );
+    const respuesta = await pedir("/v1/estados/25");
+    const cuerpo = (await respuesta.json()) as { data: Record<string, unknown> };
+    const conExtra = { ...cuerpo, data: { ...cuerpo.data, campo_nuevo: 1 } };
+    expect(ajv.getSchema(esquema)?.(cuerpo)).toBe(true);
+    expect(ajv.getSchema(esquema)?.(conExtra)).toBe(false);
+    expect(ajv.getSchema(esquema)?.({ ...cuerpo, otro: 1 })).toBe(false);
+    expect(abierto.getSchema(esquema)?.(conExtra)).toBe(true);
+  });
+
+  it("los tipos de problema del documento son los del Worker, con el mismo status y título", () => {
+    const esquemas = (doc.components as { schemas: Record<string, unknown> }).schemas;
+    const problema = esquemas.Problema as { properties: { type: { description: string } } };
+    const descripcion = problema.properties.type.description;
+    expect(descripcion).toContain(`${BASE_PROBLEMAS}<tipo>`);
+    const listados = Object.fromEntries(
+      [...descripcion.matchAll(/([a-z-]+) \((\d{3}), ([^;)]+)\)/g)].map(
+        ([, tipo, status, title]) => [tipo, { title, status: Number(status) }],
+      ),
+    );
+    expect(listados).toEqual(PROBLEMAS);
+  });
+});
+
+describe("ETag y 304 según el documento", () => {
+  const conEtag = OPERACIONES.filter((o) => o.op.responses["304"] !== undefined);
+
+  it("las rutas de shards declaran 304", () => {
+    expect(conEtag.map((o) => o.ruta)).toEqual(
+      expect.arrayContaining(["/v1/estados/{cve_ent}", "/v1/bancos/{codigo}", "/v1/openapi.json"]),
+    );
+  });
+
+  it.each(conEtag.map((o) => ({ ruta: o.ruta, o })))(
+    "$ruta: el ETag en If-None-Match da 304 sin cuerpo, como declara",
+    async ({ o }) => {
+      const ruta = ejemplo(o.ruta, o.op);
+      expect(
+        (o.op.parameters ?? []).filter((p) => p.in === "header").map((p) => p.name),
+        o.ruta,
+      ).toEqual(["If-None-Match"]);
+      const declarada = respuestaDeclarada(o, 304);
+      expect(declarada?.respuesta.content).toBeUndefined();
+
+      const primera = await pedir(ruta);
+      await primera.arrayBuffer();
+      const etag = primera.headers.get("ETag");
+      expect(etag, ruta).not.toBeNull();
+      const condicional = await pedir(ruta, { headers: { "If-None-Match": etag as string } });
+      expect(condicional.status, ruta).toBe(304);
+      expect(await condicional.text()).toBe("");
+      for (const nombre of Object.keys(declarada?.respuesta.headers ?? {})) {
+        expect(condicional.headers.get(nombre), `${ruta} ${nombre}`).not.toBeNull();
+      }
+    },
+  );
+
+  it.each(
+    OPERACIONES.filter((o) => o.op.responses["304"] === undefined).map((o) => ({
+      ruta: o.ruta,
+      o,
+    })),
+  )("$ruta no declara 304 y no manda ETag", async ({ o }) => {
+    const respuesta = await pedir(ejemplo(o.ruta, o.op));
+    await respuesta.arrayBuffer();
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.headers.get("ETag")).toBeNull();
   });
 });
 
