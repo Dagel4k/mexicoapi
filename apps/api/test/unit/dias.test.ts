@@ -197,7 +197,8 @@ describe("GET /v1/dias-habiles", () => {
         .join("&");
 
     const DETALLES: Record<string, string> = {
-      autoridad: "Autoridades disponibles: lft.",
+      autoridad: "Autoridades disponibles: lft, cnbv y sat.",
+      tipo_plazo: "El tipo de plazo (tipo_plazo) debe ser general o declaraciones_pagos.",
       desde: "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
       dias: "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
       permitir_incompleto: "El parámetro permitir_incompleto debe ser true o false.",
@@ -221,7 +222,7 @@ describe("GET /v1/dias-habiles", () => {
         "2026%2F11%2F13",
         "%EF%BC%92026-11-13",
       ].map((v) => [con({ desde: v }), "desde", DETALLES.desde as string] as const),
-      ...["sat", "cnbv", "LFT", "lft%20", "%20lft"].map(
+      ...["SAT", "Cnbv", "LFT", "lft%20", "%20lft", "banxico", "lft,sat"].map(
         (v) => [con({ autoridad: v }), "autoridad", DETALLES.autoridad as string] as const,
       ),
       ...["1", "0", "TRUE", "si", "yes"].map(
@@ -232,12 +233,41 @@ describe("GET /v1/dias-habiles", () => {
             DETALLES.permitir_incompleto as string,
           ] as const,
       ),
+      ...["general%20", "Declaraciones_pagos", "declaraciones", "anual"].map(
+        (v) =>
+          [
+            `${con({ autoridad: "sat" })}&tipo_plazo=${v}`,
+            "tipo_plazo",
+            DETALLES.tipo_plazo as string,
+          ] as const,
+      ),
+      // Con lft o cnbv no hay tipos de plazo: el SAT es el único que distingue declaraciones.
+      ...["lft", "cnbv"].flatMap((autoridad) =>
+        ["general", "declaraciones_pagos"].map(
+          (v) =>
+            [
+              `${con({ autoridad })}&tipo_plazo=${v}`,
+              "tipo_plazo",
+              "El parámetro tipo_plazo solo se acepta con autoridad=sat.",
+            ] as const,
+        ),
+      ),
       ...["autoridad", "desde", "dias", "permitir_incompleto"].map(
         (p) => [con({ [p]: "" }), p, `El parámetro ${p} está vacío.`] as const,
       ),
       [`${con({})}&dias=2`, "dias", "El parámetro dias aparece más de una vez."],
       [`${con({})}&autoridad=lft`, "autoridad", "El parámetro autoridad aparece más de una vez."],
       [`${con({})}&desde=2026-11-13`, "desde", "El parámetro desde aparece más de una vez."],
+      [
+        `${con({ autoridad: "sat" })}&tipo_plazo=general&tipo_plazo=general`,
+        "tipo_plazo",
+        "El parámetro tipo_plazo aparece más de una vez.",
+      ],
+      [
+        `${con({ autoridad: "sat" })}&tipo_plazo=`,
+        "tipo_plazo",
+        "El parámetro tipo_plazo está vacío.",
+      ],
     ];
 
     for (const [query, parametro, detalle] of casos) {
@@ -286,6 +316,20 @@ describe("GET /v1/dias-habiles", () => {
       });
     }
 
+    it("con autoridad=sat y sin tipo_plazo da 400 parametro-faltante en tipo_plazo", async () => {
+      const r = await pedir(habiles(con({ autoridad: "sat" })));
+      expect(r.status).toBe(400);
+      expect(r.headers.get("cache-control")).toBe("no-store");
+      expect(await r.json()).toEqual({
+        type: `${TIPO}parametro-faltante`,
+        title: "Falta un parámetro obligatorio",
+        status: 400,
+        detail: "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
+        instance: "/v1/dias-habiles",
+        parametro: "tipo_plazo",
+      });
+    });
+
     it("sin ningún parámetro da parametro-faltante en autoridad", async () => {
       const r = await pedir("/v1/dias-habiles");
       expect(await r.json()).toMatchObject({
@@ -314,8 +358,14 @@ describe("GET /v1/dias-inhabiles", () => {
     expect(r.headers.get("content-type")).toBe("application/json; charset=utf-8");
     expect(r.headers.get("cache-control")).toBe(CACHE_DATOS);
     expect(seguridadDe(r)).toEqual(SEGURIDAD_ESPERADA);
-    const cuerpo = (await r.json()) as { data: Array<{ fecha: string }>; meta: unknown };
-    expect(Object.keys(cuerpo)).toEqual(["data", "meta"]);
+    const cuerpo = (await r.json()) as {
+      data: Array<{ fecha: string }>;
+      advertencias: unknown;
+      meta: unknown;
+    };
+    expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "meta"]);
+    // La LFT se calcula por regla: la lista siempre está completa.
+    expect(cuerpo.advertencias).toEqual([]);
     expect(cuerpo.data.map((d) => d.fecha)).toEqual([
       "2026-01-01",
       "2026-02-02",
@@ -379,9 +429,11 @@ describe("GET /v1/dias-inhabiles", () => {
     }
   });
 
-  it("autoridad distinta de lft, faltante, repetida o desconocida da 400 con el parámetro", async () => {
+  it("autoridad desconocida, faltante, repetida o con parámetros de más da 400 con el parámetro", async () => {
     for (const [query, tipo, parametro] of [
-      ["autoridad=sat&anio=2026", "parametro-invalido", "autoridad"],
+      ["autoridad=banxico&anio=2026", "parametro-invalido", "autoridad"],
+      ["autoridad=lft&anio=2026&autoridad=sat", "parametro-invalido", "autoridad"],
+      ["autoridad=sat&anio=2026&tipo_plazo=general", "parametro-desconocido", "tipo_plazo"],
       ["anio=2026", "parametro-faltante", "autoridad"],
       ["autoridad=lft", "parametro-faltante", "anio"],
       ["autoridad=lft&anio=2026&anio=2027", "parametro-invalido", "anio"],
@@ -392,7 +444,9 @@ describe("GET /v1/dias-inhabiles", () => {
       expect(r.status, query).toBe(400);
       expect(await r.json(), query).toMatchObject({ type: `${TIPO}${tipo}`, parametro });
     }
-    const sat = await pedir(inhabiles("autoridad=sat&anio=2026"));
-    expect(await sat.json()).toMatchObject({ detail: "Autoridades disponibles: lft." });
+    const otra = await pedir(inhabiles("autoridad=banxico&anio=2026"));
+    expect(await otra.json()).toMatchObject({
+      detail: "Autoridades disponibles: lft, cnbv y sat.",
+    });
   });
 });

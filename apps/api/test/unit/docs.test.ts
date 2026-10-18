@@ -3,6 +3,7 @@ import { reiniciarCargas } from "../../src/cargas.js";
 import { manejar } from "../../src/index.js";
 import { PROBLEMAS, URL_DOCS, URL_PROBLEMAS } from "../../src/problemas.js";
 import { crearAssets, entornoDe, peticion } from "./ayudas.js";
+import { assetsCurados, INTERNA_CURADOS } from "./curados.js";
 
 // Los archivos de docs/ por su ruta relativa (`api/README.md`), y los directorios de data/ que
 // tienen manifiesto: de cada uno el build publica `<URL_DOCS>/datos/<directorio>.md`.
@@ -71,6 +72,7 @@ const serie = (dataset: string, desde: string, hasta: string) => ({
 });
 
 const ASSETS = {
+  ...assetsCurados(),
   "/v1/_internos/meta.json": {
     cuerpo: JSON.stringify({
       datasets: {
@@ -78,6 +80,7 @@ const ASSETS = {
         "tipo-cambio.fix": serie("tipo-cambio.fix", "2026-10-16", "2026-10-16"),
         udis: serie("udis", "2026-10-16", "2026-10-16"),
       },
+      curados: INTERNA_CURADOS.curados,
     }),
   },
   "/v1/_internos/fix/2026.json": {
@@ -125,6 +128,10 @@ describe("enlaces a la documentación", () => {
       await docsDe("/v1/clabe/002010077777777771"),
       await docsDe("/v1/dias-habiles?autoridad=lft&desde=2026-01-05&dias=1"),
       await docsDe("/v1/dias-inhabiles?autoridad=lft&anio=2026"),
+      await docsDe("/v1/dias-habiles?autoridad=cnbv&desde=2026-01-05&dias=1"),
+      await docsDe("/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-01-05&dias=1"),
+      await docsDe("/v1/dias-inhabiles?autoridad=sat&anio=2026"),
+      await docsDe("/v1/constantes/uma?fecha=2026-01-05"),
       await docsDe("/v1/tipo-cambio/fix?publicado=2026-10-16"),
       await docsDe("/v1/tipo-cambio/fix?operacion=2026-10-17"),
       await docsDe("/v1/tipo-cambio/fix/ultimo"),
@@ -135,6 +142,11 @@ describe("enlaces a la documentación", () => {
       `${URL_DOCS}/api/README.md#clabe`,
       `${URL_DOCS}/api/README.md#dias-habiles`,
       `${URL_DOCS}/api/README.md#dias-inhabiles`,
+      `${URL_DOCS}/api/README.md#dias-habiles`,
+      `${URL_DOCS}/api/README.md#dias-habiles`,
+      `${URL_DOCS}/api/README.md#dias-inhabiles`,
+      // La UMA por fecha responde con la meta de su dataset, igual que sus shards.
+      `${URL_DOCS}/datos/constantes-uma.md`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
