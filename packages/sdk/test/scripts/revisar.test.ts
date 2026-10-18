@@ -10,6 +10,7 @@ import {
   especificadores,
   grafoDeModulos,
   IMPORT_DINAMICO,
+  importaciones,
   medirEntrada,
 } from "../../scripts/revisar.ts";
 
@@ -111,6 +112,23 @@ describe("especificadores", () => {
   });
 });
 
+describe("importaciones", () => {
+  it("dice cuáles imports son dinámicos, en orden de aparición", () => {
+    const codigo = [
+      'import { a } from "./a.js";',
+      'const b = () => import("./b.js");',
+      'export * from "./c.js";',
+      "const d = import(ruta);",
+    ].join("\n");
+    expect(importaciones(codigo)).toEqual([
+      { especificador: "./a.js", dinamico: false },
+      { especificador: "./b.js", dinamico: true },
+      { especificador: "./c.js", dinamico: false },
+      { especificador: IMPORT_DINAMICO, dinamico: true },
+    ]);
+  });
+});
+
 describe("esModuloDeNode", () => {
   it.each(["node:fs", "node:sqlite", "fs", "fs/promises", "path/posix", "process", "zlib"])(
     "%s es de Node",
@@ -153,6 +171,29 @@ describe("grafoDeModulos", () => {
     ]);
   });
 
+  it("con dinamicos: false sigue solo los imports estáticos", async () => {
+    await escribir(
+      "dist/index.js",
+      'import "./a.js";\nexport const b = () => import("./b.js");\nconst c = () => import("node:fs");\n',
+    );
+    await escribir("dist/a.js", 'export const a = () => import("./c.js");\nimport "fs";\n');
+    await escribir("dist/b.js", 'import "./a.js";\n');
+    await escribir("dist/c.js", "export {};\n");
+
+    const estatico = await grafoDeModulos(join(dir, "dist/index.js"), { dinamicos: false });
+    const completo = await grafoDeModulos(join(dir, "dist/index.js"));
+
+    expect(estatico.archivos).toEqual([join(dir, "dist/index.js"), join(dir, "dist/a.js")]);
+    expect(estatico.externas).toEqual([{ archivo: join(dir, "dist/a.js"), especificador: "fs" }]);
+    expect(completo.archivos).toEqual([
+      join(dir, "dist/index.js"),
+      join(dir, "dist/a.js"),
+      join(dir, "dist/b.js"),
+      join(dir, "dist/c.js"),
+    ]);
+    expect(completo.externas.map((e) => e.especificador)).toEqual(["node:fs", "fs"]);
+  });
+
   it("falla si un import relativo no existe", async () => {
     await escribir("dist/index.js", 'export * from "./falta.js";\n');
     await expect(grafoDeModulos(join(dir, "dist/index.js"))).rejects.toThrow(
@@ -178,6 +219,18 @@ describe("medirEntrada", () => {
     expect(medida.gzip).toBe(gzipSync(Buffer.concat([bytesIndex, bytesA])).length);
     expect(medida.gzip).toBeLessThan(medida.bytes);
     expect(medida.externas).toEqual([]);
+  });
+
+  it("con dinamicos: false deja fuera lo que se carga con import()", async () => {
+    await escribir("dist/index.js", 'export const a = () => import("./a.js");\n');
+    await escribir("dist/a.js", `export const a = ${JSON.stringify("México ".repeat(50))};\n`);
+
+    const medida = await medirEntrada(join(dir, "dist/index.js"), { dinamicos: false });
+
+    const bytesIndex = await readFile(join(dir, "dist/index.js"));
+    expect(medida.archivos).toEqual([join(dir, "dist/index.js")]);
+    expect(medida.bytes).toBe(bytesIndex.length);
+    expect(medida.gzip).toBe(gzipSync(bytesIndex).length);
   });
 });
 

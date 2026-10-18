@@ -45,20 +45,31 @@ export interface Medida extends Grafo {
   gzip: number;
 }
 
+export interface ImportEnCodigo {
+  especificador: string;
+  /** Un import() se carga al llamarlo; los demás, al cargar el archivo. */
+  dinamico: boolean;
+}
+
 /**
  * Módulos que pide un archivo ESM compilado, en orden de aparición: imports, reexports e
  * import() literales. Un import() con una expresión aparece como `IMPORT_DINAMICO`, porque no se
  * puede saber qué carga. Peca de cauto: un comentario con forma de import también cuenta.
  */
-export function especificadores(codigo: string): string[] {
-  const encontrados: [number, string][] = [];
+export function importaciones(codigo: string): ImportEnCodigo[] {
+  const encontrados: [number, ImportEnCodigo][] = [];
   for (const m of codigo.matchAll(ESTATICO)) {
-    encontrados.push([m.index, m[2] as string]);
+    encontrados.push([m.index, { especificador: m[2] as string, dinamico: false }]);
   }
   for (const m of codigo.matchAll(DINAMICO)) {
-    encontrados.push([m.index, m[2] ?? IMPORT_DINAMICO]);
+    encontrados.push([m.index, { especificador: m[2] ?? IMPORT_DINAMICO, dinamico: true }]);
   }
-  return encontrados.sort((a, b) => a[0] - b[0]).map(([, especificador]) => especificador);
+  return encontrados.sort((a, b) => a[0] - b[0]).map(([, importacion]) => importacion);
+}
+
+/** Los especificadores de `importaciones`, estáticos y dinámicos. */
+export function especificadores(codigo: string): string[] {
+  return importaciones(codigo).map((i) => i.especificador);
 }
 
 export function esModuloDeNode(especificador: string): boolean {
@@ -78,14 +89,24 @@ async function existe(ruta: string): Promise<boolean> {
   }
 }
 
+export interface OpcionesGrafo {
+  /** Con `false`, no sigue los import(): da lo que se carga al importar la entrada. */
+  dinamicos?: boolean;
+}
+
 /** Recorre los imports relativos desde `entrada`; los demás quedan en `externas`. */
-export async function grafoDeModulos(entrada: string): Promise<Grafo> {
+export async function grafoDeModulos(
+  entrada: string,
+  opciones: OpcionesGrafo = {},
+): Promise<Grafo> {
+  const dinamicos = opciones.dinamicos ?? true;
   const archivos = [resolve(entrada)];
   const vistos = new Set(archivos);
   const externas: Importacion[] = [];
   for (let i = 0; i < archivos.length; i++) {
     const archivo = archivos[i] as string;
-    for (const especificador of especificadores(await readFile(archivo, "utf8"))) {
+    for (const { especificador, dinamico } of importaciones(await readFile(archivo, "utf8"))) {
+      if (dinamico && !dinamicos) continue;
       if (!esRelativo(especificador)) {
         externas.push({ archivo, especificador });
         continue;
@@ -103,8 +124,8 @@ export async function grafoDeModulos(entrada: string): Promise<Grafo> {
 }
 
 /** Grafo de `entrada` con sus bytes y su gzip, medido como dice `LIMITE_GZIP_PRINCIPAL`. */
-export async function medirEntrada(entrada: string): Promise<Medida> {
-  const grafo = await grafoDeModulos(entrada);
+export async function medirEntrada(entrada: string, opciones: OpcionesGrafo = {}): Promise<Medida> {
+  const grafo = await grafoDeModulos(entrada, opciones);
   const todo = Buffer.concat(await Promise.all(grafo.archivos.map((a) => readFile(a))));
   return { ...grafo, bytes: todo.length, gzip: gzipSync(todo).length };
 }
