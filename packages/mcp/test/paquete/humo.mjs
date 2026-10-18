@@ -200,6 +200,8 @@ enviar({
 const cp = await recibir();
 equal(cp.id, 5);
 equal(cp.result.isError, true);
+// Todo error empieza con su tipo de problema: sin catálogo, el dato no está disponible todavía.
+ok(cp.result.content[0].text.startsWith("[dato-no-disponible] "), cp.result.content[0].text);
 ok(cp.result.content[0].text.includes("npx mexicoapi sepomex sync"), cp.result.content[0].text);
 ok(!cp.result.content[0].text.includes(cacheVacia));
 paso("tools/call codigo_postal sin catálogo");
