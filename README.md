@@ -44,10 +44,15 @@ Los códigos postales de SEPOMEX no se pueden redistribuir. El paquete incluirá
 | Bancos, con historial | `data/bancos/` | Banxico | diario | [bancos](docs/datos/bancos.md) |
 | Tipo de cambio FIX | `data/tipo-cambio-fix/` | DOF (Banxico) | diario | [FIX](docs/datos/tipo-cambio-fix.md) |
 | UDIS | `data/udis/` | DOF (Banxico) | diario | [UDIS](docs/datos/udis.md) |
+| Días inhábiles de la CNBV | `data/dias-inhabiles-cnbv/` | CNBV, DOF | a mano, con cada publicación | [días CNBV](docs/datos/dias-inhabiles-cnbv.md) |
+| Días inhábiles del SAT | `data/dias-inhabiles-sat/` | CFF y RMF, DOF | a mano, con cada publicación | [días SAT](docs/datos/dias-inhabiles-sat.md) |
+| UMA | `data/constantes-uma/` | INEGI, DOF | a mano, cada año | [UMA](docs/datos/constantes-uma.md) |
+| Salario mínimo | `data/constantes-salario-minimo/` | CONASAMI, DOF | a mano, cada año | [salario mínimo](docs/datos/constantes-salario-minimo.md) |
+| Tarifas de ISR | `data/isr-tarifas/` | Anexo 8 de la RMF, DOF | a mano, cada año | [tarifas de ISR](docs/datos/isr-tarifas.md) |
 
 Además, la API calcula la validación de CLABE y los días hábiles con el calendario de la Ley Federal del Trabajo.
 
-Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los archivos fuente en `raw/` (los descargados tal cual y, en bancos, la compilación mensual del CEP). Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
+Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los archivos fuente en `raw/` (los descargados tal cual y, en bancos, la compilación mensual del CEP). Los datos curados (días inhábiles, UMA, salario mínimo e ISR) no tienen `raw/`: se transcriben del DOF a `data/curado/`, un YAML por dataset con la cita literal de cada valor, y el comando `curar` genera su carpeta. Los términos de uso de cada fuente están en [DATA_LICENSE.md](DATA_LICENSE.md).
 
 ## API
 

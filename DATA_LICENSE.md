@@ -51,3 +51,31 @@ Para decodificar una CLABE antigua conviene revisar el historial de ese código 
 - Términos: publicación oficial en el DOF; el Banco de México determina estos valores y autoriza su reproducción citando la fuente. Ver https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html.
 - Cita: "Banco de México. Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana" y "Banco de México. Valor de la unidad de inversión". Ambas, "Diario Oficial de la Federación, consultado en el SIDOF: https://sidof.segob.gob.mx/".
 - Qué hace MéxicoAPI: guarda los valores como texto con sus decimales (4 en el FIX, 6 en las UDIS), los ordena por fecha y conserva la respuesta de la fuente sin cambios en `raw/`, un archivo por año. En el FIX, `fecha_publicacion` es el día de publicación en el DOF. La API aplica la regla del artículo 20 del Código Fiscal de la Federación para decir qué FIX corresponde a una operación; los archivos de datos no la aplican.
+
+## Datos curados del DOF
+
+- Datasets: `data/dias-inhabiles-cnbv/`, `data/dias-inhabiles-sat/`, `data/constantes-uma/`, `data/constantes-salario-minimo/` y `data/isr-tarifas/`.
+- Qué hace MéxicoAPI: una persona transcribe los valores del Diario Oficial de la Federación a un YAML por dataset en `data/curado/`, con la URL, la fecha de publicación y el fragmento literal que respalda cada valor. El comando `curar` genera el JSON y el manifiesto, y `verificar` exige que correspondan al YAML y revisa la aritmética de cada valor. Los montos se guardan como texto con dos decimales y sin separador de miles; los fragmentos conservan las cifras como se publicaron.
+- Estos datasets no tienen `raw/`: el original es la publicación citada en cada registro, y la transcripción es el YAML versionado. El manifiesto lista una fuente por publicación, con su licencia y su cita.
+- Cada registro lleva su `fuente` con el fragmento citado. Si publicas estos datos, conserva la cita de la publicación oficial.
+
+### Textos oficiales: CNBV, CFF, RMF y Anexo 8
+
+- Datasets: `data/dias-inhabiles-cnbv/`, `data/dias-inhabiles-sat/` y `data/isr-tarifas/`.
+- Publican: la Comisión Nacional Bancaria y de Valores (disposiciones que señalan los días en que las entidades financieras deben cerrar), el Congreso de la Unión (Código Fiscal de la Federación, artículo 12, en el texto vigente que publica la Cámara de Diputados) y el SAT (Resolución Miscelánea Fiscal, regla 2.1.6, y su Anexo 8), en el DOF.
+- Términos: son textos legislativos, reglamentarios o administrativos oficiales, que no son objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII; https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf).
+- Cita: "<nombre de la publicación>. Diario Oficial de la Federación, DD/MM/AAAA. <url>"; para el CFF, "Texto vigente con la última reforma publicada en el DOF el DD/MM/AAAA". Las citas exactas están en cada `manifest.json`.
+
+### INEGI: UMA
+
+- Dataset: `data/constantes-uma/`.
+- Publica: Instituto Nacional de Estadística y Geografía (INEGI), "Unidad de medida y actualización", en el DOF cada año.
+- Términos: https://www.inegi.org.mx/inegi/terminos.html. El INEGI permite el uso libre de su información y exige darle el crédito.
+- Cita: "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, DD/MM/AAAA. <url>". Si usas estos datos, cita al INEGI como fuente y aclara que fueron procesados por MéxicoAPI.
+
+### CONASAMI: salario mínimo
+
+- Dataset: `data/constantes-salario-minimo/`.
+- Publica: el H. Consejo de Representantes de la Comisión Nacional de los Salarios Mínimos (CONASAMI), en la resolución anual que fija los salarios mínimos, publicada en el DOF.
+- Términos: la resolución es un texto administrativo oficial publicado en el DOF, que no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII). Los valores salen de la resolución, no de las series que la CONASAMI publica en otros portales.
+- Cita: "<nombre de la resolución>. Diario Oficial de la Federación, DD/MM/AAAA. <url>". Las citas exactas están en `data/constantes-salario-minimo/manifest.json`.
