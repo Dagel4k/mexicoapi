@@ -422,6 +422,20 @@ describe("ETag y 304 según el documento", () => {
 describe("respuestas del Worker contra el documento", () => {
   it.each(CASOS)("GET $ruta → $estado", validarCaso);
 
+  it("/v1/status: las series mandan la cobertura opcional que declara EstadoDataset", async () => {
+    const respuesta = await pedir("/v1/status");
+    const { data } = (await respuesta.json()) as { data: Array<Record<string, unknown>> };
+    const validar = ajv.getSchema(puntero("components", "schemas", "EstadoDataset"));
+    if (validar === undefined) throw new Error("Sin esquema EstadoDataset.");
+    for (const d of data) {
+      expect(validar(d), `${String(d.dataset)}: ${JSON.stringify(validar.errors)}`).toBe(true);
+    }
+    expect(data.filter((d) => "cobertura" in d).map((d) => d.dataset)).toEqual([
+      "tipo-cambio.fix",
+      "udis",
+    ]);
+  });
+
   it("los ejemplos explícitos son de operaciones del documento, en su ruta", () => {
     for (const [id, rutas] of Object.entries(EJEMPLOS)) {
       const o = OPERACIONES.find((x) => x.op.operationId === id);

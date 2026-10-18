@@ -64,9 +64,19 @@ function crearKv(valores: Readonly<Record<string, unknown>>, fallan: readonly st
 }
 
 async function pedir(
-  opciones: { kv?: KVNamespace; ahora?: Date | null; ruta?: string; init?: RequestInit } = {},
+  opciones: {
+    kv?: KVNamespace;
+    ahora?: Date | null;
+    ruta?: string;
+    init?: RequestInit;
+    interna?: unknown;
+  } = {},
 ) {
-  const assets = crearAssets(ASSETS);
+  const assets = crearAssets(
+    opciones.interna === undefined
+      ? ASSETS
+      : { "/v1/_internos/meta.json": { cuerpo: JSON.stringify(opciones.interna) } },
+  );
   const entorno = entornoDe(assets, opciones.kv === undefined ? {} : { ESTADO: opciones.kv });
   const { ahora = AHORA } = opciones;
   const respuesta = await manejar(
@@ -155,6 +165,40 @@ describe("GET /v1/status", () => {
       },
     ]);
     expect(assets.pedidas).toEqual(["/v1/_internos/meta.json"]);
+  });
+
+  it("las series traen su cobertura (solo desde y hasta); los demás datasets no", async () => {
+    const udis = {
+      meta: meta("udis", "2026-10-18"),
+      records: 2490,
+      data_sha256: "d".repeat(64),
+      frescura_horas: 72,
+      cobertura: { desde: "2020-01-01", hasta: "2026-10-25", otro: "no se copia" },
+    };
+    const { respuesta } = await pedir({
+      interna: { datasets: { ...INTERNA.datasets, udis } },
+    });
+    const { data } = (await respuesta.json()) as { data: Array<Record<string, unknown>> };
+    const serie = data.find((d) => d.dataset === "udis");
+    expect(Object.keys(serie ?? {})).toEqual([
+      "dataset",
+      "as_of",
+      "records",
+      "data_sha256",
+      "cobertura",
+      "status",
+      "last_attempt",
+      "last_success",
+      "frescura_horas",
+    ]);
+    expect(serie).toMatchObject({
+      as_of: "2026-10-18",
+      cobertura: { desde: "2020-01-01", hasta: "2026-10-25" },
+    });
+    expect(serie?.cobertura).toEqual({ desde: "2020-01-01", hasta: "2026-10-25" });
+    for (const d of data.filter((x) => x.dataset !== "udis")) {
+      expect(d, String(d.dataset)).not.toHaveProperty("cobertura");
+    }
   });
 
   it("lee estado:<dataset> de KV como JSON con cacheTtl de 60 s", async () => {

@@ -128,6 +128,15 @@ export const esquemaEstadoDataset = z.object({
   as_of: fechaIso.describe("Fecha de los datos (AAAA-MM-DD)."),
   records: z.number().int().describe("Número de registros."),
   data_sha256: z.string().describe("SHA-256 de los datos."),
+  cobertura: z
+    .object({
+      desde: fechaIso.describe("Fecha del primer registro."),
+      hasta: fechaIso.describe("Fecha del último registro."),
+    })
+    .optional()
+    .describe(
+      "Solo en las series (tipo-cambio.fix y udis): primera y última fecha de la serie publicada.",
+    ),
   status: z.enum(["ok", "stale", "unknown"]).describe("Estado de frescura del dataset."),
   last_attempt: instante.nullable().describe("Último intento de actualización."),
   last_success: instante.nullable().describe("Última actualización exitosa."),

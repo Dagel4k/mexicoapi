@@ -3,7 +3,7 @@
 El valor diario de la Unidad de Inversión (UDI) que el Banco de México publica en el Diario Oficial de la Federación (DOF). La serie empieza en 2020.
 
 - Identificador: `udis`
-- Registros: uno por cada día del calendario; el total y la última fecha están en `records` y `as_of` del manifiesto y en `/v1/status`
+- Registros: uno por cada día del calendario; el total está en `records` del manifiesto y de `/v1/status`, y la primera y la última fecha, en `cobertura` (`desde` y `hasta`) de `/v1/status`
 - Clave: `fecha`
 - Se actualiza: a diario
 - Datos en el repositorio: `data/udis/`
@@ -39,5 +39,6 @@ Más detalle en [DATA_LICENSE.md](../../DATA_LICENSE.md).
 
 - Hay un valor para cada día del calendario, incluidos fines de semana y feriados.
 - Las UDIS se publican por adelantado, dos veces al mes, para los días siguientes. Por eso la serie llega unos días después de la fecha de la última corrida.
+- `as_of` (en el manifiesto, en `meta` y en `/v1/status`) es la fecha de la última corrida que cambió los datos, no la última fecha de la serie. La última fecha está en `cobertura.hasta` de `/v1/status` y va por delante de la corrida, de uno a unos 15 días según cuándo fue la última publicación: con `as_of` 2026-10-18, `cobertura.hasta` es 2026-10-25.
 - La serie empieza el 1 de enero de 2020. Antes de esa fecha no hay datos.
 - La respuesta original de la fuente se guarda sin cambios, un archivo por año, en `data/udis/raw/`, y su hash va en el manifiesto.

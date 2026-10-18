@@ -59,7 +59,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 | Campo de `meta` | Significado |
 | --- | --- |
 | `dataset` | Identificador del dataset |
-| `as_of` | Fecha a la que corresponde el dato |
+| `as_of` | Fecha de la última corrida que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status) |
 | `sources` | Lista de fuentes: `name`, `url`, `license`, `license_url` y `citation`. Bancos tiene dos fuentes |
 | `docs` | Documentación del dataset o de la ruta |
 
@@ -420,7 +420,7 @@ curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
 }
 ```
 
-La cobertura y la frescura de la serie también salen en [`/v1/status`](#status).
+La cobertura de la serie también sale en [`/v1/status`](#status), con la misma forma (`cobertura` con `desde` y `hasta`), junto con su frescura.
 
 ## UDIS
 
@@ -484,16 +484,28 @@ Frescura de cada dataset. Responde `{ "data": [...] }` sin `meta`:
       "last_attempt": null,
       "last_success": null,
       "frescura_horas": 216
+    },
+    {
+      "dataset": "tipo-cambio.fix",
+      "as_of": "2026-10-18",
+      "records": 1710,
+      "data_sha256": "ed5d51c0b2ecc8cda7ca984a3cae9fbe6f5d9daf989b7cf76863aa7c5b840f13",
+      "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" },
+      "status": "unknown",
+      "last_attempt": null,
+      "last_success": null,
+      "frescura_horas": 72
     }
   ]
 }
 ```
 
-La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.municipios`, `tipo-cambio.fix` y `udis`); aquí se muestra uno.
+La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.municipios`, `tipo-cambio.fix` y `udis`); aquí se muestran dos.
 
 | Campo | Significado |
 | --- | --- |
-| `as_of`, `records`, `data_sha256` | Los del dataset publicado |
+| `as_of`, `records`, `data_sha256` | Los del dataset publicado. `as_of` es la fecha de la última corrida que cambió los datos |
+| `cobertura` | Solo en las series (`tipo-cambio.fix` y `udis`): `desde` y `hasta`, la primera y la última fecha de la serie publicada. En las UDIS, `hasta` va por delante de la fecha de hoy porque se publican por adelantado |
 | `status` | `ok`; `stale` si el último éxito pasó de `frescura_horas` o si hay corridas pero ninguna exitosa (`last_success` es `null`); `unknown` si no hay registro de corridas |
 | `last_attempt`, `last_success` | Instantes UTC de la última corrida y del último éxito; `null` si no hay registro |
 | `frescura_horas` | Antigüedad máxima antes de considerar el dato desactualizado |

@@ -70,7 +70,10 @@ function estadoDe(
   return ahora - Date.parse(corrida.last_success) > frescuraHoras * MS_POR_HORA ? "stale" : "ok";
 }
 
-/** `GET /v1/status`: datos del build (meta interno) más la última corrida de cada dataset (KV). */
+/**
+ * `GET /v1/status`: datos del build (meta interno, con la cobertura de las series) más la última
+ * corrida de cada dataset (KV).
+ */
 export async function status(c: Contexto): Promise<Response> {
   const { datasets } = await metaInterna(c.entorno);
   const ahora = (c.opciones.ahora?.() ?? new Date()).getTime();
@@ -85,6 +88,10 @@ export async function status(c: Contexto): Promise<Response> {
         as_of: d.meta.as_of,
         records: d.records,
         data_sha256: d.data_sha256,
+        // Solo las series la tienen: primera y última fecha de lo publicado.
+        ...(d.cobertura === undefined
+          ? {}
+          : { cobertura: { desde: d.cobertura.desde, hasta: d.cobertura.hasta } }),
         status: estadoDe(corrida, d.frescura_horas, ahora),
         last_attempt: corrida?.last_attempt ?? null,
         last_success: corrida?.last_success ?? null,

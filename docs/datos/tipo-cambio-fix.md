@@ -3,7 +3,7 @@
 El tipo de cambio FIX, que el Banco de México determina y publica en el Diario Oficial de la Federación (DOF) como tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana. La serie empieza en 2020.
 
 - Identificador: `tipo-cambio.fix`
-- Registros: uno por cada día con publicación en el DOF; el total y la última fecha están en `records` y `as_of` del manifiesto y en `/v1/status`
+- Registros: uno por cada día con publicación en el DOF; el total está en `records` del manifiesto y de `/v1/status`, y la primera y la última fecha, en `cobertura` (`desde` y `hasta`) de `/v1/status`
 - Clave: `fecha_publicacion`
 - Se actualiza: a diario
 - Datos en el repositorio: `data/tipo-cambio-fix/`
@@ -40,5 +40,6 @@ Más detalle en [DATA_LICENSE.md](../../DATA_LICENSE.md).
 - `fecha_publicacion` es la fecha de publicación en el DOF, no el día al que se aplica el valor. El FIX se determina el día hábil bancario anterior a su publicación y solo hay registro en los días con publicación: no hay valores para fines de semana ni feriados bancarios.
 - Para una operación, el artículo 20 del Código Fiscal de la Federación manda usar el FIX publicado el día hábil bancario anterior a la fecha de la operación. Esa regla la aplica la API al consultar; el archivo de datos solo trae las publicaciones.
 - Los valores de los últimos días pueden no estar todavía: se cargan en la corrida diaria.
+- `as_of` (en el manifiesto, en `meta` y en `/v1/status`) es la fecha de la última corrida que cambió los datos, no la última fecha de la serie. Por ejemplo, con `as_of` 2026-10-18 (domingo) la última publicación es la del viernes 16, que es la que trae `cobertura.hasta`.
 - La serie empieza el 2 de enero de 2020. Antes de esa fecha no hay datos.
 - La respuesta original de la fuente se guarda sin cambios, un archivo por año, en `data/tipo-cambio-fix/raw/`, y su hash va en el manifiesto.
