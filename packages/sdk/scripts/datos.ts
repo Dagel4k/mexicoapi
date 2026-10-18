@@ -1,6 +1,8 @@
 // Genera los módulos de datos del paquete desde data/: uno por cada declaración que hay en
 // src/datos/generados, con los registros y su meta congelados. El conjunto de datasets lo deciden
 // esas declaraciones (que llevan los tipos); este script no tiene nada propio de ningún dataset.
+// Un calendario curado (su YAML en data/curado declara `cobertura`) exporta además `calendario`:
+// sus plazos y las fuentes de los fines de semana (scripts/calendarios.ts).
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 //
 //   node scripts/datos.ts    después de tsc: escribe dist/datos/generados
@@ -8,6 +10,12 @@ import { createHash } from "node:crypto";
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  armarCalendario,
+  type CalendarioGenerado,
+  coberturaDelYaml,
+  type RegistroDia,
+} from "./calendarios.ts";
 
 /** Prefijo de los módulos virtuales con los que `pluginDatos` sirve los datos en las pruebas. */
 export const PREFIJO_VIRTUAL = "\0mexicoapi-datos:";
@@ -61,6 +69,8 @@ export interface DatasetLeido {
   sha256: string;
   registros: unknown[];
   meta: MetaDatos;
+  /** Solo en los calendarios curados. */
+  calendario?: CalendarioGenerado;
 }
 
 export interface Generado {
@@ -163,7 +173,12 @@ export async function leerDataset(datos: string, directorio: string): Promise<Da
       `${directorio}: el manifest dice ${manifiesto.records} registros y hay ${registros.length}`,
     );
   }
-  return { directorio, archivo, sha256: real, registros, meta };
+  const yaml = await leerOpcional(join(datos, "curado", `${directorio}.yaml`));
+  const cobertura =
+    yaml === null ? null : coberturaDelYaml(yaml.toString("utf8"), `curado/${directorio}.yaml`);
+  if (cobertura === null) return { directorio, archivo, sha256: real, registros, meta };
+  const calendario = armarCalendario(registros as RegistroDia[], cobertura, meta.dataset);
+  return { directorio, archivo, sha256: real, registros, meta, calendario };
 }
 
 const cadenaJs = (texto: string): string =>
@@ -179,6 +194,9 @@ export function moduloDeDatos(d: DatasetLeido): string {
     CONGELAR,
     `export const meta = /* @__PURE__ */ congelar(${JSON.stringify(d.meta)});`,
     `export const datos = /* @__PURE__ */ congelar(JSON.parse(${cadenaJs(JSON.stringify(d.registros))}));`,
+    ...(d.calendario === undefined
+      ? []
+      : [`export const calendario = /* @__PURE__ */ congelar(${JSON.stringify(d.calendario)});`]),
     "",
   ].join("\n");
 }
@@ -210,7 +228,20 @@ export async function generarDatos(opciones: {
   const nombres = await declarados(opciones.declaraciones);
   if (nombres.length === 0) throw new Error(`No hay declaraciones en ${opciones.declaraciones}`);
   const leidos: DatasetLeido[] = [];
-  for (const nombre of nombres) leidos.push(await leerDataset(opciones.datos, nombre));
+  for (const nombre of nombres) {
+    const leido = await leerDataset(opciones.datos, nombre);
+    // La declaración y los datos dicen lo mismo: un calendario declara `calendario` y solo él.
+    const declaracion = await readFile(join(opciones.declaraciones, `${nombre}.d.ts`), "utf8");
+    const declara = /\bconst calendario\b/.test(declaracion);
+    if (declara !== (leido.calendario !== undefined)) {
+      throw new Error(
+        declara
+          ? `${nombre}.d.ts declara calendario, pero data/curado/${nombre}.yaml no trae cobertura`
+          : `data/curado/${nombre}.yaml trae cobertura, pero ${nombre}.d.ts no declara calendario`,
+      );
+    }
+    leidos.push(leido);
+  }
   await rm(opciones.destino, { recursive: true, force: true });
   await mkdir(opciones.destino, { recursive: true });
   const generados: Generado[] = [];

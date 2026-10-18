@@ -73,6 +73,8 @@ describe("package.json de mexicoapi", () => {
       "./datos",
       "./datos/fix",
       "./datos/udis",
+      "./datos/calendarios",
+      "./datos/constantes",
       "./sepomex",
       "./package.json",
     ]);

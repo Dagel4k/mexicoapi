@@ -54,6 +54,14 @@
       "types": "./dist/datos/udis.d.ts",
       "import": "./dist/datos/udis.js"
     },
+    "./datos/calendarios": {
+      "types": "./dist/datos/calendarios.d.ts",
+      "import": "./dist/datos/calendarios.js"
+    },
+    "./datos/constantes": {
+      "types": "./dist/datos/constantes.d.ts",
+      "import": "./dist/datos/constantes.js"
+    },
     "./sepomex": {
       "types": "./dist/sepomex/index.d.ts",
       "import": "./dist/sepomex/index.js"

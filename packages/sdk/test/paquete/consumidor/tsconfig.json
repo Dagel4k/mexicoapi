@@ -9,5 +9,5 @@
     "skipLibCheck": false,
     "types": []
   },
-  "files": ["consumidor.ts", "cliente.ts", "sepomex.ts"]
+  "files": ["consumidor.ts", "cliente.ts", "curados.ts", "sepomex.ts"]
 }
