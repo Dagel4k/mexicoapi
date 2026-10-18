@@ -88,7 +88,7 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 - `origen`: `api` si respondió la API de `MEXICOAPI_BASE`, `paquete` si salió de los datos y las reglas del paquete `mexicoapi`, o `cache_local` en `codigo_postal`.
 - `advertencias`: lo que hay que decirle a quien pregunta, por ejemplo que la API falló o que un calendario puede estar incompleto.
 
-Sin `MEXICOAPI_BASE`, el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
+Sin `MEXICOAPI_BASE`, el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
 
 Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó.
 

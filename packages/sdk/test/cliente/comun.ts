@@ -71,6 +71,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
   // de su documentación, los del núcleo (el MCP los toma de aquí).
   it("exporta exactamente crearCliente, MexicoApiError y el catálogo de problemas", () => {
     expect(Object.keys(m.cliente).sort()).toEqual([
+      "DIAS_DATOS_RECIENTES",
       "MexicoApiError",
       "PROBLEMAS",
       "URL_DOCS",
@@ -86,6 +87,8 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       status: 404,
     });
     expect(Object.isFrozen(m.cliente.PROBLEMAS)).toBe(true);
+    // El único umbral de datos viejos, que también usa el MCP.
+    expect(m.cliente.DIAS_DATOS_RECIENTES).toBe(7);
   });
 
   it("responde estados, municipios y bancos con los datos y la meta del paquete", async () => {
