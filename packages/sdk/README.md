@@ -89,7 +89,7 @@ sumarDiasHabiles({ calendario: calendario("sat", "general"), desde, dias: 3 }).r
 sumarDiasHabiles({ calendario: calendario("sat", "declaraciones_pagos"), desde, dias: 3 }).resultado;
 // "2026-07-22"
 
-calendario("sat"); // TypeError: Con autoridad=sat falta el parámetro tipo_plazo: ...
+calendario("sat"); // TypeError: Con autoridad=sat falta tipoPlazo: ...
 
 const sat = calendarioCurado("sat");
 [...sat.plazos.keys()]; // ["general", "declaraciones_pagos"]

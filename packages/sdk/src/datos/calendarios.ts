@@ -64,7 +64,7 @@ export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): C
   if (tipoPlazo === undefined) {
     if (plazos.size > 1) {
       const tipos = [...plazos.keys()].join(" o ");
-      throw new TypeError(`Con autoridad=${autoridad} falta el parámetro tipo_plazo: ${tipos}.`);
+      throw new TypeError(`Con autoridad=${autoridad} falta tipoPlazo: ${tipos}.`);
     }
     tipoPlazo = "general";
   }

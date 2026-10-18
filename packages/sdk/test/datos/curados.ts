@@ -137,7 +137,7 @@ export function probarCalendarios(
   });
 
   it("con el SAT exige el tipo de plazo, con el texto de la API", () => {
-    const texto = "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.";
+    const texto = "Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.";
     // @ts-expect-error con el SAT el tipo de plazo es obligatorio
     expect(() => m.calendario("sat")).toThrow(TypeError);
     // @ts-expect-error con el SAT el tipo de plazo es obligatorio
