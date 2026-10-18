@@ -33,9 +33,13 @@ function paso(wf: Workflow, job: string, nombre: string): Paso {
 
 /** Las líneas de `patron=` y de la función `ruta_valida` de un bloque run, sin sangría. */
 function reglaDeRutas(run: string): string {
-  const m = /^ *patron=.*\n *ruta_valida\(\) \{\n(?: +.*\n)+? *\}$/m.exec(run);
-  if (m === null) throw new Error("no se encontró ruta_valida");
-  return m[0].replace(/^ +/gm, "");
+  const lineas = run.split("\n").map((l) => l.trimStart());
+  const inicio = lineas.findIndex(
+    (l, i) => l.startsWith("patron=") && lineas[i + 1] === "ruta_valida() {",
+  );
+  const fin = lineas.indexOf("}", inicio + 2);
+  if (inicio === -1 || fin === -1) throw new Error("no se encontró ruta_valida");
+  return lineas.slice(inicio, fin + 1).join("\n");
 }
 
 const carpetasDelRegistro = (): string[] => [...DATASETS.values()].map((d) => d.directorio).sort();
