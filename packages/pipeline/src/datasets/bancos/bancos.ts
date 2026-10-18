@@ -163,6 +163,8 @@ export function crearBancos(
     async capturar(ctx): Promise<FuenteCapturada[]> {
       const urlDelCep = urlCep(ctx.fecha);
       const cep = await pedir(ctx, ARCHIVO_CEP, urlDelCep);
+      // Si Banxico bloquea (por ejemplo, responde HTML), se detiene antes de pedir más.
+      interpretarCep(cep.bytes);
       const info = await ctx.cliente.obtener(URL_INFO);
       const urlPdf = enlacePdfParticipantes(new TextDecoder("utf-8").decode(info.cuerpo), URL_INFO);
       const pdf = await pedir(ctx, ARCHIVO_PDF, urlPdf);
