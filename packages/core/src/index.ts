@@ -3,7 +3,6 @@ export { digitoControlClabe, validarClabe } from "./clabe.js";
 export type { DetalleCurp } from "./curp.js";
 export { digitoVerificadorCurp, ENTIDADES_CURP, validarCurp } from "./curp.js";
 export type { Banco, PeriodoBanco, TipoBanco } from "./datos/bancos.js";
-export type { TipoCambioFix, Udi } from "./datos/indicadores.js";
 export type {
   AutoridadCurada,
   CoberturaCurada,
@@ -15,6 +14,7 @@ export type {
   TramoIsr,
   Uma,
 } from "./datos/curados.js";
+export type { TipoCambioFix, Udi } from "./datos/indicadores.js";
 export type { Estado, Municipio } from "./datos/inegi.js";
 export type { ArchivoCrudo, FuenteManifiesto, Manifiesto } from "./datos/manifiesto.js";
 export type { Calendario } from "./dias-habiles/calendario.js";
