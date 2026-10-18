@@ -1,3 +1,4 @@
+import { clabe } from "./computados/clabe.js";
 import type { Entorno, Opciones } from "./entorno.js";
 import { servirShard } from "./estaticos.js";
 import { type TipoProblema, URL_DOCS } from "./problemas.js";
@@ -147,6 +148,7 @@ const CODIGO_BANCO: Regla = {
   patron: /^\d{3}$/,
   detalle: "El código de banco debe tener 3 dígitos.",
 };
+const CLABE: Regla = { patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." };
 
 /**
  * Manejador de un shard. `destino` arma la ruta del asset y el nombre del recurso (para el
@@ -186,6 +188,11 @@ export const RUTAS: readonly Ruta[] = [
     patron: /^\/v1\/bancos\/(?<codigo>[^/]+)$/,
     parametros: { codigo: CODIGO_BANCO },
     manejar: shard((p) => [`/v1/bancos/${p.codigo}.json`, `el banco ${p.codigo}`]),
+  },
+  {
+    patron: /^\/v1\/clabe\/(?<clabe>[^/]+)$/,
+    parametros: { clabe: CLABE },
+    manejar: clabe,
   },
   { patron: /^\/v1\/openapi\.json$/, manejar: fijo("/v1/openapi.json", "el documento OpenAPI") },
 ];
