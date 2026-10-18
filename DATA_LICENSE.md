@@ -22,7 +22,7 @@ Cada dataset trae en su `manifest.json` la fuente, la URL de los términos, la c
 
 `razon_social` y `sector` salen solo del PDF oficial de participantes directos: MéxicoAPI no los completa sin una fuente. Las instituciones activas que aparecen únicamente en el CEP (001 BANXICO, 901 CLS y 903 CoDi Valida) los tienen en `null` y su `participacion` es `no_confirmada`.
 
-Una institución inactiva conserva la última `razon_social` y el último `sector` conocidos. Si nunca apareció en el PDF desde que MéxicoAPI la registra, quedan en `null`. Su `participacion` pasa a `no_confirmada`, porque ya no participa.
+Una institución inactiva conserva la última `razon_social` y el último `sector` conocidos. Si el último día que estuvo activa no aparecía en el PDF, quedan en `null`. Su `participacion` pasa a `no_confirmada`, porque ya no participa.
 
 ### El historial de bancos son periodos observados
 
