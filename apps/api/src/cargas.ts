@@ -4,6 +4,7 @@ import {
   esFechaIsoValida,
   type FechaISO,
   type FuenteDof,
+  TIPOS_DIA_CURADO,
   type TipoCambioFix,
   type TipoDiaCurado,
   type Udi,
@@ -234,7 +235,7 @@ function aFuenteDof(v: unknown): FuenteDof | undefined {
   return Object.freeze({ nombre, url, fecha_publicacion, fragmento });
 }
 
-const TIPOS_DIA: ReadonlySet<unknown> = new Set(["descanso", "vacaciones"]);
+const TIPOS_DIA: ReadonlySet<unknown> = new Set(TIPOS_DIA_CURADO);
 
 type DiaCurado = DatosCalendarioCurado["dias"][number];
 

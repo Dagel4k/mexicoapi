@@ -14,6 +14,7 @@ export type {
   TramoIsr,
   Uma,
 } from "./datos/curados.js";
+export { TIPOS_DIA_CURADO } from "./datos/curados.js";
 export type { TipoCambioFix, Udi } from "./datos/indicadores.js";
 export type { Estado, Municipio } from "./datos/inegi.js";
 export type { ArchivoCrudo, FuenteManifiesto, Manifiesto } from "./datos/manifiesto.js";
@@ -36,6 +37,7 @@ export {
 export type { ResultadoDiasHabiles } from "./dias-habiles/sumar.js";
 export { sumarDiasHabiles } from "./dias-habiles/sumar.js";
 export type { Autoridad, DiaInhabil, Fuente, TipoPlazo } from "./dias-habiles/tipos.js";
+export { AUTORIDADES, NOMBRE_AUTORIDAD, TIPOS_PLAZO } from "./dias-habiles/tipos.js";
 export {
   CalendarioIncompletoError,
   FechaFueraDeRangoError,

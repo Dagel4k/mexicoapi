@@ -1,3 +1,4 @@
+import type { Autoridad } from "../dias-habiles/tipos.js";
 import type { FechaISO } from "../fechas.js";
 
 /** Publicación oficial que respalda un valor curado, con el texto citado tal cual. */
@@ -9,8 +10,12 @@ export interface FuenteDof {
   fragmento: string;
 }
 
-export type AutoridadCurada = "cnbv" | "sat";
-export type TipoDiaCurado = "descanso" | "vacaciones";
+/** Las autoridades con calendario curado (transcrito del DOF): la LFT se calcula por regla. */
+export type AutoridadCurada = Exclude<Autoridad, "lft">;
+
+/** Tipos de día de un calendario curado; `fin_de_semana` no se publica. */
+export const TIPOS_DIA_CURADO = Object.freeze(["descanso", "vacaciones"] as const);
+export type TipoDiaCurado = (typeof TIPOS_DIA_CURADO)[number];
 
 export interface DiaInhabilCurado {
   fecha: FechaISO;

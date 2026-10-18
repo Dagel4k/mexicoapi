@@ -68,11 +68,11 @@ it("curar y verificar arman cada calendario con el núcleo", async () => {
 it("si el núcleo rechaza un calendario, curar sale 1 con su mensaje y no escribe nada", async () => {
   await escribirYaml("dias-inhabiles-sat.yaml", YAML_SAT);
   nucleo.rechazo =
-    "El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.";
+    "El calendario del SAT tiene un día inesperado, repetido o fuera de orden: 2026-01-01.";
   const e = entorno();
   expect(await principal(["curar"], e)).toBe(1);
   expect(e.errores.join("")).toContain(
-    "curado/dias-inhabiles-sat.yaml: el núcleo rechaza el calendario: El calendario de sat tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
+    "curado/dias-inhabiles-sat.yaml: el núcleo rechaza el calendario: El calendario del SAT tiene un día inesperado, repetido o fuera de orden: 2026-01-01.",
   );
   expect(e.salida).toEqual([]);
   expect(await readdir(raiz)).toEqual(["curado"]);
@@ -97,8 +97,8 @@ it("el bot toma los feriados bancarios del calendario que arma el núcleo", () =
   expect(nucleo.llamadas).toEqual(["cnbv"]);
   expect(esDescanso("2026-11-02")).toBe(true);
   expect(esDescanso("2026-11-03")).toBe(false);
-  nucleo.rechazo = "El calendario de cnbv no cita los fines de semana de 2026.";
+  nucleo.rechazo = "El calendario de la CNBV no cita los fines de semana de 2026.";
   expect(() => descansosBancarios(cobertura, [dia("2026-12-25")])).toThrow(
-    /el núcleo rechaza el calendario: El calendario de cnbv no cita/,
+    /el núcleo rechaza el calendario: El calendario de la CNBV no cita/,
   );
 });

@@ -1,4 +1,4 @@
-import type { Autoridad } from "./dias-habiles/tipos.js";
+import { type Autoridad, DE_AUTORIDAD } from "./dias-habiles/tipos.js";
 import type { FechaISO } from "./fechas.js";
 
 /** Una cuenta de días dio una fecha antes de 0001-01-01 o después de 9999-12-31. */
@@ -38,13 +38,6 @@ export class SerieIncompletaError extends Error {
   }
 }
 
-/** Cómo se nombra el calendario de cada autoridad en los textos: "El calendario del SAT". */
-export const DEL_CALENDARIO: Readonly<Record<Autoridad, string>> = Object.freeze({
-  lft: "de la LFT",
-  cnbv: "de la CNBV",
-  sat: "del SAT",
-});
-
 /** Se consultó una fecha que el calendario de la autoridad no cubre. */
 export class CalendarioIncompletoError extends Error {
   /** Código fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
@@ -64,16 +57,15 @@ export class CalendarioIncompletoError extends Error {
     cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO },
     detalle?: string,
   ) {
+    const cubre = `cubre del ${cobertura.desde} al ${cobertura.hasta}`;
     super(
-      `Calendario incompleto: el calendario de ${autoridad} no cubre ${fecha}; ` +
-        `cobertura ${cobertura.desde} a ${cobertura.hasta}.`,
+      `Calendario incompleto: el calendario ${DE_AUTORIDAD[autoridad]} no cubre ${fecha}; ${cubre}.`,
     );
     this.name = "CalendarioIncompletoError";
     this.autoridad = autoridad;
     this.fecha = fecha;
     this.cobertura = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
     this.detalle =
-      detalle ??
-      `El calendario ${DEL_CALENDARIO[autoridad]} no cubre ${fecha}; cubre del ${cobertura.desde} al ${cobertura.hasta}.`;
+      detalle ?? `El calendario ${DE_AUTORIDAD[autoridad]} no cubre ${fecha}; ${cubre}.`;
   }
 }

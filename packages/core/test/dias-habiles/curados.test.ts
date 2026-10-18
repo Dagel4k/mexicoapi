@@ -475,7 +475,7 @@ describe("crearCalendarioCurado", () => {
       ),
     ).toThrow(
       new RangeError(
-        "El calendario de sat tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
+        "El calendario del SAT tiene en declaraciones_pagos excluir_tipos [] y la regla del núcleo pide [vacaciones].",
       ),
     );
     expect(() =>
@@ -488,7 +488,7 @@ describe("crearCalendarioCurado", () => {
       }),
     ).toThrow(
       new RangeError(
-        "El calendario de cnbv trae el tipo de plazo declaraciones_pagos, que no es suyo (solo general).",
+        "El calendario de la CNBV trae el tipo de plazo declaraciones_pagos, que no es suyo (solo general).",
       ),
     );
     expect(PLAZOS.sat.declaraciones_pagos).toEqual(["vacaciones"]);
@@ -505,24 +505,24 @@ describe("crearCalendarioCurado", () => {
   it("los errores de la regla dicen qué no cuadra", () => {
     expect(() => crearCalendarioCurado(conDia({ fecha: "2026-03-18" }))).toThrow(
       new RangeError(
-        "El calendario de sat trae el día de descanso 2026-03-18, que no da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+        "El calendario del SAT trae el día de descanso 2026-03-18, que no da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
       ),
     );
     expect(() => crearCalendarioCurado(conDia({ motivo: "Año nuevo" }))).toThrow(
       new RangeError(
-        "El calendario de sat trae el día de descanso 2026-01-01 distinto del que da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+        "El calendario del SAT trae el día de descanso 2026-01-01 distinto del que da la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
       ),
     );
     expect(() => crearCalendarioCurado(conDia({ tipo: "vacaciones" }))).toThrow(
       new RangeError(
-        "El calendario de sat trae como vacaciones el 2026-01-01, que ya es de descanso por la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+        "El calendario del SAT trae como vacaciones el 2026-01-01, que ya es de descanso por la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
       ),
     );
     expect(() =>
       crearCalendarioCurado({ ...SHARD_SAT, fuentes_fin_de_semana: { 2026: FUENTE_CFF } }),
     ).toThrow(
       new RangeError(
-        "El calendario de sat cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
+        "El calendario del SAT cita fines de semana, que cita la regla del núcleo (Código Fiscal de la Federación, artículo 12).",
       ),
     );
     expect(() =>
@@ -537,14 +537,14 @@ describe("crearCalendarioCurado", () => {
       ),
     ).toThrow(
       new RangeError(
-        "El calendario de sat tiene en declaraciones_pagos una cobertura fuera de la de la regla del núcleo (del 2026-01-01 al 2100-12-31).",
+        "El calendario del SAT tiene en declaraciones_pagos una cobertura fuera de la de la regla del núcleo (del 2026-01-01 al 2100-12-31).",
       ),
     );
   });
 
   it("rechaza una autoridad sin calendario curado", () => {
     expect(() => crearCalendarioCurado({ ...SHARD_SAT, autoridad: "lft" as "sat" })).toThrow(
-      new RangeError("No hay calendario curado de lft: solo de cnbv y sat."),
+      new RangeError("No hay calendario curado de la LFT: solo de la CNBV y del SAT."),
     );
     expect(() => crearCalendarioCurado({ ...SHARD_SAT, autoridad: "__proto__" as "sat" })).toThrow(
       RangeError,
@@ -553,7 +553,7 @@ describe("crearCalendarioCurado", () => {
 
   it("el error nombra la autoridad", () => {
     expect(() => crearCalendarioCurado(conPlazos({ declaraciones_pagos }))).toThrow(
-      "El calendario de sat no tiene un plazo general que cuente todos los días.",
+      "El calendario del SAT no tiene un plazo general que cuente todos los días.",
     );
   });
 });
@@ -901,7 +901,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
         dias: 1,
       }),
     ).toThrow(
-      new RangeError("El calendario de cnbv no tiene el tipo de plazo declaraciones_pagos."),
+      new RangeError("El calendario de la CNBV no tiene el tipo de plazo declaraciones_pagos."),
     );
   });
 });

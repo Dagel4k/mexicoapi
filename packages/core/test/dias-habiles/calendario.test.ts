@@ -89,7 +89,8 @@ describe("crearCalendario", () => {
         expect(err.autoridad).toBe("sat");
         expect(err.fecha).toBe(f);
         expect(err.cobertura).toEqual(cobertura);
-        expect(err.message).toContain("sat");
+        // Nombra la autoridad como el detalle de la API (antes, "de sat").
+        expect(err.message).toContain("el calendario del SAT");
         expect(err.message).toContain(f);
         expect(err.message).toContain("2026-01-01");
         expect(err.message).toContain("2026-12-31");
