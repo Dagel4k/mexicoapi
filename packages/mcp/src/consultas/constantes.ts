@@ -112,8 +112,12 @@ export function constantesHerramienta({ cliente }: OpcionesHerramientas): Herram
           cliente.salarioMinimo(a.anio as number, op),
         );
         const zonas = r.data;
+        const primera = zonas[0];
+        if (primera === undefined) {
+          return resultadoError(`La respuesta no trae el salario mínimo de ${a.anio}.`);
+        }
         const lineas = [
-          `Salario mínimo diario de ${a.anio}, desde el ${zonas[0]?.vigencia_desde}:`,
+          `Salario mínimo diario de ${a.anio}, desde el ${primera.vigencia_desde}:`,
           ...zonas.map((z) => enLinea(`- ${ZONAS[z.zona] ?? z.zona}: ${z.diario} pesos`)),
         ];
         return conFuentes(
