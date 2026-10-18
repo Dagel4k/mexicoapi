@@ -23,6 +23,12 @@ export const FUNCIONES = [
   "fixPublicado",
   "fixParaOperacion",
   "udiDeFecha",
+  // Las reglas de la API entre parámetros, la CLABE como la revisa validarClabe y el texto en una
+  // línea: los usan la CLI y el MCP.
+  "revisarTipoPlazo",
+  "revisarFix",
+  "normalizarClabe",
+  "enLinea",
 ] as const;
 
 export const ERRORES = [
@@ -40,6 +46,11 @@ export const CONSTANTES = [
   "FUENTE_LFT_74",
   "FUENTE_LFT_715",
   "FUENTE_CFF_20",
+  // Los catálogos de los calendarios y el nombre de cada autoridad.
+  "AUTORIDADES",
+  "TIPOS_PLAZO",
+  "TIPOS_DIA_CURADO",
+  "NOMBRE_AUTORIDAD",
 ] as const;
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -73,6 +84,24 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
     for (const nombre of [...FUNCIONES, ...ERRORES]) {
       expect(typeof m[nombre], nombre).toBe("function");
     }
+  });
+
+  it("trae las reglas de la API entre parámetros y los catálogos de los calendarios", () => {
+    expect(m.AUTORIDADES).toEqual(["lft", "cnbv", "sat"]);
+    expect(m.TIPOS_PLAZO).toEqual(["general", "declaraciones_pagos"]);
+    expect(m.TIPOS_DIA_CURADO).toEqual(["descanso", "vacaciones"]);
+    expect(m.NOMBRE_AUTORIDAD.sat).toBe("el SAT");
+    expect(m.revisarTipoPlazo("sat", undefined)).toEqual({
+      tipo: "parametro-faltante",
+      detalle: "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
+      extras: { parametro: "tipo_plazo" },
+    });
+    expect(m.revisarTipoPlazo("lft", undefined)).toBeNull();
+    expect(m.revisarFix("2026-10-12", "2026-10-13")?.detalle).toBe(
+      "Indica solo uno de publicado u operacion.",
+    );
+    expect(m.normalizarClabe("002 010-077777777771")).toBe("002010077777777771");
+    expect(m.enLinea("a\u001b[2Jb\nc")).toBe("a [2Jb c");
   });
 
   describe("validadores", () => {
