@@ -6,6 +6,7 @@ import type {
   FuenteDof,
   SalarioMinimo,
   TarifaIsr,
+  TipoDiaCurado,
   Uma,
 } from "@mexicoapi/core";
 import { enesimoDiaDeSemana, esFechaIsoValida } from "@mexicoapi/core";
@@ -332,10 +333,21 @@ function revisarFechaFija(dia: DiaInhabilCurado): string[] {
 }
 
 /**
- * Cada día cae en la cobertura de su tipo y en la de algún tipo de plazo: el Worker rechaza el
- * calendario completo si no (ver `revisarPlazos`).
+ * Tipos de día de cada autoridad. La CNBV solo publica días de cierre (descanso): la consulta del
+ * FIX da por hecho que en ellos no hay publicación, y unas vacaciones administrativas, con los
+ * bancos abiertos, la harían responder un valor viejo.
+ */
+const TIPOS_DE_AUTORIDAD: Readonly<Record<AutoridadCurada, readonly TipoDiaCurado[]>> = {
+  cnbv: ["descanso"],
+  sat: ["descanso", "vacaciones"],
+};
+
+/**
+ * Cada día es de un tipo de su autoridad y cae en la cobertura de su tipo y en la de algún tipo
+ * de plazo: el Worker rechaza el calendario completo si no (ver `revisarPlazos`).
  */
 export function invariantesDias(autoridad: AutoridadCurada) {
+  const tipos = TIPOS_DE_AUTORIDAD[autoridad];
   return (registros: readonly DiaInhabilCurado[], cobertura: CoberturaCurada | null): string[] => {
     const fallas: string[] = [];
     const enSuTipo: DiaInhabilCurado[] = [];
@@ -343,6 +355,9 @@ export function invariantesDias(autoridad: AutoridadCurada) {
       const falla = (texto: string) => fallas.push(`${dia.fecha}: ${texto}`);
       if (dia.autoridad !== autoridad) {
         falla(`la autoridad es ${dia.autoridad}, se esperaba ${autoridad}`);
+      }
+      if (!tipos.includes(dia.tipo)) {
+        falla(`el tipo ${dia.tipo} no es de ${autoridad}, que solo tiene ${tipos.join(" y ")}`);
       }
       const rango = cobertura?.[dia.tipo];
       if (rango === undefined) {
@@ -356,6 +371,11 @@ export function invariantesDias(autoridad: AutoridadCurada) {
       for (const f of revisarFechaFija(dia)) falla(f);
     }
     if (cobertura !== null) {
+      for (const tipo of Object.keys(cobertura) as TipoDiaCurado[]) {
+        if (!tipos.includes(tipo)) {
+          fallas.push(`la cobertura declara ${tipo}, que no es un tipo de día de ${autoridad}`);
+        }
+      }
       fallas.push(...revisarPlazos(PLAZOS[autoridad], cobertura, enSuTipo).fallas);
     }
     return fallas;
