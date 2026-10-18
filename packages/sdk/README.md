@@ -267,10 +267,10 @@ $ npx mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-0
 Inhábiles saltados:
   2026-07-20  Primer periodo general de vacaciones de 2026
   ...
-Origen: datos del paquete, sin red
+Origen: API
 ```
 
-Sin red todo sale del paquete. Con `--base <url>` (o la variable `MEXICOAPI_BASE`), `dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API y, si no responde, usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). `municipio` y `banco` salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control.
+`dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` todo sale del paquete, sin red; `--base` gana a esa variable. `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control.
 
 Códigos de salida:
 

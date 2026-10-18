@@ -6,7 +6,7 @@
 // u opción, como --tipo-plazo con el SAT, sobra una, como --tipo-plazo con la LFT, o uno mal
 // formado, como un código postal de 4 dígitos).
 import { parseArgs } from "node:util";
-import type { ConsultaDiasHabiles } from "../cliente/index.js";
+import type { ConsultaDiasHabiles, FetchCompatible } from "../cliente/index.js";
 import {
   AUTORIDADES,
   type Autoridad,
@@ -40,6 +40,8 @@ export interface Entorno {
   version: string;
   /** Para las pruebas: reemplaza a `mexicoapi/sepomex`. */
   sepomex?: ModuloSepomexCli | undefined;
+  /** Para las pruebas: el fetch del cliente, en lugar del global. */
+  fetch?: FetchCompatible | undefined;
 }
 
 /** Uso incorrecto: sale con código 2 y un recordatorio de `--help`. */
@@ -162,15 +164,18 @@ function sinArgumentos(posiciones: readonly string[], comando: string): void {
 }
 
 /**
- * Cliente con --base (o MEXICOAPI_BASE), o sin red. Con base, los datos que caducan se piden a la
- * API; banco y municipio son estables y salen del paquete igual (la base solo se valida).
+ * El cliente de la CLI. La API, en este orden: --base; ninguna con MEXICOAPI_SIN_RED=1 (todo sale
+ * del paquete); MEXICOAPI_BASE; y si no, la API pública (URL_API). Solo los datos que caducan
+ * (dias-habiles, uma, salario-minimo, isr) se piden a la API; banco y municipio son estables y
+ * salen del paquete igual (la base solo se valida), y los validadores no usan el cliente.
  */
 async function crearClienteCli(e: Entorno, opciones: Opciones) {
   const { crearCliente } = await import("../cliente/index.js");
-  const base = opciones.base ?? e.env.MEXICOAPI_BASE;
-  return base === undefined || base === ""
-    ? crearCliente({ offline: true })
-    : crearCliente({ base });
+  const { fetch } = e;
+  if (opciones.base !== undefined) return crearCliente({ base: opciones.base, fetch });
+  if (e.env.MEXICOAPI_SIN_RED === "1") return crearCliente({ offline: true });
+  const base = e.env.MEXICOAPI_BASE;
+  return crearCliente({ base: base === undefined || base === "" ? undefined : base, fetch });
 }
 
 async function validador(
