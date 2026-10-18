@@ -1,4 +1,12 @@
-import { esFechaIsoValida } from "@mexicoapi/core";
+import {
+  CONSULTAS,
+  cumpleRegla,
+  type ProblemaConsulta,
+  REGLAS_RUTA,
+  type ReglaConsulta,
+  type ReglaParametro,
+  revisarConsulta,
+} from "@mexicoapi/core/rutas";
 import { clabe } from "./computados/clabe.js";
 import { consultarUma, shardConstante } from "./computados/constantes.js";
 import { diasHabiles, diasInhabiles } from "./computados/dias.js";
@@ -9,18 +17,9 @@ import { servirShard } from "./estaticos.js";
 import { type TipoProblema, URL_DOCS } from "./problemas.js";
 import { CACHE_DATOS, respuestaJson } from "./respuestas.js";
 
-export interface Regla {
-  /** Expresión anclada (`^…$`) que debe cumplir el valor completo. */
-  patron: RegExp;
-  /** Lo que el patrón no puede decir (un máximo, una fecha que existe); se prueba después. */
-  cumple?: (valor: string) => boolean;
-  /** `detail` del 400 cuando el valor no la cumple. */
-  detalle: string;
-}
-
-export interface ReglaConsulta extends Regla {
-  obligatorio?: boolean;
-}
+/** Las reglas y sus textos son las del núcleo, las mismas que usan el paquete y el OpenAPI. */
+export type Regla = ReglaParametro;
+export type { ReglaConsulta };
 
 export type Parametros = Readonly<Record<string, string>>;
 
@@ -29,6 +28,8 @@ export interface Contexto {
   url: URL;
   entorno: Entorno;
   opciones: Opciones;
+  /** La plantilla de la ruta (`/v1/estados/{cve_ent}`): lo único de la petición que se registra. */
+  plantilla: string;
   /** Solo los parámetros de ruta que pasaron su regla. */
   parametros: Parametros;
   /** Un valor por parámetro de query declarado y presente. */
@@ -44,7 +45,7 @@ export interface Ruta {
    */
   patron: RegExp;
   parametros?: Readonly<Record<string, Regla>>;
-  /** Parámetros de query permitidos; cualquier otro es desconocido. */
+  /** Parámetros de query permitidos, en el orden en que se revisan; cualquier otro es desconocido. */
   consulta?: Readonly<Record<string, ReglaConsulta>>;
   manejar: (contexto: Contexto) => Response | Promise<Response>;
 }
@@ -53,73 +54,28 @@ export type Problema = { problema: TipoProblema; detalle: string; parametro?: st
 
 export type Resolucion = { ruta: Ruta; parametros: Parametros; consulta: Parametros } | Problema;
 
-function problema(tipo: TipoProblema, detalle: string, parametro: string): Problema {
-  return { problema: tipo, detalle, parametro };
+/** El problema del núcleo con la forma que responde `atender`: solo lleva `parametro`. */
+function deNucleo({ tipo, detalle, extras }: ProblemaConsulta): Problema {
+  const parametro = extras?.parametro;
+  return typeof parametro === "string"
+    ? { problema: tipo, detalle, parametro }
+    : { problema: tipo, detalle };
 }
-
-const cumpleRegla = (regla: Regla, valor: string): boolean =>
-  regla.patron.test(valor) && (regla.cumple?.(valor) ?? true);
-
-function validarConsulta(
-  reglas: Readonly<Record<string, ReglaConsulta>>,
-  query: URLSearchParams,
-): { consulta: Parametros } | Problema {
-  for (const nombre of query.keys()) {
-    if (!Object.hasOwn(reglas, nombre)) {
-      return problema(
-        "parametro-desconocido",
-        `Esta ruta no acepta el parámetro ${nombre}.`,
-        nombre,
-      );
-    }
-  }
-  const consulta: Record<string, string> = {};
-  for (const [nombre, regla] of Object.entries(reglas)) {
-    const [valor, ...repetidos] = query.getAll(nombre);
-    if (valor === undefined) {
-      if (regla.obligatorio === true) {
-        return problema("parametro-faltante", `Falta el parámetro ${nombre}.`, nombre);
-      }
-      continue;
-    }
-    if (repetidos.length > 0) {
-      return problema(
-        "parametro-invalido",
-        `El parámetro ${nombre} aparece más de una vez.`,
-        nombre,
-      );
-    }
-    if (valor === "") {
-      return problema("parametro-invalido", `El parámetro ${nombre} está vacío.`, nombre);
-    }
-    if (!cumpleRegla(regla, valor)) return problema("parametro-invalido", regla.detalle, nombre);
-    consulta[nombre] = valor;
-  }
-  return { consulta };
-}
-
-/** URLSearchParams ignora `?&` y `a=1&&b=2`, y a `?=1` le da nombre vacío; aquí se rechazan. */
-const tieneSegmentoSinNombre = (search: string): boolean =>
-  search
-    .slice(1)
-    .split("&")
-    .some((segmento) => segmento === "" || segmento.startsWith("="));
 
 function validar(ruta: Ruta, grupos: Readonly<Record<string, string>>, url: URL): Resolucion {
   const parametros: Record<string, string> = {};
   for (const [nombre, regla] of Object.entries(ruta.parametros ?? {})) {
     const valor = grupos[nombre];
     if (valor === undefined || !cumpleRegla(regla, valor)) {
-      return problema("parametro-invalido", regla.detalle, nombre);
+      return { problema: "parametro-invalido", detalle: regla.detalle, parametro: nombre };
     }
     parametros[nombre] = valor;
   }
-  // `url.search` es "" con un `?` solo.
-  if (url.search !== "" && tieneSegmentoSinNombre(url.search)) {
-    return { problema: "parametro-invalido", detalle: "La query tiene un parámetro sin nombre." };
-  }
-  const resultado = validarConsulta(ruta.consulta ?? {}, url.searchParams);
-  return "consulta" in resultado ? { ruta, parametros, consulta: resultado.consulta } : resultado;
+  // La query en el orden del núcleo: sin nombre, desconocidos y cada regla.
+  const resultado = revisarConsulta(ruta.consulta ?? {}, url.search);
+  return "consulta" in resultado
+    ? { ruta, parametros, consulta: resultado.consulta }
+    : deNucleo(resultado);
 }
 
 /**
@@ -150,80 +106,14 @@ const INDICE = {
 
 const indice = (): Response => respuestaJson(INDICE, { cache: CACHE_DATOS });
 
-const CVE_ENT: Regla = {
-  patron: /^\d{2}$/,
-  detalle: "La clave de estado (cve_ent) debe tener 2 dígitos.",
-};
-const CVEGEO: Regla = {
-  patron: /^\d{5}$/,
-  detalle: "La clave de municipio (cvegeo) debe tener 5 dígitos.",
-};
-const CODIGO_BANCO: Regla = {
-  patron: /^\d{3}$/,
-  detalle: "El código de banco debe tener 3 dígitos.",
-};
-const CLABE: Regla = { patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." };
-
-const AUTORIDAD: ReglaConsulta = {
-  patron: /^(?:lft|cnbv|sat)$/,
-  detalle: "Autoridades disponibles: lft, cnbv y sat.",
-  obligatorio: true,
-};
-// El manejador lo exige con sat y lo rechaza con las demás autoridades.
-const TIPO_PLAZO: ReglaConsulta = {
-  patron: /^(?:general|declaraciones_pagos)$/,
-  detalle: "El tipo de plazo (tipo_plazo) debe ser general o declaraciones_pagos.",
-};
-/** Una fecha real con formato AAAA-MM-DD. */
-const fecha = (detalle: string, obligatorio: boolean): ReglaConsulta => ({
-  patron: /^\d{4}-\d{2}-\d{2}$/,
-  cumple: esFechaIsoValida,
-  detalle,
-  obligatorio,
-});
-
-const DESDE = fecha(
-  "La fecha de partida (desde) debe ser una fecha válida con formato AAAA-MM-DD.",
-  true,
-);
-// El manejador exige exactamente uno de los dos.
-const PUBLICADO = fecha(
-  "La fecha de publicación (publicado) debe ser una fecha válida con formato AAAA-MM-DD.",
-  false,
-);
-const OPERACION = fecha(
-  "La fecha de la operación (operacion) debe ser una fecha válida con formato AAAA-MM-DD.",
-  false,
-);
-const FECHA_UDI = fecha(
-  "La fecha del valor (fecha) debe ser una fecha válida con formato AAAA-MM-DD.",
-  true,
-);
-const DIAS: ReglaConsulta = {
-  patron: /^[1-9]\d{0,3}$/,
-  cumple: (valor) => Number(valor) <= 3650,
-  detalle: "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
-  obligatorio: true,
-};
-const PERMITIR_INCOMPLETO: ReglaConsulta = {
-  patron: /^(?:true|false)$/,
-  detalle: "El parámetro permitir_incompleto debe ser true o false.",
-};
-const ANIO_RUTA: Regla = {
-  patron: /^\d{4}$/,
-  // No hay año 0000: las fechas van de 0001 a 9999.
-  cumple: (valor) => valor !== "0000",
-  detalle: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
-};
-const ANIO: ReglaConsulta = { ...ANIO_RUTA, obligatorio: true };
-const PERIODO_ISR: Regla = {
-  patron: /^(?:mensual|anual)$/,
-  detalle: "El periodo de la tarifa debe ser mensual o anual.",
-};
-const FECHA_UMA = fecha(
-  "La fecha que se consulta (fecha) debe ser una fecha válida con formato AAAA-MM-DD.",
-  true,
-);
+const {
+  cve_ent: CVE_ENT,
+  cvegeo: CVEGEO,
+  codigo: CODIGO_BANCO,
+  clabe: CLABE,
+  anio: ANIO_RUTA,
+} = REGLAS_RUTA;
+const PERIODO_ISR = REGLAS_RUTA.periodo;
 
 /**
  * Manejador de un shard. `destino` arma la ruta del asset y el nombre del recurso (para el
@@ -289,25 +179,19 @@ export const RUTAS: readonly Ruta[] = [
   {
     plantilla: "/v1/dias-habiles",
     patron: /^\/v1\/dias-habiles$/,
-    consulta: {
-      autoridad: AUTORIDAD,
-      tipo_plazo: TIPO_PLAZO,
-      desde: DESDE,
-      dias: DIAS,
-      permitir_incompleto: PERMITIR_INCOMPLETO,
-    },
+    consulta: CONSULTAS["/v1/dias-habiles"],
     manejar: diasHabiles,
   },
   {
     plantilla: "/v1/dias-inhabiles",
     patron: /^\/v1\/dias-inhabiles$/,
-    consulta: { autoridad: AUTORIDAD, anio: ANIO },
+    consulta: CONSULTAS["/v1/dias-inhabiles"],
     manejar: diasInhabiles,
   },
   {
     plantilla: "/v1/tipo-cambio/fix",
     patron: /^\/v1\/tipo-cambio\/fix$/,
-    consulta: { publicado: PUBLICADO, operacion: OPERACION },
+    consulta: CONSULTAS["/v1/tipo-cambio/fix"],
     manejar: consultarFix,
   },
   {
@@ -318,13 +202,13 @@ export const RUTAS: readonly Ruta[] = [
   {
     plantilla: "/v1/udis",
     patron: /^\/v1\/udis$/,
-    consulta: { fecha: FECHA_UDI },
+    consulta: CONSULTAS["/v1/udis"],
     manejar: consultarUdi,
   },
   {
     plantilla: "/v1/constantes/uma",
     patron: /^\/v1\/constantes\/uma$/,
-    consulta: { fecha: FECHA_UMA },
+    consulta: CONSULTAS["/v1/constantes/uma"],
     manejar: consultarUma,
   },
   {

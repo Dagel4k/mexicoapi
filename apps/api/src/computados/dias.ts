@@ -1,58 +1,31 @@
 import {
   type Autoridad,
   type AutoridadCurada,
-  AVISO_LFT_715,
-  CalendarioIncompletoError,
   calendarioLft,
-  diasDescansoLft,
-  FechaFueraDeRangoError,
-  FUENTE_LFT_74,
   sumarDiasHabiles,
   type TipoPlazo,
-  VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import {
   type CalendarioCurado,
   type ConsultaDiasHabilesCurado,
   diasInhabilesCurados,
-  exigirAnio,
   sumarDiasHabilesCurado,
 } from "@mexicoapi/core/curados";
-import { calendarioCurado, congelar, feriadosDeLaCnbv, type Meta, metaInterna } from "../cargas.js";
+import {
+  diasInhabilesLft,
+  metaLft,
+  problemaDeError,
+  revisarTipoPlazo,
+} from "@mexicoapi/core/rutas";
+import { calendarioCurado, feriadosDeLaCnbv, type Meta, metaInterna } from "../cargas.js";
 import type { Entorno } from "../entorno.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
-import { CACHE_DATOS, respuestaJson, respuestaProblema } from "../respuestas.js";
+import { CACHE_DATOS, respuestaDe, respuestaJson } from "../respuestas.js";
 import type { Contexto } from "../rutas.js";
 
 const DOCS_HABILES = `${URL_DOCS}/api/README.md#dias-habiles`;
 const DOCS_INHABILES = `${URL_DOCS}/api/README.md#dias-inhabiles`;
-
-/**
- * Los días de la LFT salen del núcleo, no de un dataset del build; su meta es fija y dice qué se
- * aplica de cada artículo.
- */
-function metaLft(docs: string): Meta {
-  return congelar({
-    dataset: "dias-inhabiles.lft",
-    as_of: VIGENCIA_LFT,
-    sources: [
-      {
-        name: "Ley Federal del Trabajo, artículos 74 (descanso obligatorio) y 715 (sábados y domingos)",
-        url: FUENTE_LFT_74.url,
-        license:
-          "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
-        license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
-        citation:
-          "Ley Federal del Trabajo: del artículo 74, los días de descanso obligatorio; del artículo 715, solo los sábados y domingos. Texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
-      },
-    ],
-    docs,
-  });
-}
-
-const META_DIAS_HABILES = metaLft(DOCS_HABILES);
-const META_DIAS_INHABILES = metaLft(DOCS_INHABILES);
 
 const CALENDARIO = calendarioLft();
 
@@ -81,32 +54,16 @@ async function cargarCurado(
 }
 
 /**
- * La respuesta de `responder`, o la del error de la consulta: 422 con la autoridad, la fecha que
- * falta, la cobertura y el texto del núcleo si el calendario no la cubre, y 400 si el resultado
- * pasaría del año 9999. Cualquier otro error es 500.
+ * La respuesta de `responder`, o el problema del núcleo para el error de la consulta: 422 si el
+ * calendario no la cubre y 400 si el resultado pasaría del año 9999. Cualquier otro error es 500.
  */
 function conCalendario(c: Contexto, responder: () => Response): Response {
   try {
     return responder();
   } catch (error) {
-    if (error instanceof CalendarioIncompletoError) {
-      const { autoridad, fecha, cobertura, detalle } = error;
-      return respuestaProblema(
-        "calendario-incompleto",
-        detalle,
-        { autoridad, fecha, cobertura: { desde: cobertura.desde, hasta: cobertura.hasta } },
-        c.url.pathname,
-      );
-    }
-    if (error instanceof FechaFueraDeRangoError) {
-      return respuestaProblema(
-        "parametro-invalido",
-        "Con estos días, el resultado pasaría del año 9999.",
-        { parametro: "desde" },
-        c.url.pathname,
-      );
-    }
-    throw error;
+    const problema = problemaDeError(error);
+    if (problema === null) throw error;
+    return respuestaDe(problema, c.url.pathname);
   }
 }
 
@@ -153,29 +110,14 @@ async function diasHabilesCurados(
 
 /**
  * `GET /v1/dias-habiles`: la consulta ya pasó sus reglas (fecha real, 1-3650). Con `sat`,
- * `tipo_plazo` es obligatorio porque las vacaciones del SAT no son inhábiles en los plazos de
- * declaraciones y pagos (CFF art. 12, segundo párrafo); las demás autoridades no lo aceptan.
+ * `tipo_plazo` es obligatorio y las demás autoridades no lo aceptan (`revisarTipoPlazo`).
  */
 export function diasHabiles(c: Contexto): Response | Promise<Response> {
   // La regla de la ruta solo deja pasar lft, cnbv y sat.
   const autoridad = requerido(c.consulta, "autoridad") as Autoridad;
   const tipo = c.consulta.tipo_plazo as TipoPlazo | undefined;
-  if (autoridad === "sat" && tipo === undefined) {
-    return respuestaProblema(
-      "parametro-faltante",
-      "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
-      { parametro: "tipo_plazo" },
-      c.url.pathname,
-    );
-  }
-  if (autoridad !== "sat" && tipo !== undefined) {
-    return respuestaProblema(
-      "parametro-invalido",
-      "El parámetro tipo_plazo solo se acepta con autoridad=sat.",
-      { parametro: "tipo_plazo" },
-      c.url.pathname,
-    );
-  }
+  const combinacion = revisarTipoPlazo(autoridad, tipo);
+  if (combinacion !== null) return respuestaDe(combinacion, c.url.pathname);
   const desde = requerido(c.consulta, "desde");
   const dias = Number(requerido(c.consulta, "dias"));
   const permitirIncompleto = c.consulta.permitir_incompleto === "true";
@@ -183,7 +125,7 @@ export function diasHabiles(c: Contexto): Response | Promise<Response> {
     return conCalendario(c, () =>
       respuestaDatos(
         sumarDiasHabiles({ calendario: CALENDARIO, desde, dias, permitirIncompleto }),
-        META_DIAS_HABILES,
+        metaLft("dias-habiles"),
       ),
     );
   }
@@ -213,16 +155,15 @@ async function inhabilesCurados(
 
 /**
  * `GET /v1/dias-inhabiles`: los días inhábiles de un año (0001-9999), sin fines de semana. Los de
- * la LFT salen del art. 74; los de la CNBV y el SAT, de sus publicaciones en el DOF.
+ * la LFT salen del art. 74, con el aviso del art. 715; los de la CNBV y el SAT, de sus
+ * publicaciones en el DOF.
  */
 export function diasInhabiles(c: Contexto): Response | Promise<Response> {
   const anio = Number(requerido(c.consulta, "anio"));
   const autoridad = requerido(c.consulta, "autoridad") as Autoridad;
   if (autoridad !== "lft") return inhabilesCurados(c, autoridad, anio);
   return conCalendario(c, () => {
-    exigirAnio(autoridad, anio, CALENDARIO.cobertura);
-    // La LFT se calcula por regla: la lista del año siempre está completa, pero no tiene las
-    // suspensiones de labores de las autoridades laborales (art. 715).
-    return respuestaInhabiles(diasDescansoLft(anio), [AVISO_LFT_715], META_DIAS_INHABILES);
+    const { dias, advertencias } = diasInhabilesLft(anio);
+    return respuestaInhabiles(dias, advertencias, metaLft("dias-inhabiles"));
   });
 }

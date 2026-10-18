@@ -13,7 +13,8 @@ export interface ResultadoDiasHabiles {
   advertencias: string[];
 }
 
-const DIAS_MAX = 3650;
+/** Lo más que se puede sumar: unos 14 años hábiles. */
+export const DIAS_MAX = 3650;
 
 export function sumarDiasHabiles(parametros: {
   calendario: Calendario;

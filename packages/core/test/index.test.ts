@@ -59,6 +59,9 @@ const VALORES_PUBLICOS = [
   "TIPOS_PLAZO",
   "TIPOS_DIA_CURADO",
   "NOMBRE_AUTORIDAD",
+  // Las reglas entre parámetros de la API, que el MCP y la CLI toman de mexicoapi.
+  "revisarTipoPlazo",
+  "revisarFix",
 ];
 
 describe("API pública", () => {
