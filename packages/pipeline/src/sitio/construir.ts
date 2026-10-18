@@ -33,6 +33,7 @@ import { escribirDirectorioAtomico } from "../escritura.js";
 import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
 import { type CoberturaCalendario, coberturasDe } from "./calendarios.js";
+import { porNombre } from "./comun.js";
 import { aCsv } from "./csv.js";
 import {
   type AniosConstantes,
@@ -220,9 +221,6 @@ async function docsCompletas(): Promise<DocumentoMarkdown[]> {
     })),
   );
 }
-
-/** Orden por unidades de código UTF-16, igual que el resto de los datos. */
-const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 export async function construirSitio(opciones: {
   raizDatos: string;

@@ -1,7 +1,7 @@
 import { posix } from "node:path";
+import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../meta.js";
 import { describir } from "./catalogo.js";
-import { PUBLICADO_EN_NPM } from "./inicio.js";
 
 /**
  * `llms.txt` (formato de llmstxt.org) y `llms-full.txt`: lo que una herramienta que lee esos
@@ -114,9 +114,6 @@ export function enlacesAbsolutos(ruta: string, texto: string): string {
     return `](${URL_ARCHIVOS}/${resuelta}${fragmento}`;
   });
 }
-
-/** Orden por unidades de código UTF-16, igual que el resto del build. */
-const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 /** Lo que junta `llms-full.txt`: la referencia, los errores y la doc de cada dataset por nombre. */
 export function ordenLlmsCompleto(docsDeDatos: readonly string[]): string[] {
