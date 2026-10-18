@@ -134,12 +134,16 @@ function sinArgumentos(posiciones: readonly string[], comando: string): void {
   }
 }
 
+/**
+ * Cliente con --base (o MEXICOAPI_BASE), o sin red. Con base, los datos que caducan se piden a la
+ * API; banco y municipio son estables y salen del paquete igual (la base solo se valida).
+ */
 async function crearClienteCli(e: Entorno, opciones: Opciones) {
   const { crearCliente } = await import("../cliente/index.js");
   const base = opciones.base ?? e.env.MEXICOAPI_BASE;
   return base === undefined || base === ""
-    ? { cliente: crearCliente({ offline: true }), conRed: false }
-    : { cliente: crearCliente({ base }), conRed: true };
+    ? crearCliente({ offline: true })
+    : crearCliente({ base });
 }
 
 async function validador(
@@ -160,7 +164,7 @@ async function validador(
   if (opciones.json) json(e, resultado);
   else {
     const femenino = comando === "clabe" || comando === "curp";
-    const pie = comando === "clabe" ? pieTexto({ origen: "paquete", advertencias: [] }, false) : "";
+    const pie = comando === "clabe" ? pieTexto({ origen: "paquete", advertencias: [] }) : "";
     imprimir(e, validacionTexto(comando.toUpperCase(), femenino, resultado) + pie);
   }
   return resultado.valido ? 0 : 1;
@@ -177,7 +181,7 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
     throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
   const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
-  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const cliente = await crearClienteCli(e, opciones);
   // Van tal cual: la regla de la API rechaza sat sin --tipo-plazo y --tipo-plazo con otra.
   const respuesta = await cliente.diasHabiles({
     desde,
@@ -186,7 +190,7 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
     tipoPlazo,
   } as ConsultaDiasHabiles);
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta, conRed));
+  else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta));
   return 0;
 }
 
@@ -204,47 +208,47 @@ async function uma(posiciones: readonly string[], e: Entorno, opciones: Opciones
   }
   const anio =
     fecha === undefined ? unValor(posiciones, "el año (o --fecha AAAA-MM-DD)", "uma") : "";
-  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const cliente = await crearClienteCli(e, opciones);
   const respuesta =
     fecha === undefined
       ? await cliente.consultar("/v1/constantes/uma/{anio}", { anio: anio as unknown as number })
       : await cliente.umaVigente(fecha);
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, umaTexto(respuesta.data, fecha) + pieTexto(respuesta, conRed));
+  else imprimir(e, umaTexto(respuesta.data, fecha) + pieTexto(respuesta));
   return 0;
 }
 
 async function salarioMinimo(anio: string, e: Entorno, opciones: Opciones): Promise<number> {
-  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const cliente = await crearClienteCli(e, opciones);
   const respuesta = await cliente.consultar("/v1/constantes/salario-minimo/{anio}", {
     anio: anio as unknown as number,
   });
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, salarioMinimoTexto(anio, respuesta.data) + pieTexto(respuesta, conRed));
+  else imprimir(e, salarioMinimoTexto(anio, respuesta.data) + pieTexto(respuesta));
   return 0;
 }
 
 async function isr(posiciones: readonly string[], e: Entorno, opciones: Opciones): Promise<number> {
   const [periodo, anio] = dosValores(posiciones, ["el periodo (mensual o anual)", "el año"], "isr");
-  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const cliente = await crearClienteCli(e, opciones);
   const respuesta = await cliente.consultar("/v1/isr/tarifa/{periodo}/{anio}", {
     periodo: periodo as "mensual",
     anio: anio as unknown as number,
   });
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, tarifaIsrTexto(respuesta.data) + pieTexto(respuesta, conRed));
+  else imprimir(e, tarifaIsrTexto(respuesta.data) + pieTexto(respuesta));
   return 0;
 }
 
 async function municipio(valor: string, e: Entorno, opciones: Opciones): Promise<number> {
   const datos = await import("../datos/index.js");
   if (CVEGEO.test(valor)) {
-    const { cliente, conRed } = await crearClienteCli(e, opciones);
+    const cliente = await crearClienteCli(e, opciones);
     const respuesta = await cliente.municipio(valor);
     if (opciones.json) json(e, respuesta);
     else {
       const estado = datos.estado(respuesta.data.cve_ent);
-      imprimir(e, municipioTexto(respuesta.data, estado?.nombre) + pieTexto(respuesta, conRed));
+      imprimir(e, municipioTexto(respuesta.data, estado?.nombre) + pieTexto(respuesta));
     }
     return 0;
   }
@@ -255,17 +259,17 @@ async function municipio(valor: string, e: Entorno, opciones: Opciones): Promise
     imprimir(
       e,
       municipiosTexto(valor, encontrados, MAXIMO_MUNICIPIOS, (cve) => datos.estado(cve)?.nombre) +
-        pieTexto({ origen: "paquete", advertencias: [] }, false),
+        pieTexto({ origen: "paquete", advertencias: [] }),
     );
   }
   return encontrados.length > 0 ? 0 : 1;
 }
 
 async function banco(codigo: string, e: Entorno, opciones: Opciones): Promise<number> {
-  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const cliente = await crearClienteCli(e, opciones);
   const respuesta = await cliente.banco(codigo);
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, bancoTexto(respuesta.data) + pieTexto(respuesta, conRed));
+  else imprimir(e, bancoTexto(respuesta.data) + pieTexto(respuesta));
   return 0;
 }
 

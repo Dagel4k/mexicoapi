@@ -1,5 +1,5 @@
 import { crearCache } from "./cache.js";
-import { congelar } from "./comun.js";
+import { AVISO_RESPALDO, congelar } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
 import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
 import type { Contexto } from "./paquete-comun.js";
@@ -212,9 +212,7 @@ async function desdePaquete(
   const { responderPaquete } = await import("./paquete.js");
   const contexto: Contexto = { ...pedido, causa };
   if (causa !== undefined) {
-    contexto.advertencias.push(
-      `Respuesta de los datos del paquete porque la API falló: ${causa.message}`,
-    );
+    contexto.advertencias.push(`${AVISO_RESPALDO}: ${causa.message}`);
   }
   const { data, meta, advertencias = [] } = await responderPaquete(plantilla, contexto);
   return congelar({

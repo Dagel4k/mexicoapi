@@ -1,4 +1,6 @@
 // Salida legible de la CLI: texto en español, corto y sin adornos.
+
+import { AVISO_RESPALDO } from "../cliente/comun.js";
 import type {
   Banco,
   CodigoError,
@@ -47,14 +49,19 @@ export function validacionTexto(
   return lineas.join("\n");
 }
 
-export function pieTexto(
-  r: { origen: "api" | "paquete"; advertencias: readonly string[] },
-  conRed: boolean,
-): string {
+/**
+ * De dónde salió la respuesta. "La API no respondió" solo si el cliente avisó que usó el paquete
+ * de respaldo: con --base, banco y municipio salen del paquete sin consultar la API.
+ */
+export function pieTexto(r: {
+  origen: "api" | "paquete";
+  advertencias: readonly string[];
+}): string {
+  const respaldo = r.advertencias.some((a) => a.startsWith(AVISO_RESPALDO));
   const origen =
     r.origen === "api"
       ? "Origen: API"
-      : conRed
+      : respaldo
         ? "Origen: datos del paquete (la API no respondió)"
         : "Origen: datos del paquete, sin red";
   return [`\n${origen}`, ...r.advertencias.map((a) => `Aviso: ${a}`)].join("\n");

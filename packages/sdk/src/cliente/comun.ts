@@ -1,5 +1,8 @@
 export type Objeto = Record<string, unknown>;
 
+/** Comienzo de la advertencia de una respuesta del paquete porque la API falló (la CLI la busca). */
+export const AVISO_RESPALDO = "Respuesta de los datos del paquete porque la API falló";
+
 export const esObjeto = (valor: unknown): valor is Objeto =>
   typeof valor === "object" && valor !== null && !Array.isArray(valor);
 

@@ -2,7 +2,7 @@
 const OPCIONES_GLOBALES = `Opciones:
   --json                 imprime el resultado completo como JSON (los errores, por stderr)
   --depurar              muestra el detalle técnico de un error
-  --base <url>           origen de la API (todo salvo los validadores y sepomex)
+  --base <url>           origen de la API para dias-habiles, uma, salario-minimo e isr
   -h, --help             muestra esta ayuda
   -v, --version          muestra la versión`;
 
@@ -26,8 +26,8 @@ Comandos:
 ${OPCIONES_GLOBALES}
 
 Sin red todo sale de los datos que trae el paquete. Con --base <url> (o la variable
-MEXICOAPI_BASE) municipio, banco, dias-habiles, uma, salario-minimo e isr consultan
-primero la API y, si no responde, usan el paquete y lo avisan.
+MEXICOAPI_BASE) dias-habiles, uma, salario-minimo e isr consultan primero la API y, si no
+responde, usan el paquete y lo avisan. municipio y banco salen siempre del paquete.
 
 Códigos de salida:
   0   todo bien
@@ -106,19 +106,15 @@ Ejemplo: mexicoapi isr mensual 2026`,
   municipio: `Uso: mexicoapi municipio <cvegeo|texto> [--json]
 
 Con una clave de 5 dígitos (25006) muestra ese municipio. Con otro texto busca por nombre sin
-distinguir mayúsculas ni acentos, siempre en los datos del paquete. Sale con 1 si no hay
-resultados.
-
-Opciones:
-${BASE}
+distinguir mayúsculas ni acentos. Sale siempre de los datos del paquete, sin red, aunque haya
+--base o MEXICOAPI_BASE. Sale con 1 si no hay resultados.
 
 Ejemplo: mexicoapi municipio culiacan`,
   banco: `Uso: mexicoapi banco <codigo> [--json]
 
-Consulta un banco por los 3 dígitos con los que empieza la CLABE.
-
-Opciones:
-${BASE}
+Consulta un banco por los 3 dígitos con los que empieza la CLABE. Sale con 1 si no existe.
+Sale siempre de los datos del paquete, sin red, aunque haya --base o MEXICOAPI_BASE; la lista
+de la API está más al día (Banxico la cambia) y se pide con el cliente y { fuente: "api" }.
 
 Ejemplo: mexicoapi banco 002`,
   sepomex: `Uso: mexicoapi sepomex <subcomando>
