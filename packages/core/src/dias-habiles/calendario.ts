@@ -1,5 +1,5 @@
 import { CalendarioIncompletoError } from "../errores.js";
-import { diaDeLaSemana, esFechaIsoValida, type FechaISO } from "../fechas.js";
+import { aDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
 import { COBERTURA_LFT, diasDescansoLft, FUENTE_LFT_715 } from "./lft.js";
 import type { Autoridad, DiaInhabil, Fuente } from "./tipos.js";
 
@@ -29,7 +29,8 @@ function validarCobertura(cobertura: Cobertura): void {
 function construir(
   autoridad: Autoridad,
   cobertura: Cobertura,
-  diasDe: (fecha: FechaISO) => readonly DiaInhabil[],
+  // Recibe la fecha ya validada y su número de día (aDias).
+  diasDe: (fecha: FechaISO, numero: number) => readonly DiaInhabil[],
   fuenteFinDeSemana: Fuente,
   excluirTipos: readonly DiaInhabil["tipo"][],
 ): Calendario {
@@ -39,15 +40,17 @@ function construir(
     autoridad,
     cobertura: fija,
     inhabil(fecha) {
-      if (!esFechaIsoValida(fecha)) {
-        throw new RangeError(`Fecha ISO inválida: ${fecha}`);
-      }
+      // aDias valida una sola vez y deja el número de día para el fin de semana.
+      const numero = aDias(fecha);
       if (fecha < fija.desde || fecha > fija.hasta) {
         throw new CalendarioIncompletoError(autoridad, fecha, fija);
       }
-      const listado = diasDe(fecha).find((d) => !excluirTipos.includes(d.tipo));
-      if (listado) return listado;
-      const semana = diaDeLaSemana(fecha);
+      const delDia = diasDe(fecha, numero);
+      for (let i = 0; i < delDia.length; i++) {
+        const d = delDia[i] as DiaInhabil;
+        if (!excluirTipos.includes(d.tipo)) return d;
+      }
+      const semana = diaSemanaDeDias(numero);
       if (semana === 0 || semana === 6) {
         return Object.freeze({
           fecha,
@@ -71,7 +74,7 @@ export function crearCalendario(opciones: {
 }): Calendario {
   const { autoridad, cobertura, dias, fuenteFinDeSemana, excluirTipos = [] } = opciones;
   validarCobertura(cobertura);
-  const porFecha = new Map<FechaISO, DiaInhabil[]>();
+  const porNumero = new Map<number, DiaInhabil[]>();
   for (const dia of dias) {
     if (!esFechaIsoValida(dia.fecha)) {
       throw new RangeError(`Fecha ISO inválida en dias: ${dia.fecha}`);
@@ -79,26 +82,36 @@ export function crearCalendario(opciones: {
     if (dia.fecha < cobertura.desde || dia.fecha > cobertura.hasta) {
       throw new RangeError(`El día ${dia.fecha} está fuera de la cobertura`);
     }
-    const lista = porFecha.get(dia.fecha) ?? [];
+    const numero = aDias(dia.fecha);
+    const lista = porNumero.get(numero) ?? [];
     lista.push(congelar(dia));
-    porFecha.set(dia.fecha, lista);
+    porNumero.set(numero, lista);
   }
-  return construir(autoridad, cobertura, (fecha) => porFecha.get(fecha) ?? [], fuenteFinDeSemana, [
-    ...excluirTipos,
-  ]);
+  return construir(
+    autoridad,
+    cobertura,
+    (_fecha, numero) => porNumero.get(numero) ?? [],
+    fuenteFinDeSemana,
+    [...excluirTipos],
+  );
 }
 
 export function calendarioLft(): Calendario {
-  const porAnio = new Map<number, Map<FechaISO, DiaInhabil[]>>();
-  const diasDe = (fecha: FechaISO): readonly DiaInhabil[] => {
-    const anio = Number(fecha.slice(0, 4));
+  const porAnio = new Map<number, Map<number, DiaInhabil[]>>();
+  const diasDe = (fecha: FechaISO, numero: number): readonly DiaInhabil[] => {
+    // La fecha ya está validada: los cuatro primeros caracteres son dígitos.
+    const anio =
+      (fecha.charCodeAt(0) - 48) * 1000 +
+      (fecha.charCodeAt(1) - 48) * 100 +
+      (fecha.charCodeAt(2) - 48) * 10 +
+      (fecha.charCodeAt(3) - 48);
     let mapa = porAnio.get(anio);
     if (!mapa) {
       mapa = new Map();
-      for (const dia of diasDescansoLft(anio)) mapa.set(dia.fecha, [congelar(dia)]);
+      for (const dia of diasDescansoLft(anio)) mapa.set(aDias(dia.fecha), [congelar(dia)]);
       porAnio.set(anio, mapa);
     }
-    return mapa.get(fecha) ?? [];
+    return mapa.get(numero) ?? [];
   };
   return construir("lft", COBERTURA_LFT, diasDe, FUENTE_LFT_715, []);
 }

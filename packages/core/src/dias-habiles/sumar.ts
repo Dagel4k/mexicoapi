@@ -1,5 +1,5 @@
 import { CalendarioIncompletoError } from "../errores.js";
-import { diaDeLaSemana, esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
+import { aDias, deDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
 import type { Calendario } from "./calendario.js";
 import type { Autoridad, DiaInhabil } from "./tipos.js";
 
@@ -34,10 +34,12 @@ export function sumarDiasHabiles(parametros: {
   const advertencias: string[] = [];
   const aniosAvisados = new Set<string>();
   let contados = 0;
+  let numero = aDias(desde);
   let actual = desde;
 
   while (contados < dias) {
-    actual = sumarDias(actual, 1);
+    numero += 1;
+    actual = deDias(numero);
     let inhabil: Pick<DiaInhabil, "tipo"> | null;
     if (actual < cobertura.desde || actual > cobertura.hasta) {
       if (!permitirIncompleto) {
@@ -50,7 +52,7 @@ export function sumarDiasHabiles(parametros: {
           `Calendario incompleto: ${autoridad} ${anio}; solo se descontaron fines de semana.`,
         );
       }
-      const semana = diaDeLaSemana(actual);
+      const semana = diaSemanaDeDias(numero);
       inhabil = semana === 0 || semana === 6 ? { tipo: "fin_de_semana" } : null;
     } else {
       inhabil = calendario.inhabil(actual);
