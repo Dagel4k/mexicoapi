@@ -86,8 +86,30 @@ const FERIADO = await (async () => {
 /** Una consulta con su nombre, para correrla con la API y con el paquete. */
 type Consulta = [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>];
 
+/**
+ * Hasta dónde llegan los calendarios curados del paquete. Los casos del borde salen de aquí y no
+ * de fechas fijas: después de una captura siguen probando el respaldo, la cobertura amplia y los 422.
+ */
+function bordes() {
+  const sat = calendarios.calendarioCurado("sat");
+  return {
+    satGeneral: sat.general.cobertura.hasta,
+    satPagos: sat.plazos.get("declaraciones_pagos")?.cobertura.hasta as string,
+    satAmplia: sat.amplia.hasta,
+    cnbv: calendarios.calendarioCurado("cnbv").general.cobertura.hasta,
+  };
+}
+
+/** Días naturales de `desde` a `hasta`. */
+const diasEntre = (desde: string, hasta: string): number =>
+  (Date.parse(hasta) - Date.parse(desde)) / 86_400_000;
+
 /** Las consultas que el paquete también responde, por nombre. */
 function consultas(): Consulta[] {
+  const { satGeneral, satPagos, satAmplia, cnbv } = bordes();
+  // Desde el fin de general hasta pasar la cobertura amplia: los días hábiles no son más que los
+  // naturales. La API acepta hasta 3650.
+  const masAllaDeAmplia = Math.min(diasEntre(satGeneral, satAmplia) + 5, 3650);
   const publicado = enMedio(fix.serie).fecha_publicacion;
   const primeraUma = constantes.anios.uma[0] as number;
   const ultimaUma = constantes.anios.uma.at(-1) as number;
@@ -149,7 +171,7 @@ function consultas(): Consulta[] {
           {
             autoridad: "sat",
             tipoPlazo: "general",
-            desde: "2026-11-27",
+            desde: satGeneral,
             dias: 20,
             permitirIncompleto: true,
           },
@@ -163,8 +185,8 @@ function consultas(): Consulta[] {
           {
             autoridad: "sat",
             tipoPlazo: "general",
-            desde: "2026-11-27",
-            dias: 60,
+            desde: satGeneral,
+            dias: masAllaDeAmplia,
             permitirIncompleto: true,
           },
           op,
@@ -174,7 +196,7 @@ function consultas(): Consulta[] {
       "días hábiles CNBV con permitir_incompleto",
       (api, op) =>
         api.diasHabiles(
-          { autoridad: "cnbv", desde: "2026-12-28", dias: 10, permitirIncompleto: true },
+          { autoridad: "cnbv", desde: mover(cnbv, -3), dias: 10, permitirIncompleto: true },
           op,
         ),
     ],
@@ -189,7 +211,7 @@ function consultas(): Consulta[] {
           {
             autoridad: "sat",
             tipoPlazo: "general",
-            desde: "2026-12-31",
+            desde: satAmplia,
             dias: 3,
             permitirIncompleto: true,
           },
@@ -197,13 +219,13 @@ function consultas(): Consulta[] {
         ),
     ],
     [
-      "días hábiles SAT declaraciones_pagos con permitir_incompleto después del 31 de diciembre",
+      "días hábiles SAT declaraciones_pagos con permitir_incompleto después de su cobertura",
       (api, op) =>
         api.diasHabiles(
           {
             autoridad: "sat",
             tipoPlazo: "declaraciones_pagos",
-            desde: "2026-12-30",
+            desde: mover(satPagos, -1),
             dias: 3,
             permitirIncompleto: true,
           },
@@ -239,11 +261,8 @@ function consultas(): Consulta[] {
  */
 function problemas(): Consulta[] {
   const antes = mover(fix.cobertura.desde, -3);
-  const sat = calendarios.calendarioCurado("sat");
-  const satGeneral = sat.general.cobertura.hasta;
-  const satPagos = sat.plazos.get("declaraciones_pagos")?.cobertura.hasta as string;
-  const cnbv = calendarios.calendarioCurado("cnbv").general.cobertura.hasta;
-  const satFuera = Number(sat.amplia.hasta.slice(0, 4)) + 1;
+  const { satGeneral, satPagos, satAmplia, cnbv } = bordes();
+  const satFuera = Number(satAmplia.slice(0, 4)) + 1;
   const { anios } = constantes;
   const ultimaUma = anios.uma.at(-1) as number;
   const umaFutura = ultimaUma + 2;
