@@ -10,7 +10,7 @@ const UDIS = "/v1/udis?fecha=2024-06-03";
 const DIAS = "/v1/dias-habiles?autoridad=lft&desde=2026-11-13&dias=1";
 const DIAS_SAT = "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10";
 const UMA = "/v1/constantes/uma/2026";
-const UMA_2016 = "/v1/constantes/uma/2016";
+const UMA_2015 = "/v1/constantes/uma/2015";
 const PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
 
 interface Ruta {
@@ -34,7 +34,7 @@ function rutasBuenas(): Record<string, Ruta> {
     },
     [UDIS]: { cuerpo: { data: { fecha: "2024-06-03", valor: "8.146030" } } },
     [UMA]: { cuerpo: { data: { anio: 2026, diaria: "117.31" } } },
-    [UMA_2016]: {
+    [UMA_2015]: {
       estado: 404,
       tipo: "application/problem+json; charset=utf-8",
       cuerpo: { type: `${PROBLEMAS}#no-encontrado`, status: 404 },
@@ -180,15 +180,15 @@ describe("probarHumo", () => {
     }
   });
 
-  it("la UMA de 2016 debe ser no-encontrado: un año anterior a los datos", async () => {
+  it("la UMA de 2015 debe ser no-encontrado: la UMA empezó a publicarse en 2016", async () => {
     for (const [cuerpo, texto] of [
       [{ type: `${PROBLEMAS}#dato-no-disponible`, status: 404 }, "dato-no-disponible"],
       [{ status: 404 }, "undefined"],
     ] as const) {
       const rutas = rutasBuenas();
-      rutas[UMA_2016] = { estado: 404, tipo: "application/problem+json", cuerpo };
+      rutas[UMA_2015] = { estado: 404, tipo: "application/problem+json", cuerpo };
       const r = await probarHumo(BASE, { fetch: falso(rutas) });
-      expect(r.fallas).toEqual([`${UMA_2016}: type ${texto}, no no-encontrado`]);
+      expect(r.fallas).toEqual([`${UMA_2015}: type ${texto}, no no-encontrado`]);
     }
   });
 

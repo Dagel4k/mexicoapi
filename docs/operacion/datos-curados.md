@@ -62,7 +62,7 @@ Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) 
 
 8. Si cambió la cobertura de un calendario, actualizar los documentos que citan la cobertura vigente. Las pruebas la toman de los datos, así que no fallan cuando estos textos quedan viejos:
 
-   - `docs/api/README.md`: la tabla de [Cobertura de la CNBV y el SAT](../api/README.md#cobertura-de-la-cnbv-y-el-sat), los ejemplos del 422 y de `permitir_incompleto`, y en [dias-inhabiles](../api/README.md#dias-inhabiles) los años que se responden y la advertencia;
+   - `docs/api/README.md`: la tabla de [Cobertura de la CNBV y el SAT](../api/README.md#cobertura-de-la-cnbv-y-el-sat), los ejemplos del 422 y de `permitir_incompleto`, y en [dias-inhabiles](../api/README.md#dias-inhabiles) los años que se responden, el número de fechas de cada autoridad y la advertencia;
    - `docs/api/problemas.md`: la cobertura de hoy en `calendario-incompleto`;
    - `docs/diseno/arquitectura-v1.md`: el párrafo de cobertura de "Datos curados" (sección 8), el de "Calendario incompleto" (sección 8.1) y la decisión sobre la cobertura del SAT `general` (sección 14);
    - `docs/datos/dias-inhabiles-cnbv.md` o `docs/datos/dias-inhabiles-sat.md`: la sección Cobertura;
