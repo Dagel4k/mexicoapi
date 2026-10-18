@@ -62,6 +62,9 @@ const VALORES_PUBLICOS = [
   // Las reglas entre parámetros de la API, que el MCP y la CLI toman de mexicoapi.
   "revisarTipoPlazo",
   "revisarFix",
+  // La CLABE como la revisa validarClabe y el texto en una línea: los usan la CLI y el MCP.
+  "normalizarClabe",
+  "enLinea",
 ];
 
 describe("API pública", () => {

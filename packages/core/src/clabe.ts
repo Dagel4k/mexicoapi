@@ -28,6 +28,14 @@ export interface DetalleClabe {
 
 const PESOS = [3, 7, 1] as const;
 
+/**
+ * La CLABE como la revisa validarClabe: sin espacios, tabuladores, saltos de línea ni guiones.
+ * Los caracteres de ancho cero se quedan, para que la validación los rechace.
+ */
+export function normalizarClabe(clabe: string): string {
+  return normalizar(clabe);
+}
+
 /** Calcula el dígito de control de los primeros 17 dígitos. Lanza RangeError si no son 17 dígitos. */
 export function digitoControlClabe(primeros17: string): string {
   if (!/^[0-9]{17}$/.test(primeros17)) {
@@ -51,7 +59,7 @@ export function validarClabe(
 ): ResultadoValidacion<DetalleClabe> {
   const rechazo = rechazoPorTipo<DetalleClabe>(clabe);
   if (rechazo) return rechazo;
-  const valor = normalizar(clabe);
+  const valor = normalizarClabe(clabe);
   if (valor.length === 0) return resultadoInvalido(valor, "vacio");
   if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
   if (valor.length !== 18) return resultadoInvalido(valor, "longitud");

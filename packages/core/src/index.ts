@@ -1,5 +1,5 @@
 export type { BancoClabe, DetalleClabe, Plaza } from "./clabe.js";
-export { digitoControlClabe, validarClabe } from "./clabe.js";
+export { digitoControlClabe, normalizarClabe, validarClabe } from "./clabe.js";
 export type { DetalleCurp } from "./curp.js";
 export { digitoVerificadorCurp, ENTIDADES_CURP, validarCurp } from "./curp.js";
 export type { Banco, PeriodoBanco, TipoBanco } from "./datos/bancos.js";
@@ -64,5 +64,6 @@ export type { DetalleRfc, TipoRfc } from "./rfc.js";
 export { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "./rfc.js";
 export type { NombresTipoPlazo, ProblemaConsulta } from "./rutas/parametros.js";
 export { revisarFix, revisarTipoPlazo } from "./rutas/parametros.js";
+export { enLinea } from "./texto.js";
 export type { CodigoError, ResultadoValidacion } from "./validacion.js";
 export { NOTA_VALIDACION } from "./validacion.js";
