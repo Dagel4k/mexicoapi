@@ -12,6 +12,7 @@ import {
   type OpcionesConsulta,
   type Respuesta,
   type RespuestaSinMeta,
+  URL_API,
 } from "../../src/cliente/index.js";
 import * as calendarios from "../../src/datos/calendarios.js";
 import * as constantes from "../../src/datos/constantes.js";
@@ -1160,15 +1161,32 @@ describe("de dónde sale cada respuesta", () => {
     expect(llamadas).toHaveLength(0);
   });
 
-  it("sin base ni offline: true, crearCliente lanza un TypeError que lo explica", () => {
-    for (const opciones of [undefined, {}, { offline: false }, { base: undefined }]) {
-      expect(() => crearCliente(opciones as never)).toThrow(
-        new TypeError(
-          "crearCliente necesita base (el origen de la API) o offline: true para responder solo con el paquete.",
-        ),
-      );
+  // Antes lanzaba TypeError sin base ni offline: true. Desde que la API pública está en
+  // producción, su origen (URL_API) es la base por omisión.
+  it("sin base, los datos que caducan se piden a la API pública (URL_API)", async () => {
+    expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
+    for (const opciones of [{}, { offline: false }, { base: undefined }]) {
+      const { fetch, llamadas } = fetchFalso(respuestaDatos(FIX_API));
+      await crearCliente({ ...opciones, fetch }).fixUltimo();
+      expect(llamadas.map((l) => l.url)).toEqual([`${URL_API}/v1/tipo-cambio/fix/ultimo`]);
     }
+    // Los datos estables y la CLABE no salen del equipo aunque haya base.
+    const { fetch, llamadas } = fetchFalso();
+    const local = crearCliente({ fetch });
+    expect((await local.banco("002")).origen).toBe("paquete");
+    expect((await local.clabe(CLABE)).origen).toBe("paquete");
+    expect(llamadas).toHaveLength(0);
     expect(Object.isFrozen(crearCliente({ offline: true, base: BASE }))).toBe(true);
+  });
+
+  it("una base explícita gana a URL_API y offline: true nunca usa la red", async () => {
+    const conBase = fetchFalso(respuestaDatos(FIX_API));
+    await crearCliente({ base: BASE, fetch: conBase.fetch }).fixUltimo();
+    expect(conBase.llamadas.map((l) => l.url)).toEqual([`${BASE}/v1/tipo-cambio/fix/ultimo`]);
+    const sinRed = fetchFalso();
+    const r = await crearCliente({ offline: true, fetch: sinRed.fetch }).fixUltimo();
+    expect(r.origen).toBe("paquete");
+    expect(sinRed.llamadas).toHaveLength(0);
   });
 
   it("valida los valores de la ruta antes de pedirlos a la API", async () => {
@@ -1306,18 +1324,18 @@ describe("MexicoApiError", () => {
 });
 
 describe("tipos", () => {
-  it("las opciones piden base u offline: true", () => {
+  // Antes pedían base u offline: true; ahora la base es opcional (por omisión, URL_API).
+  it("las opciones son opcionales: base, offline y las comunes", () => {
     const crear = (): unknown => [
       crearCliente({ base: BASE }),
       crearCliente({ base: new URL(BASE), offline: false }),
       crearCliente({ offline: true }),
       crearCliente({ offline: true, base: BASE, timeoutMs: 1_000 }),
-      // @ts-expect-error sin opciones
       crearCliente(),
-      // @ts-expect-error sin base ni offline
       crearCliente({ timeoutMs: 1_000 }),
-      // @ts-expect-error offline: false necesita base
       crearCliente({ offline: false }),
+      // @ts-expect-error base es un texto o una URL
+      crearCliente({ base: 1 }),
     ];
     expectTypeOf(crear).toBeFunction();
   });

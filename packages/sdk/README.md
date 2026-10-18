@@ -6,7 +6,7 @@ Validadores, reglas y datos oficiales de México para JavaScript y TypeScript: C
 - Funciona sin red: los datos vienen dentro del paquete y cada uno dice su fuente oficial.
 - Cada entrada se carga por separado: quien solo valida una CLABE no carga los municipios.
 
-La API de MéxicoAPI todavía no tiene dirección pública: mientras tanto, el cliente pide `base` (el origen de tu despliegue) u `offline: true`. Todo lo demás funciona sin ella.
+La API pública de MéxicoAPI está en https://mexicoapi.dagel4k.workers.dev (`URL_API`): el cliente la usa si no le das otra `base`, y solo para los datos que caducan. Con `offline: true` no usa la red. Todo lo demás funciona sin ella.
 
 ## Instalación
 
@@ -162,7 +162,7 @@ Los registros y las listas están congelados. Cada dataset trae su `meta` con la
 ```ts
 import { crearCliente, MexicoApiError } from "mexicoapi/cliente";
 
-const api = crearCliente({ base: "https://mexicoapi.example.workers.dev", cache: true });
+const api = crearCliente({ cache: true }); // sin base: la API pública, URL_API
 
 const { data, meta, origen, advertencias } = await api.diasHabiles({
   autoridad: "sat",
@@ -174,11 +174,13 @@ data.resultado; // "2026-08-05"
 origen; // "api", o "paquete" si la API no respondió
 ```
 
-Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API. `crearCliente({})` sin `base` ni `offline` lanza `TypeError`, igual que una `base` con query, fragmento o credenciales (`usuario:clave@`).
+Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `https://mexicoapi-staging.dagel4k.workers.dev` o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
 
 Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen` y `advertencias`.
 
 ### Qué responde el paquete y qué la API
+
+Por omisión solo salen a la red los datos que caducan, y solo a la `base` (sin ella, `URL_API`). Los datos estables y los validadores se quedan en tu equipo, y una CLABE solo sale si pides su validación a la API con `{ fuente: "api" }`.
 
 - Datos estables (estados, municipios, bancos) y la validación de la CLABE: salen del paquete por omisión, también cuando el cliente tiene `base`, sin red. Con `{ fuente: "api" }` en la consulta se piden a la API.
 - Datos que caducan (FIX, UDIS, días hábiles e inhábiles, UMA, salario mínimo y tarifas de ISR): se piden a la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), responde el paquete con `origen: "paquete"`, su `meta.as_of` y advertencias: que la API falló y, en las series, que el último dato del paquete tiene más de 7 días (`DIAS_DATOS_RECIENTES`, de `mexicoapi/cliente`). Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
@@ -289,7 +291,7 @@ Códigos de salida:
 
 - Los validadores corren en tu equipo. Un RFC, una CURP o un NSS nunca salen de él. Una CLABE solo sale si pides su validación a la API con `{ fuente: "api" }` (en `clabe()` o en `consultar()`).
 - Ni los mensajes de error, ni `url`, ni el problema, ni la cadena de causas traen una CLABE: aparece como `{clabe}`.
-- El cliente solo habla con la `base` que le das y no agrega más encabezados que `Accept` e `If-None-Match`. `sepomex.sync()` solo habla con el sitio de Correos de México. No hay telemetría.
+- El cliente solo habla con su `base` (sin ella, la API pública, `URL_API`), solo para los datos que caducan o los que pidas con `{ fuente: "api" }`, y no agrega más encabezados que `Accept` e `If-None-Match`. Con `offline: true` no usa la red. `sepomex.sync()` solo habla con el sitio de Correos de México. No hay telemetría.
 
 ## Tamaño y compatibilidad
 

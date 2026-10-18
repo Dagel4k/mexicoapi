@@ -90,8 +90,20 @@ await rejects(api.banco("999"), (error) => {
   equal(error.origen, "paquete");
   return true;
 });
-throws(() => cliente.crearCliente({}), TypeError);
-paso("responde con un cliente offline");
+// Sin base, el cliente pide los datos que caducan a la API pública (URL_API). Aquí con un fetch
+// que falla sin salir del equipo: responde el paquete de respaldo.
+const pedidas = [];
+const publica = cliente.crearCliente({
+  reintentos: 0,
+  fetch: async (url) => {
+    pedidas.push(url);
+    throw new TypeError("sin red en la prueba");
+  },
+});
+equal((await publica.fixUltimo()).origen, "paquete");
+deepEqual(pedidas, [`${cliente.URL_API}/v1/tipo-cambio/fix/ultimo`]);
+throws(() => cliente.crearCliente({ base: "ftp://x" }), TypeError);
+paso("responde con un cliente offline y, sin base, pide a URL_API");
 
 const { sepomex, AVISO_SEPOMEX } = await import("mexicoapi/sepomex");
 const temporal = await mkdtemp(join(tmpdir(), "mexicoapi-humo-"));

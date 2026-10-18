@@ -1,4 +1,5 @@
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
+import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
 import { AVISO_RESPALDO, congelar } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
@@ -76,11 +77,6 @@ function baseDe(base: string | { readonly href: string }): string {
 const MS_MAX = 2_147_483_647;
 
 function configurar(o: OpcionesCliente): Config {
-  if (o.base === undefined && o.offline !== true) {
-    throw new TypeError(
-      "crearCliente necesita base (el origen de la API) o offline: true para responder solo con el paquete.",
-    );
-  }
   const timeoutMs = o.timeoutMs ?? 10_000;
   if (!(typeof timeoutMs === "number" && timeoutMs > 0 && timeoutMs <= MS_MAX)) {
     throw new RangeError(
@@ -108,8 +104,9 @@ function configurar(o: OpcionesCliente): Config {
     throw new RangeError("cache.maxEntradas debe ser un entero mayor que 0.");
   }
   return {
-    // Sin base (solo con offline: true) nunca se pide nada a la API.
-    base: o.base === undefined ? "" : baseDe(o.base),
+    // Sin base, la API pública. Con offline: true nunca se pide nada a la API: sin base, los
+    // errores dan solo la ruta.
+    base: o.base !== undefined ? baseDe(o.base) : o.offline === true ? "" : baseDe(URL_API),
     timeoutMs,
     reintentos,
     esperaMaximaMs,
@@ -247,12 +244,13 @@ async function ejecutar(
 /**
  * Cliente de la API de MéxicoAPI. Los datos estables (estados, municipios, bancos, validación de
  * la CLABE) salen del paquete sin red; los que caducan (días hábiles e inhábiles, FIX, UDIS, UMA,
- * salario mínimo y tarifas de ISR) se piden a la API y, si no responde, salen del paquete con
- * `origen: "paquete"` y advertencias. Cada respuesta dice su `origen`; todo lo que entrega está
- * congelado. Los métodos usan los nombres del núcleo y `consultar` los de la API (ver `Cliente`).
+ * salario mínimo y tarifas de ISR) se piden a la API (sin `base`, la pública: `URL_API`) y, si
+ * no responde, salen del paquete con `origen: "paquete"` y advertencias. Con `offline: true`
+ * nunca usa la red. Cada respuesta dice su `origen`; todo lo que entrega está congelado. Los
+ * métodos usan los nombres del núcleo y `consultar` los de la API (ver `Cliente`).
  */
-export function crearCliente(opciones: OpcionesCliente): Cliente {
-  const c = configurar(opciones ?? ({} as OpcionesCliente));
+export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
+  const c = configurar(opciones ?? {});
   type Pedir = (
     plantilla: string,
     parametros?: Readonly<Record<string, unknown>>,

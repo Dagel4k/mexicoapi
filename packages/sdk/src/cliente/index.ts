@@ -4,6 +4,7 @@
 export {
   PROBLEMAS,
   type TipoProblema,
+  URL_API,
   URL_DOCS,
   URL_PROBLEMAS,
   URL_REPOSITORIO,
