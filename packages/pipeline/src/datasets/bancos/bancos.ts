@@ -275,6 +275,14 @@ export function crearBancos(
         if (c.antes.activo && !c.despues.activo) motivos.push(`baja: ${nombre(c.despues)}`);
         else if (!c.antes.activo && c.despues.activo) {
           motivos.push(`reactivación: ${nombre(c.despues)}`);
+        } else if (
+          c.antes.activo &&
+          c.despues.activo &&
+          c.antes.participacion === "directa" &&
+          c.despues.participacion !== "directa"
+        ) {
+          // El CEP y el PDF ya no coinciden en membresía.
+          motivos.push(`sale del PDF de participantes: ${nombre(c.despues)}`);
         }
       }
       const total =

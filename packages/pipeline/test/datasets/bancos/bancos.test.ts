@@ -17,13 +17,21 @@ import { crearCliente } from "../../../src/http.js";
 import { type Contexto, ejecutarDataset } from "../../../src/marco.js";
 
 const duplicarFila = vi.hoisted(() => ({ valor: false }));
+const quitarFila = vi.hoisted(() => ({ nombre: null as string | null }));
 vi.mock("../../../src/datasets/bancos/participantes-pdf.js", async (importOriginal) => {
   const o =
     await importOriginal<typeof import("../../../src/datasets/bancos/participantes-pdf.js")>();
   return {
     ...o,
     interpretarParticipantesPdf: async (bytes: Uint8Array) => {
-      const r = await o.interpretarParticipantesPdf(bytes);
+      const original = await o.interpretarParticipantesPdf(bytes);
+      const r =
+        quitarFila.nombre === null
+          ? original
+          : {
+              ...original,
+              filas: original.filas.filter((f) => f.nombre_corto !== quitarFila.nombre),
+            };
       const primera = r.filas[0];
       if (!duplicarFila.valor || primera === undefined) return r;
       const copia = { ...primera, numero: 999, nombre_corto: primera.nombre_corto.toLowerCase() };
@@ -58,7 +66,10 @@ beforeEach(async () => {
   ]);
   pedidos = [];
 });
-afterEach(() => rm(raiz, { recursive: true, force: true }));
+afterEach(async () => {
+  quitarFila.nombre = null;
+  await rm(raiz, { recursive: true, force: true });
+});
 
 function ctx(fecha = HOY): Contexto {
   const fetchFalso: typeof fetch = async (entrada) => {
@@ -225,6 +236,23 @@ describe("construir", () => {
     }
   });
 
+  it("un directo que sigue en el CEP pero sale del PDF pide revisión", async () => {
+    const base = (await construir(null)).registros;
+    expect(por(base, "012").participacion).toBe("directa");
+    quitarFila.nombre = "BBVA MEXICO";
+    const { registros } = await construir(base, ctx("2026-10-18"));
+    expect(por(registros, "012")).toMatchObject({
+      activo: true,
+      participacion: "no_confirmada",
+      razon_social: null,
+    });
+    const d = diferenciar(base, registros, (b) => b.codigo);
+    expect(bancos.revisar(d, base)).toEqual({
+      requiereRevision: true,
+      motivos: ["sale del PDF de participantes: 012 BBVA MEXICO"],
+    });
+  });
+
   it("avisa de una fila del PDF sin entrada en el CEP", async () => {
     cep = new TextEncoder().encode(
       JSON.stringify({ instituciones: interpretarCep(cep).filter((e) => e[0] !== "40012") }),
@@ -301,6 +329,15 @@ describe("revisar", () => {
     const r = rev(a, a.map(ren));
     expect(r.requiereRevision).toBe(true);
     expect(r.motivos).toEqual(["más de 3 cambios (4)"]);
+  });
+
+  it("un participante directo que sigue activo y sale del PDF pide revisión", () => {
+    const a = mk("012", { participacion: "directa", razon_social: "R", sector: "S" });
+    const sin = { ...a, participacion: "no_confirmada" as const, razon_social: null, sector: null };
+    expect(rev([a], [sin])).toEqual({
+      requiereRevision: true,
+      motivos: ["sale del PDF de participantes: 012 B012"],
+    });
   });
 
   it("baja y reactivación piden revisión; eliminar también", () => {
