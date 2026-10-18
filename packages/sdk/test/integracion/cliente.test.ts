@@ -35,7 +35,6 @@ let m: ModuloCliente;
 let fix: ModuloFix;
 let udis: ModuloUdis;
 let datos: ModuloDatos;
-let calendarios: ModuloCalendarios;
 let constantes: ModuloConstantes;
 let base: string;
 
@@ -56,12 +55,11 @@ function anotado(): {
 }
 
 beforeAll(async () => {
-  [m, fix, udis, datos, calendarios, constantes] = await Promise.all([
+  [m, fix, udis, datos, constantes] = await Promise.all([
     importar<ModuloCliente>("cliente/index.js"),
     importar<ModuloFix>("datos/fix.js"),
     importar<ModuloUdis>("datos/udis.js"),
     importar<ModuloDatos>("datos/index.js"),
-    importar<ModuloCalendarios>("datos/calendarios.js"),
     importar<ModuloConstantes>("datos/constantes.js"),
   ]);
   base = inject("urlApi");
@@ -69,15 +67,25 @@ beforeAll(async () => {
 
 const enMedio = <T>(serie: readonly T[]): T => serie[Math.floor(serie.length / 2)] as T;
 
-/** El primer feriado bancario de la CNBV después del último FIX, si el calendario lo tiene. */
-function feriadoDespuesDelFix(): string | undefined {
-  return calendarios
+/**
+ * El primer feriado bancario de la CNBV después del último FIX, si el calendario lo tiene. Se lee
+ * al definir las pruebas para saltar (y que se vea) la que lo necesita.
+ */
+const FERIADO = await (async () => {
+  const [cal, serie] = await Promise.all([
+    importar<ModuloCalendarios>("datos/calendarios.js"),
+    importar<ModuloFix>("datos/fix.js"),
+  ]);
+  return cal
     .calendarioCurado("cnbv")
-    .dias.find((d) => d.tipo === "descanso" && d.fecha > fix.cobertura.hasta)?.fecha;
-}
+    .dias.find((d) => d.tipo === "descanso" && d.fecha > serie.cobertura.hasta)?.fecha;
+})();
+
+/** Una consulta con su nombre, para correrla con la API y con el paquete. */
+type Consulta = [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>];
 
 /** Las consultas que el paquete también responde, por nombre. */
-function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] {
+function consultas(): Consulta[] {
   const publicado = enMedio(fix.serie).fecha_publicacion;
   const primeraUma = constantes.anios.uma[0] as number;
   const ultimaUma = constantes.anios.uma.at(-1) as number;
@@ -224,27 +232,9 @@ function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
 }
 
 /** Las que dan un problema, en la API y en el paquete. */
-function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] {
+function problemas(): Consulta[] {
   const antes = mover(fix.cobertura.desde, -3);
-  // Con los datos de hoy hay días hábiles entre el último FIX y el feriado: los dos cargan el
-  // calendario de la CNBV y dan dato-no-disponible. El caso con el feriado pegado a los datos se
-  // prueba con datos de ejemplo (test/cliente/fix-feriados.test.ts).
-  const feriado = feriadoDespuesDelFix();
-  const conFeriado: [string, (api: Cliente, op: OpcionesConsulta) => Promise<unknown>][] =
-    feriado === undefined
-      ? []
-      : [
-          [
-            "FIX publicado en un feriado después de los datos",
-            (api, op) => api.fixPublicado(feriado, op),
-          ],
-          [
-            "operación después de un feriado sin FIX cargado",
-            (api, op) => api.fixParaOperacion(mover(feriado, 1), op),
-          ],
-        ];
   return [
-    ...conFeriado,
     ["estado que no existe", (api, op) => api.estado("33", op)],
     ["municipios de un estado que no existe", (api, op) => api.municipios("33", op)],
     ["municipio que no existe", (api, op) => api.municipio("99999", op)],
@@ -415,9 +405,10 @@ describe("el cliente contra el Worker", () => {
     }
   });
 
-  it("los problem+json de la API llegan como MexicoApiError, como los del paquete", async () => {
+  /** Cada consulta da el mismo problema con la API y con el paquete, como MexicoApiError. */
+  async function mismosProblemas(casos: readonly Consulta[]): Promise<void> {
     const api = m.crearCliente({ base });
-    for (const [nombre, consultar] of problemas()) {
+    for (const [nombre, consultar] of casos) {
       const deApi = await errorDe(consultar(api, API));
       const dePaquete = await errorDe(consultar(api, PAQUETE));
       expect(deApi.origen, nombre).toBe("api");
@@ -435,7 +426,31 @@ describe("el cliente contra el Worker", () => {
       if (!/FIX|UDI|operación/.test(nombre)) expect(dePaquete.detail, nombre).toBe(deApi.detail);
       expect(deApi.url.startsWith(base.replace(/\/$/, "")), nombre).toBe(true);
     }
+  }
+
+  it("los problem+json de la API llegan como MexicoApiError, como los del paquete", async () => {
+    await mismosProblemas(problemas());
   });
+
+  // Con los datos de hoy hay días hábiles entre el último FIX y el feriado: los dos cargan el
+  // calendario de la CNBV y dan dato-no-disponible. El caso con el feriado pegado a los datos se
+  // prueba con datos de ejemplo (test/cliente/fix-feriados.test.ts).
+  it.skipIf(FERIADO === undefined)(
+    "con un feriado bancario después del último FIX, la API y el paquete dan el mismo problema",
+    async () => {
+      const feriado = FERIADO as string;
+      await mismosProblemas([
+        [
+          "FIX publicado en un feriado después de los datos",
+          (api, op) => api.fixPublicado(feriado, op),
+        ],
+        [
+          "operación después de un feriado sin FIX cargado",
+          (api, op) => api.fixParaOperacion(mover(feriado, 1), op),
+        ],
+      ]);
+    },
+  );
 
   it("las reglas de la ruta del cliente dan el mismo 400 que el Worker", async () => {
     const api = m.crearCliente({ base });
