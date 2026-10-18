@@ -111,9 +111,12 @@ function configurar(o: OpcionesCliente): Config {
   };
 }
 
+/** Parámetros de ruta que nunca aparecen en errores, URLs ni causas. */
+const SENSIBLES: ReadonlySet<string> = new Set(["clabe"]);
+
 /**
  * Arma la URL de `plantilla` con sus valores (codificados) y el resto como query, y revisa los
- * valores de la ruta. Los errores llevan la plantilla, nunca los valores de la ruta.
+ * valores de la ruta. Los errores llevan los valores públicos de la ruta y `{nombre}` en lugar de los sensibles.
  */
 function armar(
   c: Config,
@@ -142,10 +145,16 @@ function armar(
   );
   // Cada valor de la ruta, tal cual y codificado, con su nombre. Se cambian en una sola pasada y
   // los más largos primero, para no cortar un valor que contiene a otro.
+  // Solo se ocultan los sensibles (la CLABE): las claves de catálogo (código de banco, cvegeo,
+  // entidad) son públicas y se muestran, igual que en los errores de la API.
   const ocultos = new Map<string, string>();
   for (const [nombre, v] of deRuta) {
-    if (v !== "") ocultos.set(v, nombre).set(encodeURIComponent(v), nombre);
+    if (SENSIBLES.has(nombre) && v !== "")
+      ocultos.set(v, nombre).set(encodeURIComponent(v), nombre);
   }
+  const visible = plantilla.replace(/\{(\w+)\}/g, (marca, nombre: string) =>
+    SENSIBLES.has(nombre) ? marca : encodeURIComponent(valores[nombre] as string),
+  );
   const patron = new RegExp(
     [...ocultos.keys()]
       .sort((a, b) => b.length - a.length)
@@ -156,8 +165,8 @@ function armar(
   const modo = modoDe(plantilla);
   const pedido: Pedido & Contexto = {
     camino: camino + sufijo,
-    urlOculta: c.base + plantilla + sufijo,
-    instancia: plantilla,
+    urlOculta: c.base + visible + sufijo,
+    instancia: visible,
     ocultar: (texto) => texto.replace(patron, (v) => `{${ocultos.get(v)}}`),
     // /v1/status no trae meta; una ruta que el cliente no conoce, solo si llega.
     conMeta: modo === "estable" || modo === "caduca",

@@ -108,6 +108,7 @@ function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
     ["estado que no existe", (api, op) => api.estado("33", op)],
     ["municipios de un estado que no existe", (api, op) => api.municipios("33", op)],
     ["municipio que no existe", (api, op) => api.municipio("99999", op)],
+    ["municipio de un estado que existe", (api, op) => api.municipio("25999", op)],
     ["banco que no existe", (api, op) => api.banco("999", op)],
     ["fecha inválida", (api, op) => api.diasHabiles({ desde: "2026-02-30", dias: 3 }, op)],
     ["días de más", (api, op) => api.diasHabiles({ desde: "2026-11-13", dias: 3651 }, op)],
@@ -240,7 +241,7 @@ describe("el cliente contra el Worker", () => {
       const local = await errorDe(consultar(valor));
       expect(local.origen, ruta).toBe("paquete");
       expect(delWorker.instance, ruta).toBe(ruta);
-      expect(local.problema.instance, ruta).toBe(plantilla);
+      expect(local.problema.instance, ruta).toBe(plantilla.includes("{clabe}") ? plantilla : ruta);
       const { instance: _a, ...restoWorker } = delWorker;
       const { instance: _b, ...restoLocal } = local.problema;
       expect(restoLocal, ruta).toEqual(restoWorker);
@@ -248,17 +249,37 @@ describe("el cliente contra el Worker", () => {
     }
   });
 
-  it("ningún error trae los valores de la ruta", async () => {
+  it("los errores traen las claves públicas de la ruta y el 404 es el mismo que el del Worker", async () => {
     const api = m.crearCliente({ base });
-    const error = await errorDe(api.municipio("99999", API));
-    expect(error.status).toBe(404);
-    expect(error.tipo).toBe("no-encontrado");
-    expect(error.detail).toBe("No existe el municipio {cvegeo}.");
-    expect(error.problema.instance).toBe("/v1/municipios/{cvegeo}");
-    expect(error.url).toBe(`${base.replace(/\/$/, "")}/v1/municipios/{cvegeo}`);
-    expect(`${error.message} ${JSON.stringify(error.problema)} ${error.url}`).not.toContain(
-      "99999",
+    const sinBarra = base.replace(/\/$/, "");
+    const casos: [string, string, (op: OpcionesConsulta) => Promise<unknown>][] = [
+      ["/v1/municipios/25999", "No existe el municipio 25999.", (op) => api.municipio("25999", op)],
+      ["/v1/bancos/999", "No existe el banco 999.", (op) => api.banco("999", op)],
+    ];
+    for (const [ruta, detalle, consultar] of casos) {
+      const delWorker = (await (await fetch(new URL(ruta, base))).json()) as { detail: string };
+      expect(delWorker.detail, ruta).toBe(detalle);
+      for (const op of [API, PAQUETE]) {
+        const error = await errorDe(consultar(op));
+        expect(error.status, ruta).toBe(404);
+        expect(error.tipo, ruta).toBe("no-encontrado");
+        expect(error.detail, ruta).toBe(detalle);
+        expect(error.message, ruta).toBe(`404 Recurso no encontrado: ${detalle}`);
+        expect(error.problema.instance, ruta).toBe(ruta);
+        expect(error.url, ruta).toBe(`${sinBarra}${ruta}`);
+      }
+    }
+  });
+
+  it("la CLABE no aparece en errores, URLs ni causas", async () => {
+    const api = m.crearCliente({ base });
+    const error = await errorDe(api.consultar("/v1/clabe/{clabe}", { clabe: "1" }, API));
+    expect(error.problema.instance).toBe("/v1/clabe/{clabe}");
+    expect(error.url).toBe(`${base.replace(/\/$/, "")}/v1/clabe/{clabe}`);
+    const largo = await errorDe(
+      api.consultar("/v1/clabe/{clabe}", { clabe: CLABE, banco: "002" } as never, API),
     );
+    expect(`${largo.message} ${JSON.stringify(largo.problema)} ${largo.url}`).not.toContain(CLABE);
   });
 
   it("un parámetro que la API no conoce lo rechaza el Worker", async () => {

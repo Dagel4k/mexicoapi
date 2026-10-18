@@ -144,7 +144,7 @@ describe("consulta a la API", () => {
     expect("meta" in r).toBe(false);
   });
 
-  it("lanza MexicoApiError con el problem+json, sin los valores de la ruta", async () => {
+  it("lanza MexicoApiError con el problem+json y las claves públicas", async () => {
     const { fetch, llamadas } = fetchFalso(
       problema("no-encontrado", 404, "Recurso no encontrado", "No existe el estado 33.", {
         instance: "/v1/estados/33",
@@ -161,20 +161,20 @@ describe("consulta a la API", () => {
     expect(error.type).toBe(`${PROBLEMAS}no-encontrado`);
     expect(error.tipo).toBe("no-encontrado");
     expect(error.title).toBe("Recurso no encontrado");
-    expect(error.detail).toBe("No existe el estado {cve_ent}.");
-    expect(error.message).toBe("404 Recurso no encontrado: No existe el estado {cve_ent}.");
-    expect(error.url).toBe(`${BASE}/v1/estados/{cve_ent}`);
+    expect(error.detail).toBe("No existe el estado 33.");
+    expect(error.message).toBe("404 Recurso no encontrado: No existe el estado 33.");
+    expect(error.url).toBe(`${BASE}/v1/estados/33`);
     expect(error.origen).toBe("api");
     expect(error.problema).toEqual({
       type: `${PROBLEMAS}no-encontrado`,
       title: "Recurso no encontrado",
       status: 404,
-      detail: "No existe el estado {cve_ent}.",
-      instance: "/v1/estados/{cve_ent}",
+      detail: "No existe el estado 33.",
+      instance: "/v1/estados/33",
       extra: { a: 1 },
     });
     esperarCongelado(error.problema, "problema");
-    expect(inspect(error)).not.toMatch(/estado 33|estados\/33/);
+    expect(inspect(error)).toContain("estados/33");
     expect(llamadas).toHaveLength(1);
   });
 
@@ -298,23 +298,27 @@ describe("consulta a la API", () => {
     expect(error.message).toBe("404 Recurso no encontrado: ");
   });
 
-  it("oculta cada valor de la ruta, el más largo primero", async () => {
+  it("oculta solo los valores sensibles y muestra las claves de catálogo", async () => {
     const { fetch } = fetchFalso(
-      problema("no-encontrado", 404, "Recurso no encontrado", "No hay 123 en 12 (12%2F3).", {
-        instance: "/v1/x/12/123",
-      }),
+      problema(
+        "no-encontrado",
+        404,
+        "Recurso no encontrado",
+        `No hay ${CLABE} en 002 (${encodeURIComponent(CLABE)}).`,
+        { instance: `/v1/x/${CLABE}/002` },
+      ),
     );
     const consultar = conFetch(fetch).consultar as unknown as (
       ruta: string,
       parametros: Record<string, unknown>,
     ) => Promise<unknown>;
     const error = (await rechazo(
-      consultar("/v1/x/{a}/{b}/{c}/{d}", { a: "12", b: "123", c: "12/3", d: "b" }),
+      consultar("/v1/x/{clabe}/{codigo}", { clabe: CLABE, codigo: "002" }),
     )) as MexicoApiError;
-    // Una sola pasada: la "b" de {b} no se vuelve a cambiar por {d}.
-    expect(error.detail).toBe("No hay {b} en {a} ({c}).");
-    expect(error.problema.instance).toBe("/v1/x/{a}/{b}");
-    expect(error.url).toBe(`${BASE}/v1/x/{a}/{b}/{c}/{d}`);
+    expect(error.detail).toBe("No hay {clabe} en 002 ({clabe}).");
+    expect(error.problema.instance).toBe("/v1/x/{clabe}/002");
+    expect(error.url).toBe(`${BASE}/v1/x/{clabe}/002`);
+    expect(`${error.message} ${JSON.stringify(error.problema)} ${error.url}`).not.toContain(CLABE);
   });
 
   it("si fetch lanza algo que no es Error, la causa lo lleva como texto y sin la ruta", async () => {
