@@ -285,5 +285,6 @@ describe("construir", () => {
     expect(await principal(["construir"], entorno)).toBe(1);
     expect(entorno.errores.join("")).toContain("Falta --salida");
     expect(await principal(["construir", "--salida", "x", "--seco"], entorno)).toBe(1);
+    expect(entorno.errores.join("")).toContain("Opciones que no aplican a construir: --seco");
   });
 });

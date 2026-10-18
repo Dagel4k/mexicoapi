@@ -61,7 +61,7 @@ export async function escribirDirectorioAtomico(
 }
 
 /** Borra un directorio sin lanzar: en Windows un antivirus puede bloquearlo un momento. */
-async function borrarSiPuede(ruta: string): Promise<void> {
+export async function borrarSiPuede(ruta: string): Promise<void> {
   try {
     await rm(ruta, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
   } catch {

@@ -1,8 +1,9 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { Banco, Estado, Municipio } from "@mexicoapi/core";
+import { borrarSiPuede } from "../escritura.js";
 
 export interface FilaDataset {
   dataset: string;
@@ -101,6 +102,6 @@ export async function construirSqlite(datos: DatosSqlite): Promise<Uint8Array> {
     }
     return new Uint8Array(await readFile(ruta));
   } finally {
-    await rm(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    await borrarSiPuede(dir);
   }
 }
