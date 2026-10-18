@@ -1,10 +1,10 @@
 # Despliegue en Cloudflare
 
-La API corre como un Worker de Cloudflare en el plan gratuito. Los workflows `despliegue.yml`, `frescura.yml` y el job `estado-kv` de `datos.yml` necesitan dos secretos y una variable de GitHub. Hasta que existan, los tres terminan en verde y solo dejan un aviso con el enlace a este documento.
+La API corre como un Worker de Cloudflare en el plan gratuito. Los workflows `despliegue.yml`, `frescura.yml` y el job `estado-kv` de `datos.yml` necesitan dos secretos y una variable de GitHub, y `estado-kv` usa además un token propio, solo para KV. Hasta que existan, los tres terminan en verde y solo dejan un aviso con el enlace a este documento.
 
 ## Puesta en marcha
 
-Los pasos 1 a 4 son en Cloudflare y los 5 y 6 en GitHub. Los nombres de los menús pueden cambiar; si no encuentras uno, busca la pantalla que se describe.
+Los pasos 1 a 4 son en Cloudflare, los 5 y 6 en GitHub y el 7, el token de KV, en los dos. Los nombres de los menús pueden cambiar; si no encuentras uno, busca la pantalla que se describe.
 
 1. Crea una cuenta de Cloudflare en el plan gratuito. No hace falta tarjeta ni dominio. Cloudflare nombra la cuenta con tu correo: cámbiale el nombre por uno neutro (Manage Account, Configurations, nombre de la cuenta), porque wrangler puede imprimir el nombre de la cuenta en un error de autenticación y los logs de Actions de un repositorio público los puede leer cualquiera.
 2. Entra a Workers y Pages. La primera vez pide elegir el subdominio de `workers.dev` (por ejemplo `daniel`). Las URLs quedan como `https://mexicoapi.<subdominio>.workers.dev`. El subdominio es público, así que elígelo con cuidado.
@@ -22,6 +22,13 @@ Los pasos 1 a 4 son en Cloudflare y los 5 y 6 en GitHub. Los nombres de los men�
    Así solo los jobs que corren desde `main` pueden leer el token. Si los creas como secretos del repositorio (Settings, Secrets and variables, Actions, pestaña Secrets) también funcionan, pero quedan al alcance de los workflows de cualquier rama.
 6. Corre el despliegue a mano desde `main`: Actions, Despliegue, Run workflow, rama `main`. Desde otra rama el job de despliegue se salta y solo deja un aviso. Cuando termine en verde, abre el resumen de la corrida, copia la URL de producción y crea en Settings, Secrets and variables, Actions, pestaña Variables, la variable de repositorio `API_URL` con esa URL, sin barra final (`https://mexicoapi.<subdominio>.workers.dev`).
 
+7. Crea un segundo token para el job `estado-kv`, que solo escribe en KV y no necesita desplegar. En API Tokens, Create Token, Create Custom Token:
+   - Permisos de cuenta: solo `Workers KV Storage: Edit`.
+   - Recursos de cuenta: solo tu cuenta (Include, Specific account).
+   - Sin permisos de zona ni de usuario, con fecha de expiración y un recordatorio para rotarlo, como el de despliegue.
+
+   Guárdalo en el Environment `produccion` como `CLOUDFLARE_KV_TOKEN`. Mientras no exista, `estado-kv` usa `CLOUDFLARE_API_TOKEN` y deja un aviso; con él, ya no usa el token que puede desplegar el Worker.
+
 Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los días. Puedes probarla con Actions, Frescura, Run workflow.
 
 ## Qué hace cada workflow
@@ -29,7 +36,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 | Workflow | Con los secretos y la variable | Sin ellos |
 | --- | --- | --- |
 | `despliegue.yml` (cada merge a `main` y a mano desde `main`) | Compila, despliega a staging, corre la prueba de humo, despliega a producción, corre el humo otra vez y, si falla, revierte | Deja un aviso y termina en verde sin desplegar |
-| `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra | Deja un aviso y sigue; el bot de datos funciona igual |
+| `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` (o, si falta, `CLOUDFLARE_API_TOKEN`) | Deja un aviso y sigue; el bot de datos funciona igual |
 | `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues | Sin `API_URL`, deja un aviso y termina en verde |
 
 ### Despliegue
@@ -70,9 +77,9 @@ Lee `/v1/status` con `GITHUB_TOKEN`, sin secretos de Cloudflare.
 
 ### Estado en KV
 
-El job `estado-kv` de `datos.yml` guarda `estado:<dataset>` con la última corrida. Va aparte del job que actualiza los datos: recibe el resumen de la corrida como artefacto, no instala dependencias y es el único que ve el token de Cloudflare. Si falla, deja una advertencia y no cambia el resultado de la corrida de datos.
+El job `estado-kv` de `datos.yml` guarda `estado:<dataset>` con la última corrida. Va aparte de los jobs que generan y publican los datos: recibe el resumen de la corrida como artefacto, no instala dependencias y es el único que ve un token de Cloudflare. Usa `CLOUDFLARE_KV_TOKEN`, que solo puede escribir en KV; si ese secreto no existe, usa `CLOUDFLARE_API_TOKEN` y deja un aviso. Si falla, deja una advertencia y no cambia el resultado de la corrida de datos.
 
-`last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida publicó el cambio: el paso "Publicar resultado" terminó bien y la corrida salió con código 0. Con código 3 el PR lleva la etiqueta `revisar` y no se fusiona solo, así que ni los datasets `actualizado` de ese grupo cuentan como publicados. Si la corrida falló, no se publica nada y no avanza. Con `requiere_revision` tampoco avanza: lo publicado se queda atrás hasta que una persona revisa, y pasada su ventana de frescura el dataset pasa a desactualizado, que es lo esperado.
+`last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida publicó el cambio: el paso "Publicar resultado" del job `publicar` terminó bien y la corrida salió con código 0. Sin cambios y con código 0, `publicar` no corre, y no hace falta: todos los datasets quedaron `sin_cambios`. Con código 3 el PR lleva la etiqueta `revisar` y no se fusiona solo, así que ni los datasets `actualizado` de ese grupo cuentan como publicados. Si la corrida falló, no se publica nada y no avanza. Con `requiere_revision` tampoco avanza: lo publicado se queda atrás hasta que una persona revisa, y pasada su ventana de frescura el dataset pasa a desactualizado, que es lo esperado.
 
 ## Revertir a mano
 
@@ -90,6 +97,8 @@ Un rollback no deshace lo que hay en `main`: arregla el código con un PR, o el 
 2. Reemplaza el secreto `CLOUDFLARE_API_TOKEN` en GitHub (en el Environment `produccion` o en el repositorio, donde lo hayas creado).
 3. Corre Despliegue a mano desde `main` y confirma que termina en verde.
 4. Elimina el token anterior en Cloudflare (API Tokens).
+
+El token de KV se rota igual: uno nuevo con el permiso del paso 7, reemplazar `CLOUDFLARE_KV_TOKEN`, correr Datos a mano desde `main` y revisar que `estado-kv` termine sin advertencias, y borrar el anterior.
 
 Hazlo antes de la fecha de expiración, y de inmediato si sospechas que el token se filtró. Si expira sin rotarlo, el despliegue y el job de KV fallan por autenticación.
 
