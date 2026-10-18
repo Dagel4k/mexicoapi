@@ -12,12 +12,17 @@ import {
   esquemaEstadoDataset,
   esquemaFixOperacion,
   esquemaFuente,
+  esquemaFuenteDof,
   esquemaFuenteMeta,
   esquemaIndice,
   esquemaMeta,
   esquemaProblema,
   esquemaResultadoClabe,
   esquemaResultadoDiasHabiles,
+  esquemaSalarioMinimo,
+  esquemaTarifaIsr,
+  esquemaTramoIsr,
+  esquemaUma,
 } from "./esquemas-api.js";
 import { URL_DOCS } from "./meta.js";
 
@@ -95,16 +100,30 @@ function esquemas(): Record<string, Json> {
     TipoCambioFix: jsonSchema(esquemaTipoCambioFix),
     FixOperacion: conFuente(jsonSchema(esquemaFixOperacion), "fundamento"),
     Udi: jsonSchema(esquemaUdi),
+    FuenteDof: jsonSchema(esquemaFuenteDof),
+    Uma: conRef(jsonSchema(esquemaUma), "fuente", "FuenteDof"),
+    SalarioMinimo: conRef(jsonSchema(esquemaSalarioMinimo), "fuente", "FuenteDof"),
+    TramoIsr: jsonSchema(esquemaTramoIsr),
+    TarifaIsr: tarifaIsr(),
     EstadoDataset: jsonSchema(esquemaEstadoDataset),
     Indice: jsonSchema(esquemaIndice),
   };
 }
 
-/** Cambia la fuente en línea de `propiedad` por una referencia a Fuente; conserva su descripción. */
-function conFuente(esquema: Json, propiedad: string): Json {
+/** Cambia el esquema en línea de `propiedad` por una referencia; conserva su descripción. */
+function conRef(esquema: Json, propiedad: string, nombre: string): Json {
   const props = esquema.properties as Record<string, Json>;
-  props[propiedad] = { description: props[propiedad]?.description, ...ref("Fuente") };
+  props[propiedad] = { description: props[propiedad]?.description, ...ref(nombre) };
   return esquema;
+}
+
+const conFuente = (esquema: Json, propiedad: string): Json => conRef(esquema, propiedad, "Fuente");
+
+function tarifaIsr(): Json {
+  const tarifa = conRef(jsonSchema(esquemaTarifaIsr), "fuente", "FuenteDof");
+  const props = tarifa.properties as Record<string, Json>;
+  props.tramos = { ...props.tramos, items: ref("TramoIsr") };
+  return tarifa;
 }
 
 function sustituirDias(esquema: Json): Json {
@@ -185,9 +204,20 @@ const AUTORIDAD: Json = {
   name: "autoridad",
   in: "query",
   required: true,
-  description: "Autoridad cuyo calendario se usa. Por ahora solo lft.",
-  schema: { type: "string", enum: ["lft"] },
+  description:
+    "Autoridad cuyo calendario se usa: lft (Ley Federal del Trabajo, arts. 74 y 715), cnbv (días en que cierran las entidades supervisadas por la CNBV) o sat (CFF art. 12 y vacaciones de la regla 2.1.6 de la RMF).",
+  schema: { type: "string", enum: ["lft", "cnbv", "sat"] },
   example: "lft",
+};
+
+const TIPO_PLAZO: Json = {
+  name: "tipo_plazo",
+  in: "query",
+  required: false,
+  description:
+    "Obligatorio con autoridad=sat y no se acepta con las demás. general cuenta las vacaciones generales del SAT como inhábiles; declaraciones_pagos no, porque en los plazos para presentar declaraciones y pagar contribuciones las vacaciones no son inhábiles (CFF art. 12, segundo párrafo).",
+  schema: { type: "string", enum: ["general", "declaraciones_pagos"] },
+  example: "general",
 };
 
 interface Operacion {
@@ -253,6 +283,7 @@ function operaciones(): Operacion[] {
   );
   const codigo = parametroRuta("codigo", "^\\d{3}$", "Código de banco, 3 dígitos.", "002");
   const clabe = parametroRuta("clabe", "^\\d{18}$", "CLABE de 18 dígitos.", "002010077777777771");
+  const anio = parametroRuta("anio", "^\\d{4}$", "Año, 4 dígitos.", "2026");
   const indice = respuestaDatosPlano("Datos de la API.", ref("Indice"));
   return [
     {
@@ -351,9 +382,12 @@ function operaciones(): Operacion[] {
       ruta: "/v1/dias-habiles",
       operationId: "sumarDiasHabiles",
       summary: "Suma días hábiles a una fecha",
+      description:
+        "Con autoridad=sat, tipo_plazo es obligatorio: sin él la respuesta es 400 parametro-faltante. Con lft o cnbv, tipo_plazo no se acepta (400). Si el cálculo sale de la cobertura del calendario, la respuesta es 422 calendario-incompleto, salvo con permitir_incompleto=true.",
       tag: "Cálculos",
       parametros: [
         AUTORIDAD,
+        TIPO_PLAZO,
         parametroFecha("desde", true, "Fecha de partida (AAAA-MM-DD); no se cuenta."),
         {
           name: "dias",
@@ -441,6 +475,64 @@ function operaciones(): Operacion[] {
       respuestas: { 404: "SinDato" },
     },
     {
+      ruta: "/v1/constantes/uma",
+      operationId: "consultarUma",
+      summary: "UMA vigente en una fecha",
+      description:
+        "Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente: en enero aplica la del año anterior.",
+      tag: "Constantes",
+      parametros: [parametroFecha("fecha", true, "Día que se consulta (AAAA-MM-DD).")],
+      ok: respuestaDatos("La UMA vigente ese día.", ref("Uma")),
+      errores: [404],
+      respuestas: { 404: "SinDato" },
+    },
+    {
+      ruta: "/v1/constantes/uma/{anio}",
+      operationId: "obtenerUma",
+      summary: "UMA de un año",
+      tag: "Constantes",
+      parametros: [anio],
+      ok: respuestaDatos(
+        "La UMA del año, vigente del 1 de febrero de ese año al 31 de enero del siguiente.",
+        ref("Uma"),
+      ),
+      errores: [404],
+      shard: true,
+    },
+    {
+      ruta: "/v1/constantes/salario-minimo/{anio}",
+      operationId: "obtenerSalarioMinimo",
+      summary: "Salario mínimo de un año",
+      tag: "Constantes",
+      parametros: [anio],
+      ok: respuestaDatos(
+        "El salario mínimo diario del año en sus dos zonas: general y zlfn.",
+        lista("SalarioMinimo"),
+      ),
+      errores: [404],
+      shard: true,
+    },
+    {
+      ruta: "/v1/isr/tarifa/{periodo}/{anio}",
+      operationId: "obtenerTarifaIsr",
+      summary: "Tarifa de ISR de un periodo y un año",
+      tag: "Constantes",
+      parametros: [
+        {
+          name: "periodo",
+          in: "path",
+          required: true,
+          description: "Periodo de la tarifa: mensual (pagos provisionales) o anual (ejercicio).",
+          schema: { type: "string", enum: ["mensual", "anual"] },
+          example: "mensual",
+        },
+        anio,
+      ],
+      ok: respuestaDatos("La tarifa con sus tramos.", ref("TarifaIsr")),
+      errores: [404],
+      shard: true,
+    },
+    {
       ruta: "/v1/status",
       operationId: "estadoDatasets",
       summary: "Estado y frescura de los datasets",
@@ -480,7 +572,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       version: "1.0.0",
       summary: "Datos de referencia oficiales de México.",
       description:
-        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta.",
+        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta.",
       license: { name: "MIT", identifier: "MIT" },
     },
     servers: [{ url: "/" }],
@@ -490,6 +582,10 @@ export function documentoOpenApi(): Record<string, unknown> {
       { name: "Municipios", description: "Catálogo de municipios de INEGI." },
       { name: "Bancos", description: "Catálogo de bancos del SPEI." },
       { name: "Indicadores", description: "Tipo de cambio FIX y UDIS publicados en el DOF." },
+      {
+        name: "Constantes",
+        description: "UMA, salario mínimo y tarifas de ISR publicados en el DOF.",
+      },
       { name: "Cálculos", description: "Validaciones y cálculos sobre los datos." },
     ],
     paths: Object.fromEntries(operaciones().map(operacion)),

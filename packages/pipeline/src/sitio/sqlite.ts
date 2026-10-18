@@ -2,7 +2,18 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Banco, Estado, Municipio, TipoCambioFix, Udi } from "@mexicoapi/core";
+import type {
+  Banco,
+  DiaInhabilCurado,
+  Estado,
+  FuenteDof,
+  Municipio,
+  SalarioMinimo,
+  TarifaIsr,
+  TipoCambioFix,
+  Udi,
+  Uma,
+} from "@mexicoapi/core";
 import { borrarSiPuede } from "../escritura.js";
 
 export interface FilaDataset {
@@ -19,8 +30,16 @@ export interface DatosSqlite {
   bancos: readonly Banco[];
   tipoCambioFix: readonly TipoCambioFix[];
   udis: readonly Udi[];
+  diasInhabiles: readonly DiaInhabilCurado[];
+  uma: readonly Uma[];
+  salarioMinimo: readonly SalarioMinimo[];
+  tarifasIsr: readonly TarifaIsr[];
   datasets: readonly FilaDataset[];
 }
+
+// Cada valor curado lleva su cita: la fuente va en columnas en cada renglón.
+const FUENTE = `fuente_nombre TEXT NOT NULL, fuente_url TEXT NOT NULL,
+  fuente_fecha_publicacion TEXT NOT NULL, fuente_fragmento TEXT NOT NULL`;
 
 const ESQUEMA = `
 CREATE TABLE estados (
@@ -42,11 +61,63 @@ CREATE TABLE bancos_historial (
 ) STRICT;
 CREATE TABLE tipo_cambio_fix (fecha_publicacion TEXT PRIMARY KEY, valor TEXT NOT NULL) STRICT;
 CREATE TABLE udis (fecha TEXT PRIMARY KEY, valor TEXT NOT NULL) STRICT;
+CREATE TABLE dias_inhabiles (
+  autoridad TEXT NOT NULL, fecha TEXT NOT NULL, motivo TEXT NOT NULL, tipo TEXT NOT NULL,
+  ${FUENTE},
+  PRIMARY KEY (autoridad, fecha)
+) STRICT;
+CREATE TABLE uma (
+  anio INTEGER PRIMARY KEY, diaria TEXT NOT NULL, mensual TEXT NOT NULL, anual TEXT NOT NULL,
+  vigencia_desde TEXT NOT NULL, ${FUENTE}
+) STRICT;
+CREATE TABLE salario_minimo (
+  anio INTEGER NOT NULL, zona TEXT NOT NULL, diario TEXT NOT NULL, vigencia_desde TEXT NOT NULL,
+  ${FUENTE},
+  PRIMARY KEY (anio, zona)
+) STRICT;
+CREATE TABLE isr_tramos (
+  anio INTEGER NOT NULL, periodo TEXT NOT NULL, tramo INTEGER NOT NULL,
+  limite_inferior TEXT NOT NULL, limite_superior TEXT, cuota_fija TEXT NOT NULL,
+  tasa_excedente TEXT NOT NULL, ${FUENTE},
+  PRIMARY KEY (anio, periodo, tramo)
+) STRICT;
 CREATE TABLE datasets (
   dataset TEXT PRIMARY KEY, as_of TEXT NOT NULL, records INTEGER NOT NULL,
   data_sha256 TEXT NOT NULL, manifest TEXT NOT NULL
 ) STRICT;
 `;
+
+const fuente = (f: FuenteDof) => [f.nombre, f.url, f.fecha_publicacion, f.fragmento] as const;
+
+function insertarCurados(db: DatabaseSync, datos: DatosSqlite): void {
+  const dia = db.prepare("INSERT INTO dias_inhabiles VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+  for (const d of datos.diasInhabiles) {
+    dia.run(d.autoridad, d.fecha, d.motivo, d.tipo, ...fuente(d.fuente));
+  }
+  const uma = db.prepare("INSERT INTO uma VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  for (const u of datos.uma) {
+    uma.run(u.anio, u.diaria, u.mensual, u.anual, u.vigencia_desde, ...fuente(u.fuente));
+  }
+  const salario = db.prepare("INSERT INTO salario_minimo VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+  for (const s of datos.salarioMinimo) {
+    salario.run(s.anio, s.zona, s.diario, s.vigencia_desde, ...fuente(s.fuente));
+  }
+  const tramo = db.prepare("INSERT INTO isr_tramos VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  for (const t of datos.tarifasIsr) {
+    t.tramos.forEach((r, i) => {
+      tramo.run(
+        t.anio,
+        t.periodo,
+        i + 1,
+        r.limite_inferior,
+        r.limite_superior,
+        r.cuota_fija,
+        r.tasa_excedente,
+        ...fuente(t.fuente),
+      );
+    });
+  }
+}
 
 function insertar(db: DatabaseSync, datos: DatosSqlite): void {
   const estado = db.prepare("INSERT INTO estados VALUES (?, ?, ?, ?)");
@@ -77,6 +148,7 @@ function insertar(db: DatabaseSync, datos: DatosSqlite): void {
   for (const f of datos.tipoCambioFix) fix.run(f.fecha_publicacion, f.valor);
   const udi = db.prepare("INSERT INTO udis VALUES (?, ?)");
   for (const u of datos.udis) udi.run(u.fecha, u.valor);
+  insertarCurados(db, datos);
   const dataset = db.prepare("INSERT INTO datasets VALUES (?, ?, ?, ?, ?)");
   for (const d of datos.datasets) {
     dataset.run(d.dataset, d.as_of, d.records, d.data_sha256, d.manifest);

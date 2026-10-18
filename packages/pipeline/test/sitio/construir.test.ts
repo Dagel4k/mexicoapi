@@ -5,19 +5,34 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import {
   type CoberturaSerie,
+  crearCalendario,
+  type DiaInhabilCurado,
   fixPublicado,
+  sumarDiasHabiles,
   type TipoCambioFix,
   type Udi,
   udiDeFecha,
 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
+import { curarDatos } from "../../src/curado/curar.js";
+import { leerCurado } from "../../src/curado/leer.js";
+import {
+  CURADOS,
+  curadoDiasCnbv,
+  curadoDiasSat,
+  curadoSalarioMinimo,
+  curadoTarifasIsr,
+  curadoUma,
+} from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
+import { type ShardCalendario, shardCalendario } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import * as verificar from "../../src/verificar.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
+import { YAML_CNBV, YAML_ISR, YAML_SALARIO, YAML_SAT, YAML_UMA } from "../curado/ejemplos.js";
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -116,6 +131,19 @@ async function crearDatos(raiz: string): Promise<void> {
     await writeFile(join(raiz, dir, archivo), jsonCanonico(datos));
     await writeFile(join(raiz, dir, "manifest.json"), manifiesto(id, archivo, datos));
   }
+  // Los curados salen de sus YAML de ejemplo con `curar`, como en el repositorio.
+  await mkdir(join(raiz, "curado"), { recursive: true });
+  for (const [def, yaml] of [
+    [curadoDiasCnbv, YAML_CNBV],
+    [curadoDiasSat, YAML_SAT],
+    [curadoUma, YAML_UMA],
+    [curadoSalarioMinimo, YAML_SALARIO],
+    [curadoTarifasIsr, YAML_ISR],
+  ] as const) {
+    await writeFile(join(raiz, "curado", def.yaml), yaml);
+  }
+  const { problemas } = await curarDatos(raiz);
+  if (problemas.length > 0) throw new Error(problemas.join("; "));
 }
 
 async function listar(dir: string): Promise<string[]> {
@@ -160,12 +188,27 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/bancos.csv",
         "descargas/bancos.json",
         "descargas/bancos.manifest.json",
+        "descargas/constantes-salario-minimo.csv",
+        "descargas/constantes-salario-minimo.json",
+        "descargas/constantes-salario-minimo.manifest.json",
+        "descargas/constantes-uma.csv",
+        "descargas/constantes-uma.json",
+        "descargas/constantes-uma.manifest.json",
+        "descargas/dias-inhabiles-cnbv.csv",
+        "descargas/dias-inhabiles-cnbv.json",
+        "descargas/dias-inhabiles-cnbv.manifest.json",
+        "descargas/dias-inhabiles-sat.csv",
+        "descargas/dias-inhabiles-sat.json",
+        "descargas/dias-inhabiles-sat.manifest.json",
         "descargas/inegi-estados.csv",
         "descargas/inegi-estados.json",
         "descargas/inegi-estados.manifest.json",
         "descargas/inegi-municipios.csv",
         "descargas/inegi-municipios.json",
         "descargas/inegi-municipios.manifest.json",
+        "descargas/isr-tarifas.csv",
+        "descargas/isr-tarifas.json",
+        "descargas/isr-tarifas.manifest.json",
         "descargas/mexicoapi.sqlite",
         "descargas/tipo-cambio-fix.csv",
         "descargas/tipo-cambio-fix.json",
@@ -173,6 +216,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.csv",
         "descargas/udis.json",
         "descargas/udis.manifest.json",
+        "v1/_internos/calendarios/cnbv.json",
+        "v1/_internos/calendarios/sat.json",
         "v1/_internos/fix/2024.json",
         "v1/_internos/fix/2025.json",
         "v1/_internos/fix/2026.json",
@@ -182,11 +227,19 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "v1/bancos.json",
         "v1/bancos/002.json",
         "v1/bancos/099.json",
+        "v1/constantes/salario-minimo/2025.json",
+        "v1/constantes/salario-minimo/2026.json",
+        "v1/constantes/uma.json",
+        "v1/constantes/uma/2025.json",
+        "v1/constantes/uma/2026.json",
         "v1/estados.json",
         "v1/estados/01.json",
         "v1/estados/01/municipios.json",
         "v1/estados/09.json",
         "v1/estados/09/municipios.json",
+        "v1/isr/tarifa/anual/2025.json",
+        "v1/isr/tarifa/anual/2026.json",
+        "v1/isr/tarifa/mensual/2026.json",
         "v1/municipios.json",
         "v1/municipios/01001.json",
         "v1/municipios/01002.json",
@@ -306,6 +359,189 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     });
   });
 
+  it("meta interna lleva los curados aparte, sin frescura, para que /v1/status siga igual", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    expect(Object.keys(interna)).toEqual(["datasets", "curados"]);
+    expect(Object.keys(interna.curados).sort()).toEqual(CURADOS.map((d) => d.id).sort());
+    for (const def of CURADOS) {
+      const m = await leerJson(join(datos, def.directorio, "manifest.json"));
+      expect(interna.curados[def.id], def.id).toEqual({
+        meta: {
+          dataset: def.id,
+          as_of: m.as_of,
+          sources: m.sources.map(
+            ({ name, url, license, license_url, citation }: Record<string, string>) => ({
+              name,
+              url,
+              license,
+              license_url,
+              citation,
+            }),
+          ),
+          docs: `${URL_DOCS}/datos/${def.directorio}.md`,
+        },
+        records: m.records,
+        data_sha256: m.data_sha256,
+      });
+    }
+    expect(interna.curados["constantes.uma"]?.meta.sources.map((f) => f.license)).toEqual([
+      "Términos de libre uso de la información del INEGI",
+      "Términos de libre uso de la información del INEGI",
+    ]);
+  });
+
+  it("escribe el calendario interno de cada autoridad, minificado, listo para crearCalendario", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    for (const [def, autoridad] of [
+      [curadoDiasCnbv, "cnbv"],
+      [curadoDiasSat, "sat"],
+    ] as const) {
+      const texto = await readFile(
+        join(salida, `v1/_internos/calendarios/${autoridad}.json`),
+        "utf8",
+      );
+      expect(texto, autoridad).not.toMatch(/\n/);
+      const lectura = await leerCurado(def, datos);
+      const registros = (await leerJson(
+        join(datos, def.directorio, def.archivo),
+      )) as DiaInhabilCurado[];
+      expect(JSON.parse(texto), autoridad).toEqual(
+        shardCalendario(autoridad, registros, lectura?.documento?.cobertura ?? null),
+      );
+    }
+    const sat = (await leerJson(
+      join(salida, "v1/_internos/calendarios/sat.json"),
+    )) as ShardCalendario;
+    const calendario = (tipo: "general" | "declaraciones_pagos") => {
+      const plazo = sat.plazos[tipo] as NonNullable<ShardCalendario["plazos"][typeof tipo]>;
+      return crearCalendario({
+        autoridad: sat.autoridad,
+        cobertura: plazo.cobertura,
+        dias: sat.dias.filter(
+          (d) => d.fecha >= plazo.cobertura.desde && d.fecha <= plazo.cobertura.hasta,
+        ),
+        fuenteFinDeSemana: sat.fuente_fin_de_semana,
+        excluirTipos: plazo.excluir_tipos,
+      });
+    };
+    // El ejemplo trae el 20 de julio como vacaciones.
+    const desde = "2026-07-17";
+    expect(sumarDiasHabiles({ calendario: calendario("general"), desde, dias: 1 }).resultado).toBe(
+      "2026-07-21",
+    );
+    expect(
+      sumarDiasHabiles({ calendario: calendario("declaraciones_pagos"), desde, dias: 1 }).resultado,
+    ).toBe("2026-07-20");
+  });
+
+  it("escribe los shards de constantes con data y la meta de su curado", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    const meta = (id: string) => interna.curados[id]?.meta;
+    const uma = (await leerJson(join(datos, "constantes-uma/uma.json"))) as Array<{ anio: number }>;
+    const lista = await leerJson(join(salida, "v1/constantes/uma.json"));
+    expect(lista).toEqual({ data: uma, meta: meta("constantes.uma") });
+    expect(lista.data.map((u: { anio: number }) => u.anio)).toEqual([2025, 2026]);
+    expect(await leerJson(join(salida, "v1/constantes/uma/2026.json"))).toEqual({
+      data: uma[1],
+      meta: meta("constantes.uma"),
+    });
+    const texto = await readFile(join(salida, "v1/constantes/uma/2026.json"), "utf8");
+    expect(texto.startsWith('{"data":{"anio":2026,"diaria":"117.31"')).toBe(true);
+
+    const salario = await leerJson(join(salida, "v1/constantes/salario-minimo/2026.json"));
+    expect(salario.meta).toEqual(meta("constantes.salario-minimo"));
+    expect(salario.data.map((s: Record<string, string>) => [s.zona, s.diario])).toEqual([
+      ["general", "315.04"],
+      ["zlfn", "440.87"],
+    ]);
+
+    const tarifas = (await leerJson(join(datos, "isr-tarifas/tarifas.json"))) as Array<{
+      anio: number;
+      periodo: string;
+    }>;
+    for (const t of tarifas) {
+      const shard = await leerJson(join(salida, `v1/isr/tarifa/${t.periodo}/${t.anio}.json`));
+      expect(shard, `${t.periodo} ${t.anio}`).toEqual({ data: t, meta: meta("isr.tarifas") });
+    }
+    const mensual = await leerJson(join(salida, "v1/isr/tarifa/mensual/2026.json"));
+    expect(mensual.data.tramos).toHaveLength(11);
+    expect(mensual.data.tramos.at(-1)).toEqual({
+      limite_inferior: "425642.00",
+      limite_superior: null,
+      cuota_fija: "133488.54",
+      tasa_excedente: "35.00",
+    });
+  });
+
+  it("los csv de los curados aplanan la fuente en columnas fuente_*", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const renglones = async (n: string) =>
+      (await readFile(join(salida, "descargas", n), "utf8")).split("\r\n");
+    const fuente = "fuente_nombre,fuente_url,fuente_fecha_publicacion,fuente_fragmento";
+
+    const sat = await renglones("dias-inhabiles-sat.csv");
+    expect(sat[0]).toBe(`fecha,autoridad,motivo,tipo,${fuente}`);
+    expect(sat).toHaveLength(8 + 2);
+    expect(sat.at(-1)).toBe("");
+    expect(sat[1]).toBe(
+      '2026-01-01,sat,1o. de enero,descanso,"Código Fiscal de la Federación, artículo 12",' +
+        "https://www.diputados.gob.mx/LeyesBiblio/pdf/CFF.pdf,2026-04-09," +
+        '"Artículo 12. En los plazos fijados en días no se contarán los sábados, los domingos ni el 1o. de enero; el primer lunes de febrero en conmemoración del 5 de febrero; el tercer lunes de marzo en conmemoración del 21 de marzo; el 1o. y 5 de mayo; el 16 de septiembre; el tercer lunes de noviembre en conmemoración del 20 de noviembre; el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo y el 25 de diciembre."',
+    );
+    expect((await renglones("dias-inhabiles-cnbv.csv"))[0]).toBe(
+      `fecha,autoridad,motivo,tipo,${fuente}`,
+    );
+
+    const uma = await renglones("constantes-uma.csv");
+    expect(uma[0]).toBe(`anio,diaria,mensual,anual,vigencia_desde,${fuente}`);
+    expect(uma[1]).toMatch(
+      /^2025,113\.14,3439\.46,41273\.52,2025-02-01,INEGI\. Unidad de medida y actualización,https:\/\/dof\.gob\.mx\/nota_detalle\.php\?codigo=5746930&fecha=10\/01\/2025,2025-01-10,"\[\.\.\.\] es de \$113\.14/,
+    );
+
+    const salario = await renglones("constantes-salario-minimo.csv");
+    expect(salario[0]).toBe(`anio,zona,diario,vigencia_desde,${fuente}`);
+    expect(salario.slice(1, 5).map((r) => r.split(",").slice(0, 4).join(","))).toEqual([
+      "2025,general,278.80,2025-01-01",
+      "2025,zlfn,419.88,2025-01-01",
+      "2026,general,315.04,2026-01-01",
+      "2026,zlfn,440.87,2026-01-01",
+    ]);
+
+    const isr = await renglones("isr-tarifas.csv");
+    expect(isr[0]).toBe(
+      `anio,periodo,tramo,limite_inferior,limite_superior,cuota_fija,tasa_excedente,${fuente}`,
+    );
+    expect(isr).toHaveLength(33 + 2);
+    expect(isr[1]?.startsWith("2025,anual,1,0.01,8952.49,0.00,1.92,")).toBe(true);
+    expect(isr[11]?.startsWith("2025,anual,11,4511707.38,,1414947.85,35.00,")).toBe(true);
+    expect(isr[33]?.startsWith("2026,mensual,11,425642.00,,133488.54,35.00,")).toBe(true);
+  });
+
+  it("falla con ErrorDatos si falta un curado o su YAML", async () => {
+    await rm(join(datos, "curado", "dias-inhabiles-sat.yaml"));
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      name: "ErrorDatos",
+      dataset: "dias-inhabiles.sat",
+      message: expect.stringContaining("curado/dias-inhabiles-sat.yaml"),
+    });
+    await writeFile(join(datos, "curado", curadoDiasSat.yaml), YAML_SAT);
+    await writeFile(join(datos, "curado", curadoDiasCnbv.yaml), "dataset: dias-inhabiles.cnbv\n");
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      name: "ErrorDatos",
+      dataset: "dias-inhabiles.cnbv",
+      message: expect.stringMatching(/^curado\/dias-inhabiles-cnbv\.yaml: .*cobertura: falta/),
+    });
+    await writeFile(join(datos, "curado", curadoDiasCnbv.yaml), YAML_CNBV);
+    await rm(join(datos, "constantes-uma"), { recursive: true });
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      name: "ErrorDatos",
+      dataset: "constantes.uma",
+    });
+    await expect(readdir(salida)).rejects.toThrow();
+  });
+
   it("falla sin escribir si una serie no está en orden por fecha", async () => {
     const desordenada = [fix[1], fix[0], ...fix.slice(2)];
     await writeFile(join(datos, "tipo-cambio-fix/fix.json"), jsonCanonico(desordenada));
@@ -324,6 +560,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       ["bancos", "bancos.json"],
       ["tipo-cambio-fix", "fix.json"],
       ["udis", "udis.json"],
+      ...CURADOS.map((d) => [d.directorio, d.archivo] as const),
     ] as const) {
       expect(await readFile(join(salida, "descargas", `${dir}.json`))).toEqual(
         await readFile(join(datos, dir, archivo)),
@@ -370,11 +607,40 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     const db = new DatabaseSync(join(salida, "descargas/mexicoapi.sqlite"), { readOnly: true });
     expect(db.prepare("SELECT dataset, records FROM datasets ORDER BY dataset").all()).toEqual([
       { dataset: "bancos", records: 2 },
+      { dataset: "constantes.salario-minimo", records: 4 },
+      { dataset: "constantes.uma", records: 2 },
+      { dataset: "dias-inhabiles.cnbv", records: 11 },
+      { dataset: "dias-inhabiles.sat", records: 8 },
       { dataset: "inegi.estados", records: 2 },
       { dataset: "inegi.municipios", records: 3 },
+      { dataset: "isr.tarifas", records: 3 },
       { dataset: "tipo-cambio.fix", records: 5 },
       { dataset: "udis", records: 3 },
     ]);
+    const cuenta = (tabla: string) =>
+      (db.prepare(`SELECT count(*) AS n FROM ${tabla}`).get() as { n: number }).n;
+    expect(["dias_inhabiles", "uma", "salario_minimo", "isr_tramos"].map(cuenta)).toEqual([
+      19, 2, 4, 33,
+    ]);
+    expect(
+      db
+        .prepare(
+          "SELECT autoridad, fecha, tipo, fuente_url FROM dias_inhabiles WHERE autoridad = 'sat' AND fecha = '2026-07-20'",
+        )
+        .get(),
+    ).toEqual({
+      autoridad: "sat",
+      fecha: "2026-07-20",
+      tipo: "vacaciones",
+      fuente_url: "https://dof.gob.mx/nota_detalle.php?codigo=5793101&fecha=09/07/2026",
+    });
+    expect(
+      db
+        .prepare(
+          "SELECT limite_inferior, limite_superior, cuota_fija FROM isr_tramos WHERE anio = 2025 AND periodo = 'anual' AND tramo = 11",
+        )
+        .get(),
+    ).toEqual({ limite_inferior: "4511707.38", limite_superior: null, cuota_fija: "1414947.85" });
     expect(db.prepare("SELECT * FROM tipo_cambio_fix ORDER BY fecha_publicacion").all()).toEqual(
       fix,
     );
@@ -543,12 +809,55 @@ describe("con los datos reales del repositorio", () => {
     expect(porEstado).toBe(interna.datasets["inegi.municipios"]?.records);
     // El meta.docs de cada dataset apunta a un archivo que existe en docs/.
     const docs = fileURLToPath(new URL("../../../../docs/", import.meta.url));
-    for (const [id, d] of Object.entries(interna.datasets)) {
+    for (const [id, d] of [
+      ...Object.entries(interna.datasets),
+      ...Object.entries(interna.curados),
+    ]) {
       expect(d.meta.docs.startsWith(`${URL_DOCS}/datos/`), id).toBe(true);
       await expect(
         readFile(join(docs, d.meta.docs.slice(URL_DOCS.length + 1))),
         id,
       ).resolves.toBeDefined();
+    }
+
+    // Los curados: un shard por UMA, por año de salario y por tarifa, y un calendario por
+    // autoridad igual al que arma shardCalendario con su YAML.
+    expect(Object.keys(interna.curados).sort()).toEqual(CURADOS.map((d) => d.id).sort());
+    const registrosDe = async <T>(def: (typeof CURADOS)[number]) =>
+      (await leerJson(join(real, def.directorio, def.archivo))) as T[];
+    const uma = await registrosDe<{ anio: number }>(curadoUma);
+    expect(uma.length).toBe(interna.curados["constantes.uma"]?.records);
+    expect(await shards("constantes/uma")).toEqual(uma.map((u) => `${u.anio}.json`).sort());
+    const salario = await registrosDe<{ anio: number }>(curadoSalarioMinimo);
+    expect(await shards("constantes/salario-minimo")).toEqual(
+      [...new Set(salario.map((s) => `${s.anio}.json`))].sort(),
+    );
+    for (const nombre of await shards("constantes/salario-minimo")) {
+      const { data } = await leerJson(join(salida, "v1/constantes/salario-minimo", nombre));
+      expect(
+        data.map((s: { zona: string }) => s.zona),
+        nombre,
+      ).toEqual(["general", "zlfn"]);
+    }
+    for (const t of await registrosDe<{ anio: number; periodo: string }>(curadoTarifasIsr)) {
+      const { data } = await leerJson(join(salida, `v1/isr/tarifa/${t.periodo}/${t.anio}.json`));
+      expect(data, `${t.periodo} ${t.anio}`).toEqual(t);
+    }
+    for (const [def, autoridad] of [
+      [curadoDiasCnbv, "cnbv"],
+      [curadoDiasSat, "sat"],
+    ] as const) {
+      const lectura = await leerCurado(def, real);
+      expect(
+        await leerJson(join(salida, `v1/_internos/calendarios/${autoridad}.json`)),
+        autoridad,
+      ).toEqual(
+        shardCalendario(
+          autoridad,
+          await registrosDe<DiaInhabilCurado>(def),
+          lectura?.documento?.cobertura ?? null,
+        ),
+      );
     }
   }, 120_000);
 

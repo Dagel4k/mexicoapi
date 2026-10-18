@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { principal } from "../src/cli.js";
+import { CURADOS } from "../src/curado/registro.js";
 import { crearEntorno, HOY, leerFixture, PRUEBA_LENTA } from "./ayudas.js";
 
 const TODOS = ["inegi.estados", "inegi.municipios", "bancos"];
@@ -271,8 +272,9 @@ describe("bancos-historico", { timeout: PRUEBA_LENTA }, () => {
 describe("construir", { timeout: PRUEBA_LENTA }, () => {
   it("construye el sitio con los datos actualizados y sale 0", async () => {
     expect(await principal(["actualizar", ...TODOS], await crearEntorno(raiz))).toBe(0);
-    // Las series se copian de los datos reales: sus fixtures no cubren todos los años.
-    for (const dir of ["tipo-cambio-fix", "udis"]) {
+    // Las series se copian de los datos reales: sus fixtures no cubren todos los años. Los
+    // curados también, con sus YAML.
+    for (const dir of ["tipo-cambio-fix", "udis", "curado", ...CURADOS.map((d) => d.directorio)]) {
       await cp(join(REAL, dir), join(raiz, dir), { recursive: true });
     }
     const entorno = await crearEntorno(raiz);
