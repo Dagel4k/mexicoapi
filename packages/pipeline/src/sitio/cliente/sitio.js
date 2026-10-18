@@ -61,7 +61,7 @@ const esInstante = (valor) =>
 const esStatus = (valor) => typeof valor === "string" && Object.hasOwn(NOMBRES_STATUS, valor);
 
 /** @param {string} detalle */
-const forma = (detalle) => new ErrorEstado(`la respuesta no tiene la forma esperada: ${detalle}.`);
+const forma = (detalle) => new ErrorEstado(`la respuesta no tiene la forma esperada (${detalle}).`);
 
 /**
  * Lo que la tabla muestra de un dataset, ya como texto.
@@ -144,7 +144,7 @@ function rangoDe(cobertura, donde) {
  * @returns {FilaEstado[]}
  */
 export function filasDeEstado(cuerpo, ahora) {
-  if (!esObjeto(cuerpo)) throw forma("la respuesta no es un objeto");
+  if (!esObjeto(cuerpo)) throw forma("no es un objeto");
   const { data } = cuerpo;
   if (!Array.isArray(data)) throw forma("data no es una lista");
   return data.map((valor, i) => filaDe(valor, i, ahora));
