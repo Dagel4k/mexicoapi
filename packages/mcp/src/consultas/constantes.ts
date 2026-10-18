@@ -53,7 +53,7 @@ function problema({ tipo, anio, fecha, periodo }: Argumentos): string | null {
   return anio === undefined ? `Con tipo=${tipo} falta el parámetro anio.` : null;
 }
 
-export function constantesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
+export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
   return {
     name: "constantes",
     title: "UMA, salario mínimo e ISR",
@@ -84,7 +84,7 @@ export function constantesHerramienta({ cliente }: OpcionesHerramientas): Herram
         extra: { tipo: { type: "string", enum: ["uma", "salario_minimo", "isr"] } },
       },
     ),
-    annotations: anotaciones(true),
+    annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const a = args as unknown as Argumentos;
       const mal = problema(a);

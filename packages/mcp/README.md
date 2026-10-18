@@ -65,7 +65,7 @@ Una dirección inválida (con credenciales, query o fragmento) hace que el servi
 | `constantes` | UMA, salario mínimo y tarifas de ISR | Con `MEXICOAPI_BASE` |
 | `codigo_postal` | Estado, municipio y asentamientos de un código postal | No (lee la caché local) |
 
-Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. Los validadores revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan.
+Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. `openWorldHint` es `true` solo en las que usan la red, es decir, en las de datos que caducan cuando hay `MEXICOAPI_BASE`. Los validadores revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan.
 
 ## Qué trae cada resultado
 

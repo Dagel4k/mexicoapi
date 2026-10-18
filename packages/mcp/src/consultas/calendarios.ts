@@ -45,7 +45,7 @@ const DIA_INHABIL = {
 const lineaDia = (d: DiaInhabil): string =>
   `- ${d.fecha} ${enLinea(d.motivo)} (${enLinea(d.tipo)})`;
 
-export function diasInhabilesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
+export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
   return {
     name: "dias_inhabiles",
     title: "Días inhábiles",
@@ -63,7 +63,7 @@ export function diasInhabilesHerramienta({ cliente }: OpcionesHerramientas): Her
       { type: "array", items: DIA_INHABIL },
       { origenes: ["api", "paquete"] },
     ),
-    annotations: anotaciones(true),
+    annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { autoridad, anio } = args as { autoridad: Autoridad; anio: number };
       const r = await consultar(signal, () =>
@@ -84,7 +84,10 @@ export function diasInhabilesHerramienta({ cliente }: OpcionesHerramientas): Her
   };
 }
 
-export function sumarDiasHabilesHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
+export function sumarDiasHabilesHerramienta({
+  cliente,
+  conApi,
+}: OpcionesHerramientas): Herramienta {
   return {
     name: "sumar_dias_habiles",
     title: "Sumar días hábiles",
@@ -129,7 +132,7 @@ export function sumarDiasHabilesHerramienta({ cliente }: OpcionesHerramientas): 
       },
       { origenes: ["api", "paquete"] },
     ),
-    annotations: anotaciones(true),
+    annotations: anotaciones(conApi),
     async ejecutar(args, { signal }) {
       const { autoridad, desde, dias, tipo_plazo, permitir_incompleto } = args as {
         autoridad: Autoridad;
