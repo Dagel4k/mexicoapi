@@ -7,17 +7,14 @@ import {
   type DiaInhabilCurado,
   type FuenteDof,
   sumarDiasHabiles,
+  type TipoPlazo,
 } from "@mexicoapi/core";
 import { describe, expect, it } from "vitest";
 import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado, leerCurado } from "../../src/curado/leer.js";
 import { curadoDiasCnbv, curadoDiasSat, type DefinicionCurado } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
-import {
-  type ShardCalendario,
-  shardCalendario,
-  type TipoPlazo,
-} from "../../src/sitio/calendarios.js";
+import { type ShardCalendario, shardCalendario } from "../../src/sitio/calendarios.js";
 import { YAML_CNBV, YAML_SAT } from "../curado/ejemplos.js";
 
 function documento(

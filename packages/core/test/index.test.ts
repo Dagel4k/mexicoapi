@@ -11,6 +11,7 @@ import type {
   PeriodoBanco,
   TipoBanco,
   TipoCambioFix,
+  TipoPlazo,
   Udi,
 } from "../src/index.js";
 import * as core from "../src/index.js";
@@ -163,7 +164,8 @@ describe("tipos de registros y manifiesto", () => {
     const udi: Udi = { fecha: "2026-10-16", valor: "8.123456" };
     const cobertura: CoberturaSerie = { desde: "2020-01-02", hasta: "2026-10-16" };
     const consulta: Consulta<Udi> = { tipo: "encontrado", registro: udi };
-    expect([estado, municipio, banco, manifiesto, fix, cobertura, consulta].length).toBe(7);
+    const plazos: TipoPlazo[] = ["general", "declaraciones_pagos"];
+    expect([estado, municipio, banco, manifiesto, fix, cobertura, consulta, plazos].length).toBe(8);
   });
 
   test("el índice no gana valores de runtime por los tipos nuevos", () => {

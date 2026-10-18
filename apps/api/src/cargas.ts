@@ -9,6 +9,7 @@ import {
   type FuenteDof,
   type TipoCambioFix,
   type TipoDiaCurado,
+  type TipoPlazo,
   type Udi,
   type Uma,
 } from "@mexicoapi/core";
@@ -273,9 +274,6 @@ function aFuenteDof(v: unknown): FuenteDof | undefined {
   const { nombre, url, fecha_publicacion, fragmento } = v as unknown as FuenteDof;
   return Object.freeze({ nombre, url, fecha_publicacion, fragmento });
 }
-
-/** El SAT distingue los plazos de declaraciones y pagos (CFF art. 12, segundo párrafo). */
-export type TipoPlazo = "general" | "declaraciones_pagos";
 
 export interface PlazoCurado {
   readonly cobertura: CoberturaSerie;
