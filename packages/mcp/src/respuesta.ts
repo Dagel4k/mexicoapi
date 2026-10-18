@@ -75,6 +75,15 @@ export const ESQUEMA_FUENTE_DATO = {
   required: ["nombre", "url"],
 } as const;
 
+const DESCRIPCION_AS_OF =
+  "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.";
+
+const DESCRIPCION_ORIGEN: Readonly<Record<Origen, string>> = {
+  api: "la API de MéxicoAPI",
+  paquete: "los datos y las reglas del paquete mexicoapi, sin red",
+  cache_local: "el catálogo de Correos de México que el usuario descargó en este equipo",
+};
+
 interface OpcionesEsquema {
   /** Orígenes posibles de la herramienta. */
   origenes: readonly Origen[];
@@ -93,8 +102,8 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
       datos,
       ...extra,
       as_of: opciones.asOfNulo
-        ? { type: ["string", "null"], format: "date", description: "Fecha de los datos." }
-        : { ...FECHA, description: "Fecha de los datos." },
+        ? { type: ["string", "null"], format: "date", description: DESCRIPCION_AS_OF }
+        : { ...FECHA, description: DESCRIPCION_AS_OF },
       fuente: { ...ESQUEMA_FUENTE, description: "Fuente para citar el dato." },
       fuentes: {
         type: "array",
@@ -102,7 +111,11 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
         minItems: 1,
         description: "Todas las fuentes de la respuesta, empezando por fuente.",
       },
-      origen: { type: "string", enum: [...opciones.origenes] },
+      origen: {
+        type: "string",
+        enum: [...opciones.origenes],
+        description: `${opciones.origenes.map((o) => `${o}: ${DESCRIPCION_ORIGEN[o]}`).join("; ")}.`,
+      },
       advertencias: { type: "array", items: { type: "string" } },
     },
     required: [
@@ -196,7 +209,10 @@ function pie(p: Procedencia, sinFecha: string): string[] {
   const lineas = p.fuentes.map(
     (f, i) => `${i === 0 ? "Fuente" : "Otra fuente"}: ${enLinea(f.nombre)} (${enLinea(f.url)})`,
   );
-  lineas.push(`as_of: ${p.as_of ?? sinFecha}`, `Origen: ${TEXTO_ORIGEN[p.origen]}`);
+  lineas.push(
+    `as_of (corte de los datos): ${p.as_of ?? sinFecha}`,
+    `Origen: ${TEXTO_ORIGEN[p.origen]}`,
+  );
   for (const a of p.advertencias) lineas.push(`Advertencia: ${enLinea(a)}`);
   return lineas;
 }
