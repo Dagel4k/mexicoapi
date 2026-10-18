@@ -3,6 +3,7 @@ const OPCIONES_GLOBALES = `Opciones:
   --json                 imprime el resultado completo como JSON (los errores, por stderr)
   --depurar              muestra el detalle técnico de un error
   --base <url>           origen de la API para dias-habiles, uma, salario-minimo e isr
+                         (por omisión, la API pública)
   -h, --help             muestra esta ayuda
   -v, --version          muestra la versión`;
 
@@ -25,9 +26,11 @@ Comandos:
 
 ${OPCIONES_GLOBALES}
 
-Sin red todo sale de los datos que trae el paquete. Con --base <url> (o la variable
-MEXICOAPI_BASE) dias-habiles, uma, salario-minimo e isr consultan primero la API y, si no
-responde, usan el paquete y lo avisan. municipio y banco salen siempre del paquete.
+dias-habiles, uma, salario-minimo e isr consultan primero la API pública
+(https://mexicoapi.dagel4k.workers.dev), o la de --base <url> o la variable MEXICOAPI_BASE, y si
+no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 todo sale
+del paquete, sin red (--base gana a esa variable). municipio y banco salen siempre del paquete,
+como los validadores.
 
 Códigos de salida:
   0   todo bien
@@ -47,7 +50,7 @@ institución que lo emite. Sale con 0 si es válido y con 1 si no lo es.
 
 Ejemplo: mexicoapi ${comando} ${ejemplo}`;
 
-const BASE = `  --base <url>   origen de la API (o la variable MEXICOAPI_BASE); sin él, solo el paquete`;
+const BASE = `  --base <url>   origen de la API (o la variable MEXICOAPI_BASE); sin él, la API pública`;
 
 const COMANDOS: Readonly<Record<string, string>> = {
   clabe: validador(

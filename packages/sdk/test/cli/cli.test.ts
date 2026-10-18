@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejecutar } from "../../src/cli/cli.js";
 import type { ModuloSepomexCli } from "../../src/cli/tipos.js";
+import { type FetchCompatible, URL_API } from "../../src/cliente/index.js";
 import type { ResumenSepomex } from "../../src/sepomex/index.js";
 import * as sepomexReal from "../../src/sepomex/index.js";
 import { SepomexError } from "../../src/sepomex/index.js";
@@ -29,6 +30,7 @@ async function correr(
   argv: readonly string[],
   env: Record<string, string | undefined> = {},
   sepomex: ModuloSepomexCli = enDirectorio,
+  fetch?: FetchCompatible,
 ): Promise<Corrida> {
   let salida = "";
   let errores = "";
@@ -39,15 +41,95 @@ async function correr(
     errores: (t) => {
       errores += t;
     },
-    env,
+    // Sin red salvo que la prueba la pida: sin MEXICOAPI_BASE, la CLI usaría la API pública.
+    env: { MEXICOAPI_SIN_RED: "1", ...env },
     version: "9.9.9",
     sepomex,
+    fetch,
   });
   return { codigo, salida, errores };
 }
 
 describe("CLI (lógica)", () => {
   probarCli((argv, env) => correr(argv, env), "9.9.9");
+});
+
+describe("CLI: a qué API pregunta", () => {
+  const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
+  const respuesta = () =>
+    new Response(
+      JSON.stringify({
+        data: {
+          desde: "2026-03-16",
+          dias: 5,
+          autoridad: "lft",
+          resultado: "2026-03-30",
+          inhabiles_saltados: [],
+          advertencias: [],
+        },
+        meta: { dataset: "calendario.lft", as_of: "2026-03-01", sources: [], docs: "" },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  const fetchFalso = () => {
+    const urls: string[] = [];
+    const fetch: FetchCompatible = async (url) => {
+      urls.push(url);
+      return respuesta();
+    };
+    return { fetch, urls };
+  };
+  const conRed = { MEXICOAPI_SIN_RED: undefined };
+
+  it("sin MEXICOAPI_BASE, los datos que caducan se piden a la API pública (URL_API)", async () => {
+    const { fetch, urls } = fetchFalso();
+    const c = await correr(DIAS, conRed, enDirectorio, fetch);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain("2026-03-16 + 5 días hábiles (lft): 2026-03-30");
+    expect(c.salida).toContain("Origen: API");
+    expect(urls).toEqual([`${URL_API}/v1/dias-habiles?autoridad=lft&desde=2026-03-16&dias=5`]);
+  });
+
+  it("los validadores, banco y municipio no usan la red", async () => {
+    const { fetch, urls } = fetchFalso();
+    for (const argv of [
+      ["clabe", "002010077777777771"],
+      ["banco", "002"],
+      ["municipio", "25006"],
+      ["municipio", "culiacan"],
+      ["rfc", "XAXX010101000"],
+    ]) {
+      expect((await correr(argv, conRed, enDirectorio, fetch)).codigo, argv.join(" ")).toBe(0);
+    }
+    expect(urls).toEqual([]);
+  });
+
+  it("MEXICOAPI_BASE cambia la API; MEXICOAPI_SIN_RED=1 deja todo en el paquete", async () => {
+    const otra = fetchFalso();
+    await correr(
+      DIAS,
+      { ...conRed, MEXICOAPI_BASE: "https://otra.example/v1" },
+      enDirectorio,
+      otra.fetch,
+    );
+    expect(otra.urls[0]).toMatch(/^https:\/\/otra\.example\/v1\/dias-habiles\?/);
+    const sinRed = fetchFalso();
+    for (const env of [
+      { MEXICOAPI_SIN_RED: "1" },
+      { MEXICOAPI_SIN_RED: "1", MEXICOAPI_BASE: "https://otra.example" },
+    ]) {
+      const c = await correr(DIAS, env, enDirectorio, sinRed.fetch);
+      expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    }
+    expect(sinRed.urls).toEqual([]);
+  });
+
+  it("--base gana a MEXICOAPI_SIN_RED y a MEXICOAPI_BASE", async () => {
+    const { fetch, urls } = fetchFalso();
+    const env = { MEXICOAPI_SIN_RED: "1", MEXICOAPI_BASE: "https://otra.example" };
+    await correr([...DIAS, "--base", "https://flag.example"], env, enDirectorio, fetch);
+    expect(urls[0]).toMatch(/^https:\/\/flag\.example\/v1\/dias-habiles\?/);
+  });
 });
 
 const ESTADO: ResumenSepomex = {

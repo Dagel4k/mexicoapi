@@ -35,6 +35,12 @@ const json = (c: Corrida): unknown => JSON.parse(c.salida);
 const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
 
 /**
+ * El entorno con una API: las pruebas corren con MEXICOAPI_SIN_RED=1 (sin MEXICOAPI_BASE, la CLI
+ * usaría la API pública), que gana a MEXICOAPI_BASE; aquí se apaga.
+ */
+const conApi = (base: string) => ({ MEXICOAPI_BASE: base, MEXICOAPI_SIN_RED: "" });
+
+/**
  * Una API local en 127.0.0.1 que responde cualquier ruta con un resultado de días hábiles que el
  * paquete no daría (2026-03-30), para saber de dónde salió la respuesta. Guarda lo que le piden.
  */
@@ -320,7 +326,7 @@ export function probarCli(correr: Correr, version: string): void {
       advertencias: ["\u001b]8;;https://x.test\u0007enlace\r\nOrigen: API"],
     });
     try {
-      const c = await correr(DIAS, { MEXICOAPI_BASE: api.base });
+      const c = await correr(DIAS, conApi(api.base));
       expect(c.codigo).toBe(0);
       expect([...c.salida].filter((x) => x !== "\n" && /\p{Cc}/u.test(x))).toEqual([]);
       expect(c.salida).toContain("  2026-03-16  [2JDía falso\n");
@@ -397,7 +403,7 @@ export function probarCli(correr: Correr, version: string): void {
     expect(c.codigo).toBe(0);
     expect(c.salida).toContain("315.04");
     expect(c.salida).toContain("Origen: datos del paquete (la API no respondió)");
-    const isr = await correr(["isr", "mensual", "2026"], { MEXICOAPI_BASE: "http://127.0.0.1:1" });
+    const isr = await correr(["isr", "mensual", "2026"], conApi("http://127.0.0.1:1"));
     expect(isr.codigo).toBe(0);
     expect(isr.salida).toContain("la API no respondió");
   });
@@ -448,7 +454,7 @@ export function probarCli(correr: Correr, version: string): void {
     expect(c.salida).toContain("2026-03-23");
     expect(c.salida).toContain("Origen: datos del paquete (la API no respondió)");
     expect(c.salida).toContain("Aviso:");
-    const porEntorno = await correr(DIAS, { MEXICOAPI_BASE: "http://127.0.0.1:1" });
+    const porEntorno = await correr(DIAS, conApi("http://127.0.0.1:1"));
     expect(porEntorno.salida).toContain("la API no respondió");
   });
 
@@ -463,7 +469,7 @@ export function probarCli(correr: Correr, version: string): void {
       for (const [argv, env] of [
         [["banco", "002", "--base", api.base], {}],
         [["municipio", "25006", "--base", api.base], {}],
-        [["banco", "002"], { MEXICOAPI_BASE: api.base }],
+        [["banco", "002"], conApi(api.base)],
       ] as const) {
         const c = await correr(argv, env);
         expect(c.codigo, argv.join(" ")).toBe(0);

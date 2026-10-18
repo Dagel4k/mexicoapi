@@ -34,6 +34,8 @@ function correr(
       env: {
         ...process.env,
         MEXICOAPI_BASE: "",
+        // Sin MEXICOAPI_BASE la CLI usaría la API pública: las pruebas no salen a la red.
+        MEXICOAPI_SIN_RED: "1",
         LOCALAPPDATA: cache,
         XDG_CACHE_HOME: cache,
         ...env,
