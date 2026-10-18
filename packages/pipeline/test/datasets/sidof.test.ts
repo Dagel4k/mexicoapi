@@ -178,6 +178,15 @@ function ctx(fecha = HOY): Contexto {
 }
 
 const YAML_CNBV = new URL("../../../../data/curado/dias-inhabiles-cnbv.yaml", import.meta.url);
+/** Hasta dónde llega el calendario real de la CNBV: crece con cada captura, así que no se fija. */
+const HASTA_CNBV = (
+  JSON.parse(
+    await readFile(
+      new URL("../../../../data/dias-inhabiles-cnbv/calendario.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { plazos: { general: { cobertura: { hasta: string } } } }
+).plazos.general.cobertura.hasta;
 
 /** Escribe en la raíz de prueba el calendario curado de la CNBV: el real o `texto`. */
 async function calendarioCnbvEnDisco(texto?: string) {
@@ -1107,9 +1116,12 @@ describe("revisar", () => {
       await calendarioCnbvEnDisco();
       const trece = [fix("2026-11-13", "18.4250")];
       expect(await revisarFix(trece, [...trece, fix("2026-11-17", "18.4300")])).toEqual(sinMotivos);
-      // El 1 de enero de 2027 es feriado, pero el calendario curado llega al 2026-12-31.
-      const fin = [fix("2026-12-31", "18.4250")];
-      expect(await revisarFix(fin, [...fin, fix("2027-01-01", "18.4300")])).toEqual(sinMotivos);
+      // El primer día entre semana después de la cobertura (con el calendario hasta el 31 de
+      // diciembre, el 1 de enero, feriado): el calendario no lo cubre y no se revisa.
+      let fuera = sumarDias(HASTA_CNBV, 1);
+      while (diaDeLaSemana(fuera) === 0 || diaDeLaSemana(fuera) === 6) fuera = sumarDias(fuera, 1);
+      const fin = [fix(HASTA_CNBV, "18.4250")];
+      expect(await revisarFix(fin, [...fin, fix(fuera, "18.4300")])).toEqual(sinMotivos);
     });
 
     it("un feriado en sábado da solo el motivo de fin de semana; una UDI, ninguno", async () => {
