@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PROBLEMAS, URL_PROBLEMAS } from "../../src/problemas.js";
 
@@ -26,5 +27,23 @@ describe("PROBLEMAS", () => {
     for (const p of Object.values(PROBLEMAS)) expect(p.title).toMatch(/^\S.*\S$/);
     expect(Object.isFrozen(PROBLEMAS)).toBe(true);
     for (const p of Object.values(PROBLEMAS)) expect(Object.isFrozen(p)).toBe(true);
+  });
+});
+
+describe("docs/api/problemas.md", () => {
+  const documento = readFileSync(
+    new URL("../../../../docs/api/problemas.md", import.meta.url),
+    "utf8",
+  );
+  const encabezados = [...documento.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
+
+  it("tiene un encabezado por cada tipo, cuyo ancla es el tipo", () => {
+    for (const tipo of Object.keys(PROBLEMAS)) {
+      expect(encabezados.filter((e) => e === tipo)).toEqual([tipo]);
+    }
+  });
+
+  it("no tiene encabezados de nivel 2 que no sean un tipo", () => {
+    expect([...encabezados].sort()).toEqual(Object.keys(PROBLEMAS).sort());
   });
 });
