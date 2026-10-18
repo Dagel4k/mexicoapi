@@ -133,11 +133,26 @@ describe("consultar", () => {
     expect(error.message).toBe("No existe el banco 999.");
   });
 
-  it("pasa TypeError y RangeError del paquete con su mensaje", async () => {
+  it("usa el detalle en una línea, o el mensaje si el detalle está vacío", async () => {
+    const problema = (detail: string) =>
+      new MexicoApiError(
+        { type: "about:blank", title: "Falla", status: 404, detail },
+        { url: "/v1/udis", origen: "api" },
+      );
+    const fallar = (detail: string) =>
+      consultar(vivo(), () => Promise.reject(problema(detail))).catch((e) => e);
+    const varias = await fallar("uno\ndos");
+    expect(varias.message).toBe("uno dos");
+    const vacio = await fallar(" \n");
+    expect(vacio).toBeInstanceOf(ErrorHerramienta);
+    expect(vacio.message).toBe("404 Falla:");
+  });
+
+  // Con los argumentos ya validados, un TypeError o RangeError es un defecto: va por la ruta del
+  // error interno (sin detalles para el modelo y con registro), no como error que el modelo corrige.
+  it("deja pasar TypeError y RangeError tal cual", async () => {
     for (const falla of [new TypeError("uso"), new RangeError("rango")]) {
-      const error = await consultar(vivo(), () => Promise.reject(falla)).catch((e) => e);
-      expect(error).toBeInstanceOf(ErrorHerramienta);
-      expect(error.message).toBe(falla.message);
+      await expect(consultar(vivo(), () => Promise.reject(falla))).rejects.toBe(falla);
     }
   });
 
