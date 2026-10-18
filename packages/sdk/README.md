@@ -297,7 +297,7 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 | `mexicoapi/datos` | 44.8 KB |
 | `mexicoapi/datos/fix` | 13.4 KB |
 | `mexicoapi/datos/udis` | 19.1 KB |
-| `mexicoapi/datos/calendarios` | 16.4 KB |
+| `mexicoapi/datos/calendarios` | 16.6 KB |
 | `mexicoapi/datos/constantes` | 8.7 KB |
 
 | Entorno | Estado |
