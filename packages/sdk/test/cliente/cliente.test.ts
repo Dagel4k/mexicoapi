@@ -121,6 +121,47 @@ describe("consulta a la API", () => {
     ]);
   });
 
+  it("revisa y limpia una base con miles de barras en tiempo lineal", async () => {
+    const { fetch, llamadas } = fetchFalso(respuestaDatos([]));
+    const barras = "/".repeat(10_000);
+    let inicio = performance.now();
+    const api = crearCliente({ base: `http://127.0.0.1:8787${barras}x${barras}`, fetch });
+    expect(performance.now() - inicio).toBeLessThan(50);
+    await api.bancos({ fuente: "api" });
+    expect(llamadas[0]?.url).toBe(`http://127.0.0.1:8787${barras}x/v1/bancos`);
+    inicio = performance.now();
+    expect(() => crearCliente({ base: `http://127.0.0.1${barras}x${barras}?`, fetch })).toThrow(
+      TypeError,
+    );
+    expect(() => crearCliente({ base: `http://${"a".repeat(10_000)}@` })).toThrow(TypeError);
+    expect(performance.now() - inicio).toBeLessThan(50);
+  });
+
+  it("rechaza una base con usuario o contraseña sin repetirlos en el error", () => {
+    for (const base of [
+      "https://usuario:secreto@api.ejemplo.mx",
+      "https://secreto@api.ejemplo.mx/v1/",
+      new URL("https://usuario:secreto@api.ejemplo.mx/"),
+    ]) {
+      const error = (() => {
+        try {
+          crearCliente({ base });
+        } catch (e) {
+          return e as Error;
+        }
+        throw new Error("no lanzó");
+      })();
+      expect(error).toBeInstanceOf(TypeError);
+      expect(error.message).toBe(
+        "base no lleva usuario ni contraseña (usuario:clave@); pasa solo el origen de la API, como https://mexicoapi.example.workers.dev.",
+      );
+    }
+    // Una @ en la ruta no es una credencial.
+    expect(() =>
+      crearCliente({ base: "https://api.ejemplo.mx/@equipo", offline: true }),
+    ).not.toThrow();
+  });
+
   it("usa el fetch global si no recibe uno, llamado sin this", async () => {
     const global = vi.fn(function (this: unknown, _url: string) {
       expect(this).toBeUndefined();

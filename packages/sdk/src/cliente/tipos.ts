@@ -213,7 +213,7 @@ export type OpcionesCliente = OpcionesComunes &
     | {
         /**
          * Origen de la API, como `https://mexicoapi.example.workers.dev` (con o sin `/v1` al
-         * final).
+         * final), sin query, fragmento ni credenciales (`usuario:clave@` lanza TypeError).
          */
         base: Base;
         offline?: boolean | undefined;

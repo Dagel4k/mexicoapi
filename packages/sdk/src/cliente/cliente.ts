@@ -63,12 +63,23 @@ const REGLAS_RUTA: Readonly<Record<string, readonly [RegExp, string]>> = {
 
 function baseDe(base: string | { readonly href: string }): string {
   const texto = typeof base === "string" ? base : base.href;
+  // Lineal: el origen no lleva "/" y la ruta empieza con "/", así que no hay dos formas de partirla.
   if (!/^https?:\/\/[^/?#\s]+(?:\/[^?#\s]*)?$/i.test(texto)) {
     throw new TypeError(
       "base debe ser una URL http o https sin query ni fragmento, como https://mexicoapi.example.workers.dev.",
     );
   }
-  return texto.replace(/\/+$/, "").replace(/\/v1$/i, "");
+  const desde = texto.indexOf("//") + 2;
+  const hasta = texto.indexOf("/", desde);
+  // fetch rechaza una URL con credenciales y el error las dejaría en `url`.
+  if (texto.slice(desde, hasta === -1 ? texto.length : hasta).includes("@")) {
+    throw new TypeError(
+      "base no lleva usuario ni contraseña (usuario:clave@); pasa solo el origen de la API, como https://mexicoapi.example.workers.dev.",
+    );
+  }
+  let fin = texto.length;
+  while (texto.endsWith("/", fin)) fin--;
+  return texto.slice(0, fin).replace(/\/v1$/i, "");
 }
 
 /** Lo más que acepta setTimeout: más de 2^31 - 1 ms desborda y dispara de inmediato. */
