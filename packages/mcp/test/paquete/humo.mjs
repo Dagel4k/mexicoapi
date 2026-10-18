@@ -1,13 +1,15 @@
 // Prueba de humo de mexicoapi-mcp instalado desde su .tgz, en JavaScript sin Vitest ni dependencias
 // para que corra igual en cada Node que soporta el paquete. Va en la carpeta del proyecto que
 // instaló mexicoapi y mexicoapi-mcp y se corre con `node humo.mjs`: lanza el binario instalado
-// (node_modules/.bin/mexicoapi-mcp), le habla por stdio (initialize, tools/list y un tools/call) y
-// termina con código distinto de 0 si algo falla. No usa la red: sin MEXICOAPI_BASE, el servidor
-// responde con los datos del paquete mexicoapi.
-import { deepEqual, equal, ok } from "node:assert/strict";
+// (node_modules/.bin/mexicoapi-mcp), le habla por stdio (initialize, tools/list y tres tools/call)
+// y termina con código distinto de 0 si algo falla. No usa la red: sin MEXICOAPI_BASE, el servidor
+// responde con los datos del paquete mexicoapi, y la caché de SEPOMEX es un directorio vacío.
+// También sirve después de publicar, con el mexicoapi más reciente que cumpla el rango.
+import { deepEqual, equal, match, ok } from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,20 +33,40 @@ const HERRAMIENTAS = [
 
 const paso = (texto) => process.stdout.write(`humo: ${texto}\n`);
 const leerJson = async (ruta) => JSON.parse(await readFile(ruta, "utf8"));
+const VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
+
+/** Si `version` (x.y.z) cumple `^piso` como lo entiende npm (semver, sin prereleases). */
+function cumpleCaret(version, piso) {
+  const v = VERSION.exec(version);
+  if (v === null) return false;
+  const [m, n, p] = v.slice(1).map(Number);
+  const [mayor, menor, parche] = piso;
+  if (mayor > 0) return m === mayor && (n > menor || (n === menor && p >= parche));
+  if (menor > 0) return m === 0 && n === menor && p >= parche;
+  return m === 0 && n === 0 && p === parche;
+}
 
 const mcp = await leerJson(join(AQUI, "node_modules", "mexicoapi-mcp", "package.json"));
 const sdk = await leerJson(join(AQUI, "node_modules", "mexicoapi", "package.json"));
-equal(mcp.dependencies.mexicoapi, `^${sdk.version}`);
+// La dependencia es ^ y una versión exacta, y el mexicoapi instalado la cumple.
+const rango = mcp.dependencies.mexicoapi;
+match(rango, /^\^\d+\.\d+\.\d+$/);
+const piso = VERSION.exec(rango.slice(1)).slice(1).map(Number);
+ok(cumpleCaret(sdk.version, piso), `mexicoapi ${sdk.version} no cumple ${rango}`);
 // npm usó el mexicoapi del proyecto para la dependencia del servidor: no hay otra copia adentro.
 equal(existsSync(join(AQUI, "node_modules", "mexicoapi-mcp", "node_modules", "mexicoapi")), false);
-paso(`Node ${process.versions.node}: mexicoapi-mcp ${mcp.version} con mexicoapi ${sdk.version}`);
+paso(
+  `Node ${process.versions.node}: mexicoapi-mcp ${mcp.version} (${rango}) con mexicoapi ${sdk.version}`,
+);
 
 const lineas = [];
 const esperando = [];
 let resto = "";
 let errores = "";
 
-const entorno = { ...process.env };
+// Caché de SEPOMEX vacía: nunca la del equipo, que puede tener un catálogo descargado.
+const cacheVacia = await mkdtemp(join(tmpdir(), "mexicoapi-mcp-humo-"));
+const entorno = { ...process.env, LOCALAPPDATA: cacheVacia, XDG_CACHE_HOME: cacheVacia };
 delete entorno.MEXICOAPI_BASE;
 // En Windows el binario de node_modules/.bin es un .cmd: solo se lanza con shell.
 const hijo = spawn(join("node_modules", ".bin", "mexicoapi-mcp"), [], {
@@ -147,11 +169,41 @@ ok(structuredContent.fuente.url.startsWith("https://"));
 ok(llamada.result.content[0].text.includes("BANAMEX"));
 paso("tools/call validar_clabe");
 
+// Una serie de datos, que el servidor carga con import() del paquete instalado.
+enviar({
+  jsonrpc: "2.0",
+  id: 4,
+  method: "tools/call",
+  params: { name: "udis", arguments: { fecha: "2026-10-01" } },
+});
+const udis = await recibir();
+equal(udis.id, 4);
+equal(udis.result.isError, undefined);
+equal(udis.result.structuredContent.datos.valor, "8.836029");
+equal(udis.result.structuredContent.origen, "paquete");
+match(udis.result.structuredContent.as_of, /^\d{4}-\d{2}-\d{2}$/);
+paso("tools/call udis");
+
+// mexicoapi/sepomex también se carga con import(): sin catálogo, error con el comando.
+enviar({
+  jsonrpc: "2.0",
+  id: 5,
+  method: "tools/call",
+  params: { name: "codigo_postal", arguments: { cp: "80000" } },
+});
+const cp = await recibir();
+equal(cp.id, 5);
+equal(cp.result.isError, true);
+ok(cp.result.content[0].text.includes("npx mexicoapi sepomex sync"), cp.result.content[0].text);
+ok(!cp.result.content[0].text.includes(cacheVacia));
+paso("tools/call codigo_postal sin catálogo");
+
 hijo.stdin.end();
 deepEqual(await fin, { codigo: 0, senal: null });
 clearTimeout(vigilante);
+await rm(cacheVacia, { recursive: true, force: true });
 equal(resto, "");
-equal(lineas.length, 3);
+equal(lineas.length, 5);
 for (const linea of lineas) JSON.parse(linea);
 ok(errores.includes("datos del paquete, sin red"), errores);
 paso("termina con código 0 al cerrar la entrada");
