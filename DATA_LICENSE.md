@@ -4,6 +4,10 @@ El código de este repositorio se publica bajo la licencia [MIT](LICENSE). Los d
 
 Cada dataset trae en su `manifest.json` la fuente, la URL de los términos, la cita y el hash de los archivos de `raw/`. Casi todos son la respuesta de la fuente tal como se descargó. La excepción es `data/bancos/raw/cep-historico.json`: es una compilación de MéxicoAPI con las respuestas mensuales del CEP, que conserva la primera, la última y cada mes cuya lista cambió.
 
+## Descargas y API
+
+Las descargas de `/descargas/` (JSON, CSV y SQLite) y las respuestas de la API son los mismos datos de `data/`, con los términos de cada fuente. Cada respuesta de la API lleva en `meta.sources` el nombre de la fuente, su licencia y la cita; cada `.manifest.json` de las descargas, lo mismo. `SHA256SUMS` permite verificar los archivos. Los CSV y la base SQLite solo cambian el formato, no el contenido. Si publicas estos datos, conserva la cita de la fuente.
+
 ## INEGI: estados y municipios
 
 - Datasets: `data/inegi-estados/` y `data/inegi-municipios/`.
