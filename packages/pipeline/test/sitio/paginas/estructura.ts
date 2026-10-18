@@ -76,11 +76,11 @@ export function esperarDocumentoValido(html: string): void {
     expect(etiqueta).not.toMatch(/\sstyle\s*=/i);
     expect(etiqueta).not.toMatch(/\son[a-z]+\s*=/i);
   }
-  for (const [, atributosScript, cuerpo] of html.matchAll(
-    /<script\b([^>]*)>([\s\S]*?)<\/script>/gi,
-  )) {
-    expect(atributosScript).toMatch(/^ type="module" src="\/[^/"][^"]*"$/);
-    expect(cuerpo).toBe("");
+  // Cada `<script` abre un módulo del mismo origen sin cuerpo. Se revisa desde cada aparición, sin
+  // depender de cómo venga escrita la etiqueta de cierre.
+  const minusculas = html.toLowerCase();
+  for (let i = minusculas.indexOf("<script"); i !== -1; i = minusculas.indexOf("<script", i + 1)) {
+    expect(html.slice(i)).toMatch(/^<script type="module" src="\/[^/"][^"]*"><\/script>/);
   }
   // Ningún recurso externo: lo que carga la página es del mismo origen.
   for (const src of atributos(html, "src")) expect(src).toMatch(/^\/(?!\/)/);
