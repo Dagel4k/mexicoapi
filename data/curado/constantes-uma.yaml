@@ -1,0 +1,85 @@
+# Unidad de medida y actualización, publicada por el INEGI en el DOF cada enero. Cada valor rige
+# del 1 de febrero del año al 31 de enero del siguiente. Mensual = diaria × 30.4; anual = mensual × 12.
+dataset: constantes.uma
+fuentes:
+  uma-2017:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5468844&fecha=10/01/2017
+    fecha_publicacion: 2017-01-10
+    fragmento: "el Instituto Nacional de Estadística y Geografía publica y da a conocer que los valores de la Unidad de Medida y Actualización son: el diario de $75.49 pesos mexicanos, el mensual de $2,294.90 pesos mexicanos y el anual de $27,538.80 pesos mexicanos, los cuales estarán vigentes a partir del 1 º de febrero de 2017, de conformidad con el artículo 5 de la Ley para Determinar el Valor de la Unidad de Medida y Actualización."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2018:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5510380&fecha=10/01/2018
+    fecha_publicacion: 2018-01-10
+    fragmento: "[...] el valor diario de la Unidad de Medida y Actualización es de $80.60 pesos mexicanos, el mensual es de $2,450.24 pesos mexicanos y el valor anual $29,402.88 pesos mexicanos, los cuales estarán vigentes a partir del 1o. de febrero de 2018."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2019:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5547867&fecha=10/01/2019
+    fecha_publicacion: 2019-01-10
+    fragmento: "[...] es de $84.49 pesos mexicanos, el mensual es de $2,568.50 pesos mexicanos y el valor anual $30,822.00 pesos mexicanos, los cuales estarán vigentes a partir del 1 º de febrero de 2019."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2020:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5583733&fecha=10/01/2020
+    fecha_publicacion: 2020-01-10
+    fragmento: "[...] es de $86.88 pesos mexicanos, el mensual es de $2,641.15 pesos mexicanos y el valor anual $31,693.80 pesos mexicanos, los cuales estarán vigentes a partir del 1 o. de febrero de 2020."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2021:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5609633&fecha=08/01/2021
+    fecha_publicacion: 2021-01-08
+    fragmento: "[...] es de $89.62 pesos mexicanos, el mensual es de $2,724.45 pesos mexicanos y el valor anual $32,693.40 pesos mexicanos, los cuales estarán vigentes a partir del 1o. de febrero de 2021."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2022:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5640427&fecha=10/01/2022
+    fecha_publicacion: 2022-01-10
+    fragmento: "[...] es de $96.22 pesos mexicanos, el mensual es de $2,925.09 pesos mexicanos y el valor anual $35,101.08 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2022."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2023:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5676670&fecha=10/01/2023
+    fecha_publicacion: 2023-01-10
+    fragmento: "[...] es de $103.74 pesos mexicanos, el mensual es de $3,153.70 pesos mexicanos y el valor anual $37,844.40 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2023."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2024:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5714085&fecha=10/01/2024
+    fecha_publicacion: 2024-01-10
+    fragmento: "[...] es de $108.57 pesos mexicanos, el mensual es de $3,300.53 pesos mexicanos y el valor anual $39,606.36 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2024."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2025:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5746930&fecha=10/01/2025
+    fecha_publicacion: 2025-01-10
+    fragmento: "[...] es de $113.14 pesos mexicanos, el mensual es de $3,439.46 pesos mexicanos y el valor anual $41,273.52 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2025."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+  uma-2026:
+    nombre: "INEGI. Unidad de medida y actualización"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5778072&fecha=09/01/2026
+    fecha_publicacion: 2026-01-09
+    fragmento: "[...] es de $117.31 pesos mexicanos, el mensual es de $3,566.22 pesos mexicanos y el valor anual $42,794.64 pesos mexicanos, los cuales estarán vigentes a partir del 1º de febrero de 2026."
+    licencia: "Términos de libre uso de la información del INEGI"
+    licencia_url: https://www.inegi.org.mx/inegi/terminos.html
+registros:
+  - { anio: 2017, diaria: "75.49", mensual: "2294.90", anual: "27538.80", vigencia_desde: 2017-02-01, fuente: uma-2017 }
+  - { anio: 2018, diaria: "80.60", mensual: "2450.24", anual: "29402.88", vigencia_desde: 2018-02-01, fuente: uma-2018 }
+  - { anio: 2019, diaria: "84.49", mensual: "2568.50", anual: "30822.00", vigencia_desde: 2019-02-01, fuente: uma-2019 }
+  - { anio: 2020, diaria: "86.88", mensual: "2641.15", anual: "31693.80", vigencia_desde: 2020-02-01, fuente: uma-2020 }
+  - { anio: 2021, diaria: "89.62", mensual: "2724.45", anual: "32693.40", vigencia_desde: 2021-02-01, fuente: uma-2021 }
+  - { anio: 2022, diaria: "96.22", mensual: "2925.09", anual: "35101.08", vigencia_desde: 2022-02-01, fuente: uma-2022 }
+  - { anio: 2023, diaria: "103.74", mensual: "3153.70", anual: "37844.40", vigencia_desde: 2023-02-01, fuente: uma-2023 }
+  - { anio: 2024, diaria: "108.57", mensual: "3300.53", anual: "39606.36", vigencia_desde: 2024-02-01, fuente: uma-2024 }
+  - { anio: 2025, diaria: "113.14", mensual: "3439.46", anual: "41273.52", vigencia_desde: 2025-02-01, fuente: uma-2025 }
+  - { anio: 2026, diaria: "117.31", mensual: "3566.22", anual: "42794.64", vigencia_desde: 2026-02-01, fuente: uma-2026 }
