@@ -277,11 +277,21 @@ jobs:
             "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz "${RUNNER_TEMP}"/tgz-mcp/mexicoapi-mcp-*.tgz
           node humo.mjs
 
-  # Un PR del bot de datos solo puede tocar archivos comunes de data/: el auto-merge lo fusiona sin
-  # revisión. Cuenta como del bot si su rama empieza con datos/ o si lo abrió o le hizo push una
-  # cuenta Bot que no es Dependabot (el nombre de la App no está en el repo). Para los demás PRs y
-  # para los push a main pasa enseguida. Solo lee nombres y modos de archivo del merge del PR, sin
-  # correr nada de él. La App no tiene el permiso Workflows, así que no puede cambiar este archivo.
+  # Un PR del bot de datos solo puede tocar archivos comunes de las carpetas de sus datasets en
+  # data/, y solo puede ir a main: el auto-merge lo fusiona sin revisión. Es del bot si su rama
+  # empieza con datos/, si lo abrió una cuenta Bot que no es Dependabot (el nombre de la App no
+  # está en el repo) o si el evento que disparó esta corrida (abrir, reabrir o hacer push) lo hizo
+  # una de esas cuentas. Para los demás PRs y para los push a main pasa enseguida. Solo lee nombres
+  # y modos de archivo del merge del PR, sin correr nada de él. La App no tiene el permiso
+  # Workflows, así que no puede cambiar este archivo.
+  #
+  # Cambiar la base de un PR dispara el evento edited, que aquí no se escucha: también llega con
+  # cada cambio de título o descripción, y correr toda la verificación en cada uno cuesta lo mismo
+  # que un push. Saltar los jobs en esos casos no sirve: un verify saltado cuenta como aprobado y
+  # reemplazaría a uno en rojo del mismo commit. En su lugar, un PR del bot con otra base falla
+  # aquí; si después le cambian la base a main, ese rojo se queda en el commit hasta un push nuevo
+  # o una reapertura, que vuelven a correr esta revisión contra main (la App no puede volver a
+  # correr workflows).
   solo-datos:
     name: solo-datos
     runs-on: ubuntu-latest
@@ -294,6 +304,7 @@ jobs:
         env:
           EVENTO: ${{ github.event_name }}
           RAMA: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
           AUTOR: ${{ github.event.pull_request.user.login }}
           AUTOR_TIPO: ${{ github.event.pull_request.user.type }}
           EMISOR: ${{ github.event.sender.login }}
@@ -315,6 +326,9 @@ jobs:
           echo "es_bot=${es_bot}" >> "${GITHUB_OUTPUT}"
           if [ "${es_bot}" = "no" ]; then
             echo "No es un PR del bot de datos: no hay nada que revisar."
+          elif [ "${BASE}" != "main" ]; then
+            printf '::error::Un PR del bot de datos solo puede ir a main, no a %q.\n' "${BASE}"
+            exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -325,8 +339,25 @@ jobs:
 
       - name: Exigir que solo toque data/
         if: steps.bot.outputs.es_bot == 'si'
+        env:
+          # Las carpetas de los datasets del bot; una prueba del pipeline
+          # (test/workflows.test.ts) las compara con el registro. data/curado/ nunca pasa por
+          # el bot.
+          CARPETAS: inegi-estados inegi-municipios bancos tipo-cambio-fix udis
         run: |
           set -euo pipefail
+          export LC_ALL=C
+          # Una ruta vale si está en una de esas carpetas, solo lleva letras ASCII, dígitos y
+          # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
+          # vacío, es . o .., o empieza con .git (sin importar mayúsculas). Las rutas
+          # rechazadas salen escapadas con %q.
+          patron="^data/(${CARPETAS// /|})/[A-Za-z0-9._/-]+$"
+          ruta_valida() {
+            [[ "$1" =~ ${patron} ]] || return 1
+            case "/${1,,}/" in
+              */../* | */./* | *//* | */.git*) return 1 ;;
+            esac
+          }
           # HEAD es el merge del PR con main y HEAD^1 la punta de main: su diferencia es lo que el
           # PR metería. --raw -z da el modo final y la ruta sin comillas; solo valen archivos
           # comunes (100644 o 100755) o borrados (000000).
@@ -342,10 +373,10 @@ jobs:
             n=$((n + 1))
             modo="${meta#:* }"
             modo="${modo%% *}"
-            case "${ruta}" in
-              data/?*) ;;
-              *) printf '::error::El PR del bot toca una ruta fuera de data/: %q\n' "${ruta}"; mal=1 ;;
-            esac
+            if ! ruta_valida "${ruta}"; then
+              printf '::error::El PR del bot toca una ruta no permitida: %q\n' "${ruta}"
+              mal=1
+            fi
             case "${modo}" in
               100644 | 100755 | 000000) ;;
               *) printf '::error::Modo no permitido (%s) en %q\n' "${modo}" "${ruta}"; mal=1 ;;
