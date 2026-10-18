@@ -2,12 +2,16 @@ import { describe, expect, test } from "vitest";
 import type {
   ArchivoCrudo,
   Banco,
+  CoberturaSerie,
+  Consulta,
   Estado,
   FuenteManifiesto,
   Manifiesto,
   Municipio,
   PeriodoBanco,
   TipoBanco,
+  TipoCambioFix,
+  Udi,
 } from "../src/index.js";
 import * as core from "../src/index.js";
 
@@ -39,6 +43,10 @@ const VALORES_PUBLICOS = [
   "VIGENCIA_LFT",
   "RFC_GENERICOS",
   "NOTA_VALIDACION",
+  "fixPublicado",
+  "fixParaOperacion",
+  "udiDeFecha",
+  "FUENTE_CFF_20",
 ];
 
 describe("API pública", () => {
@@ -63,6 +71,9 @@ describe("API pública", () => {
     "enesimoDiaDeSemana",
     "esBisiesto",
     "fechaValida",
+    "fixPublicado",
+    "fixParaOperacion",
+    "udiDeFecha",
   ])("exporta %s como función", (nombre) => {
     expect(typeof (core as Record<string, unknown>)[nombre]).toBe("function");
   });
@@ -75,6 +86,7 @@ describe("API pública", () => {
     expect(core.FUENTE_LFT_74).toBeDefined();
     expect(core.FUENTE_LFT_715).toBeDefined();
     expect(core.VIGENCIA_LFT).toBe("2026-05-14");
+    expect(core.FUENTE_CFF_20.fragmento).toContain("el día anterior a aquél");
   });
 
   test("no expone VERSION ni los ayudantes internos", () => {
@@ -145,7 +157,11 @@ describe("tipos de registros y manifiesto", () => {
       records: 1,
       sources: [fuente],
     };
-    expect([estado, municipio, banco, manifiesto].length).toBe(4);
+    const fix: TipoCambioFix = { fecha_publicacion: "2026-10-16", valor: "18.4250" };
+    const udi: Udi = { fecha: "2026-10-16", valor: "8.123456" };
+    const cobertura: CoberturaSerie = { desde: "2020-01-02", hasta: "2026-10-16" };
+    const consulta: Consulta<Udi> = { tipo: "encontrado", registro: udi };
+    expect([estado, municipio, banco, manifiesto, fix, cobertura, consulta].length).toBe(7);
   });
 
   test("el índice no gana valores de runtime por los tipos nuevos", () => {
