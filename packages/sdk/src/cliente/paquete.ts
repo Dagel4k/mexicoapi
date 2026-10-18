@@ -1,7 +1,7 @@
 // Respuestas desde los datos y el núcleo que trae el paquete, con la forma de las de la API: las
-// mismas reglas para los parámetros, los mismos problemas y el mismo `meta`. Este módulo, el
-// núcleo y cada dataset se cargan con un import dinámico solo al usarlos: quien solo consulta la
-// API no los carga y un bundler los deja en archivos aparte.
+// mismas reglas para los parámetros, los mismos problemas y el mismo `meta`, que salen del núcleo
+// (`rutas`). Este módulo, el núcleo y cada dataset se cargan con un import dinámico solo al
+// usarlos: quien solo consulta la API no los carga y un bundler los deja en archivos aparte.
 import type {
   CoberturaSerie,
   Consulta,
@@ -9,6 +9,13 @@ import type {
   OpcionesFix,
   TipoCambioFix,
 } from "@mexicoapi/core";
+import {
+  CONSULTAS,
+  consultarConFeriados,
+  problemaSinRegistro,
+  revisarConsulta,
+  revisarFix,
+} from "@mexicoapi/core/rutas";
 import type { MetaDatos } from "../datos/tipos.js";
 import type { RutaDelPaquete } from "./cliente.js";
 import {
@@ -16,6 +23,7 @@ import {
   conDocs,
   type Dato,
   falla,
+  fallaDe,
   type Nucleo,
   type RutaPaquete,
   valor,
@@ -37,78 +45,17 @@ function existe<T>(c: Contexto, valor: T | undefined, recurso: string): T {
   return valor;
 }
 
-type Regla = readonly [cumple: (valor: string) => boolean, detalle: string];
-
-/** Las reglas de la API para la query de las rutas que responde el paquete. */
-function reglas(n: Nucleo): Readonly<Record<string, Regla>> {
-  const fecha = (que: string, nombre: string): Regla => [
-    n.esFechaIsoValida,
-    `La ${que} (${nombre}) debe ser una fecha válida con formato AAAA-MM-DD.`,
-  ];
-  return {
-    autoridad: [
-      (v) => v === "lft" || v === "cnbv" || v === "sat",
-      "Autoridades disponibles: lft, cnbv y sat.",
-    ],
-    // La ruta lo exige con sat y lo rechaza con las demás autoridades.
-    tipo_plazo: [
-      (v) => v === "general" || v === "declaraciones_pagos",
-      "El tipo de plazo (tipo_plazo) debe ser general o declaraciones_pagos.",
-    ],
-    desde: fecha("fecha de partida", "desde"),
-    dias: [
-      (v) => /^[1-9]\d{0,3}$/.test(v) && Number(v) <= 3650,
-      "Los días hábiles (dias) deben ser un entero de 1 a 3650, sin ceros a la izquierda.",
-    ],
-    permitir_incompleto: [
-      (v) => v === "true" || v === "false",
-      "El parámetro permitir_incompleto debe ser true o false.",
-    ],
-    // No hay año 0000: las fechas van de 0001 a 9999.
-    anio: [
-      (v) => /^\d{4}$/.test(v) && v !== "0000",
-      "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
-    ],
-    publicado: fecha("fecha de publicación", "publicado"),
-    operacion: fecha("fecha de la operación", "operacion"),
-    fecha: fecha("fecha del valor", "fecha"),
-    fecha_uma: fecha("fecha que se consulta", "fecha"),
-  };
-}
-
 /**
- * Responde `plantilla` con el paquete: carga el núcleo, revisa la query en el orden de la API
- * (sin nombre, desconocidos, cada regla) y responde.
+ * Responde `plantilla` con el paquete: revisa la query con las reglas del núcleo, en el orden de
+ * la API (sin nombre, desconocidos, cada regla), carga el núcleo y responde.
  */
 export async function responderPaquete(plantilla: RutaDelPaquete, c: Contexto): Promise<Dato> {
-  const ruta = PAQUETE[plantilla];
-  const aceptados = new Set((ruta.consulta ?? []).map(([nombre]) => nombre));
-  const nombres = Object.keys(c.consulta);
-  if (nombres.includes("")) {
-    throw falla(c, "parametro-invalido", "La query tiene un parámetro sin nombre.");
-  }
-  const desconocido = nombres.find((nombre) => !aceptados.has(nombre));
-  if (desconocido !== undefined) {
-    throw falla(c, "parametro-desconocido", `Esta ruta no acepta el parámetro ${desconocido}.`, {
-      parametro: desconocido,
-    });
-  }
-  const n = await nucleo();
-  const r = reglas(n);
-  for (const [nombre, obligatorio, regla = nombre] of ruta.consulta ?? []) {
-    const v = c.valores[nombre];
-    const parametro = { parametro: nombre };
-    if (v === undefined) {
-      if (!obligatorio) continue;
-      throw falla(c, "parametro-faltante", `Falta el parámetro ${nombre}.`, parametro);
-    }
-    const [cumple, detalle] = r[regla] as Regla;
-    if (v === "") {
-      throw falla(c, "parametro-invalido", `El parámetro ${nombre} está vacío.`, parametro);
-    }
-    if (!cumple(v)) throw falla(c, "parametro-invalido", detalle, parametro);
-  }
-  return ruta.responder(c, n);
+  const reglas = Object.hasOwn(CONSULTAS, plantilla)
+    ? CONSULTAS[plantilla as keyof typeof CONSULTAS]
+    : {};
+  const revision = revisarConsulta(reglas, c.query);
+  if (!("consulta" in revision)) throw fallaDe(c, revision);
+  return PAQUETE[plantilla].responder(c, await nucleo());
 }
 
 interface Serie {
@@ -144,32 +91,23 @@ function deSerie<T>(
     return { data: data(consulta.registro), meta: conDocs(serie.meta, seccion) };
   }
   const { desde, hasta } = serie.cobertura;
-  throw falla(
-    c,
-    consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible",
-    consulta.tipo === "sin_dato" ? textos.sinDato : textos.noDisponible,
-    { fecha, cobertura: { desde, hasta } },
-  );
+  const texto = consulta.tipo === "sin_dato" ? textos.sinDato : textos.noDisponible;
+  const extras = { fecha, cobertura: { desde, hasta } };
+  throw fallaDe(c, problemaSinRegistro(consulta.tipo, texto, extras));
 }
 
 /**
- * La consulta del FIX con solo los fines de semana y, si da no_disponible, otra vez con los
- * feriados bancarios de la CNBV, como la API: los feriados solo vuelven cierta una respuesta que
- * sin ellos es no_disponible, así que el calendario se carga solo entonces.
+ * La consulta del FIX del núcleo, como la API: los feriados bancarios de la CNBV se cargan solo
+ * si sin ellos la consulta da no_disponible.
  */
-async function conFeriados(
+const conFeriados = (
   consultar: (opciones?: OpcionesFix) => Consulta<TipoCambioFix>,
-): Promise<Consulta<TipoCambioFix>> {
-  const consulta = consultar();
-  if (consulta.tipo !== "no_disponible") return consulta;
-  const { feriadoBancario } = await calendarios();
-  return consultar({ sinPublicacion: feriadoBancario });
-}
+): Promise<Consulta<TipoCambioFix>> =>
+  consultarConFeriados(consultar, async () => (await calendarios()).feriadoBancario);
 
 const empiezaEl = ({ cobertura }: Serie, queFalta: string): string =>
   `La serie del paquete empieza el ${cobertura.desde}; no incluye ${queFalta}.`;
 
-/** Cómo responde el paquete cada ruta que tiene, por su plantilla. */
 export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
   "/v1/estados": {
     responder: async () => {
@@ -230,15 +168,10 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
   "/v1/dias-habiles": DIAS_HABILES,
   "/v1/dias-inhabiles": DIAS_INHABILES,
   "/v1/tipo-cambio/fix": {
-    consulta: [
-      ["publicado", false],
-      ["operacion", false],
-    ],
     responder: async (c, n) => {
       const { publicado, operacion } = c.valores;
-      if (publicado !== undefined && operacion !== undefined) {
-        throw falla(c, "parametro-invalido", "Indica solo uno de publicado u operacion.");
-      }
+      const combinacion = revisarFix(publicado, operacion);
+      if (combinacion !== null) throw fallaDe(c, combinacion);
       const s = await import("../datos/fix.js");
       if (publicado !== undefined) {
         return deSerie(
@@ -256,21 +189,20 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
           },
         );
       }
-      if (operacion === undefined) {
-        throw falla(c, "parametro-faltante", "Indica publicado u operacion.");
-      }
+      // revisarFix ya exigió una de las dos.
+      const fecha = operacion as FechaISO;
       return deSerie(
         c,
         s,
         "tipo-de-cambio-fix",
-        await conFeriados((op) => n.fixParaOperacion(s.serie, s.tramo, s.cobertura, operacion, op)),
-        operacion,
+        await conFeriados((op) => n.fixParaOperacion(s.serie, s.tramo, s.cobertura, fecha, op)),
+        fecha,
         {
-          sinDato: empiezaEl(s, `la publicación que aplica a una operación del ${operacion}`),
-          noDisponible: `Los datos del paquete no traen el FIX que aplica a una operación del ${operacion}; la última publicación que traen es del ${s.cobertura.hasta}.`,
+          sinDato: empiezaEl(s, `la publicación que aplica a una operación del ${fecha}`),
+          noDisponible: `Los datos del paquete no traen el FIX que aplica a una operación del ${fecha}; la última publicación que traen es del ${s.cobertura.hasta}.`,
         },
         (registro) => ({
-          fecha_operacion: operacion,
+          fecha_operacion: fecha,
           fecha_publicacion: registro.fecha_publicacion,
           valor: registro.valor,
           fundamento: n.FUENTE_CFF_20,
@@ -286,7 +218,6 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
     },
   },
   "/v1/udis": {
-    consulta: [["fecha", true]],
     responder: async (c, n) => {
       const s = await import("../datos/udis.js");
       const fecha = valor(c, "fecha");

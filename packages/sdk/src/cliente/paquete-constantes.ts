@@ -2,8 +2,9 @@
 // las constantes del núcleo, los mismos que usa la API: antes del primer año cargado, no existe;
 // después del último, todavía no se carga.
 import { anioDeConstante, umaVigente } from "@mexicoapi/core/constantes";
+import { problemaSinRegistro } from "@mexicoapi/core/rutas";
 import type { MetaDatos } from "../datos/tipos.js";
-import { type Contexto, conDocs, falla, type RutaPaquete, valor } from "./paquete-comun.js";
+import { type Contexto, conDocs, fallaDe, type RutaPaquete, valor } from "./paquete-comun.js";
 
 const constantes = () => import("../datos/constantes.js");
 
@@ -28,21 +29,19 @@ function porAnio(
       const consulta = anioDeConstante(anios, anio, nombre);
       // El paquete trae el dato de cada año de su lista.
       if (consulta.tipo === "encontrado") throw new Error(`Falta ${nombre} de ${anio}.`);
-      const tipo = consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible";
-      throw falla(c, tipo, consulta.detalle);
+      throw fallaDe(c, problemaSinRegistro(consulta.tipo, consulta.detalle));
     },
   };
 }
 
 export const UMA_VIGENTE: RutaPaquete = {
-  consulta: [["fecha", true, "fecha_uma"]],
   responder: async (c) => {
     const m = await constantes();
     const fecha = valor(c, "fecha");
     const consulta = umaVigente(m.umas(), fecha);
     if (consulta.tipo !== "encontrado") {
-      const tipo = consulta.tipo === "sin_dato" ? "no-encontrado" : "dato-no-disponible";
-      throw falla(c, tipo, consulta.detalle, { fecha, cobertura: consulta.cobertura });
+      const extras = { fecha, cobertura: consulta.cobertura };
+      throw fallaDe(c, problemaSinRegistro(consulta.tipo, consulta.detalle, extras));
     }
     return { data: consulta.registro, meta: conDocs(m.meta.uma, "constantes") };
   },
