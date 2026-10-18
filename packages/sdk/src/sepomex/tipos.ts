@@ -1,6 +1,19 @@
 // Tipos públicos de mexicoapi/sepomex. Solo hay tipos y ninguno es de Node: quien usa el paquete
 // no necesita @types/node para compilar.
 
+/** Lo mínimo de una señal de cancelación, para un proyecto sin los tipos del DOM ni de Node. */
+export interface SenalAborto {
+  readonly aborted: boolean;
+  readonly reason?: unknown;
+  addEventListener(tipo: "abort", oyente: () => void): void;
+  removeEventListener(tipo: "abort", oyente: () => void): void;
+}
+
+// El AbortSignal del entorno si sus tipos están cargados (Node, DOM); si no, el mínimo.
+type SenalDelEntorno = typeof globalThis extends { AbortSignal: { prototype: infer S } }
+  ? S
+  : SenalAborto;
+
 /** Lo que `sync` le pasa a `fetch`. */
 export interface InitFetchSepomex {
   method: "GET" | "POST";
@@ -8,12 +21,24 @@ export interface InitFetchSepomex {
   body?: string;
   /** Las redirecciones no se siguen: una respuesta 3xx es una página inesperada. */
   redirect: "manual";
+  /** Se aborta cuando la descarga completa pasa de 5 minutos. */
+  signal?: SenalDelEntorno;
 }
 
-/** Lo que `sync` usa de la respuesta de `fetch`. */
+/** Lo que `sync` usa del lector de un cuerpo (el de un `ReadableStream`). */
+export interface LectorCuerpo {
+  read(): Promise<{ done: boolean; value?: Uint8Array | undefined }>;
+  cancel(motivo?: unknown): Promise<void>;
+}
+
+/**
+ * Lo que `sync` usa de la respuesta de `fetch`. Si trae `body`, se lee por partes y se corta al
+ * pasar del límite; si no, se usa `arrayBuffer()` y el límite se revisa al final.
+ */
 export interface RespuestaFetchSepomex {
   readonly status: number;
   readonly headers: { get(nombre: string): string | null };
+  readonly body?: { getReader(): LectorCuerpo } | null | undefined;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
@@ -40,8 +65,9 @@ export interface OpcionesGuardado extends OpcionesDirectorio {
 
 export interface OpcionesSync extends OpcionesGuardado {
   /**
-   * Para hacer las peticiones. Por omisión se usa `node:https` con las direcciones IPv4 primero:
-   * el sitio de Correos de México corta las conexiones TLS por IPv6.
+   * Para hacer las peticiones. Por omisión se usa `node:https` con las direcciones IPv4 primero
+   * (el sitio de Correos de México corta las conexiones TLS por IPv6), 60 s como máximo sin
+   * recibir nada y 5 minutos para toda la descarga.
    */
   fetch?: FetchSepomex | undefined;
 }
