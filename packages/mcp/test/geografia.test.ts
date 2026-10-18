@@ -84,7 +84,7 @@ describe("buscar_municipio", () => {
   it("rechaza un texto vacío o sin letras ni números, y un estado que no existe", async () => {
     esError(
       await llamar("buscar_municipio", { texto: "" }),
-      'Argumentos inválidos para buscar_municipio: "texto" debe tener al menos 1 caracteres',
+      'Argumentos inválidos para buscar_municipio: "texto" debe tener al menos 1 carácter',
     );
     esError(
       await llamar("buscar_municipio", { texto: " ¿!- " }),

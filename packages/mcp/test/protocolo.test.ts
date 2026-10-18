@@ -669,7 +669,7 @@ describe("tools/call", () => {
         {
           type: "text",
           text:
-            'Argumentos inválidos para eco: "texto" debe tener al menos 1 caracteres; ' +
+            'Argumentos inválidos para eco: "texto" debe tener al menos 1 carácter; ' +
             '"veces" debe ser menor o igual a 3; ' +
             '"color" no está permitido (se aceptan: "texto", "veces", "modo")',
         },
