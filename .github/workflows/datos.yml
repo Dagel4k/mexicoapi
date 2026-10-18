@@ -239,12 +239,13 @@ jobs:
           fi
           # Una ruta vale si está en una carpeta del grupo, solo lleva letras ASCII, dígitos y
           # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
-          # vacío, es . o .., o empieza con .git (sin importar mayúsculas).
+          # vacío ni empieza con punto (., .., .git, archivos ocultos). La misma regla está en
+          # solo-datos de ci.yml; una prueba del pipeline revisa que sean iguales.
           patron="^data/(${CARPETAS// /|})/[A-Za-z0-9._/-]+$"
           ruta_valida() {
             [[ "$1" =~ ${patron} ]] || return 1
-            case "/${1,,}/" in
-              */../* | */./* | *//* | */.git*) return 1 ;;
+            case "/$1/" in
+              */.* | *//*) return 1 ;;
             esac
           }
           # git con la salida de error en un archivo: si falla, cada línea sale escapada y con

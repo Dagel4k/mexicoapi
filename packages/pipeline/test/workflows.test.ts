@@ -31,6 +31,13 @@ function paso(wf: Workflow, job: string, nombre: string): Paso {
   return encontrado;
 }
 
+/** Las líneas de `patron=` y de la función `ruta_valida` de un bloque run, sin sangría. */
+function reglaDeRutas(run: string): string {
+  const m = /^ *patron=.*\n *ruta_valida\(\) \{\n(?: +.*\n)+? *\}$/m.exec(run);
+  if (m === null) throw new Error("no se encontró ruta_valida");
+  return m[0].replace(/^ +/gm, "");
+}
+
 const carpetasDelRegistro = (): string[] => [...DATASETS.values()].map((d) => d.directorio).sort();
 
 describe("carpetas del bot de datos en los workflows", () => {
@@ -60,6 +67,18 @@ describe("carpetas del bot de datos en los workflows", () => {
     expect((env.CARPETAS ?? "").split(" ").sort()).toEqual(carpetasDelRegistro());
   });
 
+  it("publicar y solo-datos revisan cada ruta con la misma regla, que rechaza los puntos", async () => {
+    const datos = await workflow("datos.yml");
+    const ci = await workflow("ci.yml");
+    const enPublicar = reglaDeRutas(
+      paso(datos, "publicar", "Revisar y aplicar el parche").run ?? "",
+    );
+    const enCi = reglaDeRutas(paso(ci, "solo-datos", "Exigir que solo toque data/").run ?? "");
+    expect(enPublicar).toBe(enCi);
+    // Fuera cualquier componente vacío o que empiece con punto (., .., .git, ocultos).
+    expect(enPublicar).toContain('case "/$1/" in\n*/.* | *//*) return 1 ;;\nesac');
+  });
+
   it("los archivos actuales de esas carpetas cumplen la regla de nombres de los workflows", async () => {
     // La misma regla que publicar (datos.yml) y solo-datos (ci.yml) aplican a cada ruta.
     const regla = /^data\/[a-z-]+\/[A-Za-z0-9._/-]+$/;
@@ -69,7 +88,7 @@ describe("carpetas del bot de datos en los workflows", () => {
       for (const a of archivos.filter((x) => x.isFile())) {
         const ruta = relative(RAIZ, join(a.parentPath, a.name)).replaceAll("\\", "/");
         expect(ruta).toMatch(regla);
-        expect(`/${ruta.toLowerCase()}/`).not.toMatch(/\/(\.\.?|\.git[^/]*)?\//);
+        expect(`/${ruta}/`, ruta).not.toMatch(/\/[/.]/);
       }
     }
   });
