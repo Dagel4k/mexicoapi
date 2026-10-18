@@ -120,4 +120,39 @@ describe("aritmética de fechas contra referencia con Date", () => {
     expect(() => sumarDias(20260115 as unknown as string, 1)).toThrow(RangeError);
     expect(() => diaDeLaSemana(null as unknown as string)).toThrow(RangeError);
   });
+
+  it("rechaza un caracter no dígito en cada una de las 8 posiciones de dígitos", () => {
+    const intrusos = ["x", "a", "-", " ", "/", "０", "٠", "+", ":", "/"];
+    const posiciones = [0, 1, 2, 3, 5, 6, 8, 9];
+    fc.assert(
+      fc.property(
+        fechaAzar,
+        fc.constantFrom(...posiciones),
+        fc.constantFrom(...intrusos),
+        (fecha, pos, intruso) => {
+          const malo = fecha.slice(0, pos) + intruso + fecha.slice(pos + 1);
+          expect(intentar(() => sumarDias(malo, 0))).toEqual({
+            error: `Fecha ISO inválida: ${malo}`,
+          });
+          expect(() => diaDeLaSemana(malo)).toThrow(`Fecha ISO inválida: ${malo}`);
+        },
+      ),
+      { numRuns: CORRIDAS },
+    );
+  });
+
+  it("rechaza separadores distintos de guion y longitudes incorrectas", () => {
+    const sep = fc.constantFrom("/", ".", " ", "_", "x", "٠", "");
+    fc.assert(
+      fc.property(fechaAzar, sep, sep, fc.boolean(), (fecha, s1, s2, alargar) => {
+        const base = `${fecha.slice(0, 4)}${s1}${fecha.slice(5, 7)}${s2}${fecha.slice(8)}`;
+        const malo = alargar ? `${base}0` : base;
+        if (malo === fecha) return;
+        expect(intentar(() => sumarDias(malo, 0))).toEqual({
+          error: `Fecha ISO inválida: ${malo}`,
+        });
+      }),
+      { numRuns: CORRIDAS },
+    );
+  });
 });
