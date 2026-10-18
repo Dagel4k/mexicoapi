@@ -135,9 +135,9 @@ describe("documento OpenAPI", () => {
     }
   });
 
-  it("toda operación declara 405, 429 y 500 como problem+json", () => {
+  it("toda operación declara 400, 405, 429 y 500 como problem+json", () => {
     for (const { op } of operaciones) {
-      for (const codigo of ["405", "429", "500"]) {
+      for (const codigo of ["400", "405", "429", "500"]) {
         const resp = op.responses[codigo];
         expect(resp, codigo).toBeDefined();
         const real = resp.$ref ? (resolverRef(resp.$ref) as Obj) : resp;
@@ -155,7 +155,25 @@ describe("documento OpenAPI", () => {
     expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "400", "405", "429", "500"]);
     expect(codigos("/v1/dias-habiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
     expect(codigos("/v1/dias-inhabiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
-    expect(codigos("/v1/estados")).toEqual(["200", "405", "429", "500"]);
+    // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
+    const sinParametros = [
+      "/",
+      "/v1",
+      "/v1/estados",
+      "/v1/municipios",
+      "/v1/bancos",
+      "/v1/status",
+      "/v1/openapi.json",
+    ];
+    for (const ruta of sinParametros) {
+      expect(codigos(ruta), ruta).toEqual(["200", "400", "405", "429", "500"]);
+    }
+  });
+
+  it("la respuesta 400 dice que toda ruta rechaza los parámetros de consulta que no declara", () => {
+    expect(doc.components.responses.ParametroInvalido.description).toContain(
+      "Toda ruta rechaza los parámetros de consulta que no declara.",
+    );
   });
 
   it("los parámetros de ruta son obligatorios y tienen el patrón exacto", () => {
