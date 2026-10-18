@@ -94,10 +94,10 @@ flowchart TD
 Principios:
 
 1. **El snapshot es la fuente de verdad.** Todo lo publicado (API, descargas, paquetes, docs) se deriva de `data/`, versionado en git. El historial de git es el historial de cambios.
-2. **Sin base de datos.** No hay base de datos ni cron en Cloudflare. El Worker solo enruta, calcula funciones puras y pone encabezados. Lo único que guarda Cloudflare (en KV) es el estado operativo de las corridas, nunca los datos.
+2. **Sin base de datos.** No hay base de datos ni cron en Cloudflare. El Worker corre primero en `/v1` y `/v1/*`, valida cada parámetro, sirve los shards estáticos con `ASSETS.fetch`, calcula funciones puras y pone encabezados. Las descargas (`/descargas/*`) son assets directos y no pasan por el Worker. Lo único que guarda Cloudflare (en KV) es el estado operativo de las corridas, nunca los datos.
 3. **Separar lo automático de lo curado.** Los datos automáticos los produce el pipeline. Los curados (días inhábiles, constantes) los escribe una persona en YAML, con cita obligatoria al DOF, y entran por PR revisado.
 4. **Falla a lo último bueno.** Si una fuente falla, se sirve el último snapshot válido marcado como desactualizado.
-5. **Núcleo puro.** Las reglas (CLABE, días hábiles, validación de formatos) viven en funciones puras sin I/O, probadas con TDD y compartidas por API, SDK y MCP.
+5. **Núcleo puro.** Las reglas (CLABE, días hábiles, validación de formatos) viven en funciones puras sin I/O, probadas con TDD y compartidas por API, SDK y MCP. La aritmética de fechas del núcleo es de enteros (días desde una época, sin `Date`), así que sumar 3650 días hábiles cabe en el límite de CPU de un Worker.
 
 ## 5. Estructura del repositorio
 
@@ -158,9 +158,11 @@ mexicoapi/
 
 El manifiesto describe **los datos** y solo cambia cuando cambian los datos. Así, el historial de git sigue siendo el historial de cambios de los datos.
 
-Hasta que llegue el plan de la API, el estado operativo en KV y el trabajo de frescura no existen: la frescura se ve en los PR e issues del bot de datos. Lo siguiente describe el diseño que se implementará con la API.
+El Worker ya lee el estado operativo de KV para `/v1/status`, pero ningún workflow lo escribe todavía: sin registro de corridas, `status` es `unknown` y la frescura se ve en los PR e issues del bot de datos. El resto de esta sección describe el diseño completo.
 
-El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of` del manifiesto y `last_attempt`, `last_success` y `status` de KV.
+El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records` y `data_sha256` del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV.
+
+La frescura no va en `meta` de las respuestas de datos, solo en `/v1/status`. Así los shards son estáticos y su `ETag` no cambia con la hora.
 
 Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan menos de 20 escrituras diarias.
 
@@ -253,7 +255,7 @@ Si hay cambios, el bot abre un PR `datos(<dataset>): AAAA-MM-DD` con el resumen 
 
 El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos, pull requests e issues), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita.
 
-El estado operativo en KV y el trabajo de frescura llegan con el plan de la API. Mientras tanto, la frescura se ve en los PR y los issues del bot de datos.
+La escritura del estado operativo en KV y el trabajo de frescura llegan con el despliegue. Mientras tanto, la frescura se ve en los PR y los issues del bot de datos.
 
 **Bancos:** las altas y las bajas de instituciones siempre van a revisión humana. Los cambios de nombre se fusionan solos.
 
@@ -322,13 +324,15 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 
 - **Base:** `https://<dominio>/v1/`. Sin dominio propio, se usa `mexicoapi.<cuenta>.workers.dev`.
 - **Protocolo:** REST de solo lectura, JSON en UTF-8, versión en la ruta (`/v1`). Los cambios incompatibles van a `/v2`.
-- **Respuesta:** `{ "data": …, "meta": { dataset, as_of, status, source: { name, url, license }, docs } }`.
-- **Errores:** `application/problem+json` (RFC 9457), con `type`, `title`, `status` y `detail`. Nunca incluyen trazas.
+- **Respuesta:** `{ "data": …, "meta": { dataset, as_of, sources: [{ name, url, license, license_url, citation }], docs } }`. `sources` es una lista porque un dataset puede tener varias fuentes (bancos tiene dos). `meta` no lleva el estado de frescura: eso vive en `/v1/status`, que responde `{ "data": [...] }` sin `meta`. `/` y `/v1` responden un índice.
+- **Errores:** `application/problem+json` (RFC 9457), con `type`, `title`, `status`, `detail` e `instance`. Nunca incluyen trazas. El `type` es la URI absoluta de la sección correspondiente de `docs/api/problemas.md` en GitHub (`https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#<tipo>`), estable sin dominio propio; si llega un dominio, los `type` se quedan como identificadores.
 - **Caché:**
-  - Datos que cambian: `Cache-Control: public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400, stale-if-error=604800`.
-  - Históricos: `public, max-age=31536000, immutable`.
-  - `ETag` = hash del contenido.
-- **Encabezados:** `Access-Control-Allow-Origin: *`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`. Sin cookies.
+  - Datos que cambian: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`. No lleva `s-maxage=86400`: un caché compartido de 24 h rompería la meta de frescura de 24 h.
+  - `/v1/status`: `public, max-age=60`. Errores: `no-store`.
+  - Históricos (cuando existan): `public, max-age=31536000, immutable`.
+  - `ETag` = hash del contenido en los shards; con `If-None-Match` responde 304.
+- **Encabezados:** `Access-Control-Allow-Origin: *` (expone `ETag` y `Retry-After`), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. Sin cookies. Solo `GET`, `HEAD` y `OPTIONS`.
+- **Privacidad:** el Worker no registra ni guarda consultas (la observabilidad está desactivada). Una CLABE viaja en la ruta; quien no quiera enviarla puede validarla sin red con el SDK.
 
 ### Endpoints v1
 
@@ -337,28 +341,34 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 | `GET /v1/estados` | 32 estados | Estático |
 | `GET /v1/estados/{cve_ent}` | Un estado | Estático |
 | `GET /v1/estados/{cve_ent}/municipios` | Municipios del estado | Estático |
-| `GET /v1/municipios/{cvegeo}` | Un municipio | Estático |
+| `GET /v1/municipios` · `GET /v1/municipios/{cvegeo}` | Todos los municipios (unos 300 KB, también en las descargas) o uno | Estático |
 | `GET /v1/bancos` · `GET /v1/bancos/{codigo}` | Bancos y participantes SPEI | Estático |
-| `GET /v1/clabe/{clabe}` | `valido`, `banco`, `plaza`, `cuenta`, `digito_control`, `errores[]` | Worker (función pura) |
+| `GET /v1/clabe/{clabe}` | `valido`, `formato_valido`, `digito_verificador_valido`, `errores[]` y `detalle` (`banco`, `plaza`, `cuenta`, `digito_control`). La CLABE de un banco inactivo tiene formato válido y lleva `banco.activo: false` | Worker (función pura) |
 | `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` · `?operacion=AAAA-MM-DD` · `/v1/tipo-cambio/fix/ultimo` | FIX por fecha de publicación o para una operación (sección 8.1) | Worker sobre un archivo anual estático |
 | `GET /v1/udis?fecha=AAAA-MM-DD` | Valor de la UDI | Worker sobre un archivo anual estático |
-| `GET /v1/dias-inhabiles?autoridad=sat&anio=2026` | Lista con citas | Estático |
-| `GET /v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=AAAA-MM-DD&dias=15` | Fecha resultante, días inhábiles saltados con su cita, `advertencias[]`; 422 si el calendario está incompleto (sección 8.1) | Worker (función pura) |
+| `GET /v1/dias-inhabiles?autoridad=lft&anio=2026` | Lista con citas | Worker (función pura) |
+| `GET /v1/dias-habiles?autoridad=lft&desde=AAAA-MM-DD&dias=15` | Fecha resultante, días inhábiles saltados con su cita, `advertencias[]`; 422 si el calendario está incompleto (sección 8.1) | Worker (función pura) |
 | `GET /v1/plazas-clabe` | Catálogo de referencia de plazas | Estático |
 | `GET /v1/constantes/uma/{anio}` · `/v1/constantes/salario-minimo/{anio}` · `/v1/isr/tarifa/{periodo}/{anio}` | Valores con fuente | Estático |
-| `GET /v1/status` | Frescura y estado de cada dataset (manifiesto más KV) | Worker: lee KV con caché de 60 s |
+| `GET /v1/status` | Frescura y estado de cada dataset (build más KV) | Worker: lee KV con caché de 60 s |
 | `GET /v1/openapi.json` | Especificación OpenAPI 3.1 | Estático |
 | `GET /descargas/*` | JSON, CSV y `mexicoapi.sqlite` completos | Estático |
+
+Hoy están implementadas las rutas de estados, municipios, bancos, `clabe`, `dias-habiles` y `dias-inhabiles` (solo `lft`), `status` y `openapi.json`. `autoridad` acepta solo `lft` hasta que existan los calendarios curados de CNBV y SAT; agregar valores al enum es compatible. Las demás filas de la tabla llegan con sus datasets, y entonces `dias-habiles` agrega `tipo_plazo` para el SAT (sección 8.1).
+
+`dias-habiles` acepta `dias` de 1 a 3650. Con `permitir_incompleto=true` calcula fuera de la cobertura del calendario (2007-01-01 a 2100-12-31) con `advertencias`; si no, responde 422 `calendario-incompleto`.
 
 ### Validación de entradas
 
 Cada parámetro se valida con una expresión regular estricta antes de tocar cualquier dato. Por ejemplo, `cvegeo` es `^\d{5}$` y `clabe` es `^\d{18}$`. Una entrada inválida devuelve un 400 problem+json.
 
+Un parámetro de query desconocido, repetido o vacío, o un segmento vacío (`?&`), también da 400. Un cliente que agrega `?_=` para romper el caché recibe 400. Una ruta con `%` da 404, y una ruta con `/` final redirige con 308 a la ruta sin él.
+
 ### Límites de la plataforma
 
 Assets estáticos ≤ 20,000 archivos en el plan gratis: los archivos por fecha se agrupan por año. Cada archivo pesa ≤ 25 MiB.
 
-El Worker solo ejecuta para las rutas calculadas, con un límite de 100,000 peticiones al día en el plan gratis. Las rutas estáticas no cuentan.
+El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`, así que cada consulta de la API cuenta contra el límite del Worker: 100,000 peticiones al día en el plan gratis y 10 millones al mes en el plan de 5 USD. Las descargas son assets directos y no cuentan. Se eligió así porque los assets sin extensión no permiten `/v1/estados/25` y `/v1/estados/25/municipios` a la vez (serían un archivo y una carpeta con el mismo nombre), y porque así cada parámetro se valida antes de tocar un archivo.
 
 ## 10. SDK (`mexicoapi` en npm)
 
@@ -379,7 +389,7 @@ El Worker solo ejecuta para las rutas calculadas, con un límite de 100,000 peti
   - `{ offline: true }` fuerza el modo sin red.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
   - `mexicoapi/sepomex` y la CLI requieren Node ≥ 22.13: la caché se guarda en JSON y, si `node:sqlite` está disponible, también en SQLite.
-  - Las pruebas cubren Node 20, 22 y 24, más un Worker con `@cloudflare/vitest-pool-workers`.
+  - Las pruebas cubren Node 20, 22 y 24, más un Worker real en workerd con `unstable_startWorker` (sección 13).
 
 ## 11. Servidor MCP (`mexicoapi-mcp`)
 
@@ -421,15 +431,21 @@ El Worker solo ejecuta para las rutas calculadas, con un límite de 100,000 peti
   - CLABE: pruebas de propiedades con fast-check (dígito de control).
   - Días hábiles: tabla de casos por autoridad y año.
   - Parsers: fixtures reales anonimizados donde aplique.
-- **Contrato de la API.** Pruebas que comparan cada respuesta contra el OpenAPI, y una prueba de humo contra el despliegue de staging antes de producción.
+- **Pruebas del Worker.** Dos capas:
+  - unidad, en Node, con un `ASSETS` falso;
+  - integración y contrato, en workerd real con `unstable_startWorker`: arrancan el Worker construido y comparan cada respuesta contra el OpenAPI.
+
+  No se usa `@cloudflare/vitest-pool-workers`, que exige Vitest 4. Si wrangler cambia esa API inestable, se ajusta la prueba. Además habrá una prueba de humo contra el despliegue de staging antes de producción.
 - **`scripts/verify.sh`** (definición de terminado) corre:
   1. Biome (formato y lint);
   2. `tsc --noEmit`;
-  3. Vitest con umbrales de cobertura;
-  4. validación de todos los `data/*/manifest.json` y snapshots;
-  5. build de paquetes, API y docs;
-  6. lint del OpenAPI;
+  3. Vitest con umbrales de cobertura, y las pruebas en varias zonas horarias;
+  4. build de paquetes y API (shards, descargas y OpenAPI);
+  5. integración y contrato de la API en workerd;
+  6. validación de todos los `data/*/manifest.json` y snapshots;
   7. gitleaks.
+
+  El build del sitio de docs se suma cuando exista el sitio.
 - **Workflows:**
   - `ci.yml` (cada PR);
   - `datos.yml` (cron; un workflow con un grupo por dataset);
@@ -455,6 +471,22 @@ Tomadas:
 | Días hábiles | Conteo desde el día hábil siguiente, `tipo_plazo` para el SAT y 422 con calendario incompleto (sección 8.1) |
 | FIX | Dos modos: por publicación y por operación (sección 8.1) |
 | SDK | Datos que caducan desde la API con respaldo en el paquete; Node ≥ 20 y runtimes web (sección 10) |
+
+Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas:
+
+| Decisión | Resultado | Si está mal |
+| --- | --- | --- |
+| Worker primero en `/v1` | El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`; las descargas son assets directos. Cada parámetro se valida antes de tocar un archivo | Cada consulta cuenta en el límite del Worker (100 mil al día gratis; 10 millones al mes con el plan de 5 USD) |
+| `meta.sources` | `meta` lleva `sources` (lista), no `source`, porque bancos tiene dos fuentes | Cambio de contrato antes de publicar: barato |
+| Sin `status` en `meta` | La frescura vive en `/v1/status`; los shards son estáticos y el `ETag` no cambia con la hora | Agregar `status` después es compatible |
+| Caché sin `s-maxage` | `max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`: un caché compartido de 24 h rompería la meta de frescura | Más revalidaciones; con `ETag` son 304 baratos |
+| `type` de los errores | Apuntan a `docs/api/problemas.md` en GitHub, una URI absoluta y estable sin dominio propio | Si llega un dominio, los `type` se quedan como identificadores |
+| Parámetros estrictos | Un parámetro desconocido o repetido da 400 | Un cliente que agrega `?_=` para romper el caché recibe 400 |
+| Autoridad `lft` | `dias-habiles` y `dias-inhabiles` aceptan solo `lft` hasta que existan los calendarios curados de CNBV y SAT | Agregar valores al enum es compatible |
+| Bancos inactivos en `clabe` | La CLABE de un banco inactivo tiene formato válido y la respuesta lo marca con `activo: false` | El cliente decide; no se le oculta el banco |
+| CSV | RFC 4180: UTF-8 sin BOM y `\r\n`. El build falla ante campos que empiezan con `=`, `+`, `-` o `@` en vez de alterarlos | Excel en Windows puede mostrar mal los acentos con doble clic; se documenta importar como UTF-8 |
+| Pruebas del Worker | Unidad en Node con `ASSETS` falso y contrato en workerd real con `unstable_startWorker`, dentro de `verify.sh` | Si wrangler cambia esa API inestable, se ajusta la prueba |
+| `/v1/municipios` | Se agrega la lista completa, que el diseño original no tenía | Ruta extra de 300 KB; también está en las descargas |
 
 Pendientes:
 
