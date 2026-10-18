@@ -318,7 +318,10 @@ describe("días inhábiles", () => {
     // Las cuatro redacciones con una fecha equivocada (el tercer lunes es 2025-11-17).
     expect(
       cnbv([dia("2025-11-16", "El 2 de noviembre y el tercer lunes de dicho mes")], cobertura),
-    ).toEqual([aviso("2025-11-16", "tercer lunes")]);
+    ).toEqual([
+      aviso("2025-11-16", "tercer lunes"),
+      "2025-11-16: el motivo dice el 2 de noviembre, que en 2025 es 2025-11-02",
+    ]);
     expect(cnbv([dia("2025-11-16", "Tercer lunes del mes de noviembre")], cobertura)).toEqual([
       "2025-11-16: el motivo dice tercer lunes del mes de noviembre, que en 2025 es 2025-11-17",
     ]);
@@ -338,6 +341,34 @@ describe("días inhábiles", () => {
     // La redacción literal del DOF sí se reconoce.
     const literal = "El primer lunes de febrero en conmemoración del 5 de febrero";
     expect(cnbv([dia("2025-02-03", literal)], cobertura)).toEqual([]);
+  });
+
+  it("exige que la fecha sea el día y mes con que empieza el motivo", () => {
+    expect(cnbv([dia("2026-09-15", "16 de septiembre")], cobertura)).toEqual([
+      "2026-09-15: el motivo dice 16 de septiembre, que en 2026 es 2026-09-16",
+    ]);
+    expect(cnbv([dia("2026-09-16", "16 de septiembre")], cobertura)).toEqual([]);
+    expect(cnbv([dia("2026-01-02", "1o. de enero")], cobertura)).toEqual([
+      "2026-01-02: el motivo dice 1o. de enero, que en 2026 es 2026-01-01",
+    ]);
+    expect(cnbv([dia("2026-01-01", "1o. de Enero")], cobertura)).toEqual([]);
+    expect(cnbv([dia("2025-12-24", "El 25 de diciembre")], cobertura)).toEqual([
+      "2025-12-24: el motivo dice el 25 de diciembre, que en 2025 es 2025-12-25",
+    ]);
+    // Si nombra dos o más días, la fecha debe ser uno de ellos.
+    for (const fecha of ["2025-04-17", "2025-04-18"]) {
+      expect(cnbv([dia(fecha, "17 y 18 de abril")], cobertura)).toEqual([]);
+    }
+    expect(cnbv([dia("2025-04-16", "17 y 18 de abril")], cobertura)).toEqual([
+      "2025-04-16: el motivo dice 17 y 18 de abril, que en 2025 es 2025-04-17 o 2025-04-18",
+    ]);
+    expect(cnbv([dia("2026-04-03", "1, 2 y 3 de abril")], cobertura)).toEqual([]);
+    expect(cnbv([dia("2026-04-30", "31 de abril")], cobertura)).toEqual([
+      "2026-04-30: el motivo dice 31 de abril, que no existe en 2026",
+    ]);
+    // Solo cuenta el inicio: una fecha a mitad del motivo es la conmemoración, no el día.
+    const regla = "Primer lunes de febrero, en conmemoración del 5 de febrero";
+    expect(cnbv([dia("2026-02-02", regla)], cobertura)).toEqual([]);
   });
 
   it("exige la autoridad del dataset y fechas dentro de la cobertura de su tipo", () => {
