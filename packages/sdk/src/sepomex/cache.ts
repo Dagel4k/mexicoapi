@@ -132,17 +132,25 @@ let metaEnMemoria: { marca: string; meta: MetaGuardada } | undefined;
 /**
  * meta.json del directorio; null si no existe. Lanza `cache-invalida` si está dañado. Si el
  * archivo no cambió desde la última lectura (mismo mtime, tamaño e inodo), no se vuelve a leer.
+ * La marca y el texto salen del mismo descriptor: un rename a mitad no los mezcla.
  */
 export async function leerMeta(dir: string): Promise<MetaGuardada | null> {
   const ruta = join(dir, META);
   let marca: string;
   let texto: string;
   try {
-    const info = await stat(ruta);
-    marca = `${ruta}|${info.mtimeMs}|${info.size}|${info.ino}`;
-    if (metaEnMemoria?.marca === marca) return metaEnMemoria.meta;
-    texto = await readFile(ruta, "utf8");
+    const archivo = await open(ruta, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+    try {
+      const info = await archivo.stat();
+      if (!info.isFile()) throw cacheInvalida(dir, META);
+      marca = `${ruta}|${info.mtimeMs}|${info.size}|${info.ino}`;
+      if (metaEnMemoria?.marca === marca) return metaEnMemoria.meta;
+      texto = await archivo.readFile("utf8");
+    } finally {
+      await archivo.close();
+    }
   } catch (error) {
+    if (error instanceof SepomexError) throw error;
     if (codigoDe(error) === "ENOENT") return null;
     throw cacheInvalida(dir, META, error);
   }
