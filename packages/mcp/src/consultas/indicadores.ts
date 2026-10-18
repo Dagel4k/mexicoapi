@@ -90,12 +90,17 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
               : cliente.fixUltimo(op),
       );
       const fix = r.data;
+      // Del paquete es la más reciente que trae, que puede no ser la última publicada.
+      const masReciente =
+        r.origen === "paquete"
+          ? "Publicación más reciente del FIX en los datos del paquete"
+          : "Última publicación del FIX";
       const linea =
         publicado !== undefined
           ? `FIX publicado en el DOF el ${fix.fecha_publicacion}: ${enLinea(fix.valor)} pesos por dólar.`
           : operacion !== undefined
             ? `FIX para una operación del ${operacion}: ${enLinea(fix.valor)} pesos por dólar, el publicado en el DOF el ${fix.fecha_publicacion} (CFF, artículo 20).`
-            : `Última publicación del FIX: ${enLinea(fix.valor)} pesos por dólar, en el DOF del ${fix.fecha_publicacion}.`;
+            : `${masReciente}: ${enLinea(fix.valor)} pesos por dólar, en el DOF del ${fix.fecha_publicacion}.`;
       const sinApi = !conApi && (await cercaDelFinal(serieFix, publicado ?? operacion));
       const base = procedencia(r, { sinApi });
       const fuentes =
