@@ -70,6 +70,7 @@ curl https://<base>/v1/clabe/002010077777777771
 - [Diseño técnico v1](docs/diseno/arquitectura-v1.md)
 - [Bot de datos](docs/operacion/bot-de-datos.md)
 - [Datos curados](docs/operacion/datos-curados.md): cómo se transcriben del DOF los calendarios y las constantes
+- [Publicación en npm](docs/operacion/publicacion-npm.md): cómo se arma y se publica el paquete
 
 ## Licencia
 

@@ -5,6 +5,7 @@
 import { deepEqual, equal, ok, rejects, throws } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,19 @@ const calendarios = await import("mexicoapi/datos/calendarios");
 const constantes = await import("mexicoapi/datos/constantes");
 const cliente = await import("mexicoapi/cliente");
 paso(`Node ${process.versions.node}: importa las entradas universales`);
+
+// require() de un módulo ESM, sin bandera desde Node 20.19 y 22.12: entra por la condición
+// `default` de exports. Antes, el paquete solo se carga con import.
+if (process.features.require_module === true) {
+  const require = createRequire(import.meta.url);
+  equal(require("mexicoapi").validarClabe(CLABE).valido, true);
+  equal(require("mexicoapi/datos").municipio("25006").nombre, "Culiacán");
+  equal(typeof require("mexicoapi/cliente").crearCliente, "function");
+  equal(typeof require("mexicoapi/sepomex").sepomex.cp, "function");
+  paso("carga con require()");
+} else {
+  paso("este Node no carga ESM con require(): solo import");
+}
 
 const clabe = mexicoapi.validarClabe(CLABE, { bancos: datos.catalogoClabe() });
 equal(clabe.valido, true);

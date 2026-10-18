@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 interface Destino {
   types: string;
   import: string;
+  default: string;
 }
 
 interface Manifiesto {
@@ -53,16 +54,18 @@ describe("package.json de mexicoapi", () => {
     });
   });
 
-  it("cada entrada declara primero sus tipos y luego su import, dentro de dist", () => {
+  it("cada entrada declara sus tipos, su import y un default igual al import, dentro de dist", () => {
     const entradas = Object.entries(manifiesto.exports).filter(
       ([ruta]) => ruta !== "./package.json",
     );
     expect(entradas.map(([ruta]) => ruta)).toContain(".");
     for (const [ruta, destino] of entradas) {
       if (typeof destino === "string") throw new Error(`${ruta} no declara types e import`);
-      expect(Object.keys(destino), ruta).toEqual(["types", "import"]);
+      // `default` va al final: con él, require() carga el ESM en Node 20.19+ y 22.12+.
+      expect(Object.keys(destino), ruta).toEqual(["types", "import", "default"]);
       expect(destino.import, ruta).toMatch(/^\.\/dist\/[\w/-]+\.js$/);
       expect(destino.types, ruta).toBe(destino.import.replace(/\.js$/, ".d.ts"));
+      expect(destino.default, ruta).toBe(destino.import);
     }
   });
 
@@ -81,7 +84,11 @@ describe("package.json de mexicoapi", () => {
   });
 
   it("main y types apuntan a la entrada principal", () => {
-    expect(manifiesto.exports["."]).toEqual({ types: manifiesto.types, import: manifiesto.main });
+    expect(manifiesto.exports["."]).toEqual({
+      types: manifiesto.types,
+      import: manifiesto.main,
+      default: manifiesto.main,
+    });
   });
 
   it("el binario mexicoapi apunta a la CLI compilada", () => {

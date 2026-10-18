@@ -1,13 +1,17 @@
-// El paquete tal como llega a quien lo instala: el .tgz de npm pack, instalado en un proyecto nuevo
-// por el globalSetup (instalar.ts).
+// El paquete tal como llega a quien lo instala: el .tgz de npm pack, armado con
+// scripts/publicable.ts e instalado en un proyecto nuevo por el globalSetup (instalar.ts).
 import { spawnSync } from "node:child_process";
-import { copyFile } from "node:fs/promises";
+import { copyFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, inject, it } from "vitest";
 
 const HUMO = fileURLToPath(new URL("./humo.mjs", import.meta.url));
+const MANIFIESTO = fileURLToPath(new URL("../../package.json", import.meta.url));
 const { dir, empaquetado } = inject("paqueteInstalado");
+
+const leerJson = async (ruta: string): Promise<Record<string, unknown>> =>
+  JSON.parse(await readFile(ruta, "utf8")) as Record<string, unknown>;
 
 describe("mexicoapi instalado desde su .tgz", () => {
   it("pasa la prueba de humo con este Node (la misma que corre CI en Node 20, 22 y 24)", async () => {
@@ -15,6 +19,26 @@ describe("mexicoapi instalado desde su .tgz", () => {
     const r = spawnSync(process.execPath, ["humo.mjs"], { cwd: dir, encoding: "utf8" });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^humo: OK$/m);
+  });
+});
+
+describe("el package.json publicado", () => {
+  const instalado = (): Promise<Record<string, unknown>> =>
+    leerJson(join(dir, "node_modules", "mexicoapi", "package.json"));
+
+  it("no trae devDependencies ni scripts y no nombra @mexicoapi/core ni workspace:", async () => {
+    const publicado = await instalado();
+    expect(publicado.devDependencies).toBeUndefined();
+    expect(publicado.scripts).toBeUndefined();
+    expect(publicado.dependencies).toEqual({});
+    const texto = await readFile(join(dir, "node_modules", "mexicoapi", "package.json"), "utf8");
+    expect(texto).not.toContain("@mexicoapi/core");
+    expect(texto).not.toContain("workspace:");
+  });
+
+  it("es el de packages/sdk sin esos dos campos", async () => {
+    const { devDependencies: _d, scripts: _s, ...resto } = await leerJson(MANIFIESTO);
+    expect(await instalado()).toEqual(resto);
   });
 });
 
