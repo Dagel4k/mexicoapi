@@ -77,6 +77,8 @@ r.advertencias; // ["Solo descuenta sábados, domingos y los días de descanso o
 
 `desde` no se cuenta: en un plazo que corre desde una notificación, es el día en que surte efectos, no el día en que se hizo.
 
+Con parámetros inválidos lanza `RangeError`. Fuera de la cobertura del calendario lanza `CalendarioIncompletoError` (`tipo: "calendario-incompleto"`) y, si el resultado pasaría del año 9999, `FechaFueraDeRangoError` (`tipo: "fecha-fuera-de-rango"`); las consultas de FIX y UDIS lanzan `SerieIncompletaError` (`tipo: "serie-incompleta"`). Compara `error.tipo`, como en `MexicoApiError`, en vez de `instanceof`, que falla si el proyecto tiene dos copias del paquete.
+
 Los calendarios de la CNBV y el SAT están en `mexicoapi/datos/calendarios`. El de la CNBV (el calendario bancario) y las vacaciones del SAT se transcriben del DOF; los días del artículo 12 del CFF se calculan por regla de 2026 a 2100. Con el SAT el tipo de plazo es obligatorio: en `declaraciones_pagos` sus vacaciones cuentan como hábiles (CFF, artículo 12) y en `general` no.
 
 ```ts

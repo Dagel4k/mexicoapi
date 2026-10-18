@@ -10,7 +10,7 @@ import {
   TIPOS_DIA_CURADO,
   type TipoDiaCurado,
 } from "../datos/curados.js";
-import { CalendarioIncompletoError } from "../errores.js";
+import { CalendarioIncompletoError, esErrorDelNucleo } from "../errores.js";
 import { diaDeLaSemana, esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
 import { type Calendario, crearCalendario } from "./calendario.js";
 import { avisosTransmisionCff, COBERTURA_CFF, diasDescansoCff, FUENTE_CFF_12 } from "./cff.js";
@@ -627,7 +627,7 @@ export function sumarDiasHabilesCurado(
       permitirIncompleto,
     });
   } catch (error) {
-    if (!(error instanceof CalendarioIncompletoError)) throw error;
+    if (!esErrorDelNucleo(error, "calendario-incompleto")) throw error;
     const { autoridad, fecha, cobertura } = error;
     const detalle = detalleCurado(calendario, tipoPlazo, plazo, error);
     throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);

@@ -85,7 +85,7 @@ describe("crearCalendario", () => {
         expect(e).toBeInstanceOf(CalendarioIncompletoError);
         const err = e as CalendarioIncompletoError;
         expect(err.name).toBe("CalendarioIncompletoError");
-        expect(err.codigo).toBe("calendario-incompleto");
+        expect(err.tipo).toBe("calendario-incompleto");
         expect(err.autoridad).toBe("sat");
         expect(err.fecha).toBe(f);
         expect(err.cobertura).toEqual(cobertura);

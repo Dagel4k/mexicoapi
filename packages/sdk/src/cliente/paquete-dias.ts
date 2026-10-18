@@ -50,9 +50,9 @@ function conCalendario<T>(c: Contexto, calcular: () => T): T {
   try {
     return calcular();
   } catch (error) {
-    // Los errores del núcleo traen `codigo` para reconocerlos sin instanceof.
-    const codigo = (error as { codigo?: unknown }).codigo;
-    if (codigo === "calendario-incompleto") {
+    // Los errores del núcleo traen `tipo` para reconocerlos sin instanceof.
+    const tipo = (error as { tipo?: unknown }).tipo;
+    if (tipo === "calendario-incompleto") {
       const { autoridad, fecha, cobertura, detalle } = error as CalendarioIncompletoError;
       throw falla(c, "calendario-incompleto", detalle, {
         autoridad,
@@ -60,7 +60,7 @@ function conCalendario<T>(c: Contexto, calcular: () => T): T {
         cobertura: { desde: cobertura.desde, hasta: cobertura.hasta },
       });
     }
-    if (codigo === "fecha-fuera-de-rango") {
+    if (tipo === "fecha-fuera-de-rango") {
       const texto = "Con estos días, el resultado pasaría del año 9999.";
       throw falla(c, "parametro-invalido", texto, { parametro: "desde" });
     }

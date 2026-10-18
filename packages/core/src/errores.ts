@@ -3,8 +3,8 @@ import type { FechaISO } from "./fechas.js";
 
 /** Una cuenta de días dio una fecha antes de 0001-01-01 o después de 9999-12-31. */
 export class FechaFueraDeRangoError extends RangeError {
-  /** Código fijo para distinguirlo de los demás RangeError (parámetros inválidos). */
-  readonly codigo = "fecha-fuera-de-rango";
+  /** Tipo fijo para distinguirlo de los demás RangeError (parámetros inválidos) sin instanceof. */
+  readonly tipo = "fecha-fuera-de-rango";
 
   constructor() {
     super("La fecha resultante sale del rango 0001-9999");
@@ -18,8 +18,8 @@ export class FechaFueraDeRangoError extends RangeError {
  * datos, no de quien consulta.
  */
 export class SerieIncompletaError extends Error {
-  /** Código fijo para mapear el error sin depender de instanceof. */
-  readonly codigo = "serie-incompleta";
+  /** Tipo fijo para reconocer el error sin depender de instanceof. */
+  readonly tipo = "serie-incompleta";
   readonly fecha: FechaISO;
   /** Fechas que dice cubrir el tramo recibido. */
   readonly tramo: { readonly desde: FechaISO; readonly hasta: FechaISO };
@@ -40,8 +40,8 @@ export class SerieIncompletaError extends Error {
 
 /** Se consultó una fecha que el calendario de la autoridad no cubre. */
 export class CalendarioIncompletoError extends Error {
-  /** Código fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
-  readonly codigo = "calendario-incompleto";
+  /** Tipo fijo para mapear el error (por ejemplo, a problem+json) sin depender de instanceof. */
+  readonly tipo = "calendario-incompleto";
   readonly autoridad: Autoridad;
   readonly fecha: FechaISO;
   readonly cobertura: { readonly desde: FechaISO; readonly hasta: FechaISO };
@@ -68,4 +68,17 @@ export class CalendarioIncompletoError extends Error {
     this.detalle =
       detalle ?? `El calendario ${DE_AUTORIDAD[autoridad]} no cubre ${fecha}; ${cubre}.`;
   }
+}
+
+type ErrorDelNucleo = FechaFueraDeRangoError | SerieIncompletaError | CalendarioIncompletoError;
+
+/**
+ * Si `error` es un error del núcleo de ese `tipo`. Compara el campo y no la clase: con dos copias
+ * del núcleo (el paquete y otra dependencia), instanceof falla.
+ */
+export function esErrorDelNucleo<T extends ErrorDelNucleo["tipo"]>(
+  error: unknown,
+  tipo: T,
+): error is Extract<ErrorDelNucleo, { tipo: T }> {
+  return typeof error === "object" && error !== null && (error as { tipo?: unknown }).tipo === tipo;
 }

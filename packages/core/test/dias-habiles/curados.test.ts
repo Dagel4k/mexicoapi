@@ -693,7 +693,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       const error = incompleto(() => sat("general", desde, dias, permitir));
       expect(error).toMatchObject({ autoridad: "sat", fecha, cobertura: COBERTURA_GENERAL });
       expect(error.detalle).toBe(DETALLE_GENERAL(fecha));
-      expect(error.codigo).toBe("calendario-incompleto");
+      expect(error.tipo).toBe("calendario-incompleto");
     }
   });
 
