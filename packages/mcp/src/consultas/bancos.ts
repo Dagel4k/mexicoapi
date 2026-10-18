@@ -116,10 +116,14 @@ export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herr
           `CLABE válida: banco ${banco.codigo} ${enLinea(banco.nombre_corto)} (${activo}), plaza ${detalle.codigo_plaza}, cuenta ${detalle.cuenta}, dígito de control ${detalle.digito_control}.`,
         ];
       } else {
-        const sinBanco = v.errores.includes("banco");
-        const texto = sinBanco
-          ? `el código de banco ${clabe.slice(0, 3)} no está en el catálogo`
-          : motivos(v.errores);
+        // Todos los motivos, como en errores; el del banco dice cuál código no está.
+        const texto = v.errores
+          .map((e) =>
+            e === "banco"
+              ? `el código de banco ${clabe.slice(0, 3)} no está en el catálogo`
+              : motivos([e]),
+          )
+          .join(", ");
         lineas = [`CLABE inválida: ${texto}.`];
       }
       lineas.push(enLinea(v.nota));
