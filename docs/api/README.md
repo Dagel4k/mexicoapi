@@ -570,9 +570,9 @@ curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-19"
 
 El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica el valor del viernes 16.
 
-`operacion` solo responde cuando la respuesta es cierta: cuando están cargados todos los días entre semana hasta la víspera de la operación. Los sábados y domingos no cuentan, porque el DOF no publica el FIX esos días. Los feriados bancarios sí cuentan como días entre semana: la API no usa un calendario bancario y no distingue un feriado de una publicación que todavía no se carga. Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México, así que una consulta temprano por la operación de mañana da 404 hasta esa hora; vuelve a intentar después.
+`operacion` solo responde cuando la respuesta es cierta: cuando están cargados todos los días hasta la víspera de la operación en que pudo haber publicación. Los sábados y domingos no cuentan, porque el DOF no publica el FIX esos días. Tampoco cuentan los días de descanso del [calendario de la CNBV](../datos/dias-inhabiles-cnbv.md) dentro de su cobertura (hoy del 2025-01-01 al 2026-12-31), porque en un feriado bancario no hay publicación. Fuera de esa cobertura la API no sabe qué días son feriados, y un feriado entre semana cuenta como un día sin cargar. Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México, así que una consulta temprano por la operación de mañana da 404 hasta esa hora; vuelve a intentar después.
 
-Por la misma razón, la mañana después de un feriado bancario, una operación de ese día da `dato-no-disponible` hasta la corrida de las 13:30. Por ejemplo, el lunes 16 de noviembre de 2026 es feriado bancario y no hay publicación. El martes 17 por la mañana, lo cargado termina en el viernes 13 y el lunes 16 cuenta como día entre semana sin cargar, así que `operacion=2026-11-17` responde `dato-no-disponible`. Después de la corrida del martes responde la publicación del viernes 13, que es la que aplica.
+La mañana después de un feriado bancario la respuesta ya es cierta. Por ejemplo, el lunes 16 de noviembre de 2026 es feriado bancario y no hay publicación. El martes 17 por la mañana, lo cargado termina en el viernes 13 y el lunes 16 es día de descanso de la CNBV, así que `operacion=2026-11-17` responde la publicación del viernes 13, que es la que aplica, sin esperar la corrida del martes. Por lo mismo, `publicado=2026-11-16` responde `no-encontrado`. En cambio, `operacion=2026-11-18` da `dato-no-disponible` hasta que se cargue la publicación del martes 17.
 
 ### Último
 
@@ -588,8 +588,8 @@ Hay dos 404 distintos, y conviene mirar el `type`, no solo el estado HTTP:
 
 | `type` | Cuándo | Cambia con el tiempo |
 | --- | --- | --- |
-| [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie. Con `publicado`, también un sábado o domingo posterior a lo cargado si entre el último dato y esa fecha solo hay fin de semana | No |
-| [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado y falta cargar algún día entre semana hasta esa fecha, o falta la publicación de la víspera para `operacion` | Sí |
+| [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie. Con `publicado`, también un fin de semana o día de descanso de la CNBV posterior a lo cargado si entre el último dato y esa fecha solo hay días así | No |
+| [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado y falta cargar algún día entre semana que no es día de descanso de la CNBV hasta esa fecha, o falta la publicación de la víspera para `operacion` | Sí |
 
 Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
 

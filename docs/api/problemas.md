@@ -105,7 +105,7 @@ En las constantes (`/v1/constantes/...` y `/v1/isr/tarifa/...`), lo da un año a
 
 En el tipo de cambio FIX, las UDIS y `/v1/constantes/uma?fecha=`, este tipo es definitivo y el problema trae además `fecha` (la pedida) y `cobertura` (la primera y la última fecha de la serie; en la UMA, de la primera vigencia al 31 de enero siguiente a la última UMA cargada). Si el dato puede llegar después, el tipo es [`dato-no-disponible`](#dato-no-disponible).
 
-- En el FIX: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. Con `publicado`, un sábado o domingo posterior a lo cargado también lo da si entre el último dato y esa fecha solo hay fin de semana. Con `operacion`, lo da una operación hasta el primer día de la serie, porque la publicación que aplica es anterior a ella.
+- En el FIX: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. Con `publicado`, un fin de semana o día de descanso de la CNBV posterior a lo cargado también lo da si entre el último dato y esa fecha solo hay días así (los de descanso, dentro de la cobertura del calendario de la CNBV). Con `operacion`, lo da una operación hasta el primer día de la serie, porque la publicación que aplica es anterior a ella.
 - En las UDIS: solo una fecha anterior al inicio de la serie. Hay un valor para cada día, así que dentro de la serie no falta ninguno; una fecha posterior a lo cargado es `dato-no-disponible`.
 
 ```bash
@@ -146,7 +146,7 @@ Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`
 
 ## dato-no-disponible
 
-Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie (salvo en el FIX con `publicado` un sábado o domingo justo después del último dato, sin días entre semana de por medio, que es [`no-encontrado`](#no-encontrado)) o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
+Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie (salvo en el FIX con `publicado` un fin de semana o día de descanso de la CNBV con solo días así desde el último dato, que es [`no-encontrado`](#no-encontrado)) o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (los días de descanso de la CNBV no cuentan dentro de la cobertura de su calendario; fuera de ella, un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
 
 ```bash
 curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"
