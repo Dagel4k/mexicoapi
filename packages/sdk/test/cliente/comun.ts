@@ -74,6 +74,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       "DIAS_DATOS_RECIENTES",
       "MexicoApiError",
       "PROBLEMAS",
+      "URL_API",
       "URL_DOCS",
       "URL_PROBLEMAS",
       "URL_REPOSITORIO",
@@ -82,6 +83,8 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     expect(m.cliente.URL_PROBLEMAS).toBe(PROBLEMAS.slice(0, -1));
     expect(m.cliente.URL_DOCS).toBe(DOCS_API.replace("/api/README.md#", ""));
     expect(m.cliente.URL_REPOSITORIO).toBe("https://github.com/Dagel4k/mexicoapi");
+    // La base por omisión del cliente y del MCP: la API pública.
+    expect(m.cliente.URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
     expect(m.cliente.PROBLEMAS["no-encontrado"]).toEqual({
       title: "Recurso no encontrado",
       status: 404,

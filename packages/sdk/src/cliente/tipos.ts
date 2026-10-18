@@ -208,22 +208,16 @@ export interface OpcionesComunes {
  * Opciones de `crearCliente`: `base` para consultar la API, u `offline: true` para responder
  * solo con el paquete. Sin ninguna de las dos, crearCliente lanza TypeError.
  */
-export type OpcionesCliente = OpcionesComunes &
-  (
-    | {
-        /**
-         * Origen de la API, como `https://mexicoapi.example.workers.dev` (con o sin `/v1` al
-         * final), sin query, fragmento ni credenciales (`usuario:clave@` lanza TypeError).
-         */
-        base: Base;
-        offline?: boolean | undefined;
-      }
-    | {
-        base?: Base | undefined;
-        /** Nunca usa la red: todo sale del paquete, como con `fuente: "paquete"` en cada consulta. */
-        offline: true;
-      }
-  );
+export type OpcionesCliente = OpcionesComunes & {
+  /**
+   * Origen de la API (con o sin `/v1` al final), sin query, fragmento ni credenciales
+   * (`usuario:clave@` lanza TypeError). Sin él, la API pública: `URL_API`
+   * (https://mexicoapi.dagel4k.workers.dev).
+   */
+  base?: Base | undefined;
+  /** Nunca usa la red: todo sale del paquete, como con `fuente: "paquete"` en cada consulta. */
+  offline?: boolean | undefined;
+};
 
 export interface OpcionesConsulta {
   /**
