@@ -14,6 +14,7 @@ interface Manifiesto {
   type: string;
   sideEffects: boolean;
   main: string;
+  bin?: Record<string, string>;
   types: string;
   engines: Record<string, string>;
   files: string[];
@@ -79,6 +80,10 @@ describe("package.json de mexicoapi", () => {
 
   it("main y types apuntan a la entrada principal", () => {
     expect(manifiesto.exports["."]).toEqual({ types: manifiesto.types, import: manifiesto.main });
+  });
+
+  it("el binario mexicoapi apunta a la CLI compilada", () => {
+    expect(manifiesto.bin).toEqual({ mexicoapi: "dist/cli/index.js" });
   });
 
   it("el LICENSE del paquete es el del repositorio", () => {

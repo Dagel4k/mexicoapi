@@ -13,7 +13,7 @@ export default defineConfig({
         "apps/api/src/**",
         "apps/api/scripts/**/*.ts",
       ],
-      exclude: ["packages/pipeline/src/bin.ts"],
+      exclude: ["packages/pipeline/src/bin.ts", "packages/sdk/src/cli/index.ts"],
       thresholds: {
         "packages/core/src/**": {
           lines: 95,

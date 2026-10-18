@@ -257,6 +257,8 @@ describe("npm pack", () => {
         "dist/sepomex/index.js",
         "dist/sepomex/index.d.ts",
         "dist/sepomex/zip.js",
+        "dist/cli/index.js",
+        "dist/cli/cli.js",
       ]),
     );
     for (const ruta of rutas) {
