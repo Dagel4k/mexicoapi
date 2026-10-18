@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --noEmit -p test/integracion",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test/integracion && tsc --noEmit -p scripts",
     "build": "node ../../packages/pipeline/dist/bin.js construir --salida public --datos ../../data && wrangler deploy --dry-run --outdir dist",
-    "test:integracion": "vitest run --config vitest.integracion.config.ts"
+    "test:integracion": "vitest run --config vitest.integracion.config.ts",
+    "cloudflare": "node scripts/cloudflare.ts"
   },
   "dependencies": {
     "@mexicoapi/core": "workspace:*"

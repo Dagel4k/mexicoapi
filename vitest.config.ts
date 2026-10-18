@@ -5,7 +5,12 @@ export default defineConfig({
     projects: ["packages/*", "apps/*"],
     coverage: {
       provider: "v8",
-      include: ["packages/core/src/**", "packages/pipeline/src/**", "apps/api/src/**"],
+      include: [
+        "packages/core/src/**",
+        "packages/pipeline/src/**",
+        "apps/api/src/**",
+        "apps/api/scripts/**/*.ts",
+      ],
       exclude: ["packages/pipeline/src/bin.ts"],
       thresholds: {
         "packages/core/src/**": {
@@ -25,6 +30,12 @@ export default defineConfig({
           branches: 95,
           functions: 95,
           statements: 95,
+        },
+        "apps/api/scripts/**": {
+          lines: 90,
+          branches: 90,
+          functions: 90,
+          statements: 90,
         },
       },
     },
