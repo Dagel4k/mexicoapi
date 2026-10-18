@@ -8,6 +8,7 @@ import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
 import { aCsv } from "./csv.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, metaDesdeManifiesto } from "./meta.js";
+import { documentoOpenApi } from "./openapi.js";
 import { construirSqlite, type FilaDataset } from "./sqlite.js";
 
 export interface ResultadoConstruccion {
@@ -149,6 +150,11 @@ export async function construirSitio(opciones: {
     };
   }
   archivos.set("v1/_internos/meta.json", json(interna));
+  archivos.set(
+    "v1/openapi.json",
+    `${JSON.stringify(documentoOpenApi(), null, 2)}
+`,
+  );
 
   const descargas = new Map<string, Uint8Array | string>();
   for (const c of cargados) {
