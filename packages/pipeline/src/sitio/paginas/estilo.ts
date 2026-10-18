@@ -112,13 +112,22 @@ pre code { font-size: 1em; }
 /* relative: el texto .oculto de las celdas no se sale del contenedor que se desplaza */
 .tabla {
   position: relative;
+  container-type: inline-size;
   overflow-x: auto;
   margin: 0 0 1.25rem;
   border: 1px solid var(--borde);
   border-radius: 6px;
 }
 table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; }
-caption { text-align: left; padding: 0.75rem 1rem; color: var(--tenue); }
+/* el caption mide lo que el contenedor (100cqi) y no se va con la tabla al desplazarla */
+caption {
+  position: sticky;
+  left: 0;
+  max-width: 100cqi;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  color: var(--tenue);
+}
 th, td { text-align: left; vertical-align: top; padding: 0.625rem 1rem; border-top: 1px solid var(--borde); }
 thead th { background: var(--superficie); font-size: 0.875rem; white-space: nowrap; }
 tbody th { font-weight: 600; }

@@ -49,6 +49,14 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/\npre \{[^}]*overflow-x: auto;/);
   });
 
+  // El caption es tan ancho como la tabla: sin esto, a 320 px se desplaza con ella y se corta.
+  it("el caption se queda a la vista y del ancho del contenedor", () => {
+    expect(ESTILO).toMatch(/\.tabla \{[^}]*container-type: inline-size;/);
+    expect(ESTILO).toMatch(
+      /\ncaption \{[^}]*position: sticky;[^}]*left: 0;[^}]*max-width: 100cqi;/,
+    );
+  });
+
   it("tiene modo oscuro con las mismas variables y foco visible", () => {
     expect(ESTILO.indexOf("prefers-color-scheme: dark")).toBeGreaterThan(0);
     expect(claro.size).toBeGreaterThan(5);
