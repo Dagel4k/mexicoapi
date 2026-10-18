@@ -18,6 +18,10 @@ const plazo: ResultadoDiasHabiles = sumarDiasHabiles({
   desde: "2026-07-17",
   dias: 3,
 });
+// Con el SAT el tipo de plazo es obligatorio; con la CNBV, general es el de omisión.
+// @ts-expect-error sin tipo de plazo con el SAT
+const sinTipo = () => calendario("sat");
+const cnbv = calendario("cnbv");
 const sat: CalendarioCurado = calendarioCurado("sat");
 const hastaGeneral: string = sat.general.cobertura.hasta;
 const respaldo: boolean = sat.plazos.general?.respaldo !== undefined;
@@ -27,6 +31,8 @@ const salarios: readonly SalarioMinimo[] = salarioMinimo(2026);
 const isr: TarifaIsr | undefined = tarifaIsr("mensual", anios.isr.mensual[0] ?? 2026);
 
 export const curados = [
+  sinTipo,
+  cnbv.cobertura.hasta,
   plazo.resultado,
   hastaGeneral,
   respaldo,

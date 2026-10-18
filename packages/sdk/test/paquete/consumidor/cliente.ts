@@ -39,6 +39,12 @@ export async function usar(): Promise<readonly string[]> {
     anio: 2026,
   });
   const status: RespuestaSinMeta<readonly EstadoDataset[]> = await api.status();
+  const desde = "2026-07-17";
+  const sat = await sinRed.diasHabiles({ autoridad: "sat", tipoPlazo: "general", desde, dias: 3 });
+  // @ts-expect-error con el SAT el tipo de plazo es obligatorio
+  await sinRed.diasHabiles({ autoridad: "sat", desde, dias: 3 });
+  // @ts-expect-error el tipo de plazo solo va con el SAT
+  await sinRed.diasHabiles({ autoridad: "cnbv", tipoPlazo: "general", desde, dias: 3 });
   try {
     await api.udi("2026-10-20", { fuente: "api" });
   } catch (error) {
@@ -52,6 +58,7 @@ export async function usar(): Promise<readonly string[]> {
     estado.meta.as_of,
     String(clabe.data.detalle?.banco?.activo),
     String(status.data.length),
+    sat.data.resultado,
     subsidio.data.valor,
   ];
 }

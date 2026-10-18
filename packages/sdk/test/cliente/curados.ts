@@ -2,7 +2,7 @@
 // corren igual sobre src y sobre dist. Se comparan con las entradas de datos del paquete y el
 // núcleo; los textos que dependen de la cobertura se arman con la cobertura de los datos.
 import { beforeAll, expect, it } from "vitest";
-import type { Cliente, MexicoApiError } from "../../src/cliente/index.js";
+import type { Cliente, ConsultaDiasHabiles, MexicoApiError } from "../../src/cliente/index.js";
 import type { CoberturaSerie } from "../../src/index.js";
 import type { Modulo } from "../comun.js";
 import { esperarCongelado } from "../datos/comun.js";
@@ -48,12 +48,9 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
       ["sat", "declaraciones_pagos", "2026-07-17", 3],
     ] as const;
     for (const [autoridad, tipoPlazo, desde, dias] of casos) {
-      const r = await api.diasHabiles({
-        autoridad,
-        ...(autoridad === "sat" ? { tipoPlazo } : {}),
-        desde,
-        dias,
-      });
+      const consulta: ConsultaDiasHabiles =
+        autoridad === "sat" ? { autoridad, tipoPlazo, desde, dias } : { autoridad, desde, dias };
+      const r = await api.diasHabiles(consulta);
       expect(r.data).toEqual(
         m.mexicoapi.sumarDiasHabiles({
           calendario: m.calendarios.calendario(autoridad, tipoPlazo),
@@ -76,6 +73,7 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
 
   it("pide tipo_plazo con el SAT y lo rechaza con las demás autoridades", async () => {
     const falta = await problemaDe(
+      // @ts-expect-error con el SAT el tipo de plazo es obligatorio
       api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 }),
       "parametro-faltante",
       400,
@@ -86,6 +84,7 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     expect(falta.problema.parametro).toBe("tipo_plazo");
     for (const autoridad of ["lft", "cnbv"] as const) {
       const sobra = await problemaDe(
+        // @ts-expect-error el tipo de plazo solo va con el SAT
         api.diasHabiles({ autoridad, tipoPlazo: "general", desde: "2026-07-17", dias: 3 }),
         "parametro-invalido",
         400,

@@ -117,14 +117,25 @@ export function calendarioCurado(autoridad: AutoridadCurada): CalendarioCurado {
 
 /**
  * El calendario de un tipo de plazo, para `sumarDiasHabiles`. Fuera de su cobertura lanza
- * CalendarioIncompletoError, como la API. Lanza RangeError si la autoridad no tiene ese plazo
- * (la CNBV solo tiene `general`).
+ * CalendarioIncompletoError, como la API. Con el SAT el tipo de plazo es obligatorio, como en la
+ * API: sin él lanza TypeError. Lanza RangeError si la autoridad no tiene ese plazo (la CNBV solo
+ * tiene `general`, que es el de omisión).
  */
-export function calendario(
-  autoridad: AutoridadCurada,
-  tipoPlazo: TipoPlazo = "general",
-): Calendario {
-  const plazo = calendarioCurado(autoridad).plazos[tipoPlazo];
+export function calendario(autoridad: "cnbv", tipoPlazo?: "general"): Calendario;
+export function calendario(autoridad: "sat", tipoPlazo: TipoPlazo): Calendario;
+export function calendario(autoridad: AutoridadCurada, tipoPlazo: TipoPlazo): Calendario;
+export function calendario(autoridad: AutoridadCurada, tipoPlazo?: TipoPlazo): Calendario {
+  const { plazos } = calendarioCurado(autoridad);
+  if (tipoPlazo === undefined) {
+    const tipos = Object.keys(plazos);
+    if (tipos.length > 1) {
+      throw new TypeError(
+        `Con autoridad=${autoridad} falta el parámetro tipo_plazo: ${tipos.join(" o ")}.`,
+      );
+    }
+    tipoPlazo = "general";
+  }
+  const plazo = plazos[tipoPlazo];
   if (plazo === undefined) {
     throw new RangeError(`El calendario de ${autoridad} no tiene el tipo de plazo ${tipoPlazo}.`);
   }
