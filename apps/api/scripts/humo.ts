@@ -122,6 +122,19 @@ const COMPROBACIONES: readonly Comprobacion[] = [
     },
   },
   {
+    // Un año anterior a los datos: el Worker lo distingue de uno futuro con el índice de años de
+    // las constantes, así que confirma que ese índice se carga.
+    ruta: "/v1/constantes/uma/2016",
+    estado: 404,
+    tipo: "problema",
+    validar(cuerpo) {
+      const tipo = objeto(cuerpo)?.type;
+      const nombre =
+        typeof tipo === "string" ? tipo.slice(tipo.lastIndexOf("#") + 1) : String(tipo);
+      return nombre === "no-encontrado" ? undefined : `type ${nombre}, no no-encontrado`;
+    },
+  },
+  {
     ruta: "/v1/tipo-cambio/fix/ultimo",
     estado: 200,
     tipo: "json",
