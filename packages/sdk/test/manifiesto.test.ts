@@ -45,7 +45,7 @@ describe("package.json de mexicoapi", () => {
     expect(manifiesto.license).toBe("MIT");
     expect(manifiesto.type).toBe("module");
     expect(manifiesto.sideEffects).toBe(false);
-    expect(manifiesto.engines).toEqual({ node: ">=20" });
+    expect(manifiesto.engines).toEqual({ node: ">=22.13" });
     expect(manifiesto.files).toEqual(["dist", "README.md", "CHANGELOG.md", "LICENSE"]);
     expect(manifiesto.repository).toEqual({
       type: "git",
@@ -61,7 +61,7 @@ describe("package.json de mexicoapi", () => {
     expect(entradas.map(([ruta]) => ruta)).toContain(".");
     for (const [ruta, destino] of entradas) {
       if (typeof destino === "string") throw new Error(`${ruta} no declara types e import`);
-      // `default` va al final: con él, require() carga el ESM en Node 20.19+ y 22.12+.
+      // `default` va al final: con él, require() carga el ESM (Node 22.12 o posterior).
       expect(Object.keys(destino), ruta).toEqual(["types", "import", "default"]);
       expect(destino.import, ruta).toMatch(/^\.\/dist\/[\w/-]+\.js$/);
       expect(destino.types, ruta).toBe(destino.import.replace(/\.js$/, ".d.ts"));

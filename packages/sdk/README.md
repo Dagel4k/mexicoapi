@@ -14,7 +14,7 @@ La API de MéxicoAPI todavía no tiene dirección pública: mientras tanto, el c
 npm install mexicoapi
 ```
 
-También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`.
+También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`. En Node pide la versión 22.13 o posterior.
 
 ## Entradas
 
@@ -232,7 +232,7 @@ await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, d
 
 - Si el sitio bloquea la descarga automática (un 403, un 429 o un CAPTCHA), no se intenta evadir: el error dice cómo bajar el archivo a mano (estado "Todos", formato TXT) y cargarlo con `sepomex.importar("CPdescarga.zip")`, que acepta el ZIP o el TXT.
 - La caché queda en `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y en `$XDG_CACHE_HOME/mexicoapi/sepomex` (o `~/.cache/mexicoapi/sepomex`) en los demás; la opción `dir` la cambia. Si algo falla, la caché anterior queda igual.
-- Se guarda en JSON y, con Node 22.13 o posterior (`node:sqlite`), también en SQLite. Con un Node anterior queda solo en JSON y `resumen().sin_sqlite` lo dice.
+- Se guarda en JSON y también en SQLite (`node:sqlite`). Si `node:sqlite` no carga, queda solo en JSON y `resumen().sin_sqlite` dice por qué.
 - Memoria: descargar o importar el catálogo completo (unas 160 mil filas) usa unos 340 MB por un momento. La primera consulta lee el JSON (unos 17 MB) y lo deja en la memoria del proceso.
 - Los errores son `SepomexError` con `tipo`: `bloqueado`, `sin-respuesta`, `pagina-inesperada`, `archivo-invalido`, `sin-datos`, `cache-invalida`, `ocupado` o `escritura`.
 
@@ -297,15 +297,15 @@ Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la
 
 | Entorno | Estado |
 | --- | --- |
-| Node 20, 22, 24 y 26 | Probado en CI con el paquete instalado desde su `.tgz` |
-| CommonJS (`require`) | Desde Node 20.19 y 22.12, que cargan ESM con `require()`; antes, solo `import` |
+| Node 22.13 o posterior | Probado en CI con el paquete instalado desde su `.tgz`: Node 22.13.0 (el piso de `engines`) y las líneas 22, 24 y 26 |
+| CommonJS (`require`) | Probado en CI: en esas versiones `require()` carga el paquete, que es ESM |
 | Cloudflare Workers | Probado en workerd, sin `nodejs_compat` |
 | Navegador con bundler | Probado en CI: esbuild empaqueta cada entrada universal con `platform: "browser"` sin módulos de Node; `sideEffects: false` |
 | Bun | Probado en CI (Bun 1.4.3) con el paquete instalado desde su `.tgz`: las entradas universales |
 | Deno | Probado en CI (Deno 2.9.7) con el paquete instalado desde su `.tgz` en `node_modules` y sin permisos: las entradas universales |
 | TypeScript | Tipos incluidos, probados con `moduleResolution` NodeNext y Bundler. Las subrutas (`mexicoapi/datos`, `mexicoapi/cliente`...) piden `node16`, `nodenext` o `bundler`: con `node10` TypeScript no lee `exports` y da TS2307 |
 
-`mexicoapi/sepomex` y la CLI piden Node. El SQLite de SEPOMEX pide Node 22.13 o posterior.
+`mexicoapi/sepomex` y la CLI piden Node.
 
 ## Licencias
 
