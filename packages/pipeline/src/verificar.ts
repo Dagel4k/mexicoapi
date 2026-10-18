@@ -4,6 +4,9 @@ import { join } from "node:path";
 import { esFechaIsoValida } from "@mexicoapi/core";
 import { z } from "zod";
 import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
+import { archivosCurado } from "./curado/generar.js";
+import { leerCurado } from "./curado/leer.js";
+import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { DATASETS } from "./registro.js";
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
@@ -155,7 +158,75 @@ async function verificarDirectorio(raiz: string, nombre: string): Promise<string
   return problemas;
 }
 
-/** Revisa cada `data/*` contra su manifiesto; lista vacía significa que todo cuadra. */
+/**
+ * Compara `dir` byte a byte con los archivos que debería tener; lista vacía si coinciden.
+ * `origen` es el YAML del que salen, para el mensaje.
+ */
+export async function diferenciasConEsperados(
+  dir: string,
+  esperados: ReadonlyMap<string, string>,
+  origen: string,
+): Promise<string[]> {
+  const problemas: string[] = [];
+  for (const [archivo, contenido] of esperados) {
+    const bytes = await leerOpcional(join(dir, archivo));
+    if (bytes === null) problemas.push(`falta ${archivo}; corre curar`);
+    else if (!bytes.equals(Buffer.from(contenido, "utf8"))) {
+      problemas.push(`${archivo} no corresponde a ${origen}; corre curar`);
+    }
+  }
+  let presentes: string[] = [];
+  try {
+    presentes = await archivosDe(dir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  for (const archivo of presentes.sort()) {
+    if (!esperados.has(archivo)) problemas.push(`archivo no declarado: ${archivo}`);
+  }
+  return problemas;
+}
+
+/**
+ * Cada curado con YAML debe tener su carpeta generada igual a lo que produce `curar`, y cada
+ * carpeta curada su YAML. Sin YAML ni carpeta, el dataset todavía no existe y no se revisa.
+ */
+async function verificarCurados(raizDatos: string, dirs: ReadonlySet<string>): Promise<string[]> {
+  const problemas: string[] = [];
+  if (dirs.has(DIRECTORIO_CURADO)) {
+    const declarados = new Set(CURADOS.map((d) => d.yaml));
+    for (const archivo of (await archivosDe(join(raizDatos, DIRECTORIO_CURADO))).sort()) {
+      if (!declarados.has(archivo)) {
+        problemas.push(`${DIRECTORIO_CURADO}: archivo no declarado: ${archivo}`);
+      }
+    }
+  }
+  for (const def of CURADOS) {
+    const yaml = `${DIRECTORIO_CURADO}/${def.yaml}`;
+    const generado = dirs.has(def.directorio);
+    const lectura = await leerCurado(def, raizDatos);
+    if (lectura === null) {
+      if (generado) problemas.push(`${def.directorio}: falta ${yaml}`);
+      continue;
+    }
+    if (lectura.documento === null) {
+      for (const p of lectura.problemas) problemas.push(`${yaml}: ${p}`);
+      continue;
+    }
+    if (!generado) {
+      problemas.push(`${def.directorio}: faltan los datos generados; corre curar`);
+      continue;
+    }
+    const esperados = archivosCurado(def, lectura.documento);
+    const dir = join(raizDatos, def.directorio);
+    for (const p of await diferenciasConEsperados(dir, esperados, yaml)) {
+      problemas.push(`${def.directorio}: ${p}`);
+    }
+  }
+  return problemas;
+}
+
+/** Revisa cada `data/*` contra su manifiesto y los curados contra su YAML; vacía si todo cuadra. */
 export async function verificarDatos(raizDatos: string): Promise<string[]> {
   let entradas: Dirent[];
   try {
@@ -166,7 +237,12 @@ export async function verificarDatos(raizDatos: string): Promise<string[]> {
   }
   const dirs = entradas.filter((e) => e.isDirectory()).map((e) => e.name);
   dirs.sort();
+  const curados = new Set(CURADOS.map((d) => d.directorio));
   const problemas: string[] = [];
-  for (const nombre of dirs) problemas.push(...(await verificarDirectorio(raizDatos, nombre)));
+  for (const nombre of dirs) {
+    if (nombre === DIRECTORIO_CURADO || curados.has(nombre)) continue;
+    problemas.push(...(await verificarDirectorio(raizDatos, nombre)));
+  }
+  problemas.push(...(await verificarCurados(raizDatos, new Set(dirs))));
   return problemas;
 }
