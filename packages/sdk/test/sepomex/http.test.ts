@@ -147,9 +147,9 @@ describe("buscarIpv4Primero", () => {
     { address: "2801:c4:a3:2::6", family: 6 },
   ];
 
-  const buscar = (opciones: dns.LookupOptions) =>
+  const buscar = (opciones: dns.LookupOptions, host = "www.correosdemexico.gob.mx") =>
     new Promise<[string | dns.LookupAddress[], number | undefined]>((listo, falla) =>
-      buscarIpv4Primero("www.correosdemexico.gob.mx", opciones, (error, direccion, familia) =>
+      buscarIpv4Primero(host, opciones, (error, direccion, familia) =>
         error ? falla(error) : listo([direccion, familia]),
       ),
     );
@@ -196,7 +196,8 @@ describe("buscarIpv4Primero", () => {
   });
 
   it("con el resolvedor real da direcciones ordenadas", async () => {
-    const [direcciones] = await buscar({ all: true });
+    // localhost lo resuelve el sistema sin consultar un DNS externo: la prueba no sale a la red.
+    const [direcciones] = await buscar({ all: true }, "localhost");
     const familias = (direcciones as dns.LookupAddress[]).map((d) => d.family);
     expect(familias.length).toBeGreaterThan(0);
     expect(familias).toEqual([...familias].sort((a, b) => a - b));
