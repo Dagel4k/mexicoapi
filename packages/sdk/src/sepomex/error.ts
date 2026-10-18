@@ -6,6 +6,7 @@
  * - `archivo-invalido`: el ZIP o el TXT están dañados, cambiaron de forma o pasan de los límites.
  * - `sin-datos`: todavía no hay catálogo guardado en el directorio.
  * - `cache-invalida`: el catálogo guardado está dañado.
+ * - `ocupado`: otra sincronización está guardando en el mismo directorio.
  */
 export type TipoErrorSepomex =
   | "bloqueado"
@@ -13,7 +14,8 @@ export type TipoErrorSepomex =
   | "pagina-inesperada"
   | "archivo-invalido"
   | "sin-datos"
-  | "cache-invalida";
+  | "cache-invalida"
+  | "ocupado";
 
 export class SepomexError extends Error {
   override readonly name = "SepomexError";

@@ -3,7 +3,14 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { cargarCodigos, directorioCache, guardar, leerMeta, type MetaGuardada } from "./cache.js";
+import {
+  cargarCodigos,
+  conCandado,
+  directorioCache,
+  guardar,
+  leerMeta,
+  type MetaGuardada,
+} from "./cache.js";
 import { type Asentamiento, armarCatalogo, type CodigoPostal } from "./catalogo.js";
 import { archivoInvalido, SepomexError, tamanoLegible } from "./error.js";
 import { cuerpoDeDescarga, errorCaptcha, leerFormulario, pideCaptcha } from "./formulario.js";
@@ -229,40 +236,46 @@ async function guardarCatalogo(
  * país, TXT), lo revisa, lo une con los municipios de INEGI y lo guarda en la caché. Antes de
  * pedir nada pasa a `aviso` el aviso de uso de Correos de México y la nota de MéxicoAPI. Si algo
  * falla lanza SepomexError y la caché anterior queda igual; si el sitio bloquea la descarga
- * automática (`bloqueado`), no se intenta evadir: el mensaje dice cómo usar `importar`.
+ * automática (`bloqueado`), no se intenta evadir: el mensaje dice cómo usar `importar`. Mientras
+ * trabaja tiene el candado `sync.lock` del directorio: otra sincronización o importación en el
+ * mismo directorio falla de inmediato con `ocupado`, sin pedir nada a Correos de México.
  */
 export async function sync(opciones: OpcionesSync = {}): Promise<EstadoSepomex> {
   const dir = directorioDe(opciones);
-  (opciones.aviso ?? escribirAviso)(textoAviso(dir));
-  const pedir = opciones.fetch ?? crearTransporte({ maxBytes: LIMITE_ZIP, esperaMs: ESPERA_MS });
-  const { bytes, as_of } = await descargar(pedir);
-  return guardarCatalogo(bytes, dir, "descarga", as_of, opciones.sqlite ?? true);
+  return conCandado(dir, async () => {
+    (opciones.aviso ?? escribirAviso)(textoAviso(dir));
+    const pedir = opciones.fetch ?? crearTransporte({ maxBytes: LIMITE_ZIP, esperaMs: ESPERA_MS });
+    const { bytes, as_of } = await descargar(pedir);
+    return guardarCatalogo(bytes, dir, "descarga", as_of, opciones.sqlite ?? true);
+  });
 }
 
 /**
  * Importa el ZIP o el TXT que se descargó a mano de la página de Correos de México (estado
- * "Todos", formato TXT), con las mismas revisiones que `sync`.
+ * "Todos", formato TXT), con las mismas revisiones y el mismo candado que `sync`.
  */
 export async function importar(
   ruta: string,
   opciones: OpcionesGuardado = {},
 ): Promise<EstadoSepomex> {
   const dir = directorioDe(opciones);
-  (opciones.aviso ?? escribirAviso)(textoAviso(dir));
-  let bytes: Uint8Array;
-  try {
-    const { size } = await stat(ruta);
-    if (size > LIMITE_TXT) {
-      throw archivoInvalido(
-        `El archivo pesa ${tamanoLegible(size)} y el límite es ${tamanoLegible(LIMITE_TXT)}.`,
-      );
+  return conCandado(dir, async () => {
+    (opciones.aviso ?? escribirAviso)(textoAviso(dir));
+    let bytes: Uint8Array;
+    try {
+      const { size } = await stat(ruta);
+      if (size > LIMITE_TXT) {
+        throw archivoInvalido(
+          `El archivo pesa ${tamanoLegible(size)} y el límite es ${tamanoLegible(LIMITE_TXT)}.`,
+        );
+      }
+      bytes = new Uint8Array(await readFile(ruta));
+    } catch (error) {
+      if (error instanceof SepomexError) throw error;
+      throw archivoInvalido(`No se pudo leer ${ruta}: ${mensajeDe(error)}`, error);
     }
-    bytes = new Uint8Array(await readFile(ruta));
-  } catch (error) {
-    if (error instanceof SepomexError) throw error;
-    throw archivoInvalido(`No se pudo leer ${ruta}: ${mensajeDe(error)}`, error);
-  }
-  return guardarCatalogo(bytes, dir, "archivo", null, opciones.sqlite ?? true);
+    return guardarCatalogo(bytes, dir, "archivo", null, opciones.sqlite ?? true);
+  });
 }
 
 /** Cómo quedó el catálogo guardado (fecha, filas, aviso...), o null si no hay. */
