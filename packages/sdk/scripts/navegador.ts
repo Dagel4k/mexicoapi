@@ -9,7 +9,7 @@
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 //
 //   node scripts/navegador.ts <proyecto>   con mexicoapi instalado en <proyecto>/node_modules
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -143,7 +143,9 @@ export async function empaquetarEntradas(
   proyecto: string,
   esbuild: Esbuild = cargarEsbuild(),
 ): Promise<Entrada[]> {
-  const raiz = resolve(proyecto);
+  // esbuild sigue los enlaces simbólicos: con la ruta real, las llaves del metafile no salen de la
+  // raíz cuando la carpeta temporal es un enlace (como /var en macOS).
+  const raiz = await realpath(resolve(proyecto));
   const manifiesto = join(raiz, "node_modules", PAQUETE, "package.json");
   const { exports } = JSON.parse(await readFile(manifiesto, "utf8")) as {
     exports?: Record<string, unknown>;
