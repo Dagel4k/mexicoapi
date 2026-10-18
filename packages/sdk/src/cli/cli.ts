@@ -4,7 +4,7 @@
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
 // que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento).
 import { parseArgs } from "node:util";
-import { type Autoridad, esFechaIsoValida } from "../index.js";
+import { type Autoridad, esFechaIsoValida, type TipoPlazo } from "../index.js";
 import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
   bancoTexto,
@@ -13,6 +13,9 @@ import {
   municipiosTexto,
   municipioTexto,
   pieTexto,
+  salarioMinimoTexto,
+  tarifaIsrTexto,
+  umaTexto,
   validacionTexto,
 } from "./texto.js";
 import type { ModuloSepomexCli } from "./tipos.js";
@@ -40,6 +43,8 @@ const OPCIONES = {
   desde: { type: "string" },
   dias: { type: "string" },
   autoridad: { type: "string" },
+  "tipo-plazo": { type: "string" },
+  fecha: { type: "string" },
 } as const;
 
 type Opciones = {
@@ -51,13 +56,21 @@ type Opciones = {
   desde?: string | undefined;
   dias?: string | undefined;
   autoridad?: string | undefined;
+  "tipo-plazo"?: string | undefined;
+  fecha?: string | undefined;
 };
+
+/** Opciones que solo aplican a algunos comandos. */
+const DE_COMANDO = ["base", "desde", "dias", "autoridad", "tipo-plazo", "fecha"] as const;
 
 /** Opciones propias de cada comando, además de --json, --help, --version y --depurar. */
 const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
-  "dias-habiles": ["base", "desde", "dias", "autoridad"],
+  "dias-habiles": ["base", "desde", "dias", "autoridad", "tipo-plazo"],
   municipio: ["base"],
   banco: ["base"],
+  uma: ["base", "fecha"],
+  "salario-minimo": ["base"],
+  isr: ["base"],
 };
 
 const VALIDADORES = ["clabe", "rfc", "curp", "nss"] as const;
@@ -87,7 +100,7 @@ function analizar(argv: readonly string[]): { posiciones: string[]; opciones: Op
 
 function revisarOpciones(comando: string, opciones: Opciones): void {
   const permitidas = PROPIAS[comando] ?? [];
-  for (const nombre of ["base", "desde", "dias", "autoridad"] as const) {
+  for (const nombre of DE_COMANDO) {
     if (opciones[nombre] !== undefined && !permitidas.includes(nombre)) {
       throw new ErrorUso(`La opción --${nombre} no aplica a "${comando}".`);
     }
@@ -99,6 +112,19 @@ function unValor(posiciones: readonly string[], nombre: string, comando: string)
   if (valor === undefined) throw new ErrorUso(`Falta ${nombre} en "${comando}".`);
   if (resto.length > 0) throw new ErrorUso(`Sobran argumentos en "${comando}": ${resto.join(" ")}`);
   return valor;
+}
+
+/** Exactamente dos argumentos, como `isr <periodo> <anio>`. */
+function dosValores(
+  posiciones: readonly string[],
+  nombres: readonly [string, string],
+  comando: string,
+): [string, string] {
+  const [primero, segundo, ...resto] = posiciones;
+  if (primero === undefined) throw new ErrorUso(`Falta ${nombres[0]} en "${comando}".`);
+  if (segundo === undefined) throw new ErrorUso(`Falta ${nombres[1]} en "${comando}".`);
+  if (resto.length > 0) throw new ErrorUso(`Sobran argumentos en "${comando}": ${resto.join(" ")}`);
+  return [primero, segundo];
 }
 
 function sinArgumentos(posiciones: readonly string[], comando: string): void {
@@ -149,14 +175,62 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   if (!esFechaIsoValida(desde)) {
     throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
+  const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
   const { cliente, conRed } = await crearClienteCli(e, opciones);
   const respuesta = await cliente.diasHabiles({
     desde,
     dias: Number(dias),
     autoridad: autoridad as Autoridad | undefined,
+    tipoPlazo,
   });
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, diasHabilesTexto(respuesta) + pieTexto(respuesta, conRed));
+  else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta, conRed));
+  return 0;
+}
+
+// Los años y el periodo van tal cual al cliente: uno mal escrito ("26", "semanal") lo rechaza
+// con la regla de la API y sale con 1, como un banco que no existe.
+async function uma(posiciones: readonly string[], e: Entorno, opciones: Opciones): Promise<number> {
+  const { fecha } = opciones;
+  if (fecha !== undefined) {
+    if (posiciones.length > 0) {
+      throw new ErrorUso(`"uma" con --fecha no recibe argumentos: ${posiciones.join(" ")}`);
+    }
+    if (!esFechaIsoValida(fecha)) {
+      throw new ErrorUso(`--fecha debe ser una fecha válida AAAA-MM-DD, no "${fecha}".`);
+    }
+  }
+  const anio =
+    fecha === undefined ? unValor(posiciones, "el año (o --fecha AAAA-MM-DD)", "uma") : "";
+  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const respuesta =
+    fecha === undefined
+      ? await cliente.consultar("/v1/constantes/uma/{anio}", { anio: anio as unknown as number })
+      : await cliente.umaVigente(fecha);
+  if (opciones.json) json(e, respuesta);
+  else imprimir(e, umaTexto(respuesta.data, fecha) + pieTexto(respuesta, conRed));
+  return 0;
+}
+
+async function salarioMinimo(anio: string, e: Entorno, opciones: Opciones): Promise<number> {
+  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const respuesta = await cliente.consultar("/v1/constantes/salario-minimo/{anio}", {
+    anio: anio as unknown as number,
+  });
+  if (opciones.json) json(e, respuesta);
+  else imprimir(e, salarioMinimoTexto(anio, respuesta.data) + pieTexto(respuesta, conRed));
+  return 0;
+}
+
+async function isr(posiciones: readonly string[], e: Entorno, opciones: Opciones): Promise<number> {
+  const [periodo, anio] = dosValores(posiciones, ["el periodo (mensual o anual)", "el año"], "isr");
+  const { cliente, conRed } = await crearClienteCli(e, opciones);
+  const respuesta = await cliente.consultar("/v1/isr/tarifa/{periodo}/{anio}", {
+    periodo: periodo as "mensual",
+    anio: anio as unknown as number,
+  });
+  if (opciones.json) json(e, respuesta);
+  else imprimir(e, tarifaIsrTexto(respuesta.data) + pieTexto(respuesta, conRed));
   return 0;
 }
 
@@ -320,6 +394,12 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
         );
       case "banco":
         return await banco(unValor(resto, "el código de 3 dígitos", comando), e, opciones);
+      case "uma":
+        return await uma(resto, e, opciones);
+      case "salario-minimo":
+        return await salarioMinimo(unValor(resto, "el año", comando), e, opciones);
+      case "isr":
+        return await isr(resto, e, opciones);
       default:
         return await sepomex(resto, e, opciones);
     }
