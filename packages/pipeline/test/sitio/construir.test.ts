@@ -32,9 +32,19 @@ import { DATASETS } from "../../src/registro.js";
 import { coberturasDe } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
+import {
+  archivoEncabezados,
+  CSP_PAGINAS,
+  RUTAS_SITIO,
+} from "../../src/sitio/paginas/encabezados.js";
+import { ESTILO } from "../../src/sitio/paginas/estilo.js";
+import { enlaceSeguro, URL_ARCHIVOS } from "../../src/sitio/paginas/html.js";
+import { paginaNoEncontrada } from "../../src/sitio/paginas/no-encontrado.js";
+import { ROBOTS } from "../../src/sitio/paginas/robots.js";
 import * as verificar from "../../src/verificar.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
 import { YAML_CNBV, YAML_ISR, YAML_SALARIO, YAML_SAT, YAML_UMA } from "../curado/ejemplos.js";
+import { encabezadosDe, leerReglas } from "./paginas/reglas-cloudflare.js";
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -184,6 +194,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     const archivos = await listar(salida);
     expect(archivos).toEqual(
       [
+        "404.html",
         "_headers",
         "descargas/SHA256SUMS",
         "descargas/bancos-historial.csv",
@@ -220,6 +231,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.csv",
         "descargas/udis.json",
         "descargas/udis.manifest.json",
+        "estilo.css",
+        "index.html",
+        "robots.txt",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
         "v1/_internos/constantes.json",
@@ -716,27 +730,49 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(sumas).toBe(esperado.join(""));
   });
 
-  it("_headers tiene una regla por descarga más la general, y menos de 100", async () => {
+  it("_headers une las reglas de las descargas y del sitio sin choques", async () => {
     await construirSitio({ raizDatos: datos, salida });
     const texto = await readFile(join(salida, "_headers"), "utf8");
-    const reglas = texto.split("\n").filter((l) => l.startsWith("/"));
-    expect(reglas.length).toBeLessThan(100);
-    const descargas = (await listar(join(salida, "descargas"))).map((n) => `/descargas/${n}`);
-    expect([...reglas].sort()).toEqual([...descargas, "/descargas/*"].sort());
+    const descargas = await listar(join(salida, "descargas"));
+    expect(texto).toBe(archivoEncabezados(descargas));
+    const reglas = leerReglas(texto);
+    expect(reglas.length).toBeLessThanOrEqual(100);
+    for (const linea of texto.split("\n")) expect(linea.length).toBeLessThanOrEqual(2000);
+    const rutas = descargas.map((n) => `/descargas/${n}`);
+    expect(reglas.map((r) => r.ruta)).toEqual([...rutas, "/descargas/*", ...RUTAS_SITIO]);
+    // Ninguna ruta recibe el mismo encabezado de dos reglas (Cloudflare los juntaría con coma).
+    for (const ruta of [...rutas, ...RUTAS_SITIO]) {
+      for (const [nombre, valores] of encabezadosDe(reglas, ruta)) {
+        expect(valores, `${ruta} ${nombre}`).toHaveLength(1);
+      }
+    }
     expect(texto).toContain(
       "/descargas/inegi-estados.json\n  Content-Type: application/json; charset=utf-8",
     );
     expect(texto).toContain("/descargas/bancos.csv\n  Content-Type: text/csv; charset=utf-8");
-    expect(texto).toContain("/descargas/udis.csv\n  Content-Type: text/csv; charset=utf-8");
-    expect(texto).toContain(
-      "/descargas/tipo-cambio-fix.manifest.json\n  Content-Type: application/json; charset=utf-8",
-    );
     expect(texto).toContain("/descargas/mexicoapi.sqlite\n  Content-Type: application/vnd.sqlite3");
     expect(texto).toContain("/descargas/SHA256SUMS\n  Content-Type: text/plain; charset=utf-8");
     expect(texto).toContain("/descargas/*\n  Access-Control-Allow-Origin: *");
-    expect(texto).toContain("  X-Content-Type-Options: nosniff");
-    expect(texto).toContain("  Content-Security-Policy: default-src 'none'");
     expect(texto).toContain("  Cache-Control: public, max-age=3600, stale-while-revalidate=86400");
+    expect(texto).toContain(`\n/\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
+  });
+
+  it("escribe la página de inicio, el 404, la hoja de estilo y robots.txt", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const inicio = await readFile(join(salida, "index.html"), "utf8");
+    // Un renglón por dataset, con la fecha de su manifiesto.
+    const ids = [...DATASETS.keys(), ...CURADOS.map((c) => c.id)];
+    for (const id of ids) expect(inicio, id).toContain(`<span class="id">${id}</span>`);
+    expect(inicio.match(/<span class="id">/g)).toHaveLength(ids.length);
+    expect(inicio).toContain('<time datetime="2026-10-17">2026-10-17</time>');
+    expect(inicio).toContain("Fuente de inegi.estados");
+    // Cada descarga aparece en la lista, enlazada.
+    for (const nombre of await listar(join(salida, "descargas"))) {
+      expect(inicio, nombre).toContain(`<a href="/descargas/${nombre}">${nombre}</a>`);
+    }
+    expect(await readFile(join(salida, "404.html"), "utf8")).toBe(paginaNoEncontrada());
+    expect(await readFile(join(salida, "estilo.css"), "utf8")).toBe(ESTILO);
+    expect(await readFile(join(salida, "robots.txt"), "utf8")).toBe(ROBOTS);
   });
 
   it("es determinista", async () => {
@@ -990,6 +1026,50 @@ describe("con los datos reales del repositorio", () => {
         juntos.push(...shard.datos);
       }
       expect(juntos, id).toEqual(serie);
+    }
+  }, 120_000);
+  it("escribe las páginas con los datos reales y dos corridas dan los mismos bytes", async () => {
+    vi.restoreAllMocks();
+    const real = fileURLToPath(new URL("../../../../data", import.meta.url));
+    const otra = join(raiz, "otra");
+    await construirSitio({ raizDatos: real, salida });
+    await construirSitio({ raizDatos: real, salida: otra });
+    const archivos = await listar(salida);
+    expect(await listar(otra)).toEqual(archivos);
+    for (const n of ["index.html", "404.html", "estilo.css", "robots.txt", "_headers"]) {
+      expect(archivos).toContain(n);
+    }
+    for (const n of archivos) {
+      expect(sha256Hex(await readFile(join(otra, n))), n).toBe(
+        sha256Hex(await readFile(join(salida, n))),
+      );
+    }
+
+    const inicio = await readFile(join(salida, "index.html"), "utf8");
+    for (const def of [...DATASETS.values(), ...CURADOS]) {
+      const { as_of, sources } = (await leerJson(join(real, def.directorio, "manifest.json"))) as {
+        as_of: string;
+        sources: { name: string; url: string; license: string; license_url: string }[];
+      };
+      expect(inicio, def.id).toContain(`<span class="id">${def.id}</span>`);
+      expect(inicio, def.id).toContain(`<time datetime="${as_of}">`);
+      // Toda fuente real es https y sale enlazada, igual que su licencia.
+      for (const f of sources) {
+        expect(inicio, f.url).toContain(enlaceSeguro(f.url, f.name));
+        expect(inicio, f.license_url).toContain(enlaceSeguro(f.license_url, f.license));
+        expect(enlaceSeguro(f.url, f.name), f.url).toMatch(/^<a href="https:/);
+      }
+    }
+    // Cada enlace al repositorio apunta a un archivo que existe, incluidas las docs de cada dataset.
+    const repo = fileURLToPath(new URL("../../../../", import.meta.url));
+    const enlaces = [...inicio.matchAll(/href="([^"]+)"/g)]
+      .map((m) => m[1] as string)
+      .filter((href) => href.startsWith(`${URL_ARCHIVOS}/`))
+      .map((href) => href.slice(URL_ARCHIVOS.length + 1));
+    expect(enlaces.length).toBeGreaterThanOrEqual(DATASETS.size + CURADOS.length + 5);
+    expect(enlaces).toContain("docs/datos/inegi-estados.md");
+    for (const ruta of enlaces) {
+      await expect(readFile(join(repo, ruta)), ruta).resolves.toBeDefined();
     }
   }, 120_000);
 });

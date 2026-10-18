@@ -236,8 +236,8 @@ function shard(destino: (p: Parametros) => readonly [asset: string, recurso: str
 
 const fijo = (asset: string, recurso: string) => shard(() => [asset, recurso]);
 
+// `/` no está: es la página de inicio del sitio y la sirven los assets.
 export const RUTAS: readonly Ruta[] = [
-  { plantilla: "/", patron: /^\/$/, manejar: indice },
   { plantilla: "/v1", patron: /^\/v1$/, manejar: indice },
   {
     plantilla: "/v1/estados",

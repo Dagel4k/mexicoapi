@@ -281,7 +281,15 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
     const salida = join(aparte, "sitio");
     expect(await principal(["construir", "--salida", salida], entorno)).toBe(0);
     expect(entorno.salida.join("")).toContain("sitio:");
-    expect((await readdir(salida)).sort()).toEqual(["_headers", "descargas", "v1"]);
+    expect((await readdir(salida)).sort()).toEqual([
+      "404.html",
+      "_headers",
+      "descargas",
+      "estilo.css",
+      "index.html",
+      "robots.txt",
+      "v1",
+    ]);
   });
 
   it("sale 1 con el mensaje si los datos no verifican o falta la salida", async () => {

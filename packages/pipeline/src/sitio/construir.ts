@@ -42,6 +42,11 @@ import {
   metaDesdeManifiesto,
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
+import { archivoEncabezados } from "./paginas/encabezados.js";
+import { ESTILO } from "./paginas/estilo.js";
+import { paginaInicio } from "./paginas/inicio.js";
+import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
+import { ROBOTS } from "./paginas/robots.js";
 import { partirPorAnio } from "./series.js";
 import { construirSqlite, type FilaDataset } from "./sqlite.js";
 
@@ -103,13 +108,6 @@ const COLUMNAS_ISR = [
   "cuota_fija",
   "tasa_excedente",
   ...COLUMNAS_FUENTE,
-];
-
-const SEGURIDAD = [
-  "Access-Control-Allow-Origin: *",
-  "X-Content-Type-Options: nosniff",
-  "Content-Security-Policy: default-src 'none'",
-  "Cache-Control: public, max-age=3600, stale-while-revalidate=86400",
 ];
 
 function automatico(id: string): Ubicacion {
@@ -194,21 +192,6 @@ function validarSalida(raizDatos: string, salida: string): void {
 }
 
 const json = (valor: unknown): string => JSON.stringify(valor);
-
-function tipoContenido(nombre: string): string {
-  if (nombre.endsWith(".json")) return "application/json; charset=utf-8";
-  if (nombre.endsWith(".csv")) return "text/csv; charset=utf-8";
-  if (nombre.endsWith(".sqlite")) return "application/vnd.sqlite3";
-  return "text/plain; charset=utf-8";
-}
-
-function encabezados(descargas: readonly string[]): string {
-  const reglas = descargas.map(
-    (nombre) => `/descargas/${nombre}\n  Content-Type: ${tipoContenido(nombre)}\n`,
-  );
-  reglas.push(`/descargas/*\n${SEGURIDAD.map((l) => `  ${l}`).join("\n")}\n`);
-  return reglas.join("\n");
-}
 
 /** Orden por unidades de código UTF-16, igual que el resto de los datos. */
 const porNombre = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -405,7 +388,25 @@ export async function construirSitio(opciones: {
   const sumas = nombres.map((n) => `${sha256Hex(descargas.get(n) as Uint8Array | string)}  ${n}\n`);
   descargas.set("SHA256SUMS", sumas.join(""));
   for (const [nombre, contenido] of descargas) archivos.set(`descargas/${nombre}`, contenido);
-  archivos.set("_headers", encabezados([...descargas.keys()].sort(porNombre)));
+  archivos.set("_headers", archivoEncabezados([...descargas.keys()].sort(porNombre)));
+
+  archivos.set(
+    "index.html",
+    paginaInicio({
+      datasets: [...cargados, ...curados].map((c) => ({
+        id: c.manifiesto.dataset,
+        directorio: c.directorio,
+        as_of: c.manifiesto.as_of,
+        registros: c.manifiesto.records,
+        fuentes: c.manifiesto.sources,
+        docs: c.meta.docs,
+      })),
+      descargas,
+    }),
+  );
+  archivos.set("404.html", paginaNoEncontrada());
+  archivos.set("estilo.css", ESTILO);
+  archivos.set("robots.txt", ROBOTS);
 
   await escribirDirectorioAtomico(opciones.salida, archivos);
 
