@@ -12,6 +12,8 @@
  * tampoco en la raíz de un inputSchema.
  */
 
+import { esFechaIsoValida } from "mexicoapi";
+
 export type EsquemaJson = { readonly [clave: string]: unknown };
 
 /** Devuelve la lista de errores; vacía si el valor cumple el esquema. */
@@ -110,18 +112,12 @@ function compilarPatron(patron: string): RegExp | undefined {
   }
 }
 
-function esBisiesto(anio: number): boolean {
-  return (anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0;
-}
-
-/** `full-date` de RFC 3339: AAAA-MM-DD con dígitos ASCII y una fecha que existe. */
-function esFecha(texto: string): boolean {
-  const partes = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(texto);
-  if (partes === null) return false;
-  const [anio, mes, dia] = partes.slice(1).map(Number) as [number, number, number];
-  const dias = [31, esBisiesto(anio) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  return mes >= 1 && mes <= 12 && dia >= 1 && dia <= (dias[mes - 1] as number);
-}
+/**
+ * `full-date` de RFC 3339 con la regla del paquete (esFechaIsoValida): AAAA-MM-DD con dígitos
+ * ASCII y una fecha que existe, de 0001 a 9999. Así una fecha que el paquete rechaza no pasa el
+ * esquema para fallar después con otro texto.
+ */
+const esFecha = esFechaIsoValida;
 
 const FECHA_HORA =
   /^([0-9]{4}-[0-9]{2}-[0-9]{2})[Tt]([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:[Zz]|[+-]([0-9]{2}):([0-9]{2}))$/;

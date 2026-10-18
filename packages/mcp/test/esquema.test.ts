@@ -242,6 +242,8 @@ describe("compilarEsquema: format, const, minItems y maxItems", () => {
     "2024-01-01T00:00:00Z",
     " 2024-01-01",
     "２０２４-01-01",
+    // La regla de esFechaIsoValida de mexicoapi: no hay año 0000 (las fechas van de 0001 a 9999).
+    "0000-01-01",
   ])("date rechaza %j", (valor) => {
     expect(fecha(valor)).toEqual(["el valor debe ser una fecha AAAA-MM-DD válida"]);
   });
@@ -267,6 +269,7 @@ describe("compilarEsquema: format, const, minItems y maxItems", () => {
     "2024-01-01T00:00:00+05:60",
     "2024-01-01T00:00:00.Z",
     "2024-01-01",
+    "0000-01-01T00:00:00Z",
   ])("date-time rechaza %j", (valor) => {
     expect(fechaHora(valor)).toEqual(["el valor debe ser una fecha y hora RFC 3339 válida"]);
   });
