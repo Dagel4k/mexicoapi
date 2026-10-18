@@ -243,6 +243,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "estilo.css",
         "favicon.svg",
         "index.html",
+        "llms-full.txt",
+        "llms.txt",
         "robots.txt",
         "sitio.js",
         "v1/_internos/calendarios/cnbv.json",
@@ -795,6 +797,26 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(fuente.toString("utf8").startsWith("// @ts-check\n")).toBe(true);
   });
 
+  // Un dataset nuevo sale de los manifiestos que carga el build, igual que en la página de inicio.
+  it("escribe llms.txt con un renglón por dataset y llms-full.txt con las docs", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const llms = await readFile(join(salida, "llms.txt"), "utf8");
+    const defs = [...DATASETS.values(), ...CURADOS];
+    const renglones = llms.split("\n").filter((l) => /^- .*, as_of /.test(l));
+    expect(renglones).toHaveLength(defs.length);
+    for (const def of defs) {
+      const { as_of } = (await leerJson(join(datos, def.directorio, "manifest.json"))) as {
+        as_of: string;
+      };
+      expect(llms, def.id).toContain(`: \`${def.id}\`, as_of ${as_of}, `);
+    }
+    expect(llms).toContain(`(${URL_DOCS}/datos/inegi-estados.md): \`inegi.estados\``);
+    const completo = await readFile(join(salida, "llms-full.txt"), "utf8");
+    expect(completo.startsWith("# docs/api/README.md\n\n# API v1\n")).toBe(true);
+    expect(completo).toContain("\n# docs/api/problemas.md\n\n");
+    expect(completo).toContain("\n# docs/datos/udis.md\n\n");
+  });
+
   it("es determinista", async () => {
     await construirSitio({ raizDatos: datos, salida });
     const primera = new Map(
@@ -1064,6 +1086,8 @@ describe("con los datos reales del repositorio", () => {
       "estilo.css",
       "favicon.svg",
       "robots.txt",
+      "llms.txt",
+      "llms-full.txt",
       "_headers",
     ]) {
       expect(archivos).toContain(n);
@@ -1101,6 +1125,44 @@ describe("con los datos reales del repositorio", () => {
     expect(inicio).toContain("<code>/v1/dias-inhabiles?autoridad=cnbv&amp;anio={anio}</code>");
     expect(inicio).toContain("<code>/v1/udis?fecha={fecha}</code>");
     for (const ruta of enlaces) {
+      await expect(readFile(join(repo, ruta)), ruta).resolves.toBeDefined();
+    }
+
+    // llms.txt: cada dataset con el as_of de su manifiesto.
+    const llms = await readFile(join(salida, "llms.txt"), "utf8");
+    for (const def of [...DATASETS.values(), ...CURADOS]) {
+      const { as_of } = (await leerJson(join(real, def.directorio, "manifest.json"))) as {
+        as_of: string;
+      };
+      expect(llms, def.id).toContain(`\`${def.id}\`, as_of ${as_of}, `);
+    }
+
+    // llms-full.txt: la referencia, los errores y cada doc de dataset, en ese orden y completos.
+    const completo = await readFile(join(salida, "llms-full.txt"), "utf8");
+    const deDatos = (await readdir(join(repo, "docs", "datos"))).filter((n) => n.endsWith(".md"));
+    const orden = [
+      "docs/api/README.md",
+      "docs/api/problemas.md",
+      ...deDatos.sort().map((n) => `docs/datos/${n}`),
+    ];
+    expect(completo.match(/^# docs\/.+$/gm)).toEqual(orden.map((r) => `# ${r}`));
+    for (const ruta of orden) {
+      const titulo = (await readFile(join(repo, ruta), "utf8")).split("\n")[0] as string;
+      expect(completo, ruta).toContain(`# ${ruta}\n\n${titulo}\n`);
+    }
+    // Ningún enlace relativo sobrevive y cada uno reescrito apunta a un archivo del repositorio.
+    const destinos = [...completo.matchAll(/\]\(([^)\s]*)/g)].map((m) => m[1] as string);
+    expect(destinos.length).toBeGreaterThan(50);
+    const reescritos: string[] = [];
+    for (const destino of destinos) {
+      expect(destino, destino).toMatch(/^(https:\/\/|#)/);
+      if (destino.startsWith(`${URL_ARCHIVOS}/`)) {
+        reescritos.push(destino.slice(URL_ARCHIVOS.length + 1).split("#")[0] as string);
+      }
+    }
+    expect(reescritos).toContain("DATA_LICENSE.md");
+    expect(reescritos).toContain("docs/operacion/datos-curados.md");
+    for (const ruta of reescritos) {
       await expect(readFile(join(repo, ruta)), ruta).resolves.toBeDefined();
     }
   }, 120_000);

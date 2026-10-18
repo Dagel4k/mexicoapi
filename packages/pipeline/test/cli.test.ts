@@ -289,6 +289,8 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "estilo.css",
       "favicon.svg",
       "index.html",
+      "llms-full.txt",
+      "llms.txt",
       "robots.txt",
       "sitio.js",
       "v1",
