@@ -196,9 +196,16 @@ function motivoHttp(respuesta) {
   return `la API respondió ${status}.`;
 }
 
-/** @param {unknown} error */
+/**
+ * La única señal de la consulta es la de tiempo: un `AbortError` también lo es. Algunos
+ * navegadores y versiones de `fetch` rechazan con él en vez de con el `TimeoutError` de la señal.
+ * @param {unknown} error
+ */
 const esTiempoAgotado = (error) =>
-  typeof error === "object" && error !== null && "name" in error && error.name === "TimeoutError";
+  typeof error === "object" &&
+  error !== null &&
+  "name" in error &&
+  (error.name === "TimeoutError" || error.name === "AbortError");
 
 /**
  * Pide `/v1/status` y devuelve el cuerpo JSON. La señal corta la petición y la lectura del

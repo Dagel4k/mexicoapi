@@ -391,6 +391,14 @@ describe("consultarEstado", () => {
     expect(await motivo(consultarEstado(pedir))).toBe("la API no respondió en 10 s.");
   });
 
+  // Navegadores y fetch más viejos rechazan con AbortError aunque la señal sea de tiempo.
+  it("un AbortError también es tiempo agotado, no falta de conexión", async () => {
+    const { pedir } = pedirCon(async () => {
+      throw new DOMException("The operation was aborted.", "AbortError");
+    });
+    expect(await motivo(consultarEstado(pedir))).toBe("la API no respondió en 10 s.");
+  });
+
   it("la señal corta la petición cuando se acaba la espera", async () => {
     const { pedir } = pedirCon(hastaQueSeCorte);
     expect(await motivo(consultarEstado(pedir, 20))).toBe("la API no respondió en 0.02 s.");
