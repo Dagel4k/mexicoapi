@@ -5,6 +5,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
+import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 import { enlaceSeguro } from "../../../src/sitio/paginas/html.js";
 import {
@@ -28,6 +29,7 @@ const DATASETS: DatasetInicio[] = [
   {
     id: "inegi.estados",
     directorio: "inegi-estados",
+    tipo: "automatico",
     as_of: "2026-10-17",
     registros: 32,
     docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/inegi-estados.md",
@@ -50,6 +52,7 @@ const DATASETS: DatasetInicio[] = [
   {
     id: "constantes.uma",
     directorio: "constantes-uma",
+    tipo: "curado",
     as_of: "2026-01-09",
     registros: 1234567,
     docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/constantes-uma.md",
@@ -63,6 +66,7 @@ const DATASETS: DatasetInicio[] = [
   {
     id: "nuevo.dataset",
     directorio: "nuevo-dataset",
+    tipo: "automatico",
     as_of: "2026-05-01",
     registros: 7,
     docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/nuevo-dataset.md",
@@ -136,6 +140,30 @@ describe("página de inicio", () => {
       expect(suyas[0]).toContain(`<a href="${d.docs}">`);
     }
     expect(filas[1]).toContain(">1,234,567</td>");
+  });
+
+  // La misma palabra que /estado/ para la fecha de los datos; el tipo dice quién los actualiza.
+  it("distingue automáticos y curados, y llama Datos al a la fecha, como /estado/", () => {
+    const cabecera = html.slice(
+      html.indexOf('<caption id="tabla-datos">'),
+      html.indexOf("</thead>"),
+    );
+    expect([...cabecera.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1])).toEqual([
+      "Dataset",
+      "Tipo",
+      "Datos al",
+      "Registros",
+      "Fuente y licencia",
+      "API",
+      "Descargas",
+    ]);
+    const [estados, uma, nuevo] = renglones(html, "tabla-datos") as [string, string, string];
+    expect(estados).toContain('<td class="junto">Automático</td>');
+    expect(uma).toContain('<td class="junto">Curado</td>');
+    expect(nuevo).toContain('<td class="junto">Automático</td>');
+    expect(html).not.toContain("Actualizado");
+    expect(paginaEstado()).toContain('<th scope="col">Datos al</th>');
+    expect(html).toContain("<em>Datos al</em>");
   });
 
   it("muestra el nombre y la ruta de la API del catálogo, y un dataset nuevo con su id", () => {

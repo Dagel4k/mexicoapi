@@ -416,9 +416,13 @@ export async function construirSitio(opciones: {
   for (const [nombre, contenido] of descargas) archivos.set(`descargas/${nombre}`, contenido);
   archivos.set("_headers", archivoEncabezados([...descargas.keys()].sort(porNombre)));
 
-  const datasets = [...cargados, ...curados].map((c) => ({
+  const datasets = [
+    ...cargados.map((c) => ({ c, tipo: "automatico" as const })),
+    ...curados.map((c) => ({ c, tipo: "curado" as const })),
+  ].map(({ c, tipo }) => ({
     id: c.manifiesto.dataset,
     directorio: c.directorio,
+    tipo,
     as_of: c.manifiesto.as_of,
     registros: c.manifiesto.records,
     fuentes: c.manifiesto.sources,

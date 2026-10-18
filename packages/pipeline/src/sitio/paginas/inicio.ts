@@ -16,6 +16,8 @@ export interface DatasetInicio {
   id: string;
   /** Carpeta en `data/` y prefijo de sus descargas. */
   directorio: string;
+  /** Lo actualiza un bot desde su fuente o una persona desde publicaciones oficiales. */
+  tipo: "automatico" | "curado";
   as_of: string;
   registros: number;
   fuentes: readonly FuenteInicio[];
@@ -160,6 +162,7 @@ function datos(entrada: EntradaInicio): string {
     const fecha = escaparHtml(d.as_of);
     return `<tr>
 <th scope="row">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span></th>
+<td class="junto">${d.tipo === "curado" ? "Curado" : "Automático"}</td>
 <td class="junto"><time datetime="${fecha}">${fecha}</time></td>
 <td class="num">${formatearEntero(d.registros)}</td>
 <td class="fuentes">${fuentes(d.fuentes)}</td>
@@ -169,12 +172,12 @@ function datos(entrada: EntradaInicio): string {
   });
   return `<section id="datos" aria-labelledby="titulo-datos">
 <h2 id="titulo-datos">Datos</h2>
-<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. La fecha es la de su última actualización; en <a href="/estado/">Estado</a> se ve si cada uno está al día.</p>
+<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es la fecha de su última actualización; en <a href="/estado/">Estado</a> se ve si cada uno está al día.</p>
 <div class="tabla" role="region" aria-labelledby="tabla-datos" tabindex="0">
 <table>
 <caption id="tabla-datos">${entrada.datasets.length} datasets, con su fecha, fuente y licencia</caption>
 <thead>
-<tr><th scope="col">Dataset</th><th scope="col">Actualizado</th><th scope="col" class="num">Registros</th><th scope="col">Fuente y licencia</th><th scope="col">API</th><th scope="col">Descargas</th></tr>
+<tr><th scope="col">Dataset</th><th scope="col">Tipo</th><th scope="col">Datos al</th><th scope="col" class="num">Registros</th><th scope="col">Fuente y licencia</th><th scope="col">API</th><th scope="col">Descargas</th></tr>
 </thead>
 <tbody>
 ${filas.join("\n")}
