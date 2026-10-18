@@ -134,7 +134,10 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
     );
   }
 
-  /** robots.txt del host; null significa que todo está permitido. */
+  /**
+   * robots.txt del host; null significa que todo está permitido. Un 4xx definitivo permite
+   * todo; un 429 o un 5xx tras los reintentos es "no disponible": se lanza y no se guarda.
+   */
   function robotsDe(url: string): Promise<string | null> {
     const { host, origin } = new URL(url);
     let p = robots.get(host);
@@ -142,7 +145,13 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
       p = pedir(`${origin}/robots.txt`).then(
         (r) => new TextDecoder().decode(r.cuerpo),
         (e: unknown) => {
-          if (e instanceof ErrorHttp && e.estado !== null && e.estado >= 400 && e.estado < 500) {
+          if (
+            e instanceof ErrorHttp &&
+            e.estado !== null &&
+            e.estado >= 400 &&
+            e.estado < 500 &&
+            e.estado !== 429
+          ) {
             return null;
           }
           robots.delete(host);
