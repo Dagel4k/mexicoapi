@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CSP_404 } from "../../../src/sitio/paginas/encabezados.js";
 import { documento, enlaceSeguro, escaparHtml } from "../../../src/sitio/paginas/html.js";
 import { desescapar, esperarDocumentoValido, problemasDeEtiquetas } from "./estructura.js";
 
@@ -104,6 +105,19 @@ describe("documento", () => {
     expect(html).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
     expect(html).not.toContain("<script");
     expect(html.endsWith("</html>\n")).toBe(true);
+    // Las páginas con regla en _headers no repiten la política en meta: una CSP en meta sin
+    // script-src bloquearía sitio.js.
+    expect(html).not.toContain("http-equiv");
+    expect(html).not.toContain('name="referrer"');
+  });
+
+  it("con seguridadEnMeta pone la CSP del 404 y el referrer después del charset", () => {
+    const html = documento({ ...base, seguridadEnMeta: true });
+    esperarDocumentoValido(html);
+    expect(html).toContain(
+      `<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${CSP_404}">\n` +
+        '<meta name="referrer" content="no-referrer">\n<meta name="viewport"',
+    );
   });
 
   it("carga cada script como módulo del mismo origen", () => {

@@ -4,8 +4,8 @@
  * ruta tiene una sola regla con todo lo suyo.
  *
  * No hay regla `/*`: chocaría con la CSP, el nosniff y la caché de `/descargas/*` y de cada ruta
- * del sitio. Por eso el 404 (cualquier URL que no es un asset) sale sin CSP; es una página
- * estática, sin scripts, que no repite nada de la petición.
+ * del sitio. El 404 (cualquier URL que no es un asset) no recibe reglas, así que lleva `CSP_404`
+ * y su política de referrer en `<meta>`.
  */
 
 type Encabezados = readonly (readonly [string, string])[];
@@ -18,6 +18,13 @@ interface Regla {
 export const CSP_PAGINAS =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; " +
   "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+/**
+ * La CSP del 404, en `<meta http-equiv>`: solo la hoja de estilo y el favicon. Sin
+ * `frame-ancestors`, que en una meta no vale y el navegador avisa en la consola.
+ */
+export const CSP_404 =
+  "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'";
 
 /** Lo que no es una página no carga nada. */
 const CSP_ARCHIVOS = "default-src 'none'";
