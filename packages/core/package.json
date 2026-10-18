@@ -8,6 +8,16 @@
       "@mexicoapi/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./curados": {
+      "@mexicoapi/source": "./src/dias-habiles/curados.ts",
+      "types": "./dist/dias-habiles/curados.d.ts",
+      "import": "./dist/dias-habiles/curados.js"
+    },
+    "./constantes": {
+      "@mexicoapi/source": "./src/constantes/consulta.ts",
+      "types": "./dist/constantes/consulta.d.ts",
+      "import": "./dist/constantes/consulta.js"
     }
   },
   "scripts": {

@@ -1,25 +1,29 @@
 import type {
   AutoridadCurada,
   CoberturaCurada,
-  DiaInhabil,
+  CoberturaSerie,
   DiaInhabilCurado,
   FechaISO,
   FuenteDof,
   TipoPlazo,
 } from "@mexicoapi/core";
-import { PLAZOS, type PlazoCalendario, type RangoFechas, revisarPlazos } from "../curado/plazos.js";
+import {
+  type DatosCalendarioCurado,
+  PLAZOS,
+  type PlazoCalendario,
+  revisarPlazos,
+} from "@mexicoapi/core/curados";
 import { ErrorDatos } from "../errores.js";
 import { anioDe } from "../fecha.js";
 
-export type { PlazoCalendario } from "../curado/plazos.js";
+export type { PlazoCalendario } from "@mexicoapi/core/curados";
 
 /**
- * `v1/_internos/calendarios/<autoridad>.json`: lo que el Worker pasa a `crearCalendario`. Un
- * plazo usa solo los días de `dias` que caen en su cobertura, porque `crearCalendario` rechaza
- * los de afuera (en el SAT, el 25 de diciembre queda fuera de `general`).
+ * `v1/_internos/calendarios/<autoridad>.json`: lo que el Worker pasa a `crearCalendarioCurado`
+ * del núcleo, que arma un calendario por tipo de plazo con los días de su cobertura (en el SAT,
+ * el 25 de diciembre queda fuera de `general`).
  */
-export interface ShardCalendario {
-  autoridad: AutoridadCurada;
+export interface ShardCalendario extends DatosCalendarioCurado {
   /** `general` siempre; el SAT agrega `declaraciones_pagos`. */
   plazos: { general: PlazoCalendario; declaraciones_pagos?: PlazoCalendario };
   /**
@@ -28,7 +32,7 @@ export interface ShardCalendario {
    */
   fuentes_fin_de_semana: Record<string, FuenteDof>;
   /** Todos los días curados, por fecha, sin `autoridad`. */
-  dias: DiaInhabil[];
+  dias: Omit<DiaInhabilCurado, "autoridad">[];
 }
 
 /**
@@ -37,7 +41,7 @@ export interface ShardCalendario {
  */
 function fuentesFinDeSemana(
   registros: readonly DiaInhabilCurado[],
-  amplia: RangoFechas,
+  amplia: CoberturaSerie,
   dataset: string,
 ): Record<string, FuenteDof> {
   const fuentes: Record<string, FuenteDof> = {};

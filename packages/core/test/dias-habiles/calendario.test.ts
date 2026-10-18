@@ -93,6 +93,10 @@ describe("crearCalendario", () => {
         expect(err.message).toContain(f);
         expect(err.message).toContain("2026-01-01");
         expect(err.message).toContain("2026-12-31");
+        // El texto para quien consulta, como el `detail` de la API.
+        expect(err.detalle).toBe(
+          `El calendario del SAT no cubre ${f}; cubre del 2026-01-01 al 2026-12-31.`,
+        );
       }
     }
   });
@@ -218,5 +222,20 @@ describe("calendarioLft", () => {
   it("lanza fuera de cobertura", () => {
     expect(() => c.inhabil("2101-01-01")).toThrow(CalendarioIncompletoError);
     expect(() => c.inhabil("2006-12-31")).toThrow(CalendarioIncompletoError);
+    try {
+      c.inhabil("2101-01-01");
+    } catch (e) {
+      expect((e as CalendarioIncompletoError).detalle).toBe(
+        "El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+      );
+    }
+  });
+
+  it("un detalle propio reemplaza al de omisión", () => {
+    const error = new CalendarioIncompletoError("cnbv", "2027-01-01", cobertura, "Otro texto.");
+    expect(error.detalle).toBe("Otro texto.");
+    expect(new CalendarioIncompletoError("cnbv", "2027-01-01", cobertura).detalle).toBe(
+      "El calendario de la CNBV no cubre 2027-01-01; cubre del 2026-01-01 al 2026-12-31.",
+    );
   });
 });
