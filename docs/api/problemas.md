@@ -83,7 +83,7 @@ Qué hacer: agrega el parámetro que indica `parametro`.
 
 ## no-encontrado
 
-Status 404. La ruta no existe, o el estado, municipio o banco tiene un formato correcto pero no está en el catálogo. Una ruta con `%` tampoco se encuentra.
+Status 404. La ruta no existe dentro de `/v1`, o el estado, municipio o banco tiene un formato correcto pero no está en el catálogo. Una ruta con `%` tampoco se encuentra. Fuera de `/v1` (`/v2`, `/descargas/nada`), una dirección que no existe responde 404 con una página HTML y no con este tipo.
 
 ```bash
 curl https://<base>/v1/estados/99
