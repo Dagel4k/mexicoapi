@@ -101,6 +101,8 @@ curl https://<base>/v1/estados/99
 
 Si la ruta no existe, el `detail` es `No existe la ruta.`
 
+En las constantes (`/v1/constantes/...` y `/v1/isr/tarifa/...`), lo da un año anterior al primero cargado: los datos no lo tienen y no lo tendrán. El `detail` dice qué años hay (`No existe la UMA de 2016 en los datos; los años cargados van de 2017 a 2026.`). Ver [Constantes](README.md#constantes).
+
 En el tipo de cambio FIX y las UDIS, este tipo es definitivo y el problema trae además `fecha` (la pedida) y `cobertura` (la primera y la última fecha de la serie). Si el dato puede llegar después, el tipo es [`dato-no-disponible`](#dato-no-disponible).
 
 - En el FIX: ese día no hubo publicación en el DOF (un fin de semana o un feriado bancario), o la fecha es anterior al inicio de la serie. Con `publicado`, un sábado o domingo posterior a lo cargado también lo da si entre el último dato y esa fecha solo hay fin de semana. Con `operacion`, lo da una operación hasta el primer día de la serie, porque la publicación que aplica es anterior a ella.
@@ -162,6 +164,8 @@ curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"
 }
 ```
 
+En las constantes, lo da un año posterior al último cargado, que puede llegar cuando el DOF lo publique (`Todavía no se carga la UMA de 2030; los años cargados van de 2017 a 2026.`). Ver [Constantes](README.md#constantes).
+
 A diferencia de `no-encontrado`, la respuesta puede cambiar: los datos se actualizan una vez al día.
 
 Qué hacer: reintenta después de la siguiente actualización. [`/v1/status`](README.md#status) dice cuándo se actualizó cada dataset.
@@ -188,7 +192,7 @@ Qué hacer: usa `GET`.
 
 ## calendario-incompleto
 
-Status 422. El cálculo cruza fechas que el calendario no cubre. Hoy el calendario `lft` va del 2007-01-01 al 2100-12-31. El problema trae además `autoridad`, `fecha` (la primera fecha sin cobertura) y `cobertura`.
+Status 422. El cálculo cruza fechas que el calendario no cubre. Hoy el calendario `lft` va del 2007-01-01 al 2100-12-31, el de la `cnbv` del 2025-01-01 al 2026-12-31 y el del `sat` del 2026-01-01 al 2026-12-31 (con `tipo_plazo=general`, hasta el 2026-11-30). El problema trae además `autoridad`, `fecha` (la primera fecha sin cobertura) y `cobertura`.
 
 ```bash
 curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
@@ -209,7 +213,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
 
 También lo da `dias-inhabiles` con un `anio` fuera de la cobertura.
 
-Qué hacer: acota la consulta a la cobertura. Con `permitir_incompleto=true`, `dias-habiles` calcula fuera de ella descontando solo fines de semana y avisa en `advertencias`. Ver [dias-habiles](README.md#dias-habiles).
+Qué hacer: acota la consulta a la cobertura. Con `permitir_incompleto=true`, `dias-habiles` calcula fuera de ella y avisa en `advertencias`: descuenta solo fines de semana o, en un plazo del SAT que tiene respaldo, también los días ya publicados. Ver [dias-habiles](README.md#dias-habiles).
 
 ## demasiadas-peticiones
 

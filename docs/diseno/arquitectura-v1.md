@@ -36,7 +36,7 @@ MéxicoAPI publica los datos de referencia de México que todo sistema necesita.
 | Bancos y participantes SPEI | JSON del portal CEP de Banxico (códigos), cruzado con el PDF oficial de participantes (nombres y participación) | Automático; altas y bajas con revisión humana | Banxico: autorización general con cita | Sí |
 | Tipo de cambio FIX y UDIS, desde 2020-01-01 | SIDOF del DOF (JSON sin token): tipos 158 y 159 | Automático diario | Publicación oficial del DOF | Sí |
 | Días inhábiles: Ley Federal del Trabajo (cualquier año, por reglas), bancos/CNBV (2025–2026) y SAT (2026) | DOF, LFT art. 74, disposiciones de la CNBV, CFF art. 12 y regla 2.1.6 de la RMF | Curado, con cita al DOF | Textos oficiales | Sí |
-| UMA (2017–2026), salario mínimo (2019–2026) y tarifas de ISR (2026) | INEGI, CONASAMI, Anexo 8 de la RMF | Curado, con cita al DOF | INEGI libre; CONASAMI CC-BY; textos oficiales | Sí |
+| UMA (2017–2026), salario mínimo (2019–2026) y tarifas de ISR (mensual 2026, anuales 2025 y 2026) | INEGI, resolución de la CONASAMI y Anexo 8 de la RMF, tal como se publican en el DOF | Curado, con cita al DOF | UMA: términos de libre uso del INEGI. Salario mínimo y tarifas: texto oficial del DOF, que no es objeto de derecho de autor (LFDA art. 14, fracción VIII) | Sí |
 | Validadores: CLABE (con banco y plaza), RFC, CURP y NSS (formato y dígito verificador) | Algoritmos públicos (sección 8.1) | Código propio, sin dependencias | MIT | Sí |
 | Códigos postales y colonias (SEPOMEX) | Correos de México | **Lo descarga cada usuario** (sección 7) | "Uso particular… ni su distribución a terceros" | **No** |
 
@@ -119,7 +119,9 @@ mexicoapi/
 │  ├─ bancos/           # bancos.json, manifest.json, raw/
 │  ├─ tipo-cambio-fix/  # fix.json (toda la serie), manifest.json, raw/ (un crudo por año)
 │  ├─ udis/             # udis.json (toda la serie), manifest.json, raw/ (un crudo por año)
-│  └─ curado/           # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
+│  ├─ curado/           # YAML que transcribe una persona, con cita al DOF (sección 8)
+│  ├─ dias-inhabiles-cnbv/, dias-inhabiles-sat/   # JSON canónico generado por `curar`
+│  └─ constantes-uma/, constantes-salario-minimo/, isr-tarifas/   # ídem
 ├─ scripts/verify.sh
 ├─ .github/workflows/  # ci, datos, despliegue, publicación, seguridad, frescura
 ├─ README.md  LICENSE  DATA_LICENSE.md  SECURITY.md  CONTRIBUTING.md
@@ -179,10 +181,10 @@ Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura s
 | `plazas-clabe` | `codigo` (3), `plaza`, `estado` | `codigo` |
 | `tipo-cambio.fix` | `fecha_publicacion`, `valor` (texto con 4 decimales) | `fecha_publicacion` |
 | `udis` | `fecha`, `valor` (texto con 6 decimales) | `fecha` |
-| `dias-inhabiles` | `fecha`, `autoridad` (`lft`, `cnbv`, `sat`), `motivo`, `fuente` (`url` del DOF, `fecha_publicacion`, `fragmento`) | `autoridad + fecha` |
+| `dias-inhabiles.cnbv`, `dias-inhabiles.sat` | `fecha`, `autoridad` (`cnbv` o `sat`), `motivo`, `tipo` (`descanso` o `vacaciones`; la CNBV solo tiene `descanso`), `fuente` (`nombre`, `url`, `fecha_publicacion`, `fragmento`). Los días de la LFT no son un dataset: salen de una función del núcleo | `fecha` en cada dataset |
 | `constantes.uma` | `anio`, `diaria`, `mensual`, `anual`, `vigencia_desde`, `fuente` | `anio` |
 | `constantes.salario-minimo` | `anio`, `zona` (`general`, `zlfn`), `diario`, `vigencia_desde`, `fuente` | `anio + zona` |
-| `isr.tarifa` | `anio`, `periodo` (`mensual`, `anual`), tramos: `limite_inferior`, `limite_superior`, `cuota_fija`, `tasa_excedente`; `fuente` | `anio + periodo` |
+| `isr.tarifas` | `anio`, `periodo` (`mensual`, `anual`), `tramos`: `limite_inferior`, `limite_superior`, `cuota_fija`, `tasa_excedente`; `fuente` | `anio + periodo` |
 
 Reglas de normalización:
 
@@ -239,11 +241,24 @@ Es la defensa contra fuentes rotas o manipuladas.
 
 ### Datos curados
 
-Son YAML en `data/curado/`. CI exige en cada registro:
+Cinco datasets se transcriben a mano del DOF: `dias-inhabiles.cnbv`, `dias-inhabiles.sat`, `constantes.uma`, `constantes.salario-minimo` e `isr.tarifas`. Cada uno tiene un YAML en `data/curado/` y una carpeta generada en `data/` con su JSON canónico y su manifiesto. Los días de la LFT no se transcriben: salen de una función del núcleo.
 
-- `fuente.url` del DOF (o de la ley vigente en diputados.gob.mx);
-- `fuente.fecha_publicacion`;
-- `fuente.fragmento`, el texto citado.
+El YAML declara en `fuentes` cada publicación una sola vez (`nombre`, `url`, `fecha_publicacion`, `fragmento` literal, `licencia` y `licencia_url`) y cada registro apunta a una por su clave. El comando `curar` (sin red) valida el YAML y genera `data/<dataset>/`; el JSON nunca se edita a mano. `verificar` regenera esos archivos desde el YAML y falla si no coinciden byte a byte. El procedimiento está en [docs/operacion/datos-curados.md](../operacion/datos-curados.md).
+
+CI exige en cada fuente:
+
+- `url` del DOF, del SIDOF o de la ley vigente en diputados.gob.mx; en una nota del DOF, la fecha de la URL coincide con `fecha_publicacion`;
+- `fecha_publicacion`;
+- `fragmento`, el texto citado.
+
+Además, cada dataset pasa invariantes que atrapan errores de captura, con montos en centavos enteros:
+
+- UMA: mensual igual a la diaria por 30.4, anual igual a la mensual por 12, vigencia el 1 de febrero, y el fragmento contiene los montos;
+- salario mínimo: vigencia el 1 de enero, el fragmento contiene el monto y la zona de la Frontera Norte es mayor que la general;
+- ISR: los tramos encadenan, las tasas crecen y son las mismas en todas las tarifas, y cada cuota fija es la anterior más el impuesto completo del tramo anterior, con una tolerancia de un centavo. Lo que pase de eso se declara en `excepciones_cuota_fija` con el valor publicado y el recalculado, y falla si no hace falta;
+- días inhábiles: cada día cae dentro de la cobertura de su tipo, y los días de regla ("tercer lunes de noviembre") se recalculan a partir del `motivo`.
+
+**Cobertura.** Los calendarios declaran en el YAML el rango en que su lista está completa, por tipo de día. El build la lleva a la API junto con la cobertura de cada `tipo_plazo`, que es la intersección de las coberturas de los tipos de día que ese plazo cuenta. Hoy el SAT tiene `descanso` hasta el 2026-12-31 y `vacaciones` hasta el 2026-11-30, porque el segundo periodo de vacaciones de 2026 no se ha publicado: `declaraciones_pagos`, que no cuenta las vacaciones, llega al 2026-12-31 y `general` al 2026-11-30. La CNBV cubre 2025 y 2026.
 
 Las reglas fijas de la LFT (por ejemplo, el primer lunes de febrero) se calculan con una función del núcleo y se prueban año por año.
 
@@ -288,9 +303,9 @@ Tres reglas aplican a todas las autoridades:
 - `general`: sí cuenta las vacaciones como inhábiles.
 - `declaraciones_pagos`: no las cuenta como inhábiles.
 
-**Calendario incompleto.** Si el cálculo cruza un año cuyo calendario no está completo, la API responde **422** problem+json de tipo `calendario-incompleto`, y nombra el año y la autoridad que faltan. Hoy ese es el caso del SAT 2027, y del 2026 mientras falte su segundo periodo de vacaciones.
+**Calendario incompleto.** Si el cálculo cruza fechas que el calendario no cubre, la API responde **422** problem+json de tipo `calendario-incompleto`, con la autoridad, la primera fecha sin cobertura y la cobertura. Cuando el SAT `general` no llega pero `declaraciones_pagos` sí, el `detail` lo dice. Hoy la CNBV cubre 2025 y 2026, el SAT 2026, y el SAT `general` solo hasta el 2026-11-30 mientras falte su segundo periodo de vacaciones.
 
-Solo con `permitir_incompleto=true` calcula con lo conocido, y entonces responde con `advertencias[]`. Un plazo legal equivocado sin aviso es peor que un error.
+Solo con `permitir_incompleto=true` calcula con lo conocido, y entonces responde con `advertencias[]`. Un plazo legal equivocado sin aviso es peor que un error. Si un plazo es más corto que la cobertura más amplia del calendario (el SAT `general`), calcula con un calendario de respaldo: el mismo plazo sobre la cobertura amplia y todos los días publicados en ella. Así, fuera de la cobertura del plazo siguen descontándose el 25 de diciembre y los demás días ya conocidos, y no solo los fines de semana. Si el cálculo pasa por esa zona, lo advierte nombrando los tipos de día que pueden faltar. Pasada la cobertura más amplia solo se descuentan fines de semana, y la advertencia del núcleo nombra la autoridad en mayúsculas (`Calendario incompleto: SAT 2027; …`).
 
 ### Tipo de cambio FIX
 
@@ -358,17 +373,18 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública. Entra como 
 | `GET /v1/clabe/{clabe}` | `valido`, `formato_valido`, `digito_verificador_valido`, `errores[]` y `detalle` (`banco`, `plaza`, `cuenta`, `digito_control`). La CLABE de un banco inactivo tiene formato válido y lleva `banco.activo: false` | Worker (función pura) |
 | `GET /v1/tipo-cambio/fix?publicado=AAAA-MM-DD` · `?operacion=AAAA-MM-DD` · `/v1/tipo-cambio/fix/ultimo` | FIX por fecha de publicación o para una operación (sección 8.1) | Worker sobre archivos anuales estáticos |
 | `GET /v1/udis?fecha=AAAA-MM-DD` | Valor de la UDI | Worker sobre archivos anuales estáticos |
-| `GET /v1/dias-inhabiles?autoridad=lft&anio=2026` | Lista con citas | Worker (función pura) |
-| `GET /v1/dias-habiles?autoridad=lft&desde=AAAA-MM-DD&dias=15` | Fecha resultante, días inhábiles saltados con su cita, `advertencias[]`; 422 si el calendario está incompleto (sección 8.1) | Worker (función pura) |
+| `GET /v1/dias-inhabiles?autoridad=lft\|cnbv\|sat&anio=2026` | `{ data, advertencias, meta }`: lista con citas. `advertencias` (de primer nivel, distinta de `data.advertencias` de `dias-habiles`) avisa cuando la lista solo está completa para algunos tipos de plazo, como el SAT 2026. 422 si el año no está en la cobertura | LFT: Worker (función pura). CNBV y SAT: Worker sobre un archivo estático del calendario |
+| `GET /v1/dias-habiles?autoridad=lft\|cnbv\|sat&desde=AAAA-MM-DD&dias=15` (con `sat`, `&tipo_plazo=general\|declaraciones_pagos`, obligatorio) | Fecha resultante, días inhábiles saltados con su cita, `advertencias[]`; 422 si el calendario está incompleto (sección 8.1) | Worker (núcleo puro; los calendarios curados vienen de un archivo estático) |
 | `GET /v1/plazas-clabe` | Catálogo de referencia de plazas | Estático |
-| `GET /v1/constantes/uma/{anio}` · `/v1/constantes/salario-minimo/{anio}` · `/v1/isr/tarifa/{periodo}/{anio}` | Valores con fuente | Estático |
+| `GET /v1/constantes/uma?fecha=AAAA-MM-DD` | La UMA vigente ese día (rige del 1 de febrero al 31 de enero siguiente) | Worker sobre la lista estática |
+| `GET /v1/constantes/uma/{anio}` · `/v1/constantes/salario-minimo/{anio}` · `/v1/isr/tarifa/{periodo}/{anio}` | Valores con fuente. Un año anterior al primero cargado da 404 `no-encontrado`; uno posterior al último, 404 `dato-no-disponible` | Estático (un archivo por año) |
 | `GET /v1/status` | Frescura y estado de cada dataset (build más KV) | Worker: lee KV con caché de 60 s |
 | `GET /v1/openapi.json` | Especificación OpenAPI 3.1 | Estático |
 | `GET /descargas/*` | JSON, CSV y `mexicoapi.sqlite` completos | Estático |
 
-Hoy están implementadas las rutas de estados, municipios, bancos, `clabe`, `dias-habiles` y `dias-inhabiles` (solo `lft`), `status` y `openapi.json`. `autoridad` acepta solo `lft` hasta que existan los calendarios curados de CNBV y SAT; agregar valores al enum es compatible. Las demás filas de la tabla llegan con sus datasets, y entonces `dias-habiles` agrega `tipo_plazo` para el SAT (sección 8.1).
+Todas las rutas de la tabla están implementadas, salvo `plazas-clabe`, que espera su catálogo.
 
-`dias-habiles` acepta `dias` de 1 a 3650. Con `permitir_incompleto=true` calcula fuera de la cobertura del calendario (2007-01-01 a 2100-12-31) con `advertencias`; si no, responde 422 `calendario-incompleto`.
+`dias-habiles` acepta `dias` de 1 a 3650. Con `permitir_incompleto=true` calcula fuera de la cobertura del calendario con `advertencias` (secciones 8 y 8.1); si no, responde 422 `calendario-incompleto`. La cobertura de la LFT es de 2007-01-01 a 2100-12-31.
 
 ### Validación de entradas
 
@@ -504,7 +520,9 @@ Decisiones de la API (secciones 9 y 13), con lo que pasa si resultan equivocadas
 | Caché sin `s-maxage` | `max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`: un caché compartido de 24 h rompería la meta de frescura | Más revalidaciones; con `ETag` son 304 baratos |
 | `type` de los errores | Apuntan a `docs/api/problemas.md` en GitHub, una URI absoluta y estable sin dominio propio | Si llega un dominio, los `type` se quedan como identificadores |
 | Parámetros estrictos | Un parámetro desconocido o repetido da 400 | Un cliente que agrega `?_=` para romper el caché recibe 400 |
-| Autoridad `lft` | `dias-habiles` y `dias-inhabiles` aceptan solo `lft` hasta que existan los calendarios curados de CNBV y SAT | Agregar valores al enum es compatible |
+| Autoridades y `tipo_plazo` | `dias-habiles` y `dias-inhabiles` aceptan `lft`, `cnbv` y `sat`; con `sat`, `dias-habiles` exige `tipo_plazo` porque las vacaciones no son inhábiles en declaraciones y pagos | Agregar valores al enum es compatible |
+| SAT, 2 y 3 de abril de 2026 | Se capturan como `vacaciones`: en declaraciones y pagos cuentan como hábiles y el plazo vence antes, el lado seguro | Un plazo que cruza esos días vence dos días antes de lo que algunos interpretarían |
+| Cobertura del SAT `general` | Termina el 2026-11-30 mientras no se publique el segundo periodo de vacaciones | Un plazo general que llega a diciembre da 422 hasta que se capture el periodo |
 | Bancos inactivos en `clabe` | La CLABE de un banco inactivo tiene formato válido y la respuesta lo marca con `activo: false` | El cliente decide; no se le oculta el banco |
 | CSV | RFC 4180: UTF-8 sin BOM y `\r\n`. El build falla ante campos que empiezan con `=`, `+`, `-` o `@` en vez de alterarlos | Excel en Windows puede mostrar mal los acentos con doble clic; se documenta importar como UTF-8 |
 | Pruebas del Worker | Unidad en Node con `ASSETS` falso y contrato en workerd real con `unstable_startWorker`, dentro de `verify.sh` | Si wrangler cambia esa API inestable, se ajusta la prueba |
@@ -529,7 +547,7 @@ Pendientes:
 5. **SDK:** cliente, datos offline, `sepomex sync`.
 6. **MCP stdio.**
 7. **Tipo de cambio y UDIS** desde SIDOF, con histórico.
-8. **Datos curados:** días inhábiles (LFT, CNBV, SAT 2025–2026), UMA, salario mínimo, ISR 2026, todo verificado en el DOF.
+8. **Datos curados:** días inhábiles (LFT, CNBV 2025–2026, SAT 2026), UMA, salario mínimo e ISR, todo transcrito del DOF con su cita.
 9. **Sitio de documentación:** Astro, OpenAPI, status, llms.txt.
 10. **Endurecimiento:** workflows de seguridad, procedencia de npm, Scorecard, revisión de seguridad.
 11. **Lanzamiento** (fase 3 del proyecto).
