@@ -214,6 +214,19 @@ describe("observacionesCompactas", () => {
     expect(r.map((x) => x.fecha)).toEqual(["2020-01-01", "2020-01-02", "2020-01-03"]);
   });
 
+  it("ordena las entradas por unidades de código, no según el idioma", () => {
+    // localeCompare da 0 entre formas canónicamente equivalentes; con él, el orden de llegada
+    // cambiaría la firma de una misma lista.
+    const X: EntradaCep = ["40012", "É"];
+    const Y: EntradaCep = ["40012", "É"];
+    const r = observacionesCompactas([
+      o("2020-01-01", [X, Y]),
+      o("2020-01-02", [Y, X]),
+      o("2020-01-03", B),
+    ]);
+    expect(r.map((x) => x.fecha)).toEqual(["2020-01-01", "2020-01-03"]);
+  });
+
   it("maneja listas vacías y de un elemento", () => {
     expect(observacionesCompactas([])).toEqual([]);
     expect(observacionesCompactas([o("2020-01-01", A)])).toHaveLength(1);

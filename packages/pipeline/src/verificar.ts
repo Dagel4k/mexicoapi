@@ -1,19 +1,21 @@
 import type { Dirent } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { esFechaIsoValida } from "@mexicoapi/core";
 import { z } from "zod";
 import { aNfc, jsonCanonico, sha256Hex } from "./canonico.js";
 import { DATASETS } from "./registro.js";
 
 const RUTA_CRUDO = /^raw\/[A-Za-z0-9._-]+$/;
 const SHA256 = /^[0-9a-f]{64}$/;
-const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const INSTANTE_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+const fecha = z.string().refine(esFechaIsoValida, "no es una fecha ISO válida");
 
 const esquemaManifiesto = z.strictObject({
   dataset: z.string(),
   schema_version: z.literal(1),
   as_of: fecha,
-  fetched_at: z.string(),
+  fetched_at: z.string().regex(INSTANTE_UTC, "no es un instante ISO en UTC"),
   data_file: z.string(),
   data_sha256: z.string().regex(SHA256),
   records: z.number().int().nonnegative(),
