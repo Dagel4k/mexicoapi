@@ -17,13 +17,11 @@ const RAIZ = fileURLToPath(new URL("../../../../../", import.meta.url));
 const DATASETS: DatasetLlms[] = [
   {
     id: "inegi.estados",
-    directorio: "inegi-estados",
     as_of: "2026-10-17",
     docs: `${URL_DOCS}/datos/inegi-estados.md`,
   },
   {
     id: "dias-inhabiles.cnbv",
-    directorio: "dias-inhabiles-cnbv",
     as_of: "2025-12-20",
     docs: `${URL_DOCS}/datos/dias-inhabiles-cnbv.md`,
   },
@@ -95,7 +93,6 @@ describe("llms.txt", () => {
   it("cada ruta del catálogo sale tal cual, con sus parámetros obligatorios", () => {
     const todos = Object.keys(CATALOGO).map((id) => ({
       id,
-      directorio: id,
       as_of: "2026-10-17",
       docs: `${URL_DOCS}/datos/${id}.md`,
     }));
@@ -109,7 +106,6 @@ describe("llms.txt", () => {
       ...DATASETS,
       {
         id: "nuevo.dataset",
-        directorio: "nuevo-dataset",
         as_of: "2026-10-18",
         docs: `${URL_DOCS}/datos/nuevo-dataset.md`,
       },
@@ -125,12 +121,11 @@ describe("llms.txt", () => {
     const raro = archivoLlms([
       {
         id: "a](https://malo.mx)\n## b `c`",
-        directorio: "a",
         as_of: "2026-10-18\r\n# x",
         docs: "javascript:alert(1)",
       },
-      { id: "d", directorio: "d", as_of: "2026-10-18", docs: "http://inseguro.mx/d.md" },
-      { id: "e", directorio: "e", as_of: "2026-10-18", docs: "https://ejemplo.mx/con espacio" },
+      { id: "d", as_of: "2026-10-18", docs: "http://inseguro.mx/d.md" },
+      { id: "e", as_of: "2026-10-18", docs: "https://ejemplo.mx/con espacio" },
     ]);
     const datos = raro.split("\n## Datos\n")[1]?.split("\n## ")[0] ?? "";
     expect(datos).not.toContain("javascript:");
