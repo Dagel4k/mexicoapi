@@ -33,7 +33,7 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 - Si el pipeline pide revisión pero no hay cambios en `data/`, abre (o comenta en) un issue `Revisar datos: <grupo>`.
 - Si el bot ya tiene un PR abierto para el grupo (una rama `datos/<grupo>-…` del propio repo, con o sin etiqueta), no abre otro: comenta en ese PR con el resumen nuevo y el enlace a la corrida. Si además los cambios piden revisión, abre (o comenta en) el issue `Revisar datos: <grupo>` con los motivos. Cuando ese PR lleva más de 48 horas abierto o tiene algún check en rojo, abre (o comenta en) el issue `PR de datos atascado: <grupo>`. Si esa consulta a GitHub falla, la corrida deja un aviso y sigue, así que el issue de revisión se abre igual.
 - Si el pipeline falla, abre (o comenta en) un issue `Falla en datos: <grupo>` y la corrida queda en rojo.
-- Al terminar, con los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` escribe en KV el estado de cada dataset para `/v1/status`. Sin esos secretos deja un aviso y sigue; si la escritura falla, deja una advertencia y no cambia el resultado de la corrida. Si la corrida falla antes del CLI no hay resumen y no se escribe nada.
+- Al terminar, con los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` escribe en KV el estado de cada dataset para `/v1/status`. Sin esos secretos deja un aviso y sigue (cómo crearlos: [Despliegue en Cloudflare](cloudflare.md)); si la escritura falla, deja una advertencia y no cambia el resultado de la corrida. Si la corrida falla antes del CLI no hay resumen y no se escribe nada.
 
 ## Qué nunca hace
 

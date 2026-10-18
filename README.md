@@ -49,7 +49,7 @@ Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los
 
 ## API
 
-API de solo lectura, con respuestas JSON `{ data, meta }`, descargas completas y especificación OpenAPI. Se publicará primero en `workers.dev` y después en un dominio propio; el despliegue público viene después. La referencia está en [docs/api/README.md](docs/api/README.md) y los errores en [docs/api/problemas.md](docs/api/problemas.md).
+API de solo lectura, con respuestas JSON `{ data, meta }`, descargas completas y especificación OpenAPI. Se publicará primero en `workers.dev` y después en un dominio propio; el despliegue público viene después (los pasos están en [docs/operacion/cloudflare.md](docs/operacion/cloudflare.md)). La referencia está en [docs/api/README.md](docs/api/README.md) y los errores en [docs/api/problemas.md](docs/api/problemas.md).
 
 ```bash
 curl https://<base>/v1/estados/25
