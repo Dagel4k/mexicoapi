@@ -129,14 +129,17 @@ jobs:
           name: paquete-mexicoapi
           path: ${{ runner.temp }}/tgz
 
+      # --offline: mexicoapi no tiene dependencias y el .tgz es local, así que npm no consulta el
+      # registro. Con tiempo límite, un npm colgado no espera hasta el del job.
       - name: Instalar el paquete y probarlo
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           dir="$(mktemp -d)"
           cp packages/sdk/test/paquete/humo.mjs "${dir}/"
           cd "${dir}"
           printf '{"name":"consumidor","private":true,"type":"module"}\n' > package.json
-          npm install --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
+          npm install --offline --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
           node humo.mjs
 
   # El mismo .tgz fuera de Node: instalado con npm en un proyecto nuevo, Bun y Deno corren la prueba
@@ -182,13 +185,14 @@ jobs:
 
       - name: Instalar el paquete
         id: instalar
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           dir="$(mktemp -d)"
           cp packages/sdk/test/paquete/universal.mjs "${dir}/"
           cd "${dir}"
           printf '{"name":"consumidor","private":true,"type":"module"}\n' > package.json
-          npm install --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
+          npm install --offline --no-audit --no-fund --no-package-lock --ignore-scripts "${RUNNER_TEMP}"/tgz/mexicoapi-*.tgz
           echo "CONSUMIDOR=${dir}" >> "${GITHUB_ENV}"
 
       # --no-install: Bun no instala nada por su cuenta; usa el node_modules de npm.
@@ -262,6 +266,7 @@ jobs:
       # --offline: npm no consulta el registro, donde mexicoapi todavía no existe. La dependencia
       # mexicoapi@^<versión> del servidor la cumple el .tgz local que se instala en el mismo comando.
       - name: Instalar los dos paquetes y probarlos
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           dir="$(mktemp -d)"

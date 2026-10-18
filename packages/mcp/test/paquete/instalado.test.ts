@@ -18,7 +18,11 @@ const leerJson = async (ruta: string): Promise<Record<string, unknown>> =>
 describe("mexicoapi-mcp instalado desde su .tgz", () => {
   it("pasa la prueba de humo con este Node (la misma que corre CI en Node 22.13.0, 22.23.3 y 24.21.0)", async () => {
     await copyFile(HUMO, join(dir, "humo.mjs"));
-    const r = spawnSync(process.execPath, ["humo.mjs"], { cwd: dir, encoding: "utf8" });
+    const r = spawnSync(process.execPath, ["humo.mjs"], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 120_000,
+    });
     expect(r.status, r.stdout + r.stderr).toBe(0);
     expect(r.stdout).toMatch(/^humo: tools\/list: 13 herramientas$/m);
     expect(r.stdout).toMatch(/^humo: tools\/call udis$/m);

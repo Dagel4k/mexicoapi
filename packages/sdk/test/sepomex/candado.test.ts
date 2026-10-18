@@ -104,7 +104,7 @@ it("toma un candado abandonado hace más de 10 minutos", async () => {
 });
 
 it("toma el candado de un proceso que ya terminó en este equipo", async () => {
-  const hijo = spawnSync(process.execPath, ["-e", ""]);
+  const hijo = spawnSync(process.execPath, ["-e", ""], { timeout: 30_000 });
   expect(hijo.status).toBe(0);
   await mkdir(dir, { recursive: true });
   await candado({ pid: hijo.pid, host: hostname(), desde: new Date().toISOString(), ficha: "x" });

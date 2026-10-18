@@ -442,7 +442,7 @@ describe("principal", () => {
   });
 
   it("como script sale con el código de principal", () => {
-    const r = spawnSync(process.execPath, [SCRIPT, "otro"], { encoding: "utf8" });
+    const r = spawnSync(process.execPath, [SCRIPT, "otro"], { encoding: "utf8", timeout: 30_000 });
     expect(r.status).toBe(2);
     expect(r.stderr).toMatch(/uso:/);
   });

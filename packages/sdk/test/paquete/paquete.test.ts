@@ -261,13 +261,17 @@ describe("dist", () => {
   ])("sus tipos compilan en un proyecto que lo usa con resolución %s", (_nombre, opciones) => {
     const r = spawnSync(process.execPath, [TSC, "-p", CONSUMIDOR, ...opciones], {
       encoding: "utf8",
+      timeout: 120_000,
     });
     expect(r.stdout + r.stderr).toBe("");
     expect(r.status).toBe(0);
   });
 
   it("el cliente acepta el fetch y el AbortSignal de un proyecto con los tipos del DOM", () => {
-    const r = spawnSync(process.execPath, [TSC, "-p", CONSUMIDOR_DOM], { encoding: "utf8" });
+    const r = spawnSync(process.execPath, [TSC, "-p", CONSUMIDOR_DOM], {
+      encoding: "utf8",
+      timeout: 120_000,
+    });
     expect(r.stdout + r.stderr).toBe("");
     expect(r.status).toBe(0);
   });
