@@ -72,7 +72,7 @@ describe("sumarDiasHabiles", () => {
     // 31 dic (jue) = 1; 1 ene (vie) = 2; 4, 5, 6 ene = 5.
     expect(r.resultado).toBe("2027-01-06");
     expect(r.advertencias).toEqual([
-      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
     ]);
   });
 
@@ -84,7 +84,7 @@ describe("sumarDiasHabiles", () => {
       permitirIncompleto: true,
     });
     expect(r.advertencias).toEqual([
-      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
     ]);
     const r2 = sumarDiasHabiles({
       calendario: sat2026,
@@ -93,8 +93,8 @@ describe("sumarDiasHabiles", () => {
       permitirIncompleto: true,
     });
     expect(r2.advertencias).toEqual([
-      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
-      "Calendario incompleto: sat 2028; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2028; solo se descontaron fines de semana.",
     ]);
   });
 

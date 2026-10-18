@@ -154,7 +154,7 @@ describe("GET /v1/dias-habiles", () => {
         dias: 5,
         resultado: "2101-01-06",
         inhabiles_saltados: [],
-        advertencias: ["Calendario incompleto: lft 2101; solo se descontaron fines de semana."],
+        advertencias: ["Calendario incompleto: LFT 2101; solo se descontaron fines de semana."],
       },
       meta: META_LFT,
     });

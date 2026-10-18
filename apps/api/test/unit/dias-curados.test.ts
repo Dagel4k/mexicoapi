@@ -233,7 +233,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
         resultado: "2027-01-01",
         advertencias: [
           AVISO_GENERAL,
-          "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+          "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
         ],
       });
       expect(fechas(cuerpo.data.inhabiles_saltados)).toEqual(["2026-12-25"]);
@@ -248,7 +248,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       const { cuerpo } = await datos(permitir("2026-12-31", 1));
       expect(cuerpo.data).toMatchObject({
         resultado: "2027-01-01",
-        advertencias: ["Calendario incompleto: sat 2027; solo se descontaron fines de semana."],
+        advertencias: ["Calendario incompleto: SAT 2027; solo se descontaron fines de semana."],
       });
     });
 
@@ -256,7 +256,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       const { cuerpo } = await datos(permitir("2025-12-30", 2));
       expect(cuerpo.data).toMatchObject({
         resultado: "2026-01-02",
-        advertencias: ["Calendario incompleto: sat 2025; solo se descontaron fines de semana."],
+        advertencias: ["Calendario incompleto: SAT 2025; solo se descontaron fines de semana."],
       });
     });
   });
@@ -276,7 +276,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       sat("declaraciones_pagos", "2026-12-31", 1, "&permitir_incompleto=true"),
     );
     expect(permitido.cuerpo.data.advertencias).toEqual([
-      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
     ]);
   });
 
@@ -397,7 +397,7 @@ describe("GET /v1/dias-habiles?autoridad=cnbv", () => {
     const { cuerpo } = await datos(cnbv("2026-12-31", 1, "&permitir_incompleto=true"));
     expect(cuerpo.data).toMatchObject({
       resultado: "2027-01-01",
-      advertencias: ["Calendario incompleto: cnbv 2027; solo se descontaron fines de semana."],
+      advertencias: ["Calendario incompleto: CNBV 2027; solo se descontaron fines de semana."],
     });
   });
 });
