@@ -265,3 +265,25 @@ describe("bancos-historico", () => {
     }
   });
 });
+
+describe("construir", () => {
+  it("construye el sitio con los datos actualizados y sale 0", async () => {
+    expect(await principal(["actualizar", ...TODOS], await crearEntorno(raiz))).toBe(0);
+    const entorno = await crearEntorno(raiz);
+    const salida = join(aparte, "sitio");
+    expect(await principal(["construir", "--salida", salida], entorno)).toBe(0);
+    expect(entorno.salida.join("")).toContain("sitio:");
+    expect((await readdir(salida)).sort()).toEqual(["_headers", "descargas", "v1"]);
+  });
+
+  it("sale 1 con el mensaje si los datos no verifican o falta la salida", async () => {
+    expect(await principal(["actualizar", "inegi.estados"], await crearEntorno(raiz))).toBe(0);
+    await rm(join(raiz, "inegi-estados", "estados.json"));
+    const entorno = await crearEntorno(raiz);
+    expect(await principal(["construir", "--salida", join(aparte, "x")], entorno)).toBe(1);
+    expect(entorno.errores.join("")).toContain("construir: los datos no verifican");
+    expect(await principal(["construir"], entorno)).toBe(1);
+    expect(entorno.errores.join("")).toContain("Falta --salida");
+    expect(await principal(["construir", "--salida", "x", "--seco"], entorno)).toBe(1);
+  });
+});
