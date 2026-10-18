@@ -145,8 +145,7 @@ describe("enlaces a la documentación", () => {
       `${URL_DOCS}/api/README.md#dias-habiles`,
       `${URL_DOCS}/api/README.md#dias-habiles`,
       `${URL_DOCS}/api/README.md#dias-inhabiles`,
-      // La UMA por fecha responde con la meta de su dataset, igual que sus shards.
-      `${URL_DOCS}/datos/constantes-uma.md`,
+      `${URL_DOCS}/api/README.md#constantes`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,
       `${URL_DOCS}/api/README.md#tipo-de-cambio-fix`,

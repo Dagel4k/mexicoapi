@@ -218,6 +218,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.manifest.json",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
+        "v1/_internos/constantes.json",
         "v1/_internos/fix/2024.json",
         "v1/_internos/fix/2025.json",
         "v1/_internos/fix/2026.json",
@@ -465,6 +466,14 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       const shard = await leerJson(join(salida, `v1/isr/tarifa/${t.periodo}/${t.anio}.json`));
       expect(shard, `${t.periodo} ${t.anio}`).toEqual({ data: t, meta: meta("isr.tarifas") });
     }
+    // Los años de cada carpeta: el Worker distingue un año anterior a los datos de uno que
+    // todavía no se carga.
+    expect(await leerJson(join(salida, "v1/_internos/constantes.json"))).toEqual({
+      "constantes/salario-minimo": [2025, 2026],
+      "constantes/uma": [2025, 2026],
+      "isr/tarifa/anual": [2025, 2026],
+      "isr/tarifa/mensual": [2026],
+    });
     const mensual = await leerJson(join(salida, "v1/isr/tarifa/mensual/2026.json"));
     expect(mensual.data.tramos).toHaveLength(11);
     expect(mensual.data.tramos.at(-1)).toEqual({
@@ -843,6 +852,20 @@ describe("con los datos reales del repositorio", () => {
       const { data } = await leerJson(join(salida, `v1/isr/tarifa/${t.periodo}/${t.anio}.json`));
       expect(data, `${t.periodo} ${t.anio}`).toEqual(t);
     }
+    // El índice de años coincide con los shards de cada carpeta.
+    const indice = (await leerJson(join(salida, "v1/_internos/constantes.json"))) as Record<
+      string,
+      number[]
+    >;
+    for (const [carpeta, anios] of Object.entries(indice)) {
+      expect(await shards(carpeta), carpeta).toEqual(anios.map((a) => `${a}.json`).sort());
+    }
+    expect(Object.keys(indice).sort()).toEqual([
+      "constantes/salario-minimo",
+      "constantes/uma",
+      "isr/tarifa/anual",
+      "isr/tarifa/mensual",
+    ]);
     for (const [def, autoridad] of [
       [curadoDiasCnbv, "cnbv"],
       [curadoDiasSat, "sat"],

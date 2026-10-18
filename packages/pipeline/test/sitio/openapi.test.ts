@@ -364,6 +364,31 @@ describe("documento OpenAPI", () => {
     expect(op.responses["404"]).toEqual({ $ref: "#/components/responses/SinDato" });
   });
 
+  it("las constantes por año responden 404 con los dos tipos: antes de los datos o todavía no cargado", () => {
+    for (const ruta of [
+      "/v1/constantes/uma/{anio}",
+      "/v1/constantes/salario-minimo/{anio}",
+      "/v1/isr/tarifa/{periodo}/{anio}",
+    ]) {
+      const op = operaciones.find((o) => o.ruta === ruta)?.op as Obj;
+      expect(op.responses["404"], ruta).toEqual({ $ref: "#/components/responses/SinAnio" });
+    }
+    const { description } = doc.components.responses.SinAnio;
+    expect(description).toContain("no-encontrado");
+    expect(description).toContain("dato-no-disponible");
+    expect(doc.components.responses.SinAnio.content).toEqual({
+      "application/problem+json": { schema: { $ref: "#/components/schemas/Problema" } },
+    });
+  });
+
+  it("permitir_incompleto dice que fuera de la cobertura se descuentan los días publicados", () => {
+    const op = operaciones.find((o) => o.ruta === "/v1/dias-habiles")?.op as Obj;
+    const permitir = (op.parameters as Obj[]).find((p) => p.name === "permitir_incompleto");
+    expect(permitir?.description).toContain("publicados");
+    expect(permitir?.description).toContain("advertencia");
+    expect(permitir?.description).toContain("fines de semana");
+  });
+
   it("las constantes van en la etiqueta Constantes y responden su esquema", () => {
     const constantes = operaciones
       .filter((o) => o.op.tags.includes("Constantes"))

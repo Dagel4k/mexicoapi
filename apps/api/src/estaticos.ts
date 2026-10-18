@@ -34,16 +34,23 @@ function coincide(condicion: string, etag: string | null): boolean {
 }
 
 /**
- * Sirve el shard `ruta` (armada solo con parámetros validados). `recurso` nombra lo pedido en
- * el 404, por ejemplo "el estado 33".
+ * Sirve el shard `ruta` (armada solo con parámetros validados). Si no existe, `siFalta` es lo
+ * pedido para el 404 ("el estado 33") o la función que arma la respuesta.
  */
-export async function servirShard(c: Contexto, ruta: string, recurso: string): Promise<Response> {
+export async function servirShard(
+  c: Contexto,
+  ruta: string,
+  siFalta: string | (() => Promise<Response>),
+): Promise<Response> {
   const asset = await pedirAsset(c.entorno, ruta);
   if (asset.status !== 200) {
     await descartar(asset);
-    return asset.status === 404
-      ? respuestaProblema("no-encontrado", `No existe ${recurso}.`, undefined, c.url.pathname)
-      : respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, c.url.pathname);
+    if (asset.status !== 404) {
+      return respuestaProblema("error-interno", DETALLE_ERROR_INTERNO, undefined, c.url.pathname);
+    }
+    return typeof siFalta === "string"
+      ? respuestaProblema("no-encontrado", `No existe ${siFalta}.`, undefined, c.url.pathname)
+      : siFalta();
   }
 
   const h = encabezados({ "Cache-Control": CACHE_DATOS });

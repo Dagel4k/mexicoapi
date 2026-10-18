@@ -33,7 +33,13 @@ import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
 import { shardCalendario } from "./calendarios.js";
 import { aCsv } from "./csv.js";
-import { FRESCURA_HORAS, type Meta, type MetaInterna, metaDesdeManifiesto } from "./meta.js";
+import {
+  type AniosConstantes,
+  FRESCURA_HORAS,
+  type Meta,
+  type MetaInterna,
+  metaDesdeManifiesto,
+} from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
 import { partirPorAnio } from "./series.js";
 import { construirSqlite, type FilaDataset } from "./sqlite.js";
@@ -275,6 +281,22 @@ export async function construirSitio(opciones: {
     shard(`v1/constantes/salario-minimo/${anio}.json`, zonas, salario.meta);
   }
   for (const t of isr.registros) shard(`v1/isr/tarifa/${t.periodo}/${t.anio}.json`, t, isr.meta);
+  // Los años de cada carpeta de constantes: con ellos el Worker distingue un año anterior a los
+  // datos (no existe) de uno posterior al último cargado (todavía no se carga).
+  const anios = new Map<string, number[]>([
+    ["constantes/salario-minimo", [...salarioPorAnio.keys()]],
+    ["constantes/uma", uma.registros.map((u) => u.anio)],
+  ]);
+  for (const t of isr.registros) {
+    const carpeta = `isr/tarifa/${t.periodo}`;
+    anios.set(carpeta, [...(anios.get(carpeta) ?? []), t.anio]);
+  }
+  const indice: AniosConstantes = Object.fromEntries(
+    [...anios]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([carpeta, lista]) => [carpeta, [...lista].sort((a, b) => a - b)]),
+  );
+  archivos.set("v1/_internos/constantes.json", json(indice));
 
   const cargados = [estados, municipios, bancos, fix, udis];
   const curados = [diasCnbv, diasSat, uma, salario, isr];

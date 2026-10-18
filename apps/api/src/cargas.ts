@@ -282,6 +282,12 @@ export interface PlazoCurado {
   /** Tipos de día que no son inhábiles en este plazo. */
   readonly excluirTipos: readonly TipoDiaCurado[];
   readonly calendario: Calendario;
+  /**
+   * Solo si la cobertura del plazo es más corta que la amplia: el mismo plazo con la cobertura
+   * amplia y todos los días publicados en ella. Con `permitir_incompleto` calcula con lo
+   * conocido fuera de la cobertura del plazo en vez de descontar solo fines de semana.
+   */
+  readonly respaldo?: Calendario;
 }
 
 /** El calendario de una autoridad como lo escribe el build, ya revisado. */
@@ -377,15 +383,21 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
     dias.push(dia);
   }
   const plazos = new Map<TipoPlazo, PlazoCurado>();
-  for (const [tipo, { cobertura, excluirTipos }] of leidos) {
-    const calendario = crearCalendario({
+  const armar = (cobertura: CoberturaSerie, excluirTipos: readonly TipoDiaCurado[]) =>
+    crearCalendario({
       autoridad,
       cobertura,
       dias: dias.filter((d) => dentro(d.fecha, cobertura)),
       fuenteFinDeSemana,
       excluirTipos,
     });
-    plazos.set(tipo, Object.freeze({ cobertura, excluirTipos, calendario }));
+  for (const [tipo, { cobertura, excluirTipos }] of leidos) {
+    const calendario = armar(cobertura, excluirTipos);
+    const completo = contiene(cobertura, amplia);
+    const plazo = completo
+      ? { cobertura, excluirTipos, calendario }
+      : { cobertura, excluirTipos, calendario, respaldo: armar(amplia, excluirTipos) };
+    plazos.set(tipo, Object.freeze(plazo));
   }
   return Object.freeze({
     autoridad,
@@ -394,6 +406,29 @@ function aCalendarioCurado(valor: unknown, autoridad: AutoridadCurada): Calendar
     amplia,
     dias: Object.freeze(dias),
   });
+}
+
+const esAnio = (v: unknown): v is number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 1900 && v <= 2100;
+
+/**
+ * `v1/_internos/constantes.json`: carpeta de constantes (`constantes/uma`,
+ * `isr/tarifa/mensual`...) → años con shard, en orden estricto.
+ */
+function aAniosConstantes(valor: unknown): ReadonlyMap<string, readonly number[]> {
+  if (!esObjeto(valor)) throw new Error("El índice de años de las constantes no es un objeto.");
+  const anios = new Map<string, readonly number[]>();
+  for (const [carpeta, lista] of Object.entries(valor)) {
+    if (
+      !Array.isArray(lista) ||
+      lista.length === 0 ||
+      !lista.every((anio, i) => esAnio(anio) && (i === 0 || anio > lista[i - 1]))
+    ) {
+      throw new Error("El índice de años de las constantes tiene una lista inesperada.");
+    }
+    anios.set(carpeta, Object.freeze([...(lista as number[])]));
+  }
+  return new MapaCongelado(anios);
 }
 
 /** La UMA de cada año, en años consecutivos, con la meta del dataset. */
@@ -411,10 +446,7 @@ function aUma(v: unknown): Uma | undefined {
   const { anio, diaria, mensual, anual, vigencia_desde } = v;
   const fuente = aFuenteDof(v.fuente);
   if (
-    typeof anio !== "number" ||
-    !Number.isInteger(anio) ||
-    anio < 1900 ||
-    anio > 2100 ||
+    !esAnio(anio) ||
     !esMonto(diaria) ||
     !esMonto(mensual) ||
     !esMonto(anual) ||
@@ -461,6 +493,7 @@ let bancos: ReadonlyMap<string, BancoCatalogo> | undefined;
 const shards = new Map<string, ShardSerie<unknown>>();
 const calendarios = new Map<AutoridadCurada, CalendarioCurado>();
 let umas: ListaUma | undefined;
+let anios: ReadonlyMap<string, readonly number[]> | undefined;
 
 /** `v1/_internos/meta.json`, leído una vez por isolate. */
 export async function metaInterna(entorno: Entorno): Promise<MetaInterna> {
@@ -533,10 +566,19 @@ export async function listaUma(entorno: Entorno): Promise<ListaUma> {
   return umas;
 }
 
+/** `v1/_internos/constantes.json`, leído una vez por isolate. */
+export async function aniosConstantes(
+  entorno: Entorno,
+): Promise<ReadonlyMap<string, readonly number[]>> {
+  anios ??= aAniosConstantes(await leerJson(entorno, "/v1/_internos/constantes.json"));
+  return anios;
+}
+
 export function reiniciarCargas(): void {
   meta = undefined;
   bancos = undefined;
   shards.clear();
   calendarios.clear();
   umas = undefined;
+  anios = undefined;
 }

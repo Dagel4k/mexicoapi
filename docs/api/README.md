@@ -271,7 +271,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
   "title": "Calendario incompleto",
   "status": 422,
-  "detail": "El calendario de lft no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
+  "detail": "El calendario de la LFT no cubre 2101-01-01; cubre del 2007-01-01 al 2100-12-31.",
   "instance": "/v1/dias-habiles",
   "autoridad": "lft",
   "fecha": "2101-01-01",
@@ -467,6 +467,15 @@ curl "https://<base>/v1/udis?fecha=2026-12-01"
   "cobertura": { "desde": "2020-01-01", "hasta": "2026-10-25" }
 }
 ```
+
+## Constantes
+
+Valores publicados en el DOF, con la cita de cada uno en `fuente`:
+
+- `GET /v1/constantes/uma?fecha=AAAA-MM-DD`: la UMA vigente ese día. Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero responde la del año anterior.
+- `GET /v1/constantes/uma/{anio}`, `GET /v1/constantes/salario-minimo/{anio}` y `GET /v1/isr/tarifa/{periodo}/{anio}` (`periodo` es `mensual` o `anual`): los valores de ese año.
+
+Un año anterior a los datos cargados da 404 `no-encontrado`; uno posterior al último cargado da 404 `dato-no-disponible`, porque puede llegar con la siguiente actualización.
 
 ## status
 

@@ -531,17 +531,35 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     );
   });
 
-  it("general cruza el 30 de noviembre: 422 con autoridad, fecha y cobertura; con permitir_incompleto, 200 con advertencia", async () => {
-    await calendarioIncompleto(sat("general", "2026-11-27", 2), {
+  it("general cruza el 30 de noviembre: 422 con autoridad, fecha y cobertura, y el detalle dice por qué", async () => {
+    const cuerpo = await calendarioIncompleto(sat("general", "2026-11-27", 2), {
       autoridad: "sat",
       fecha: "2026-12-01",
       cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
     });
-    const { data } = await datos(sat("general", "2026-11-27", 2, "&permitir_incompleto=true"));
-    expect(data).toMatchObject({
-      resultado: "2026-12-01",
-      advertencias: ["Calendario incompleto: sat 2026; solo se descontaron fines de semana."],
-    });
+    expect(cuerpo.detail).toBe(
+      "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.",
+    );
+  });
+
+  it("general con permitir_incompleto=true calcula con lo publicado después del 30 de noviembre", async () => {
+    const aviso =
+      "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.";
+    const permitir = (desde: string, dias: number) =>
+      sat("general", desde, dias, "&permitir_incompleto=true");
+    const cruce = await datos(permitir("2026-11-27", 2));
+    expect(cruce.data).toMatchObject({ resultado: "2026-12-01", advertencias: [aviso] });
+    // El 25 de diciembre está publicado: se salta con su cita y el resultado es hábil.
+    const navidad = await datos(permitir("2026-12-24", 1));
+    expect(navidad.data).toMatchObject({ resultado: "2026-12-28", advertencias: [aviso] });
+    expect(navidad.data.inhabiles_saltados).toEqual(
+      DIAS_SAT.filter((d) => d.fecha === "2026-12-25").map(comoApi),
+    );
+    const hasta2027 = await datos(permitir("2026-12-24", 5));
+    expect(hasta2027.data.advertencias).toEqual([
+      aviso,
+      "Calendario incompleto: sat 2027; solo se descontaron fines de semana.",
+    ]);
   });
 
   it("declaraciones_pagos llega al 31 de diciembre, salta el 25, y después da 422", async () => {
@@ -583,7 +601,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     const cuerpo = await datos("/v1/dias-inhabiles?autoridad=sat&anio=2026");
     expect(cuerpo.data).toEqual(DIAS_SAT.filter((d) => d.fecha.startsWith("2026-")).map(comoApi));
     expect(cuerpo.advertencias).toEqual([
-      "Los días de tipo vacaciones del sat solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.",
+      "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.",
     ]);
     expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
     await calendarioIncompleto("/v1/dias-inhabiles?autoridad=sat&anio=2027", {
@@ -660,19 +678,41 @@ describe("constantes con los datos reales", () => {
     }
   });
 
-  it.each([
-    ["/v1/constantes/uma/2016", "No existe la UMA de 2016 en los datos cargados."],
-    [
-      "/v1/constantes/salario-minimo/2018",
-      "No existe el salario mínimo de 2018 en los datos cargados.",
-    ],
-    [
-      "/v1/isr/tarifa/mensual/2025",
-      "No existe la tarifa mensual de ISR de 2025 en los datos cargados.",
-    ],
-  ])("%s → 404 problem+json", async (ruta, detalle) => {
-    const { respuesta, cuerpo } = await pedirJson(ruta);
-    expect(respuesta.status).toBe(404);
-    expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}no-encontrado`, detail: detalle });
+  it("un año antes de los datos es no-encontrado; uno después del último cargado, dato-no-disponible", async () => {
+    const cargados = (anios: number[]) => {
+      const [primero, ultimo] = [Math.min(...anios), Math.max(...anios)];
+      return primero === ultimo
+        ? `el único año cargado es ${primero}`
+        : `los años cargados van de ${primero} a ${ultimo}`;
+    };
+    const casos: Array<[string, number[], string]> = [
+      ["/v1/constantes/uma", UMAS.map((u) => u.anio as number), "la UMA"],
+      ["/v1/constantes/salario-minimo", SALARIOS.map((s) => s.anio as number), "el salario mínimo"],
+      [
+        "/v1/isr/tarifa/mensual",
+        TARIFAS.filter((t) => t.periodo === "mensual").map((t) => t.anio as number),
+        "la tarifa mensual de ISR",
+      ],
+    ];
+    for (const [ruta, anios, nombre] of casos) {
+      const antes = Math.min(...anios) - 1;
+      const despues = Math.max(...anios) + 1;
+      for (const [anio, tipo, detalle] of [
+        [
+          antes,
+          "no-encontrado",
+          `No existe ${nombre} de ${antes} en los datos; ${cargados(anios)}.`,
+        ],
+        [
+          despues,
+          "dato-no-disponible",
+          `Todavía no se carga ${nombre} de ${despues}; ${cargados(anios)}.`,
+        ],
+      ] as const) {
+        const { respuesta, cuerpo } = await pedirJson(`${ruta}/${anio}`);
+        expect(respuesta.status, `${ruta}/${anio}`).toBe(404);
+        expect(cuerpo).toMatchObject({ type: `${BASE_PROBLEMAS}${tipo}`, detail: detalle });
+      }
+    }
   });
 });
