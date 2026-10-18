@@ -34,7 +34,8 @@ Códigos de salida:
   1   dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no
       existe) o error al ejecutar
   2   uso incorrecto: comando desconocido, falta un argumento u opción (--autoridad
-      sat sin --tipo-plazo) o tiene un valor mal formado (--dias x, sepomex cp 8000)
+      sat sin --tipo-plazo), sobra una (--tipo-plazo con lft) o tiene un valor mal
+      formado (--dias x, sepomex cp 8000)
 
 Usa "mexicoapi <comando> --help" para el detalle de cada comando.`;
 
@@ -58,14 +59,16 @@ const COMANDOS: Readonly<Record<string, string>> = {
   curp: validador("curp", "una CURP", "HEGG560427MVZRRL04"),
   nss: validador("nss", "un número de seguridad social del IMSS", "12345678903"),
   "dias-habiles": `Uso: mexicoapi dias-habiles --desde AAAA-MM-DD --dias N [--autoridad lft|cnbv|sat]
-                             [--tipo-plazo general|declaraciones_pagos] [--json]
+                             [--tipo-plazo general|declaraciones_pagos]
+                             [--permitir-incompleto] [--json]
 
 Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad: la LFT (Ley
 Federal del Trabajo, por omisión), la CNBV (calendario bancario) o el SAT. Con el SAT,
---tipo-plazo es obligatorio (sin él sale con 2): en declaraciones_pagos sus vacaciones cuentan
-como hábiles (CFF art. 12). La LFT solo descuenta sábados, domingos y los días del art. 74, no
-los festivos ni las suspensiones de labores del art. 715; los avisos lo dicen. Fuera de la
-cobertura del calendario sale con 1.
+--tipo-plazo es obligatorio y con las demás no se acepta (si no, sale con 2): en
+declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12). La LFT solo descuenta
+sábados, domingos y los días del art. 74, no los festivos ni las suspensiones de labores del
+art. 715; los avisos lo dicen. Fuera de la cobertura del calendario sale con 1, salvo con
+--permitir-incompleto, que calcula con lo publicado y avisa qué puede faltar.
 
 Opciones:
   --desde AAAA-MM-DD   fecha de partida, que no se cuenta: en un plazo que corre desde una
@@ -73,6 +76,9 @@ Opciones:
   --dias N             días hábiles a sumar
   --autoridad <a>      lft, cnbv o sat
   --tipo-plazo <t>     general o declaraciones_pagos (solo con sat)
+  --permitir-incompleto
+                       calcula fuera de la cobertura del calendario, con aviso: el
+                       resultado puede cambiar cuando se publique lo que falta
 ${BASE}
 
 Ejemplos:

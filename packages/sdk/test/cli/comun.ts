@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { txt } from "../sepomex/ayudas.js";
+import { lineasTxt, txt } from "../sepomex/ayudas.js";
 
 export interface Corrida {
   codigo: number;
@@ -38,7 +38,9 @@ const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
  * Una API local en 127.0.0.1 que responde cualquier ruta con un resultado de días hábiles que el
  * paquete no daría (2026-03-30), para saber de dónde salió la respuesta. Guarda lo que le piden.
  */
-async function apiLocal(): Promise<{ base: string; pedidos: string[]; cerrar(): Promise<void> }> {
+async function apiLocal(
+  cambios: Readonly<Record<string, unknown>> = {},
+): Promise<{ base: string; pedidos: string[]; cerrar(): Promise<void> }> {
   const pedidos: string[] = [];
   const servidor = createServer((pedido, respuesta) => {
     pedidos.push(pedido.url ?? "");
@@ -52,6 +54,7 @@ async function apiLocal(): Promise<{ base: string; pedidos: string[]; cerrar(): 
           resultado: "2026-03-30",
           inhabiles_saltados: [],
           advertencias: [],
+          ...cambios,
         },
         meta: { dataset: "calendario.lft", as_of: "2026-03-01", sources: [], docs: "" },
       }),
@@ -275,9 +278,56 @@ export function probarCli(correr: Correr, version: string): void {
     const raro = await correr([...sat, "--tipo-plazo", "anual"]);
     expect(raro.codigo).toBe(1);
     expect(raro.errores).toContain("general o declaraciones_pagos");
+    // La regla de la API con los nombres de la CLI (revisarTipoPlazo): una opción que no aplica a
+    // la autoridad es uso incorrecto, como --fecha en banco. Antes salía con 1 y el texto de la API.
     const sobra = await correr([...DIAS, "--tipo-plazo", "general"]);
-    expect(sobra.codigo).toBe(1);
-    expect(sobra.errores).toContain("solo se acepta con autoridad=sat");
+    expect(sobra.codigo).toBe(2);
+    expect(sobra.errores).toContain("--tipo-plazo solo se acepta con --autoridad sat.");
+    // Una autoridad que no existe la rechaza antes la regla de la API, como en la API.
+    const otra = await correr([...DIAS, "--autoridad", "imss", "--tipo-plazo", "general"]);
+    expect(otra.codigo).toBe(1);
+    expect(otra.errores).toContain("Autoridades disponibles: lft, cnbv y sat.");
+  });
+
+  it("dias-habiles --permitir-incompleto calcula fuera de la cobertura y lo advierte", async () => {
+    const lejos = ["dias-habiles", "--desde", "2101-01-04", "--dias", "5"];
+    expect((await correr(lejos)).codigo).toBe(1);
+    const c = await correr([...lejos, "--permitir-incompleto"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain("2101-01-04 + 5 días hábiles (lft): 2101-01-11");
+    expect(c.salida).toContain(
+      "Aviso: Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
+    );
+    const enJson = json(await correr([...lejos, "--permitir-incompleto", "--json"])) as {
+      data: { resultado: string; advertencias: string[] };
+    };
+    expect(enJson.data.resultado).toBe("2101-01-11");
+    const banco = await correr(["banco", "002", "--permitir-incompleto"]);
+    expect(banco.codigo).toBe(2);
+    expect(banco.errores).toContain('La opción --permitir-incompleto no aplica a "banco".');
+  });
+
+  it("no imprime los caracteres de control de un texto de la API", async () => {
+    const api = await apiLocal({
+      inhabiles_saltados: [
+        {
+          fecha: "2026-03-16",
+          motivo: "\u001b[2JDía\nfalso",
+          tipo: "descanso",
+          fuente: { nombre: "F", url: "https://f.test" },
+        },
+      ],
+      advertencias: ["\u001b]8;;https://x.test\u0007enlace\r\nOrigen: API"],
+    });
+    try {
+      const c = await correr(DIAS, { MEXICOAPI_BASE: api.base });
+      expect(c.codigo).toBe(0);
+      expect([...c.salida].filter((x) => x !== "\n" && /\p{Cc}/u.test(x))).toEqual([]);
+      expect(c.salida).toContain("  2026-03-16  [2JDía falso\n");
+      expect(c.salida).toContain("Aviso: ]8;;https://x.test enlace Origen: API\n");
+    } finally {
+      await api.cerrar();
+    }
   });
 
   it("uma por año y por fecha, en texto y en JSON", async () => {
@@ -484,6 +534,23 @@ export function probarCli(correr: Correr, version: string): void {
       expect(no.codigo).toBe(1);
       expect(no.salida).toContain("no está en el catálogo");
       expect((await correr(["sepomex", "cp", "00001", "--json"])).salida.trim()).toBe("null");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("sepomex cp no imprime los caracteres de control del TXT", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mexicoapi-cli-"));
+    try {
+      const ruta = join(dir, "CPdescarga.txt");
+      const fila =
+        "80011|Colonia\u001b[2J\u0007 Falsa|Colonia|Culiacán|Sinaloa|Culiacán Rosales|80201|25|80201||09|006|0004|Urbano|01";
+      await writeFile(ruta, txt(lineasTxt([fila])));
+      expect((await correr(["sepomex", "importar", ruta])).codigo).toBe(0);
+      const cp = await correr(["sepomex", "cp", "80011"]);
+      expect(cp.codigo).toBe(0);
+      expect([...cp.salida].filter((x) => x !== "\n" && /\p{Cc}/u.test(x))).toEqual([]);
+      expect(cp.salida).toContain("  Colonia [2J  Falsa (Colonia, Urbano)\n");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

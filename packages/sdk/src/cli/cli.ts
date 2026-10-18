@@ -3,10 +3,19 @@
 //
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
 // que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento
-// u opción, como --tipo-plazo con el SAT, o uno mal formado, como un código postal de 4 dígitos).
+// u opción, como --tipo-plazo con el SAT, sobra una, como --tipo-plazo con la LFT, o uno mal
+// formado, como un código postal de 4 dígitos).
 import { parseArgs } from "node:util";
 import type { ConsultaDiasHabiles } from "../cliente/index.js";
-import { type Autoridad, esFechaIsoValida, type TipoPlazo } from "../index.js";
+import {
+  AUTORIDADES,
+  type Autoridad,
+  enLinea,
+  esFechaIsoValida,
+  type NombresTipoPlazo,
+  revisarTipoPlazo,
+  type TipoPlazo,
+} from "../index.js";
 import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
   bancoTexto,
@@ -46,6 +55,7 @@ const OPCIONES = {
   dias: { type: "string" },
   autoridad: { type: "string" },
   "tipo-plazo": { type: "string" },
+  "permitir-incompleto": { type: "boolean" },
   fecha: { type: "string" },
 } as const;
 
@@ -59,15 +69,24 @@ type Opciones = {
   dias?: string | undefined;
   autoridad?: string | undefined;
   "tipo-plazo"?: string | undefined;
+  "permitir-incompleto"?: boolean | undefined;
   fecha?: string | undefined;
 };
 
 /** Opciones que solo aplican a algunos comandos. */
-const DE_COMANDO = ["base", "desde", "dias", "autoridad", "tipo-plazo", "fecha"] as const;
+const DE_COMANDO = [
+  "base",
+  "desde",
+  "dias",
+  "autoridad",
+  "tipo-plazo",
+  "permitir-incompleto",
+  "fecha",
+] as const;
 
 /** Opciones propias de cada comando, además de --json, --help, --version y --depurar. */
 const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
-  "dias-habiles": ["base", "desde", "dias", "autoridad", "tipo-plazo"],
+  "dias-habiles": ["base", "desde", "dias", "autoridad", "tipo-plazo", "permitir-incompleto"],
   municipio: ["base"],
   banco: ["base"],
   uma: ["base", "fecha"],
@@ -85,6 +104,12 @@ const SIN_CATALOGO =
   "Todavía no hay catálogo de códigos postales. Corre `mexicoapi sepomex sync` (o `mexicoapi sepomex importar <archivo>`).";
 
 const imprimir = (e: Entorno, texto: string): void => e.salida(`${texto}\n`);
+
+/** Cómo se nombran la autoridad y el tipo de plazo en la CLI, para la regla de la API. */
+const NOMBRES_CLI: NombresTipoPlazo = {
+  autoridad: (autoridad) => `--autoridad ${autoridad}`,
+  tipoPlazo: "--tipo-plazo",
+};
 const json = (e: Entorno, valor: unknown): void => imprimir(e, JSON.stringify(valor, null, 2));
 
 function analizar(argv: readonly string[]): { posiciones: string[]; opciones: Opciones } {
@@ -183,16 +208,21 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
     throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
   const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
-  if (autoridad === "sat" && tipoPlazo === undefined) {
-    throw new ErrorUso("Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos.");
+  // La regla de la API entre la autoridad y el tipo de plazo, con los nombres de la CLI. Con una
+  // autoridad que no existe la rechaza antes su propia regla, como en la API.
+  const conocida = autoridad ?? "lft";
+  if ((AUTORIDADES as readonly string[]).includes(conocida)) {
+    const combinacion = revisarTipoPlazo(conocida as Autoridad, tipoPlazo, NOMBRES_CLI);
+    if (combinacion !== null) throw new ErrorUso(combinacion.detalle);
   }
   const cliente = await crearClienteCli(e, opciones);
-  // Van tal cual: la regla de la API rechaza un --tipo-plazo desconocido o con otra autoridad.
+  // Van tal cual: la regla de la API rechaza una autoridad o un --tipo-plazo desconocidos.
   const respuesta = await cliente.diasHabiles({
     desde,
     dias: Number(dias),
     autoridad: autoridad as Autoridad | undefined,
     tipoPlazo,
+    permitirIncompleto: opciones["permitir-incompleto"],
   } as ConsultaDiasHabiles);
   if (opciones.json) json(e, respuesta);
   else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta));
@@ -324,10 +354,13 @@ async function sepomex(
   else if (encontrado === null) imprimir(e, `El código postal ${codigo} no está en el catálogo.`);
   else {
     const { estado, municipio: mun, asentamientos } = encontrado;
+    // Los nombres vienen del TXT de Correos de México: sin caracteres de control.
     const lineas = [
-      `${encontrado.cp}  ${mun.nombre}, ${estado.nombre}`,
+      `${encontrado.cp}  ${enLinea(mun.nombre)}, ${enLinea(estado.nombre)}`,
       `Municipio: ${mun.cvegeo ?? "sin clave de INEGI"}`,
-      ...asentamientos.map((a) => `  ${a.nombre} (${a.tipo}, ${a.zona})`),
+      ...asentamientos.map(
+        (a) => `  ${enLinea(a.nombre)} (${enLinea(a.tipo)}, ${enLinea(a.zona)})`,
+      ),
     ];
     imprimir(e, lineas.join("\n"));
   }
@@ -337,7 +370,8 @@ async function sepomex(
 /** Un error al ejecutar: texto por stderr o, con --json, `{"error": {...}}`. */
 function imprimirError(e: Entorno, mensaje: string, enJson: boolean, problema?: unknown): void {
   if (!enJson) {
-    e.errores(`mexicoapi: ${mensaje}\n`);
+    // El mensaje puede traer texto de la API o del TXT de SEPOMEX: sin caracteres de control.
+    e.errores(`mexicoapi: ${enLinea(mensaje)}\n`);
     return;
   }
   const p = problema as { status?: unknown; tipo?: unknown; title?: unknown; detail?: unknown };

@@ -250,6 +250,7 @@ npx mexicoapi clabe 002010077777777771
 npx mexicoapi rfc XAXX010101000 --json
 npx mexicoapi dias-habiles --desde 2026-03-16 --dias 5
 npx mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-17 --dias 3
+npx mexicoapi dias-habiles --autoridad cnbv --desde 2026-12-28 --dias 5 --permitir-incompleto
 npx mexicoapi municipio culiacan
 npx mexicoapi banco 002
 npx mexicoapi uma 2026
@@ -267,7 +268,7 @@ Inhábiles saltados:
 Origen: datos del paquete, sin red
 ```
 
-Sin red todo sale del paquete. Con `--base <url>` (o la variable `MEXICOAPI_BASE`), `dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API y, si no responde, usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). `municipio` y `banco` salen siempre del paquete, sin red, también con `--base`. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando.
+Sin red todo sale del paquete. Con `--base <url>` (o la variable `MEXICOAPI_BASE`), `dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API y, si no responde, usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). `municipio` y `banco` salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control.
 
 Códigos de salida:
 
@@ -275,12 +276,14 @@ Códigos de salida:
 | --- | --- |
 | 0 | Todo bien |
 | 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar |
-| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`--autoridad sat` sin `--tipo-plazo`) o uno mal formado (`--dias x`, `sepomex cp 8000`) |
+| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`) |
 
 ## Nombres
 
 - Las funciones y los métodos tipados del cliente, y sus parámetros, van en camelCase: `sumarDiasHabiles`, `tipoPlazo`, `permitirIncompleto`.
-- Los datos (`data`, `meta`, los registros de `mexicoapi/datos`), `consultar`, los problemas y la CLI usan los nombres de la API: `cve_ent`, `nombre_corto`, `tipo_plazo`, `inhabiles_saltados`, `--tipo-plazo`.
+- Los datos (`data`, `meta`, los registros de `mexicoapi/datos`), `consultar` y los problemas usan los nombres de la API: `cve_ent`, `nombre_corto`, `tipo_plazo`, `permitir_incompleto`, `inhabiles_saltados`. El servidor MCP (`mexicoapi-mcp`) también.
+- La CLI usa los de la API con guiones: `--tipo-plazo`, `--permitir-incompleto`.
+- Las reglas y sus textos son los mismos en todas: `revisarTipoPlazo` los arma con el nombre de cada superficie.
 
 ## Privacidad
 
