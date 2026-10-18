@@ -1,4 +1,4 @@
-import type { FechaISO } from "@mexicoapi/core";
+import { esFechaIsoValida, type FechaISO } from "@mexicoapi/core";
 import { getDocumentProxy } from "unpdf";
 import { limpiarTexto } from "../../canonico.js";
 import { ErrorDatos } from "../../errores.js";
@@ -35,31 +35,31 @@ export interface ListadoParticipantes {
   filas: FilaParticipante[];
 }
 
-interface Fragmento {
+export interface Fragmento {
   texto: string;
   x: number;
   y: number;
   ancho: number;
 }
-interface Linea {
+export interface Linea {
   y: number;
   fragmentos: Fragmento[];
   texto: string;
 }
-interface Seccion {
+export interface Seccion {
   pagina: number;
   y: number;
   nombre: string;
   cantidad: number;
 }
-interface Ancla {
+export interface Ancla {
   pagina: number;
   y: number;
   numero: number;
   nombre: string[];
   razon: string[];
 }
-interface Columnas {
+export interface Columnas {
   yEncabezado: number;
   ysEncabezado: number[];
   numero: number;
@@ -103,9 +103,10 @@ function agruparLineas(fragmentos: Fragmento[]): Linea[] {
 }
 
 async function leerPaginas(bytes: Uint8Array): Promise<Fragmento[][]> {
+  let doc: Awaited<ReturnType<typeof getDocumentProxy>> | undefined;
   try {
     // pdf.js puede transferir el búfer; se le pasa una copia.
-    const doc = await getDocumentProxy(bytes.slice(), { verbosity: 0 });
+    doc = await getDocumentProxy(bytes.slice(), { verbosity: 0 });
     const paginas: Fragmento[][] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const contenido = await (await doc.getPage(i)).getTextContent();
@@ -124,6 +125,8 @@ async function leerPaginas(bytes: Uint8Array): Promise<Fragmento[][]> {
     return paginas;
   } catch {
     throw new ErrorDatos("El PDF de participantes no se pudo leer", ID);
+  } finally {
+    await doc?.loadingTask.destroy().catch(() => undefined);
   }
 }
 
@@ -135,6 +138,7 @@ function leerEncabezado(lineas: Linea[]): { actualizado_al: FechaISO; total: num
     if (mes === 0) throw new ErrorDatos(`Mes desconocido en el encabezado: ${m[2]}`, ID);
     const dia = String(Number(m[1])).padStart(2, "0");
     const iso = `${m[3]}-${String(mes).padStart(2, "0")}-${dia}`;
+    if (!esFechaIsoValida(iso)) throw new ErrorDatos(`Fecha inválida en el encabezado: ${iso}`, ID);
     return { actualizado_al: iso as FechaISO, total: Number(m[4]) };
   }
   throw new ErrorDatos("El PDF de participantes no trae el encabezado esperado", ID);
@@ -157,6 +161,47 @@ function leerColumnas(lineas: Linea[]): Columnas | null {
 
 function dentro(x: number, desde: number, hasta: number): boolean {
   return x >= desde - MARGEN_X && x < hasta - MARGEN_X;
+}
+
+/** Pitch vertical típico de las filas: mediana de las distancias entre anclas consecutivas. */
+function pitchMediano(ys: number[]): number {
+  if (ys.length < 2) return 12 * 2;
+  const d = ys
+    .slice(1)
+    .map((y, i) => Math.abs((ys[i] ?? 0) - y))
+    .sort((p, q) => p - q);
+  return d[Math.floor(d.length / 2)] ?? 24;
+}
+
+/**
+ * Crea las anclas (número en la columna #) y asigna cada línea de las columnas de nombre
+ * y razón social a la ancla más cercana. Una línea a más de medio pitch de toda ancla
+ * no es parte de la tabla conocida: se falla en lugar de pegarla a una fila.
+ */
+export function repartirLineas(pagina: number, validas: Linea[], cols: Columnas): Ancla[] {
+  const nuevas: Ancla[] = [];
+  for (const l of validas) {
+    for (const f of l.fragmentos) {
+      if (dentro(f.x, cols.numero, cols.nombre) && /^\d+$/.test(f.texto.trim())) {
+        nuevas.push({ pagina, y: l.y, numero: Number(f.texto), nombre: [], razon: [] });
+      }
+    }
+  }
+  if (nuevas.length === 0) return nuevas;
+  const maxDistancia = pitchMediano(nuevas.map((a) => a.y)) / 2;
+  for (const l of validas) {
+    const nombre = l.fragmentos.filter((f) => dentro(f.x, cols.nombre, cols.razon));
+    const razon = l.fragmentos.filter((f) => f.x >= cols.razon - MARGEN_X);
+    if (nombre.length === 0 && razon.length === 0) continue;
+    let cercana = nuevas[0] as Ancla;
+    for (const a of nuevas) if (Math.abs(a.y - l.y) < Math.abs(cercana.y - l.y)) cercana = a;
+    if (Math.abs(cercana.y - l.y) > maxDistancia) {
+      throw new ErrorDatos(`Línea inesperada en la tabla (página ${pagina + 1}): "${l.texto}"`, ID);
+    }
+    if (nombre.length > 0) cercana.nombre.push(unir(nombre));
+    if (razon.length > 0) cercana.razon.push(unir(razon));
+  }
+  return nuevas;
 }
 
 /** Lee el PDF oficial de participantes directos del SPEI; falla si cambia la forma. */
@@ -191,24 +236,8 @@ export async function interpretarParticipantesPdf(
         !enSeccion.has(l) &&
         !REGEX_RUIDO.some((r) => r.test(l.texto)),
     );
-    const nuevas: Ancla[] = [];
-    for (const l of validas) {
-      for (const f of l.fragmentos) {
-        if (dentro(f.x, cols.numero, cols.nombre) && /^\d+$/.test(f.texto.trim())) {
-          nuevas.push({ pagina, y: l.y, numero: Number(f.texto), nombre: [], razon: [] });
-        }
-      }
-    }
+    const nuevas = repartirLineas(pagina, validas, cols);
     if (nuevas.length === 0) return;
-    for (const l of validas) {
-      const nombre = l.fragmentos.filter((f) => dentro(f.x, cols.nombre, cols.razon));
-      const razon = l.fragmentos.filter((f) => f.x >= cols.razon - MARGEN_X);
-      if (nombre.length === 0 && razon.length === 0) continue;
-      let cercana = nuevas[0] as Ancla;
-      for (const a of nuevas) if (Math.abs(a.y - l.y) < Math.abs(cercana.y - l.y)) cercana = a;
-      if (nombre.length > 0) cercana.nombre.push(unir(nombre));
-      if (razon.length > 0) cercana.razon.push(unir(razon));
-    }
     anclas.push(...nuevas);
   });
 
@@ -231,7 +260,7 @@ export async function interpretarParticipantesPdf(
   return { actualizado_al, total, filas };
 }
 
-function validar(filas: FilaParticipante[], secciones: Seccion[], total: number): void {
+export function validar(filas: FilaParticipante[], secciones: Seccion[], total: number): void {
   if (filas.length !== total) {
     throw new ErrorDatos(`El PDF declara ${total} participantes y se leyeron ${filas.length}`, ID);
   }
@@ -253,18 +282,33 @@ function validar(filas: FilaParticipante[], secciones: Seccion[], total: number)
   }
 }
 
+function atributo(etiqueta: string, nombre: string): string | undefined {
+  const m = new RegExp(String.raw`(?:^|\s)${nombre}\s*=\s*(?:"([^"]*)"|'([^']*)')`, "iu").exec(
+    etiqueta,
+  );
+  return m?.[1] ?? m?.[2];
+}
+
 /** URL absoluta del PDF enlazado con title="Participantes". */
 export function enlacePdfParticipantes(html: string, base: string): string {
   for (const etiqueta of html.match(/<a\b[^>]*>/giu) ?? []) {
-    const titulo = /\btitle\s*=\s*(?:"([^"]*)"|'([^']*)')/iu.exec(etiqueta);
-    if ((titulo?.[1] ?? titulo?.[2]) !== "Participantes") continue;
-    const href = /\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/iu.exec(etiqueta);
-    const valor = href?.[1] ?? href?.[2];
-    if (valor === undefined) continue;
+    if (atributo(etiqueta, "title") !== "Participantes") continue;
+    const valor = atributo(etiqueta, "href")?.trim();
+    if (valor === undefined || valor === "" || valor.startsWith("#")) continue;
+    let url: URL;
+    try {
+      url = new URL(valor.replaceAll("&amp;", "&"), base);
+    } catch {
+      throw new ErrorDatos(`Enlace de participantes inválido: ${valor}`, ID);
+    }
+    if (
+      url.protocol !== "https:" ||
+      !(url.hostname === "banxico.org.mx" || url.hostname.endsWith(".banxico.org.mx"))
+    ) {
+      throw new ErrorDatos(`El enlace de participantes no es de banxico.org.mx: ${url.href}`, ID);
+    }
     // URL codifica las llaves; la fuente las publica literales.
-    return new URL(valor.replaceAll("&amp;", "&"), base).href
-      .replaceAll("%7B", "{")
-      .replaceAll("%7D", "}");
+    return url.href.replaceAll("%7B", "{").replaceAll("%7D", "}");
   }
   throw new ErrorDatos("La página no enlaza el PDF de participantes", ID);
 }
