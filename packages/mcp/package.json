@@ -1,14 +1,42 @@
 {
   "name": "mexicoapi-mcp",
   "version": "0.1.0",
-  "description": "Servidor MCP por stdio con datos de referencia oficiales de México.",
-  "license": "MIT",
-  "type": "module",
+  "description": "Servidor MCP por stdio, de solo lectura, con datos oficiales de México: municipios, bancos y CLABE, RFC, CURP, NSS, tipo de cambio FIX, UDIS, días hábiles, UMA, salario mínimo, ISR y códigos postales.",
+  "keywords": [
+    "mcp",
+    "model context protocol",
+    "mcp server",
+    "méxico",
+    "mexico",
+    "clabe",
+    "rfc",
+    "curp",
+    "nss",
+    "sepomex",
+    "código postal",
+    "fix",
+    "tipo de cambio",
+    "udis",
+    "uma",
+    "salario mínimo",
+    "isr",
+    "días hábiles",
+    "inegi",
+    "banxico",
+    "sat"
+  ],
+  "homepage": "https://github.com/Dagel4k/mexicoapi/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Dagel4k/mexicoapi/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Dagel4k/mexicoapi.git",
     "directory": "packages/mcp"
   },
+  "license": "MIT",
+  "author": "Daniel Pereda (https://github.com/Dagel4k)",
+  "type": "module",
   "engines": {
     "node": ">=22.13"
   },
@@ -16,11 +44,14 @@
     "mexicoapi-mcp": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
     "build": "tsc -p tsconfig.build.json",
+    "prepack": "node scripts/publicable.ts",
     "test:integracion": "vitest run --config vitest.integracion.config.ts"
   },
   "dependencies": {
