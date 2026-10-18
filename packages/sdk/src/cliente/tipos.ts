@@ -205,8 +205,9 @@ export interface OpcionesComunes {
 }
 
 /**
- * Opciones de `crearCliente`: `base` para consultar la API, u `offline: true` para responder
- * solo con el paquete. Sin ninguna de las dos, crearCliente lanza TypeError.
+ * Opciones de `crearCliente`, todas opcionales. Sin `base`, los datos que caducan se piden a la
+ * API pública (`URL_API`); con `base`, a esa. Con `offline: true` el cliente nunca usa la red:
+ * todo sale del paquete.
  */
 export type OpcionesCliente = OpcionesComunes & {
   /**
