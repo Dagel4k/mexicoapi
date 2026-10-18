@@ -298,7 +298,10 @@ describe("servidor con herramientas de prueba por stdio real", () => {
     });
     expect((await proceso.recibir()).result).toEqual({
       content: [
-        { type: "text", text: 'Argumentos inválidos para repite: "n" debe ser mayor o igual a 1' },
+        {
+          type: "text",
+          text: '[parametro-invalido] Argumentos inválidos para repite: "n" debe ser mayor o igual a 1',
+        },
       ],
       isError: true,
     });
