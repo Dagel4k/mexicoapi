@@ -64,7 +64,7 @@ const VALORES_PUBLICOS = [
   "revisarFix",
   // La CLABE como la revisa validarClabe y el texto en una línea: los usan la CLI y el MCP.
   "normalizarClabe",
-  "enLinea",
+  "aUnaLinea",
 ];
 
 describe("API pública", () => {

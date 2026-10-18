@@ -4,7 +4,7 @@
 import { ErrorHerramienta, type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
-  enLinea,
+  aUnaLinea,
   esquemaSalida,
   type Fuente,
   type OpcionesHerramientas,
@@ -126,11 +126,11 @@ export function codigoPostalHerramienta({ dirSepomex }: OpcionesHerramientas): H
       const clave = municipio.cvegeo === null ? "" : ` (${municipio.cvegeo})`;
       const n = asentamientos.length;
       const lineas = [
-        `Código postal ${cp}: ${enLinea(municipio.nombre)}${clave}, ${enLinea(estado.nombre)}.`,
+        `Código postal ${cp}: ${aUnaLinea(municipio.nombre)}${clave}, ${aUnaLinea(estado.nombre)}.`,
         `${n} ${n === 1 ? "asentamiento" : "asentamientos"}:`,
         ...asentamientos.slice(0, MAX_EN_TEXTO).map((a) => {
-          const partes = [a.tipo, a.zona, a.ciudad].filter((p) => p !== "").map(enLinea);
-          return `- ${enLinea(a.nombre)} (${partes.join(", ")})`;
+          const partes = [a.tipo, a.zona, a.ciudad].filter((p) => p !== "").map(aUnaLinea);
+          return `- ${aUnaLinea(a.nombre)} (${partes.join(", ")})`;
         }),
       ];
       // Los demás van solo con el nombre: en 2025-03-26 y 2024-11-05 no hay structuredContent y
@@ -138,10 +138,10 @@ export function codigoPostalHerramienta({ dirSepomex }: OpcionesHerramientas): H
       if (n > MAX_EN_TEXTO) {
         lineas.push(
           `Los otros ${n - MAX_EN_TEXTO}, solo con el nombre:`,
-          ...asentamientos.slice(MAX_EN_TEXTO).map((a) => `- ${enLinea(a.nombre)}`),
+          ...asentamientos.slice(MAX_EN_TEXTO).map((a) => `- ${aUnaLinea(a.nombre)}`),
         );
       }
-      lineas.push(`Aviso de Correos de México: ${enLinea(resumen.aviso)}`);
+      lineas.push(`Aviso de Correos de México: ${aUnaLinea(resumen.aviso)}`);
       const fuente: Fuente = { nombre: FUENTE_NOMBRE, url: resumen.fuente };
       const p: Procedencia = {
         as_of: resumen.as_of,

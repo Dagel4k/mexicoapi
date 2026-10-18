@@ -10,7 +10,7 @@ Funciones puras en TypeScript, sin dependencias de runtime. Por ahora el paquete
 - Fechas `YYYY-MM-DD`: `esFechaIsoValida`, `sumarDias`, `diaDeLaSemana`, `enesimoDiaDeSemana`, `esBisiesto` y `fechaValida`.
 - Catálogos de los calendarios: `AUTORIDADES`, `TIPOS_PLAZO` y `TIPOS_DIA_CURADO` (los tipos `Autoridad`, `TipoPlazo` y `TipoDiaCurado` salen de ellos) y `NOMBRE_AUTORIDAD` ("el SAT"), el único lugar donde se nombran las autoridades en los textos.
 - Reglas de la API entre parámetros, que el MCP y la CLI usan sin pedirle nada a la API: `revisarTipoPlazo` (con el SAT, el tipo de plazo es obligatorio; con las demás no se acepta) y `revisarFix` (exactamente uno de `publicado` u `operacion`). Devuelven el problema de la API o null.
-- `enLinea`: un texto de los datos o de la API sin saltos ni caracteres de control, para imprimirlo.
+- `aUnaLinea`: un texto de los datos o de la API sin saltos ni caracteres de control, para imprimirlo.
 - Constantes y tipos: `NOTA_VALIDACION`, `ResultadoValidacion`, `Calendario`, `DiaInhabil`, `Fuente`, entre otros.
 
 Las subrutas van aparte para no pesar en quien solo valida:

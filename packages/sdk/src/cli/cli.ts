@@ -10,7 +10,7 @@ import type { ConsultaDiasHabiles, FetchCompatible } from "../cliente/index.js";
 import {
   AUTORIDADES,
   type Autoridad,
-  enLinea,
+  aUnaLinea,
   esFechaIsoValida,
   type NombresTipoPlazo,
   revisarTipoPlazo,
@@ -361,10 +361,10 @@ async function sepomex(
     const { estado, municipio: mun, asentamientos } = encontrado;
     // Los nombres vienen del TXT de Correos de México: sin caracteres de control.
     const lineas = [
-      `${encontrado.cp}  ${enLinea(mun.nombre)}, ${enLinea(estado.nombre)}`,
+      `${encontrado.cp}  ${aUnaLinea(mun.nombre)}, ${aUnaLinea(estado.nombre)}`,
       `Municipio: ${mun.cvegeo ?? "sin clave de INEGI"}`,
       ...asentamientos.map(
-        (a) => `  ${enLinea(a.nombre)} (${enLinea(a.tipo)}, ${enLinea(a.zona)})`,
+        (a) => `  ${aUnaLinea(a.nombre)} (${aUnaLinea(a.tipo)}, ${aUnaLinea(a.zona)})`,
       ),
     ];
     imprimir(e, lineas.join("\n"));
@@ -376,7 +376,7 @@ async function sepomex(
 function imprimirError(e: Entorno, mensaje: string, enJson: boolean, problema?: unknown): void {
   if (!enJson) {
     // El mensaje puede traer texto de la API o del TXT de SEPOMEX: sin caracteres de control.
-    e.errores(`mexicoapi: ${enLinea(mensaje)}\n`);
+    e.errores(`mexicoapi: ${aUnaLinea(mensaje)}\n`);
     return;
   }
   const p = problema as { status?: unknown; tipo?: unknown; title?: unknown; detail?: unknown };

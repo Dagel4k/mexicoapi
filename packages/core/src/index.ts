@@ -65,6 +65,6 @@ export { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "./rfc.js";
 export type { NombresTipoPlazo } from "./rutas/combinaciones.js";
 export { revisarFix, revisarTipoPlazo } from "./rutas/combinaciones.js";
 export type { ProblemaConsulta } from "./rutas/parametros.js";
-export { enLinea } from "./texto.js";
+export { aUnaLinea } from "./texto.js";
 export type { CodigoError, ResultadoValidacion } from "./validacion.js";
 export { NOTA_VALIDACION } from "./validacion.js";

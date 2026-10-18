@@ -6,9 +6,9 @@ import { compilarEsquema } from "../esquema.js";
 import { type Herramienta, type ResultadoHerramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
+  aUnaLinea,
   consultar,
   ESQUEMA_FUENTE_DATO,
-  enLinea,
   esquemaSalida,
   FECHA,
   fuenteDe,
@@ -162,7 +162,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
           revisarUma,
         );
         const u = r.data;
-        const montos = enLinea(
+        const montos = aUnaLinea(
           `diaria ${u.diaria}, mensual ${u.mensual} y anual ${u.anual} pesos; rige desde el ${u.vigencia_desde}.`,
         );
         const linea =
@@ -184,7 +184,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
         }
         const lineas = [
           `Salario mínimo diario de ${a.anio}, desde el ${primera.vigencia_desde}:`,
-          ...zonas.map((z) => enLinea(`- ${ZONAS[z.zona] ?? z.zona}: ${z.diario} pesos`)),
+          ...zonas.map((z) => aUnaLinea(`- ${ZONAS[z.zona] ?? z.zona}: ${z.diario} pesos`)),
         ];
         return conFuentes(
           lineas,
@@ -203,7 +203,7 @@ export function constantesHerramienta({ cliente, conApi }: OpcionesHerramientas)
       const lineas = [
         `Tarifa ${periodo} de ISR de ${t.anio}, en pesos:`,
         ...t.tramos.map((tramo) =>
-          enLinea(
+          aUnaLinea(
             `- de ${tramo.limite_inferior} ${tramo.limite_superior === null ? "en adelante" : `a ${tramo.limite_superior}`}: cuota fija ${tramo.cuota_fija} más ${tramo.tasa_excedente} % del excedente`,
           ),
         ),

@@ -4,8 +4,8 @@ import { buscarMunicipio, estado, meta } from "mexicoapi/datos";
 import { type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
+  aUnaLinea,
   consultar,
-  enLinea,
   esquemaSalida,
   type OpcionesHerramientas,
   procedencia,
@@ -32,7 +32,8 @@ const conEstado = (m: Municipio): ConEstado => ({
   estado: estado(m.cve_ent)?.nombre ?? "",
 });
 
-const linea = (m: ConEstado): string => `${m.cvegeo} ${enLinea(m.nombre)}, ${enLinea(m.estado)}`;
+const linea = (m: ConEstado): string =>
+  `${m.cvegeo} ${aUnaLinea(m.nombre)}, ${aUnaLinea(m.estado)}`;
 
 export function buscarMunicipioHerramienta(): Herramienta {
   return {

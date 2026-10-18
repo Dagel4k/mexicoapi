@@ -20,7 +20,7 @@ También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`. E
 
 | Entrada | Qué trae | Dónde corre |
 | --- | --- | --- |
-| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `enLinea` | Universal |
+| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `aUnaLinea` | Universal |
 | `mexicoapi/datos` | Estados, municipios y bancos | Universal |
 | `mexicoapi/datos/fix` | Serie del tipo de cambio FIX | Universal |
 | `mexicoapi/datos/udis` | Serie de las UDIS | Universal |

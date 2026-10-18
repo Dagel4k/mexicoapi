@@ -14,9 +14,9 @@ import { compilarEsquema } from "../esquema.js";
 import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
+  aUnaLinea,
   consultar,
   ESQUEMA_FUENTE_DATO,
-  enLinea,
   esquemaSalida,
   FECHA,
   fuenteDe,
@@ -63,7 +63,7 @@ const SUMA = {
 const revisarSuma = compilarEsquema(SUMA);
 
 const lineaDia = (d: DiaInhabil): string =>
-  `- ${d.fecha} ${enLinea(d.motivo)} (${enLinea(d.tipo)})`;
+  `- ${d.fecha} ${aUnaLinea(d.motivo)} (${aUnaLinea(d.tipo)})`;
 
 export function diasInhabilesHerramienta({ cliente, conApi }: OpcionesHerramientas): Herramienta {
   return {

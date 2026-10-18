@@ -1,12 +1,12 @@
 // Salida legible de la CLI: texto en español, corto y sin adornos. Cada texto que viene de los
-// datos, de la API o del catálogo de SEPOMEX pasa por enLinea: no puede partir una línea ni mover
+// datos, de la API o del catálogo de SEPOMEX pasa por aUnaLinea: no puede partir una línea ni mover
 // el cursor o cambiar los colores de la terminal.
 
 import { AVISO_RESPALDO } from "../cliente/comun.js";
 import {
+  aUnaLinea,
   type Banco,
   type CodigoError,
-  enLinea,
   type Municipio,
   type ResultadoDiasHabiles,
   type ResultadoValidacion,
@@ -29,7 +29,7 @@ const ERRORES: Readonly<Record<CodigoError, string>> = {
 };
 
 const escalar = (valor: unknown): string =>
-  enLinea(
+  aUnaLinea(
     valor !== null && typeof valor === "object"
       ? Object.entries(valor)
           .map(([k, v]) => `${k}=${String(v)}`)
@@ -43,14 +43,14 @@ export function validacionTexto(
   r: ResultadoValidacion<unknown>,
 ): string {
   const adjetivo = `${r.valido ? "" : "no "}válid${femenino ? "a" : "o"}`;
-  const lineas = [`${nombre} ${adjetivo}: ${enLinea(r.valor)}`];
+  const lineas = [`${nombre} ${adjetivo}: ${aUnaLinea(r.valor)}`];
   for (const codigo of r.errores) lineas.push(`  - ${ERRORES[codigo]}`);
   if (r.detalle !== null && typeof r.detalle === "object") {
     for (const [clave, valor] of Object.entries(r.detalle)) {
       lineas.push(`  ${clave}: ${valor === null ? "sin dato" : escalar(valor)}`);
     }
   }
-  lineas.push(enLinea(r.nota));
+  lineas.push(aUnaLinea(r.nota));
   return lineas.join("\n");
 }
 
@@ -69,7 +69,7 @@ export function pieTexto(r: {
       : respaldo
         ? "Origen: datos del paquete (la API no respondió)"
         : "Origen: datos del paquete, sin red";
-  return [`\n${origen}`, ...r.advertencias.map((a) => `Aviso: ${enLinea(a)}`)].join("\n");
+  return [`\n${origen}`, ...r.advertencias.map((a) => `Aviso: ${aUnaLinea(a)}`)].join("\n");
 }
 
 export function diasHabilesTexto(
@@ -79,26 +79,27 @@ export function diasHabilesTexto(
   const { desde, dias, autoridad, resultado, inhabiles_saltados, advertencias } = r.data;
   const calendario = tipoPlazo === undefined ? autoridad : `${autoridad}, ${tipoPlazo}`;
   const lineas = [
-    `${enLinea(desde)} + ${dias} días hábiles (${enLinea(calendario)}): ${enLinea(resultado)}`,
+    `${aUnaLinea(desde)} + ${dias} días hábiles (${aUnaLinea(calendario)}): ${aUnaLinea(resultado)}`,
   ];
   if (inhabiles_saltados.length > 0) {
     lineas.push("Inhábiles saltados:");
-    for (const d of inhabiles_saltados) lineas.push(`  ${enLinea(d.fecha)}  ${enLinea(d.motivo)}`);
+    for (const d of inhabiles_saltados)
+      lineas.push(`  ${aUnaLinea(d.fecha)}  ${aUnaLinea(d.motivo)}`);
   }
-  for (const a of advertencias) lineas.push(`Aviso: ${enLinea(a)}`);
+  for (const a of advertencias) lineas.push(`Aviso: ${aUnaLinea(a)}`);
   return lineas.join("\n");
 }
 
 const fuenteTexto = (f: { nombre: string; fecha_publicacion: string }): string =>
-  `Fuente: ${enLinea(f.nombre)} (DOF ${enLinea(f.fecha_publicacion)})`;
+  `Fuente: ${aUnaLinea(f.nombre)} (DOF ${aUnaLinea(f.fecha_publicacion)})`;
 
 export function umaTexto(u: Uma, fecha?: string | undefined): string {
   const hasta = `${u.anio + 1}-01-31`;
   return [
-    `${fecha === undefined ? "" : `UMA vigente el ${fecha}: `}UMA ${u.anio} (del ${enLinea(u.vigencia_desde)} al ${hasta})`,
-    `  Diaria: ${enLinea(u.diaria)}`,
-    `  Mensual: ${enLinea(u.mensual)}`,
-    `  Anual: ${enLinea(u.anual)}`,
+    `${fecha === undefined ? "" : `UMA vigente el ${fecha}: `}UMA ${u.anio} (del ${aUnaLinea(u.vigencia_desde)} al ${hasta})`,
+    `  Diaria: ${aUnaLinea(u.diaria)}`,
+    `  Mensual: ${aUnaLinea(u.mensual)}`,
+    `  Anual: ${aUnaLinea(u.anual)}`,
     fuenteTexto(u.fuente),
   ].join("\n");
 }
@@ -111,7 +112,9 @@ const ZONAS: Readonly<Record<SalarioMinimo["zona"], string>> = {
 export function salarioMinimoTexto(anio: string, zonas: readonly SalarioMinimo[]): string {
   const lineas = [`Salario mínimo ${anio}, en pesos diarios:`];
   for (const s of zonas) {
-    lineas.push(`  ${ZONAS[s.zona]}: ${enLinea(s.diario)} (desde el ${enLinea(s.vigencia_desde)})`);
+    lineas.push(
+      `  ${ZONAS[s.zona]}: ${aUnaLinea(s.diario)} (desde el ${aUnaLinea(s.vigencia_desde)})`,
+    );
   }
   const fuente = zonas[0]?.fuente;
   if (fuente !== undefined) lineas.push(fuenteTexto(fuente));
@@ -127,20 +130,20 @@ export function tarifaIsrTexto(t: TarifaIsr): string {
         tramo.limite_superior ?? "En adelante",
         tramo.cuota_fija,
         tramo.tasa_excedente,
-      ].map(enLinea),
+      ].map(aUnaLinea),
     ),
   ];
   const anchos = filas[0]?.map((_, i) => Math.max(...filas.map((f) => (f[i] as string).length)));
   const lineas = filas.map((fila) =>
     `  ${fila.map((celda, i) => celda.padStart(anchos?.[i] ?? 0)).join("  ")}`.trimEnd(),
   );
-  const titulo = `Tarifa ${enLinea(t.periodo)} de ISR ${t.anio}, en pesos:`;
+  const titulo = `Tarifa ${aUnaLinea(t.periodo)} de ISR ${t.anio}, en pesos:`;
   return [titulo, ...lineas, fuenteTexto(t.fuente)].join("\n");
 }
 
 export function municipioTexto(m: Municipio, estado: string | undefined): string {
-  const entidad = estado === undefined ? `entidad ${enLinea(m.cve_ent)}` : enLinea(estado);
-  return `${enLinea(m.cvegeo)}  ${enLinea(m.nombre)}, ${entidad}`;
+  const entidad = estado === undefined ? `entidad ${aUnaLinea(m.cve_ent)}` : aUnaLinea(estado);
+  return `${aUnaLinea(m.cvegeo)}  ${aUnaLinea(m.nombre)}, ${entidad}`;
 }
 
 export function municipiosTexto(
@@ -149,7 +152,7 @@ export function municipiosTexto(
   maximo: number,
   estado: (cve_ent: string) => string | undefined,
 ): string {
-  if (encontrados.length === 0) return `Sin municipios que coincidan con "${enLinea(texto)}".`;
+  if (encontrados.length === 0) return `Sin municipios que coincidan con "${aUnaLinea(texto)}".`;
   const lineas = encontrados.slice(0, maximo).map((m) => municipioTexto(m, estado(m.cve_ent)));
   if (encontrados.length > maximo) {
     lineas.push(`... y ${encontrados.length - maximo} más; afina la búsqueda o usa --json.`);
@@ -158,12 +161,12 @@ export function municipiosTexto(
 }
 
 export function bancoTexto(b: Banco): string {
-  const baja = b.baja_detectada === null ? "sin fecha" : enLinea(b.baja_detectada);
+  const baja = b.baja_detectada === null ? "sin fecha" : aUnaLinea(b.baja_detectada);
   const lineas = [
-    `${enLinea(b.codigo)}  ${enLinea(b.nombre_corto)}`,
-    `  Razón social: ${b.razon_social === null ? "sin dato" : enLinea(b.razon_social)}`,
-    `  Tipo: ${enLinea(b.tipo)}`,
-    `  Código SPEI: ${enLinea(b.codigo_spei)}`,
+    `${aUnaLinea(b.codigo)}  ${aUnaLinea(b.nombre_corto)}`,
+    `  Razón social: ${b.razon_social === null ? "sin dato" : aUnaLinea(b.razon_social)}`,
+    `  Tipo: ${aUnaLinea(b.tipo)}`,
+    `  Código SPEI: ${aUnaLinea(b.codigo_spei)}`,
     `  Situación: ${b.activo ? "activo" : `dado de baja (detectado ${baja})`}`,
   ];
   return lineas.join("\n");
@@ -171,15 +174,15 @@ export function bancoTexto(b: Banco): string {
 
 export function resumenSepomexTexto(s: ResumenSepomex): string {
   const lineas = [
-    `Directorio: ${enLinea(s.dir)}`,
-    `Guardado: ${enLinea(s.descargado)} (${enLinea(s.origen)})`,
-    `Fuente: ${enLinea(s.fuente)}`,
-    `Información de Correos de México al: ${s.as_of === null ? "sin dato" : enLinea(s.as_of)}`,
+    `Directorio: ${aUnaLinea(s.dir)}`,
+    `Guardado: ${aUnaLinea(s.descargado)} (${aUnaLinea(s.origen)})`,
+    `Fuente: ${aUnaLinea(s.fuente)}`,
+    `Información de Correos de México al: ${s.as_of === null ? "sin dato" : aUnaLinea(s.as_of)}`,
     `Filas: ${s.filas}; códigos postales: ${s.codigos_postales}; municipios: ${s.municipios}`,
     `Sin municipio de INEGI: ${s.sin_municipio_inegi}`,
-    `SQLite: ${s.sqlite === null ? `no (${s.sin_sqlite === null ? "sin dato" : enLinea(s.sin_sqlite)})` : enLinea(s.sqlite)}`,
-    ...s.advertencias.map((a) => `Aviso: ${enLinea(a)}`),
-    enLinea(s.nota),
+    `SQLite: ${s.sqlite === null ? `no (${s.sin_sqlite === null ? "sin dato" : aUnaLinea(s.sin_sqlite)})` : aUnaLinea(s.sqlite)}`,
+    ...s.advertencias.map((a) => `Aviso: ${aUnaLinea(a)}`),
+    aUnaLinea(s.nota),
   ];
   return lineas.join("\n");
 }

@@ -4,8 +4,8 @@ import { type Banco, normalizarClabe } from "mexicoapi";
 import type { Herramienta } from "../herramientas.js";
 import {
   anotaciones,
+  aUnaLinea,
   consultar,
-  enLinea,
   esquemaSalida,
   FECHA,
   FUENTE_VALIDADORES,
@@ -107,7 +107,7 @@ export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herr
         const { banco } = detalle;
         const activo = banco.activo ? "activo en el SPEI" : "ya no aparece en el SPEI";
         lineas = [
-          `CLABE válida: banco ${banco.codigo} ${enLinea(banco.nombre_corto)} (${activo}), plaza ${detalle.codigo_plaza}, cuenta ${detalle.cuenta}, dígito de control ${detalle.digito_control}.`,
+          `CLABE válida: banco ${banco.codigo} ${aUnaLinea(banco.nombre_corto)} (${activo}), plaza ${detalle.codigo_plaza}, cuenta ${detalle.cuenta}, dígito de control ${detalle.digito_control}.`,
         ];
       } else {
         // Todos los motivos, como en errores; el del banco dice cuál código no está.
@@ -120,7 +120,7 @@ export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herr
           .join(", ");
         lineas = [`CLABE inválida: ${texto}.`];
       }
-      lineas.push(enLinea(v.nota));
+      lineas.push(aUnaLinea(v.nota));
       const p = procedencia(r);
       const fuentes = [...p.fuentes, FUENTE_VALIDADORES];
       return resultado(lineas, v, { ...p, fuentes });
@@ -137,7 +137,7 @@ const PARTICIPACION: Readonly<Record<string, string>> = {
 function anteriores(b: Banco): string[] {
   return b.historial
     .filter((h) => h.nombre_corto !== b.nombre_corto)
-    .map((h) => `${enLinea(h.nombre_corto)} (${h.desde} a ${h.hasta ?? "hoy"})`);
+    .map((h) => `${aUnaLinea(h.nombre_corto)} (${h.desde} a ${h.hasta ?? "hoy"})`);
 }
 
 export function bancoPorCodigoHerramienta({ cliente }: OpcionesHerramientas): Herramienta {
@@ -164,12 +164,12 @@ export function bancoPorCodigoHerramienta({ cliente }: OpcionesHerramientas): He
       const codigo = args.codigo as string;
       const r = await consultar(signal, () => cliente.banco(codigo, { fuente: "paquete", signal }));
       const b = r.data;
-      const razon = b.razon_social === null ? "" : `: ${enLinea(b.razon_social)}`;
-      const participacion = PARTICIPACION[b.participacion] ?? enLinea(b.participacion);
+      const razon = b.razon_social === null ? "" : `: ${aUnaLinea(b.razon_social)}`;
+      const participacion = PARTICIPACION[b.participacion] ?? aUnaLinea(b.participacion);
       const estado = b.activo
         ? `Activo en el SPEI, ${participacion}, clave SPEI ${b.codigo_spei}.`
         : `Ya no aparece en el SPEI${b.baja_detectada === null ? "" : ` (baja detectada el ${b.baja_detectada})`}; clave SPEI ${b.codigo_spei}.`;
-      const lineas = [`${b.codigo} ${enLinea(b.nombre_corto)}${razon}`, estado];
+      const lineas = [`${b.codigo} ${aUnaLinea(b.nombre_corto)}${razon}`, estado];
       const previos = anteriores(b);
       if (previos.length > 0) lineas.push(`Nombres anteriores: ${previos.join("; ")}.`);
       return resultado(lineas, b, procedencia(r));
