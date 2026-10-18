@@ -305,6 +305,77 @@ describe("construir", () => {
     });
   });
 
+  it("sigue emparejando con el nombre anterior el segundo día de un renombre", async () => {
+    const base = (await construir(null)).registros;
+    renombrarEnCep({ "40012": "BBVA" });
+    const dia1 = (await construir(base, ctx("2026-10-18"))).registros;
+    const dia2 = (await construir(dia1, ctx("2026-10-19"))).registros;
+    expect(por(dia2, "012")).toMatchObject({
+      nombre_corto: "BBVA",
+      razon_social:
+        "BBVA México, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA México",
+      sector: "BANCA MÚLTIPLE",
+      participacion: "directa",
+    });
+    const d = diferenciar(dia1, dia2, (b) => b.codigo);
+    expect(bancos.revisar(d, dia1)).toEqual({ requiereRevision: false, motivos: [] });
+  });
+
+  it("empareja con un nombre de hace varios periodos", async () => {
+    const base = (await construir(null)).registros;
+    renombrarEnCep({ "40012": "D" });
+    const previo: Banco = {
+      ...por(base, "012"),
+      nombre_corto: "C",
+      historial: [
+        {
+          codigo_spei: "40012",
+          nombre_corto: "BBVA MEXICO",
+          desde: "2020-01-01",
+          hasta: "2023-01-01",
+        },
+        { codigo_spei: "40012", nombre_corto: "B", desde: "2023-01-01", hasta: "2025-01-01" },
+        { codigo_spei: "40012", nombre_corto: "C", desde: "2025-01-01", hasta: null },
+      ],
+    };
+    const { registros } = await construir([previo], ctx("2026-10-18"));
+    expect(por(registros, "012")).toMatchObject({
+      nombre_corto: "D",
+      razon_social:
+        "BBVA México, S.A., Institución de Banca Múltiple, Grupo Financiero BBVA México",
+      participacion: "directa",
+    });
+  });
+
+  it("no usa un nombre anterior que comparten dos códigos", async () => {
+    const base = (await construir(null)).registros;
+    renombrarEnCep({ "40012": "NUEVO 12", "40014": "NUEVO 14" });
+    const conViejo = (codigo: string, nuevo: string): Banco => ({
+      ...por(base, codigo),
+      nombre_corto: nuevo,
+      historial: [
+        {
+          codigo_spei: `40${codigo}`,
+          nombre_corto: "BBVA MEXICO",
+          desde: "2020-01-01",
+          hasta: "2025-01-01",
+        },
+        { codigo_spei: `40${codigo}`, nombre_corto: nuevo, desde: "2025-01-01", hasta: null },
+      ],
+    });
+    const { registros, avisos } = await construir(
+      [conViejo("012", "NUEVO 12"), conViejo("014", "NUEVO 14")],
+      ctx("2026-10-18"),
+    );
+    for (const c of ["012", "014"]) {
+      expect(por(registros, c)).toMatchObject({
+        razon_social: null,
+        participacion: "no_confirmada",
+      });
+    }
+    expect(avisos).toContain("en el PDF y no en el CEP: BBVA MEXICO");
+  });
+
   it("avisa de una fila del PDF sin entrada en el CEP", async () => {
     cep = new TextEncoder().encode(
       JSON.stringify({ instituciones: interpretarCep(cep).filter((e) => e[0] !== "40012") }),
