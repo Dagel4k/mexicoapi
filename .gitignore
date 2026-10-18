@@ -1,6 +1,8 @@
 node_modules
 dist
 coverage
+# Salida local de Vitest (resultados y caché de las corridas).
+.vitest/
 .wrangler
 *.log
 apps/api/public/
