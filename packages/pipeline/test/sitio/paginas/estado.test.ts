@@ -83,6 +83,7 @@ describe("página de estado", () => {
       expect(html, palabra).toContain(`<dt>${palabra}</dt>`);
     }
     expect(html).toContain("El bot todavía no reporta ninguna corrida de este dataset");
+    expect(html).toContain("o su registro no se pudo leer");
     expect(html).toContain("hasta un minuto");
   });
 

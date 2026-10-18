@@ -42,7 +42,7 @@ ${navegacion(false)}
 <dt>Desactualizado</dt>
 <dd>Pasó más del plazo sin una revisión correcta, o el bot ya corrió y ninguna revisión ha terminado bien. Los datos se siguen sirviendo, con la fecha de la columna «Datos al».</dd>
 <dt>Sin registro</dt>
-<dd>El bot todavía no reporta ninguna corrida de este dataset; pasa en un despliegue nuevo o en una copia local. Los datos se sirven igual, solo falta con qué medir su frescura.</dd>
+<dd>El bot todavía no reporta ninguna corrida de este dataset, como pasa en un despliegue nuevo o en una copia local, o su registro no se pudo leer. Los datos se sirven igual, solo falta con qué medir su frescura.</dd>
 </dl>
 </section>
 <section id="columnas" aria-labelledby="titulo-columnas">

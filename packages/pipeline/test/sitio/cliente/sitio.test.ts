@@ -87,7 +87,7 @@ const fila = (cambios: Record<string, unknown> = {}): Record<string, unknown> =>
   ...cambios,
 });
 
-const sinExito = { ultimoExito: "Ninguno", hace: "", instante: null };
+const sinExito = { ultimoExito: "Ninguna registrada", hace: "", instante: null };
 
 describe("filasDeEstado", () => {
   it("con la respuesta del Worker local, cada dataset sale Sin registro", () => {
@@ -523,7 +523,7 @@ describe("actualizarEstado", () => {
         "1995-04-04 – 2026-10-25",
       ],
       // Un dataset que el catálogo no conoce sale con su id, como texto.
-      ["<b>nuevo</b>", "Sin registro", "2026-10-18", "Ninguno", "72 h", "No aplica"],
+      ["<b>nuevo</b>", "Sin registro", "2026-10-18", "Ninguna registrada", "72 h", "No aplica"],
     ]);
   });
 

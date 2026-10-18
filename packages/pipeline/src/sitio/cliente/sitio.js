@@ -70,7 +70,8 @@ const forma = (detalle) => new ErrorEstado(`la respuesta no tiene la forma esper
  * @property {Status} status
  * @property {string} estado El estado en palabras.
  * @property {string} datos La fecha de los datos (`as_of`).
- * @property {string} ultimoExito El último éxito en hora de la Ciudad de México, o "Ninguno".
+ * @property {string} ultimoExito El último éxito en hora de la Ciudad de México, o "Ninguna
+ *   registrada": la API no tiene una, porque nunca hubo o porque no pudo leer el registro.
  * @property {string} hace "hace N h", o vacío si no hay último éxito.
  * @property {string | null} instante El último éxito tal como lo da la API.
  * @property {string} plazo Las horas de frescura: "72 h".
@@ -112,7 +113,8 @@ function filaDe(valor, i, ahora) {
     status,
     estado: NOMBRES_STATUS[status],
     datos: as_of,
-    ultimoExito: last_success === null ? "Ninguno" : FECHA_HORA.format(new Date(last_success)),
+    ultimoExito:
+      last_success === null ? "Ninguna registrada" : FECHA_HORA.format(new Date(last_success)),
     hace: last_success === null ? "" : horasDesde(last_success, ahora),
     instante: last_success,
     plazo: `${frescura_horas} h`,
