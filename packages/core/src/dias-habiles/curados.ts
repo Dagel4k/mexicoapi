@@ -67,6 +67,15 @@ const reglaDe = (autoridad: string): ReglaCurada | undefined =>
   Object.hasOwn(REGLAS, autoridad) ? REGLAS[autoridad as AutoridadCurada] : undefined;
 
 /**
+ * Qué puede faltar fuera de la cobertura de cada autoridad (`faltaFuera` de sus calendarios):
+ * con `permitirIncompleto`, la advertencia de cada año sin calendario lo nombra. Sin las
+ * disposiciones de un año, la CNBV puede cerrar días que no son fin de semana.
+ */
+const FALTA_FUERA: Readonly<Partial<Record<AutoridadCurada, string>>> = Object.freeze({
+  cnbv: "Pueden faltar días de cierre bancario, como el 1 de enero.",
+});
+
+/**
  * La cobertura por tipo de día con la de la regla de la autoridad, si tiene: con el SAT,
  * `descanso` es la del art. 12 (hasta 2100). Es la que se pasa a `revisarPlazos`.
  */
@@ -434,6 +443,7 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
       fuenteFinDeSemana,
       excluirTipos,
       avisos: regla?.avisos,
+      faltaFuera: FALTA_FUERA[autoridad],
     });
   const plazos = new Map<TipoPlazo, PlazoCurado>();
   for (const [tipo, cobertura, excluirTipos] of leidos) {
