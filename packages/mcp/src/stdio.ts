@@ -7,7 +7,6 @@ import {
   crearServidor,
   ERROR_PARSEO,
   type OpcionesServidor,
-  respuestaError,
   SOLICITUD_INVALIDA,
 } from "./protocolo.js";
 
@@ -65,11 +64,7 @@ export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
 
   function rechazarGrande(): void {
     registrar(`se descartó un mensaje de más de ${maxBytes} bytes`);
-    escribir(
-      JSON.stringify(
-        respuestaError(null, SOLICITUD_INVALIDA, `El mensaje pasa de ${maxBytes} bytes`),
-      ),
-    );
+    escribir(servidor.errorSinId(SOLICITUD_INVALIDA, `El mensaje pasa de ${maxBytes} bytes`));
   }
 
   function atenderLinea(linea: Buffer): void {
@@ -84,7 +79,7 @@ export function ejecutarStdio(opciones: OpcionesStdio): ConexionStdio {
       texto = decodificador.decode(cuerpo);
     } catch {
       registrar("se descartó un mensaje que no es UTF-8 válido");
-      escribir(JSON.stringify(respuestaError(null, ERROR_PARSEO, "El mensaje no es UTF-8 válido")));
+      escribir(servidor.errorSinId(ERROR_PARSEO, "El mensaje no es UTF-8 válido"));
       return;
     }
     const pendiente = servidor.atender(texto).then(escribir);

@@ -19,10 +19,11 @@ const RESULTADO_INICIAL = {
   instructions: "Instrucciones de prueba.",
 };
 
-function error(id: string | number | null, code: number, message?: string): unknown {
+/** Respuesta de error esperada; con id undefined, el error no lleva id. */
+function error(id: string | number | null | undefined, code: number, message?: string): unknown {
   return {
     jsonrpc: "2.0",
-    id,
+    ...(id === undefined ? {} : { id }),
     error: message === undefined ? { code, message: expect.any(String) } : { code, message },
   };
 }
@@ -192,6 +193,37 @@ describe("negociación de versión (Review Focus 2)", () => {
   });
 });
 
+describe("errores sin id", () => {
+  it("antes de negociar y en 2025-06-18 o 2025-11-25 omiten el id", async () => {
+    const cliente = conectar();
+    cliente.escribir("{\n");
+    expect(await cliente.recibir()).toEqual({
+      jsonrpc: "2.0",
+      error: { code: ERROR_PARSEO, message: "JSON inválido" },
+    });
+    await cliente.inicializar("2025-06-18");
+    cliente.escribir("{\n");
+    expect(await cliente.recibir()).not.toHaveProperty("id");
+  });
+
+  it.each(["2025-03-26", "2024-11-05"])("en %s llevan id null, como en JSON-RPC 2.0", async (v) => {
+    const cliente = conectar({ maxBytesMensaje: 1000 });
+    await cliente.inicializar(v);
+    cliente.escribir("{\n");
+    expect(await cliente.recibir()).toEqual(error(null, ERROR_PARSEO, "JSON inválido"));
+    cliente.escribir(`${"x".repeat(1001)}\n`);
+    expect(await cliente.recibir()).toEqual(
+      error(null, SOLICITUD_INVALIDA, "El mensaje pasa de 1000 bytes"),
+    );
+    cliente.escribir(Buffer.from([0xc3, 0x28, 0x0a]));
+    expect(await cliente.recibir()).toEqual(
+      error(null, ERROR_PARSEO, "El mensaje no es UTF-8 válido"),
+    );
+    cliente.enviar({ jsonrpc: "2.0", id: true, method: "ping" });
+    expect(await cliente.recibir()).toEqual(error(null, SOLICITUD_INVALIDA));
+  });
+});
+
 describe("versión 2024-11-05", () => {
   it("publica solo lo que esa versión conoce", async () => {
     const cliente = conectar({ herramientas: [eco] });
@@ -225,9 +257,9 @@ describe("mensajes malformados (Review Focus 1)", () => {
   it("JSON inválido da Parse error con id null y el proceso sigue", async () => {
     const cliente = conectar();
     cliente.escribir('{"jsonrpc":"2.0","id":1,"method":"ping"\n');
-    expect(await cliente.recibir()).toEqual(error(null, ERROR_PARSEO, "JSON inválido"));
+    expect(await cliente.recibir()).toEqual(error(undefined, ERROR_PARSEO, "JSON inválido"));
     cliente.escribir("no es json\n");
-    expect(await cliente.recibir()).toEqual(error(null, ERROR_PARSEO));
+    expect(await cliente.recibir()).toEqual(error(undefined, ERROR_PARSEO));
     await cliente.sinRespuesta();
     expect(cliente.registros.join("\n")).not.toContain("no es json");
   });
@@ -235,8 +267,8 @@ describe("mensajes malformados (Review Focus 1)", () => {
   it("un JSON partido en dos líneas da dos Parse error", async () => {
     const cliente = conectar();
     cliente.escribir('{"jsonrpc":"2.0",\n"id":1,"method":"ping"}\n');
-    expect(await cliente.recibir()).toEqual(error(null, ERROR_PARSEO));
-    expect(await cliente.recibir()).toEqual(error(null, ERROR_PARSEO));
+    expect(await cliente.recibir()).toEqual(error(undefined, ERROR_PARSEO));
+    expect(await cliente.recibir()).toEqual(error(undefined, ERROR_PARSEO));
     await cliente.sinRespuesta();
   });
 
@@ -248,7 +280,7 @@ describe("mensajes malformados (Review Focus 1)", () => {
   ])("%s da Invalid Request con id null", async (_nombre, linea) => {
     const cliente = conectar();
     cliente.escribir(`${linea}\n`);
-    expect(await cliente.recibir()).toEqual(error(null, SOLICITUD_INVALIDA));
+    expect(await cliente.recibir()).toEqual(error(undefined, SOLICITUD_INVALIDA));
     await cliente.sinRespuesta();
   });
 
@@ -256,14 +288,18 @@ describe("mensajes malformados (Review Focus 1)", () => {
     ["sin jsonrpc", { id: 3, method: "ping" }, 3],
     ["jsonrpc 1.0", { jsonrpc: "1.0", id: 3, method: "ping" }, 3],
     ["method no texto", { jsonrpc: "2.0", id: "a", method: 7 }, "a"],
-    ["method no texto sin id", { jsonrpc: "2.0", method: 7 }, null],
-    ["id null", { jsonrpc: "2.0", id: null, method: "ping" }, null],
-    ["id objeto", { jsonrpc: "2.0", id: {}, method: "ping" }, null],
-    ["id booleano", { jsonrpc: "2.0", id: true, method: "ping" }, null],
-    ["id decimal", { jsonrpc: "2.0", id: 1.5, method: "ping" }, null],
-    ["id fuera de enteros seguros", { jsonrpc: "2.0", id: 2 ** 53, method: "ping" }, null],
-    ["id enorme", { jsonrpc: "2.0", id: 1e300, method: "ping" }, null],
-    ["id de más de 256 caracteres", { jsonrpc: "2.0", id: "x".repeat(257), method: "ping" }, null],
+    ["method no texto sin id", { jsonrpc: "2.0", method: 7 }, undefined],
+    ["id null", { jsonrpc: "2.0", id: null, method: "ping" }, undefined],
+    ["id objeto", { jsonrpc: "2.0", id: {}, method: "ping" }, undefined],
+    ["id booleano", { jsonrpc: "2.0", id: true, method: "ping" }, undefined],
+    ["id decimal", { jsonrpc: "2.0", id: 1.5, method: "ping" }, undefined],
+    ["id fuera de enteros seguros", { jsonrpc: "2.0", id: 2 ** 53, method: "ping" }, undefined],
+    ["id enorme", { jsonrpc: "2.0", id: 1e300, method: "ping" }, undefined],
+    [
+      "id de más de 256 caracteres",
+      { jsonrpc: "2.0", id: "x".repeat(257), method: "ping" },
+      undefined,
+    ],
     ["params null", { jsonrpc: "2.0", id: 4, method: "ping", params: null }, 4],
     ["params texto", { jsonrpc: "2.0", id: 4, method: "ping", params: "x" }, 4],
     ["sin method ni resultado", { jsonrpc: "2.0", id: 8 }, 8],
@@ -428,11 +464,15 @@ describe("lotes", () => {
     const cliente = conectar();
     cliente.escribir('[{"jsonrpc":"2.0","id":1,"method":"ping"}]\n');
     expect(await cliente.recibir()).toEqual(
-      error(null, SOLICITUD_INVALIDA, "No se admiten lotes JSON-RPC en esta versión del protocolo"),
+      error(
+        undefined,
+        SOLICITUD_INVALIDA,
+        "No se admiten lotes JSON-RPC en esta versión del protocolo",
+      ),
     );
     await cliente.inicializar();
     cliente.escribir('[{"jsonrpc":"2.0","id":2,"method":"ping"}]\n');
-    expect(await cliente.recibir()).toEqual(error(null, SOLICITUD_INVALIDA));
+    expect(await cliente.recibir()).toEqual(error(undefined, SOLICITUD_INVALIDA));
     await cliente.sinRespuesta();
   });
 
