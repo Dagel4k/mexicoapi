@@ -11,6 +11,7 @@ import type {
 import { enesimoDiaDeSemana } from "@mexicoapi/core";
 import { aCentavos, conMiles, deCentavos, dividirRedondeando } from "./decimal.js";
 import type { ExcepcionCuotaFija } from "./esquemas.js";
+import { PLAZOS, revisarPlazos } from "./plazos.js";
 
 /**
  * Diferencia aceptada, en centavos, entre la cuota fija publicada y la que resulta de encadenar
@@ -304,9 +305,14 @@ function revisarReglas(dia: DiaInhabilCurado): string[] {
   return fallas;
 }
 
+/**
+ * Cada día cae en la cobertura de su tipo y en la de algún tipo de plazo: el Worker rechaza el
+ * calendario completo si no (ver `revisarPlazos`).
+ */
 export function invariantesDias(autoridad: AutoridadCurada) {
   return (registros: readonly DiaInhabilCurado[], cobertura: CoberturaCurada | null): string[] => {
     const fallas: string[] = [];
+    const enSuTipo: DiaInhabilCurado[] = [];
     for (const dia of registros) {
       const falla = (texto: string) => fallas.push(`${dia.fecha}: ${texto}`);
       if (dia.autoridad !== autoridad) {
@@ -317,8 +323,13 @@ export function invariantesDias(autoridad: AutoridadCurada) {
         falla(`no hay cobertura para el tipo ${dia.tipo}`);
       } else if (dia.fecha < rango.desde || dia.fecha > rango.hasta) {
         falla(`está fuera de la cobertura de ${dia.tipo} (${rango.desde} a ${rango.hasta})`);
+      } else {
+        enSuTipo.push(dia);
       }
       for (const f of revisarReglas(dia)) falla(f);
+    }
+    if (cobertura !== null) {
+      fallas.push(...revisarPlazos(PLAZOS[autoridad], cobertura, enSuTipo).fallas);
     }
     return fallas;
   };

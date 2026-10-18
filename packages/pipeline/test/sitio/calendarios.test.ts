@@ -169,6 +169,21 @@ describe("shardCalendario", () => {
     });
   });
 
+  it("falla con ErrorDatos si un día queda fuera de la cobertura de todos los plazos", () => {
+    // El Worker rechaza el shard entero si un día cae fuera de la cobertura amplia.
+    const fds = fuente("Los sábados y domingos.");
+    expect(() =>
+      shardCalendario(
+        "sat",
+        [dia("2026-12-25", "descanso", fds), dia("2027-01-04", "vacaciones", fds)],
+        {
+          descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
+          vacaciones: { desde: "2026-01-01", hasta: "2027-01-04" },
+        },
+      ),
+    ).toThrow(/2027-01-04: no cae en la cobertura de ningún tipo de plazo/);
+  });
+
   it("falla si un plazo no tiene cobertura de ningún tipo de día que cuente", () => {
     // declaraciones_pagos no cuenta las vacaciones y no hay cobertura de descanso.
     const fds = fuente("Los sábados y domingos.");

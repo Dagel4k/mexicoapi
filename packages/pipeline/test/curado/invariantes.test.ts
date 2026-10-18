@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import type {
   CoberturaCurada,
   DiaInhabilCurado,
@@ -14,6 +15,8 @@ import {
   invariantesUma,
   TOLERANCIA_CUOTA_FIJA,
 } from "../../src/curado/invariantes.js";
+import { interpretarCurado } from "../../src/curado/leer.js";
+import { curadoDiasSat } from "../../src/curado/registro.js";
 import {
   DIAS_CNBV_OFICIALES,
   EXCEPCIONES_OFICIALES,
@@ -350,5 +353,75 @@ describe("días inhábiles", () => {
     expect(cnbv([dia("2026-01-01", "1o. de enero")], null)).toEqual([
       "2026-01-01: no hay cobertura para el tipo descanso",
     ]);
+  });
+});
+
+describe("días inhábiles y tipos de plazo", () => {
+  const sat = invariantesDias("sat");
+  const vacaciones = (fecha: string): DiaInhabilCurado => ({
+    ...(DIAS_CNBV_OFICIALES[0] as DiaInhabilCurado),
+    fecha,
+    autoridad: "sat",
+    motivo: "Segundo periodo general de vacaciones de 2026",
+    tipo: "vacaciones",
+  });
+
+  it("rechaza un día en la cobertura de su tipo pero fuera de la de todos los tipos de plazo", () => {
+    // general es la intersección de descanso y vacaciones; declaraciones_pagos, la de descanso.
+    const cobertura: CoberturaCurada = {
+      descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
+      vacaciones: { desde: "2026-01-01", hasta: "2027-01-04" },
+    };
+    expect(sat([vacaciones("2026-12-31"), vacaciones("2027-01-04")], cobertura)).toEqual([
+      "2027-01-04: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al 2026-12-31; declaraciones_pagos del 2026-01-01 al 2026-12-31)",
+    ]);
+  });
+
+  it("rechaza un plazo sin cobertura de un tipo de día que cuente o con la cobertura vacía", () => {
+    expect(
+      sat([vacaciones("2026-07-20")], {
+        vacaciones: { desde: "2026-01-01", hasta: "2026-12-31" },
+      }),
+    ).toEqual(["el plazo declaraciones_pagos no tiene cobertura de un tipo de día que cuente"]);
+    expect(
+      sat([vacaciones("2025-07-21")], {
+        descanso: { desde: "2026-01-01", hasta: "2026-12-31" },
+        vacaciones: { desde: "2025-01-01", hasta: "2025-12-31" },
+      }),
+    ).toEqual(["la cobertura del plazo general queda vacía"]);
+  });
+
+  it("el YAML real con vacaciones hasta 2027 sin extender descanso no pasa", async () => {
+    const yaml = await readFile(
+      new URL("../../../../data/curado/dias-inhabiles-sat.yaml", import.meta.url),
+      "utf8",
+    );
+    const linea = "vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }";
+    expect(yaml).toContain(linea);
+    const fechas = [
+      ...Array.from({ length: 8 }, (_, i) => `2026-12-${17 + i}`),
+      ...Array.from({ length: 6 }, (_, i) => `2026-12-${26 + i}`),
+      "2027-01-01",
+      "2027-01-02",
+      "2027-01-03",
+      "2027-01-04",
+    ];
+    const extra = fechas.map(
+      (f) =>
+        `  - { fecha: ${f}, autoridad: sat, motivo: "Segundo periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }`,
+    );
+    const cambiado = [
+      yaml.replace(linea, "vacaciones: { desde: 2026-01-01, hasta: 2027-01-04 }").trimEnd(),
+      ...extra,
+      "",
+    ].join("\n");
+    const { documento, problemas } = interpretarCurado(curadoDiasSat, cambiado);
+    expect(documento).toBeNull();
+    expect(problemas).toEqual(
+      ["2027-01-01", "2027-01-02", "2027-01-03", "2027-01-04"].map(
+        (f) =>
+          `invariante: ${f}: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al 2026-12-31; declaraciones_pagos del 2026-01-01 al 2026-12-31)`,
+      ),
+    );
   });
 });
