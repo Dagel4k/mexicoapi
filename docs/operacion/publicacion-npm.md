@@ -28,7 +28,7 @@ Un `npm pack` o `npm publish` en `packages/mcp` también falla a propósito.
 
 En CI, el job `paquete-mcp` hace estos tres pasos con el Node de `.nvmrc` e instala el `.tgz` del servidor y el de `mexicoapi` (el artefacto del job `paquete`) en un proyecto nuevo con `npm install --offline`: la dependencia `mexicoapi@^0.1.0` la cumple el `.tgz` local, así que npm no consulta el registro, donde `mexicoapi` todavía no existe. Después, con Node 22.23.3 y 24.21.0, corre la prueba de humo (`packages/mcp/test/paquete/humo.mjs`, sin dependencias), que lanza el binario instalado (`node_modules/.bin/mexicoapi-mcp`) y le habla por stdio: `initialize`, `tools/list` y un `tools/call`. `paquete-mcp` es uno de los jobs que exige el check `verify`. `pnpm --filter mexicoapi-mcp test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y revisa además el `package.json` publicado y lo que lista `npm pack`.
 
-Hoy (0.1.0) el paquete tiene 35 archivos: unos 35 kB comprimido y 126 kB sin comprimir.
+Hoy (0.1.0) el paquete tiene 19 archivos (solo JavaScript en `dist`: es un binario y no publica tipos): unos 30 kB comprimido y 108 kB sin comprimir.
 
 ## Preparación en npm (una vez)
 

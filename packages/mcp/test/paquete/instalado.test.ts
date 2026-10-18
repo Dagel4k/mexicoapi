@@ -50,7 +50,7 @@ describe("el package.json publicado", () => {
 });
 
 describe("npm pack", () => {
-  it("publica solo dist, LICENSE, README y package.json", () => {
+  it("publica solo el JavaScript de dist, LICENSE, README y package.json", () => {
     expect(empaquetado.name).toBe("mexicoapi-mcp");
     const rutas = empaquetado.files.map((f) => f.path);
     expect(rutas).toEqual(
@@ -66,8 +66,9 @@ describe("npm pack", () => {
         "dist/consultas/codigo-postal.js",
       ]),
     );
+    // Solo un binario: sin archivos de tipos, que nadie importa.
     for (const ruta of rutas) {
-      expect(ruta).toMatch(/^(dist\/[\w/-]+\.(js|d\.ts)|LICENSE|README\.md|package\.json)$/);
+      expect(ruta).toMatch(/^(dist\/[\w/-]+\.js|LICENSE|README\.md|package\.json)$/);
     }
   });
 });
