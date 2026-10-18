@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Banco } from "@mexicoapi/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bancos,
   crearBancos,
@@ -15,6 +15,22 @@ import { diferenciar } from "../../../src/diferencias.js";
 import { ErrorDatos } from "../../../src/errores.js";
 import { crearCliente } from "../../../src/http.js";
 import { type Contexto, ejecutarDataset } from "../../../src/marco.js";
+
+const duplicarFila = vi.hoisted(() => ({ valor: false }));
+vi.mock("../../../src/datasets/bancos/participantes-pdf.js", async (importOriginal) => {
+  const o =
+    await importOriginal<typeof import("../../../src/datasets/bancos/participantes-pdf.js")>();
+  return {
+    ...o,
+    interpretarParticipantesPdf: async (bytes: Uint8Array) => {
+      const r = await o.interpretarParticipantesPdf(bytes);
+      const primera = r.filas[0];
+      if (!duplicarFila.valor || primera === undefined) return r;
+      const copia = { ...primera, numero: 999, nombre_corto: primera.nombre_corto.toLowerCase() };
+      return { ...r, filas: [...r.filas, copia] };
+    },
+  };
+});
 
 const dirFixtures = join(dirname(fileURLToPath(import.meta.url)), "../../fixtures/bancos");
 const URL_INFO = "https://www.banxico.org.mx/servicios/spei_-informacion-banco-mex.html";
@@ -90,7 +106,7 @@ describe("construir", () => {
     expect(bbva.sector).toBe("BANCA MÚLTIPLE");
     expect(bbva.tipo).toBe("banca_multiple");
     expect(bbva.historial).toEqual([
-      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", visto_desde: HOY, visto_hasta: HOY },
+      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: HOY, hasta: null },
     ]);
 
     const banxico = por(registros, "001");
@@ -117,74 +133,96 @@ describe("construir", () => {
     expect(fuentes[1]?.url).toBe(URL_PDF);
   });
 
-  it("conserva con baja un código que ya no viene y respeta la baja previa", async () => {
-    const base = (await construir(null)).registros;
-    const wal: Banco = {
-      codigo: "134",
-      codigo_spei: "40134",
-      nombre_corto: "WAL-MART",
-      razon_social: null,
-      sector: null,
-      tipo: "banca_multiple",
-      participacion: "no_confirmada",
-      activo: true,
-      baja_detectada: null,
-      historial: [
-        {
-          codigo_spei: "40134",
-          nombre_corto: "WAL-MART",
-          visto_desde: "2012-01-03",
-          visto_hasta: "2019-01-02",
-        },
-      ],
-    };
-    const r = (await construir([...base, wal])).registros;
-    expect(por(r, "134")).toMatchObject({ activo: false, baja_detectada: HOY });
-    expect(r).toHaveLength(98);
-
-    const r2 = (await construir([...base, { ...wal, activo: false, baja_detectada: "2020-05-05" }]))
-      .registros;
-    expect(por(r2, "134")).toMatchObject({ activo: false, baja_detectada: "2020-05-05" });
+  const wal = (extra: Partial<Banco> = {}): Banco => ({
+    codigo: "134",
+    codigo_spei: "40134",
+    nombre_corto: "WAL-MART",
+    razon_social: "Walmart de México",
+    sector: "BANCA MÚLTIPLE",
+    tipo: "banca_multiple",
+    participacion: "directa",
+    activo: true,
+    baja_detectada: null,
+    historial: [
+      { codigo_spei: "40134", nombre_corto: "WAL-MART", desde: "2012-01-03", hasta: null },
+    ],
+    ...extra,
   });
 
-  it("reactiva un código inactivo y abre periodo si cambia el nombre", async () => {
+  it("cierra el periodo de un código que ya no viene y no repite la baja", async () => {
     const base = (await construir(null)).registros;
-    const previo = por(base, "012");
+    const r = (await construir([...base, wal()])).registros;
+    const baja = por(r, "134");
+    expect(baja).toMatchObject({
+      activo: false,
+      baja_detectada: HOY,
+      razon_social: "Walmart de México",
+    });
+    expect(baja.historial).toEqual([
+      { codigo_spei: "40134", nombre_corto: "WAL-MART", desde: "2012-01-03", hasta: HOY },
+    ]);
+    expect(r).toHaveLength(98);
+    expect(bancos.invariantes(r)).toEqual([]);
+
+    const otra = (await construir([...base, baja], ctx("2026-10-18"))).registros;
+    expect(por(otra, "134")).toEqual(baja);
+  });
+
+  it("reactiva un código ausente abriendo un periodo nuevo", async () => {
+    const base = (await construir(null)).registros;
+    const bbva = por(base, "012");
     const inactivo: Banco = {
-      ...previo,
+      ...bbva,
       activo: false,
       baja_detectada: "2026-01-01",
       historial: [
         {
           codigo_spei: "40012",
           nombre_corto: "BBVA MEXICO",
-          visto_desde: "2025-01-01",
-          visto_hasta: "2025-12-31",
+          desde: "2025-01-01",
+          hasta: "2026-01-01",
         },
       ],
     };
     const r = por((await construir([inactivo])).registros, "012");
     expect(r.activo).toBe(true);
     expect(r.baja_detectada).toBeNull();
-    expect(r.historial).toHaveLength(1);
-    expect(r.historial[0]?.visto_hasta).toBe(HOY);
+    expect(r.historial).toEqual([
+      {
+        codigo_spei: "40012",
+        nombre_corto: "BBVA MEXICO",
+        desde: "2025-01-01",
+        hasta: "2026-01-01",
+      },
+      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: HOY, hasta: null },
+    ]);
+  });
 
+  it("un cambio de nombre cierra y abre periodo", async () => {
+    const base = (await construir(null)).registros;
     const otro: Banco = {
-      ...previo,
+      ...por(base, "012"),
       nombre_corto: "BBVA",
-      historial: [
-        {
-          codigo_spei: "40012",
-          nombre_corto: "BBVA",
-          visto_desde: "2025-01-01",
-          visto_hasta: "2026-10-01",
-        },
-      ],
+      historial: [{ codigo_spei: "40012", nombre_corto: "BBVA", desde: "2025-01-01", hasta: null }],
     };
     const n = por((await construir([otro])).registros, "012");
-    expect(n.historial).toHaveLength(2);
+    expect(n.historial).toEqual([
+      { codigo_spei: "40012", nombre_corto: "BBVA", desde: "2025-01-01", hasta: HOY },
+      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: HOY, hasta: null },
+    ]);
     expect(n.nombre_corto).toBe("BBVA MEXICO");
     expect(bancos.invariantes([n])).toEqual([]);
+  });
+
+  it("dos filas del PDF con el mismo nombre normalizado dan aviso", async () => {
+    duplicarFila.valor = true;
+    try {
+      const { avisos } = await construir(null);
+      expect(avisos).toHaveLength(1);
+      expect(avisos[0]).toContain("dos filas");
+    } finally {
+      duplicarFila.valor = false;
+    }
   });
 
   it("avisa de una fila del PDF sin entrada en el CEP", async () => {
@@ -235,8 +273,8 @@ describe("revisar", () => {
       {
         codigo_spei: `40${codigo}`,
         nombre_corto: `B${codigo}`,
-        visto_desde: HOY,
-        visto_hasta: HOY,
+        desde: HOY,
+        hasta: null,
       },
     ],
     ...extra,
@@ -284,28 +322,24 @@ describe("invariantes", () => {
       { ...b, baja_detectada: HOY },
       {
         ...b,
-        historial: [
-          { ...(b.historial[0] as Banco["historial"][number]), visto_hasta: "2020-01-01" },
-        ],
+        historial: [{ ...(b.historial[0] as Banco["historial"][number]), hasta: "2020-01-01" }],
       },
       { ...b, nombre_corto: "OTRO" },
       {
         ...b,
         historial: [
-          {
-            codigo_spei: "40012",
-            nombre_corto: "BBVA MEXICO",
-            visto_desde: "2026-10-17",
-            visto_hasta: "2026-10-17",
-          },
-          {
-            codigo_spei: "40012",
-            nombre_corto: "X",
-            visto_desde: "2020-01-01",
-            visto_hasta: "2020-01-01",
-          },
+          { codigo_spei: "40012", nombre_corto: "X", desde: "2020-01-01", hasta: null },
+          { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: "2021-01-01", hasta: null },
         ],
       },
+      {
+        ...b,
+        historial: [
+          { codigo_spei: "40012", nombre_corto: "X", desde: "2021-01-01", hasta: "2022-01-01" },
+          { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: "2020-01-01", hasta: null },
+        ],
+      },
+      { ...b, activo: false, baja_detectada: "2020-01-01" },
     ];
     for (const m of malos) expect(bancos.invariantes([m]).length).toBeGreaterThan(0);
   });
@@ -337,6 +371,60 @@ describe("registrosDesdeHistorico", () => {
       participacion: "no_confirmada",
     });
     expect(bancos.invariantes(r)).toEqual([]);
+  });
+});
+
+describe("corridas diarias", () => {
+  const ejecutar = (fecha: string) => ejecutarDataset(bancos, ctx(fecha));
+  const bytes = async () => readFile(join(raiz, "bancos", "bancos.json"), "utf8");
+
+  it("la misma fuente otro día no cambia nada", async () => {
+    expect((await ejecutar("2026-10-17")).resultado.estado).toBe("actualizado");
+    const antes = await bytes();
+    const { resultado } = await ejecutar("2026-10-18");
+    expect(resultado).toMatchObject({ estado: "sin_cambios", escrito: false });
+    expect(await bytes()).toBe(antes);
+  });
+
+  it("un cambio de nombre es actualizado, sin revisión", async () => {
+    await ejecutar("2026-10-17");
+    cep = new TextEncoder().encode(
+      JSON.stringify({
+        instituciones: interpretarCep(cep).map((e) =>
+          e[0] === "2001" ? [e[0], "BANXICO CENTRAL"] : e,
+        ),
+      }),
+    );
+    const { resultado } = await ejecutar("2026-10-18");
+    expect(resultado).toMatchObject({ estado: "actualizado", cambios: 1, escrito: true });
+    const r = JSON.parse(await bytes()) as Banco[];
+    expect(por(r, "001").historial).toEqual([
+      { codigo_spei: "2001", nombre_corto: "BANXICO", desde: HOY, hasta: "2026-10-18" },
+      { codigo_spei: "2001", nombre_corto: "BANXICO CENTRAL", desde: "2026-10-18", hasta: null },
+    ]);
+  });
+
+  it("desaparecer y volver pide revisión las dos veces", async () => {
+    await ejecutar("2026-10-17");
+    const completo = cep;
+    cep = new TextEncoder().encode(
+      JSON.stringify({ instituciones: interpretarCep(cep).filter((e) => e[0] !== "40012") }),
+    );
+    const baja = await ejecutar("2026-10-18");
+    expect(baja.resultado.estado).toBe("requiere_revision");
+    expect(baja.resultado.motivos).toContain("baja: 012 BBVA MEXICO");
+    const r = JSON.parse(await bytes()) as Banco[];
+    expect(por(r, "012")).toMatchObject({ activo: false, baja_detectada: "2026-10-18" });
+
+    cep = completo;
+    const vuelta = await ejecutar("2026-10-20");
+    expect(vuelta.resultado.estado).toBe("requiere_revision");
+    expect(vuelta.resultado.motivos).toContain("reactivación: 012 BBVA MEXICO");
+    const v = JSON.parse(await bytes()) as Banco[];
+    expect(por(v, "012").historial).toEqual([
+      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: HOY, hasta: "2026-10-18" },
+      { codigo_spei: "40012", nombre_corto: "BBVA MEXICO", desde: "2026-10-20", hasta: null },
+    ]);
   });
 });
 
