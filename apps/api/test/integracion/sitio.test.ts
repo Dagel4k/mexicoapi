@@ -144,6 +144,19 @@ describe("lo que no existe", () => {
     }
   });
 
+  // Lo que dice la referencia en CORS: los archivos estáticos solo aceptan GET y HEAD.
+  it.each(["/descargas/bancos.csv", "/llms.txt", "/"])(
+    "OPTIONS y POST en %s: 405 de los assets",
+    async (ruta) => {
+      for (const method of ["OPTIONS", "POST"]) {
+        const respuesta = await pedir(ruta, { method });
+        expect(respuesta.status, method).toBe(405);
+        esperarSinWorker(respuesta);
+        await respuesta.arrayBuffer();
+      }
+    },
+  );
+
   it("/v1/nada sigue siendo el 404 problem+json del Worker", async () => {
     const { respuesta, cuerpo } = await pedirJson("/v1/nada");
     expect(respuesta.status).toBe(404);
