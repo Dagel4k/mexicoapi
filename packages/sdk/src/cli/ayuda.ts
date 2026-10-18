@@ -1,30 +1,37 @@
 // Textos de ayuda de la CLI.
 const OPCIONES_GLOBALES = `Opciones:
-  --json       imprime el resultado completo como JSON
-  --depurar    muestra el detalle técnico de un error
-  -h, --help   muestra esta ayuda
-  -v, --version  muestra la versión`;
+  --json                 imprime el resultado completo como JSON (los errores, por stderr)
+  --depurar              muestra el detalle técnico de un error
+  --base <url>           origen de la API (municipio, banco y dias-habiles)
+  -h, --help             muestra esta ayuda
+  -v, --version          muestra la versión`;
 
 export const AYUDA = `mexicoapi: validadores y datos oficiales de México
 
 Uso: mexicoapi <comando> [argumentos] [opciones]
 
 Comandos:
-  clabe <valor>        valida una CLABE y su banco
-  rfc <valor>          valida un RFC
-  curp <valor>         valida una CURP
-  nss <valor>          valida un número de seguridad social
-  dias-habiles         suma días hábiles a una fecha
-  municipio <valor>    busca un municipio por clave (cvegeo) o por nombre
-  banco <codigo>       consulta un banco por los 3 dígitos de la CLABE
-  sepomex <subcomando> catálogo de códigos postales en este equipo
+  clabe <valor>          valida una CLABE y su banco
+  rfc <valor>            valida un RFC
+  curp <valor>           valida una CURP
+  nss <valor>            valida un número de seguridad social
+  dias-habiles           suma días hábiles a una fecha
+  municipio <valor>      busca un municipio por clave (cvegeo) o por nombre
+  banco <codigo>         consulta un banco por los 3 dígitos de la CLABE
+  sepomex <subcomando>   catálogo de códigos postales en este equipo
 
 ${OPCIONES_GLOBALES}
 
 Sin red todo sale de los datos que trae el paquete. Con --base <url> (o la variable
 MEXICOAPI_BASE) municipio, banco y dias-habiles consultan primero la API.
 
-Códigos de salida: 0 bien; 1 dato inválido o error; 2 uso incorrecto.
+Códigos de salida:
+  0   todo bien
+  1   dato o resultado inválido (una CLABE con mal dígito, un banco que no existe) o
+      error al ejecutar
+  2   uso incorrecto: comando desconocido, falta un argumento u opción con un valor
+      mal formado (--dias x, --desde 2026-13-01)
+
 Usa "mexicoapi <comando> --help" para el detalle de cada comando.`;
 
 const validador = (comando: string, que: string, ejemplo: string): string =>

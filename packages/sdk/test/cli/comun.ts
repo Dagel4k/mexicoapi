@@ -61,7 +61,10 @@ export function probarCli(correr: Correr, version: string): void {
       [["dias-habiles"], /Falta --desde/],
       [["dias-habiles", "--desde", "2026-03-16"], /Falta --dias/],
       [[...DIAS, "x"], /no recibe argumentos/],
-      [[...DIAS, "--autoridad", "xx"], /Autoridad desconocida/],
+      [["dias-habiles", "--desde", "2026-03-16", "--dias", "x"], /--dias debe ser un entero/],
+      [["dias-habiles", "--desde", "2026-03-16", "--dias", "-3"], /--dias|-3/],
+      [["dias-habiles", "--desde", "2026-13-01", "--dias", "5"], /--desde debe ser una fecha/],
+      [["dias-habiles", "--desde", "ayer", "--dias", "5"], /--desde debe ser una fecha/],
       [["clabe", "002", "--desde", "2026-01-01"], /--desde no aplica a "clabe"/],
       [["clabe", "002", "--base", "http://x"], /--base no aplica/],
       [["clabe", "--no-existe"], /no-existe/],
@@ -159,12 +162,14 @@ export function probarCli(correr: Correr, version: string): void {
   });
 
   it("dias-habiles con entradas inválidas o sin cobertura sale con 1", async () => {
-    const malDias = await correr(["dias-habiles", "--desde", "2026-03-16", "--dias", "cinco"]);
-    expect(malDias.codigo).toBe(1);
-    expect(malDias.errores).toContain("--dias debe ser un entero");
-    const malFecha = await correr(["dias-habiles", "--desde", "ayer", "--dias", "5"]);
-    expect(malFecha.codigo).toBe(1);
-    expect(malFecha.errores).toContain("fecha");
+    const rara = await correr([...DIAS, "--autoridad", "xx"]);
+    expect(rara.codigo).toBe(1);
+    expect(rara.errores).toContain("lft");
+    for (const dias of ["0", "3651"]) {
+      const fuera = await correr(["dias-habiles", "--desde", "2026-03-16", "--dias", dias]);
+      expect(fuera.codigo, dias).toBe(1);
+      expect(fuera.salida, dias).toBe("");
+    }
     const sat = await correr([...DIAS, "--autoridad", "sat"]);
     expect(sat.codigo).toBe(1);
     expect(sat.errores).toContain("lft");
@@ -231,7 +236,9 @@ export function probarCli(correr: Correr, version: string): void {
     expect((await correr(["sepomex", "estado", "--json"])).salida.trim()).toBe("null");
     const cp = await correr(["sepomex", "cp", "80000"]);
     expect(cp.codigo).toBe(1);
-    expect(cp.errores).toContain("sepomex sync");
+    expect(cp.errores).toContain(
+      "Corre `mexicoapi sepomex sync` (o `mexicoapi sepomex importar <archivo>`).",
+    );
     const malo = await correr(["sepomex", "cp", "8"]);
     expect(malo.codigo).toBe(1);
     expect(malo.errores).toContain("5 dígitos");
@@ -264,6 +271,46 @@ export function probarCli(correr: Correr, version: string): void {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  it("con --json los errores salen como JSON por stderr y stdout queda vacío", async () => {
+    const api = await correr(["banco", "999", "--json"]);
+    expect(api.codigo).toBe(1);
+    expect(api.salida).toBe("");
+    expect(JSON.parse(api.errores)).toEqual({
+      error: {
+        status: 404,
+        tipo: "no-encontrado",
+        title: "Recurso no encontrado",
+        detail: "No existe el banco 999.",
+      },
+    });
+    const otro = await correr(["sepomex", "importar", "no-existe.txt", "--json"]);
+    expect(otro.codigo).toBe(1);
+    expect(otro.salida).toBe("");
+    const cuerpo = JSON.parse(otro.errores.trimEnd().split("\n").pop() as string) as {
+      error: Record<string, unknown>;
+    };
+    expect(Object.keys(cuerpo.error)).toEqual(["mensaje"]);
+    const uso = await correr(["clabe", "--json"]);
+    expect(uso.codigo).toBe(2);
+    expect(uso.salida).toBe("");
+    expect(JSON.parse(uso.errores)).toEqual({
+      error: { mensaje: expect.stringContaining("Falta") },
+    });
+  });
+
+  it("la ayuda general documenta los códigos de salida y alinea sus columnas", async () => {
+    const { salida } = await correr(["--help"]);
+    expect(salida).toContain("2   uso incorrecto");
+    expect(salida).toContain("--dias x");
+    const inicios = salida
+      .split("\n")
+      .map((l) => /^ {2}(?:-\S.*?|[a-z][\w-]*(?: <\w+>)?) {2,}(?=\S)/.exec(l))
+      .filter((m) => m !== null)
+      .map((m) => (m as RegExpExecArray)[0].length);
+    expect(inicios.length).toBeGreaterThanOrEqual(13);
+    expect(new Set(inicios).size).toBe(1);
   });
 
   it("sepomex importar de un archivo que no existe falla con un mensaje y sin traza", async () => {

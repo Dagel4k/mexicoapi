@@ -4,6 +4,7 @@
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
 // que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento).
 import { parseArgs } from "node:util";
+import { type Autoridad, esFechaIsoValida } from "../index.js";
 import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
   bancoTexto,
@@ -64,6 +65,8 @@ const SUBCOMANDOS_SEPOMEX = ["sync", "importar", "cp", "estado"] as const;
 const CVEGEO = /^\d{5}$/;
 const ENTERO = /^\d+$/;
 const MAXIMO_MUNICIPIOS = 20;
+const SIN_CATALOGO =
+  "Todavía no hay catálogo de códigos postales. Corre `mexicoapi sepomex sync` (o `mexicoapi sepomex importar <archivo>`).";
 
 const imprimir = (e: Entorno, texto: string): void => e.salida(`${texto}\n`);
 const json = (e: Entorno, valor: unknown): void => imprimir(e, JSON.stringify(valor, null, 2));
@@ -140,20 +143,18 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   const { desde, dias, autoridad } = opciones;
   if (desde === undefined) throw new ErrorUso('Falta --desde AAAA-MM-DD en "dias-habiles".');
   if (dias === undefined) throw new ErrorUso('Falta --dias N en "dias-habiles".');
-  if (
-    autoridad !== undefined &&
-    autoridad !== "lft" &&
-    autoridad !== "cnbv" &&
-    autoridad !== "sat"
-  ) {
-    throw new ErrorUso(`Autoridad desconocida: ${autoridad}. Disponible: lft.`);
-  }
-  if (!ENTERO.test(dias)) {
-    imprimirError(e, "--dias debe ser un entero de 1 a 3650.");
-    return 1;
+  // Un valor mal formado es un error de uso; uno bien formado pero inválido (una autoridad que no
+  // existe, 0 días) lo rechaza el cliente y sale con 1.
+  if (!ENTERO.test(dias)) throw new ErrorUso(`--dias debe ser un entero, no "${dias}".`);
+  if (!esFechaIsoValida(desde)) {
+    throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
   const { cliente, conRed } = await crearClienteCli(e, opciones);
-  const respuesta = await cliente.diasHabiles({ desde, dias: Number(dias), autoridad });
+  const respuesta = await cliente.diasHabiles({
+    desde,
+    dias: Number(dias),
+    autoridad: autoridad as Autoridad | undefined,
+  });
   if (opciones.json) json(e, respuesta);
   else imprimir(e, diasHabilesTexto(respuesta) + pieTexto(respuesta, conRed));
   return 0;
@@ -225,8 +226,7 @@ async function sepomex(
   if (sub === "estado") {
     const estado = await lib.estado();
     if (opciones.json) json(e, estado);
-    else if (estado === null)
-      imprimir(e, "Todavía no hay catálogo de SEPOMEX. Usa: mexicoapi sepomex sync");
+    else if (estado === null) imprimir(e, SIN_CATALOGO);
     else imprimir(e, estadoSepomexTexto(estado));
     return estado === null ? 1 : 0;
   }
@@ -246,12 +246,22 @@ async function sepomex(
   return encontrado === null ? 1 : 0;
 }
 
-function imprimirError(e: Entorno, mensaje: string): void {
-  e.errores(`mexicoapi: ${mensaje}\n`);
+/** Un error al ejecutar: texto por stderr o, con --json, `{"error": {...}}`. */
+function imprimirError(e: Entorno, mensaje: string, enJson: boolean, problema?: unknown): void {
+  if (!enJson) {
+    e.errores(`mexicoapi: ${mensaje}\n`);
+    return;
+  }
+  const p = problema as { status?: unknown; tipo?: unknown; title?: unknown; detail?: unknown };
+  const cuerpo =
+    problema === undefined
+      ? { mensaje }
+      : { status: p.status, tipo: p.tipo ?? null, title: p.title, detail: p.detail };
+  e.errores(`${JSON.stringify({ error: cuerpo })}\n`);
 }
 
 /** Mensaje para el usuario; el detalle técnico solo con --depurar. */
-function falla(e: Entorno, error: unknown, depurar: boolean): void {
+function falla(e: Entorno, error: unknown, depurar: boolean, enJson: boolean): void {
   const nombre = (error as { name?: unknown } | null)?.name;
   const mensaje = error instanceof Error ? error.message : String(error);
   const conocido =
@@ -259,16 +269,20 @@ function falla(e: Entorno, error: unknown, depurar: boolean): void {
     nombre === "SepomexError" ||
     error instanceof TypeError ||
     error instanceof RangeError;
-  imprimirError(e, conocido ? mensaje : `error inesperado: ${mensaje}`);
+  const sinCatalogo =
+    nombre === "SepomexError" && (error as { tipo?: unknown }).tipo === "sin-datos";
+  const texto = sinCatalogo ? SIN_CATALOGO : conocido ? mensaje : `error inesperado: ${mensaje}`;
+  imprimirError(e, texto, enJson, nombre === "MexicoApiError" ? error : undefined);
   if (depurar) {
     e.errores(`${error instanceof Error ? (error.stack ?? mensaje) : String(error)}\n`);
-  } else if (!conocido) {
+  } else if (!conocido && !enJson) {
     e.errores("Usa --depurar para ver el detalle.\n");
   }
 }
 
 export async function ejecutar(argv: readonly string[], e: Entorno): Promise<number> {
   let depurar = argv.includes("--depurar");
+  const enJson = argv.includes("--json");
   try {
     const { posiciones, opciones } = analizar(argv);
     depurar = opciones.depurar === true;
@@ -311,11 +325,11 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
     }
   } catch (error) {
     if (error instanceof ErrorUso) {
-      imprimirError(e, error.message);
-      e.errores("Usa mexicoapi --help para ver los comandos.\n");
+      imprimirError(e, error.message, enJson);
+      if (!enJson) e.errores("Usa mexicoapi --help para ver los comandos.\n");
       return 2;
     }
-    falla(e, error, depurar);
+    falla(e, error, depurar, enJson);
     return 1;
   }
 }
