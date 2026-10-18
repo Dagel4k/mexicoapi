@@ -304,8 +304,13 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     });
     // General empieza en febrero: enero solo lo cubre declaraciones_pagos.
     const desdeFebrero = conPlazos({ cobertura: { desde: "2026-02-01", hasta: "2026-11-30" } }, {});
-    // Declaraciones_pagos cuenta todo: fuera de general no falta ningún tipo de día.
-    const sinExcluir = conPlazos({}, { excluir_tipos: [] });
+    // General es la cobertura amplia y declaraciones_pagos empieza en febrero: en enero lo cubre
+    // general, que cuenta todos los tipos de día, así que a declaraciones_pagos no le falta ninguno.
+    // (Un declaraciones_pagos que cuente las vacaciones ya no se carga: va contra PLAZOS.)
+    const generalMasAmplio = conPlazos(
+      { cobertura: COBERTURA_DECLARACIONES },
+      { cobertura: { desde: "2026-02-01", hasta: "2026-12-31" } },
+    );
 
     it("un hueco al inicio de la cobertura: advertencia con permitir_incompleto y 422 sin él", async () => {
       const { cuerpo } = await datos(
@@ -334,21 +339,21 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
 
     it("si ningún tipo de día puede faltar, ni advertencia ni explicación", async () => {
       const { cuerpo } = await datos(
-        sat("general", "2026-12-24", 1, "&permitir_incompleto=true"),
-        sinExcluir,
+        sat("declaraciones_pagos", "2026-01-05", 1, "&permitir_incompleto=true"),
+        generalMasAmplio,
       );
-      expect(cuerpo.data).toMatchObject({ resultado: "2026-12-28", advertencias: [] });
+      expect(cuerpo.data).toMatchObject({ resultado: "2026-01-06", advertencias: [] });
       reiniciarCargas();
       await incompleto(
-        sat("general", "2026-11-27", 2),
+        sat("declaraciones_pagos", "2026-01-05", 1),
         {
           autoridad: "sat",
-          fecha: "2026-12-01",
-          cobertura: COBERTURA_GENERAL,
+          fecha: "2026-01-06",
+          cobertura: { desde: "2026-02-01", hasta: "2026-12-31" },
           detail:
-            "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30.",
+            "El calendario del SAT para tipo_plazo=declaraciones_pagos no cubre 2026-01-06; cubre del 2026-02-01 al 2026-12-31.",
         },
-        sinExcluir,
+        generalMasAmplio,
       );
     });
   });
@@ -528,7 +533,8 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
     expect(cuerpo.advertencias).toEqual([]);
   });
 
-  it("sin advertencias si el plazo que cubre el año cuenta todos los tipos de día", async () => {
+  it("un declaraciones_pagos que cuenta las vacaciones no se carga: 500", async () => {
+    // Iría contra el CFF art. 12 (PLAZOS del núcleo): el calendario entero se rechaza.
     const declaraciones = { ...SHARD_SAT.plazos.declaraciones_pagos, excluir_tipos: [] };
     const cambios = {
       [RUTA_SAT]: {
@@ -536,8 +542,8 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
         plazos: { ...SHARD_SAT.plazos, declaraciones_pagos: declaraciones },
       },
     };
-    const { cuerpo } = await datos(inhabiles("autoridad=sat&anio=2026"), cambios);
-    expect(cuerpo.advertencias).toEqual([]);
+    const { lineas } = await errorInterno(inhabiles("autoridad=sat&anio=2026"), cambios);
+    expect(lineas).toEqual(["mexicoapi: error interno: RangeError en /v1/dias-inhabiles"]);
   });
 
   it.each([

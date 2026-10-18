@@ -137,7 +137,11 @@ export interface PlazoCurado {
 /** El calendario de una autoridad con un `Calendario` por tipo de plazo. Está congelado. */
 export interface CalendarioCurado {
   readonly autoridad: AutoridadCurada;
-  /** En el orden de los datos: `general` primero. */
+  /**
+   * Los plazos de los datos, todos de `PLAZOS` para la autoridad, en orden fijo: `general` y, en
+   * el SAT, `declaraciones_pagos`. `plazos.get(tipo)` da undefined si el calendario no tiene ese
+   * plazo (la CNBV solo tiene `general`). En JSON sale como un objeto por tipo de plazo.
+   */
   readonly plazos: ReadonlyMap<TipoPlazo, PlazoCurado>;
   /** Cuenta todos los tipos de día: en su cobertura la lista está completa. */
   readonly general: PlazoCurado;
@@ -147,11 +151,15 @@ export interface CalendarioCurado {
   readonly dias: readonly DiaInhabil[];
 }
 
+/** Lo que usa `util.inspect` de Node; se pide por su nombre para no depender de `node:`. */
+const INSPECCIONAR: unique symbol = Symbol.for("nodejs.util.inspect.custom");
+
 /**
  * Vista de solo lectura de un Map: no tiene `set`, `delete` ni `clear`, y como no es un Map,
- * `Map.prototype.set.call(vista, …)` lanza TypeError.
+ * `Map.prototype.set.call(vista, …)` lanza TypeError. En JSON es un objeto por llave y al
+ * inspeccionarla en Node se ve como el Map que guarda.
  */
-class MapaCongelado<K, V> implements ReadonlyMap<K, V> {
+class MapaCongelado<K extends string, V> implements ReadonlyMap<K, V> {
   readonly #mapa: Map<K, V>;
 
   constructor(mapa: Map<K, V>) {
@@ -190,10 +198,27 @@ class MapaCongelado<K, V> implements ReadonlyMap<K, V> {
   [Symbol.iterator](): MapIterator<[K, V]> {
     return this.#mapa.entries();
   }
+
+  toJSON(): Record<K, V> {
+    return Object.fromEntries(this.#mapa) as Record<K, V>;
+  }
+
+  [INSPECCIONAR](): Map<K, V> {
+    return new Map(this.#mapa);
+  }
 }
 
+/** Todos los tipos de plazo, en el orden en que salen en `plazos`. */
 const TIPOS_PLAZO: readonly string[] = ["general", "declaraciones_pagos"];
 const TIPOS_DIA: readonly string[] = ["descanso", "vacaciones"];
+
+const lista = (tipos: readonly string[]): string => `[${tipos.join(", ")}]`;
+const mismosTipos = (a: readonly string[], b: readonly string[]): boolean =>
+  lista([...a].sort()) === lista([...b].sort());
+
+/** Una copia congelada de la cita con solo sus campos: cambiar la entrada después no la toca. */
+const copiarFuente = ({ nombre, url, fecha_publicacion, fragmento }: FuenteDof): FuenteDof =>
+  Object.freeze({ nombre, url, fecha_publicacion, fragmento });
 
 const esRango = (r: Rango): boolean =>
   esFechaIsoValida(r.desde) && esFechaIsoValida(r.hasta) && r.desde <= r.hasta;
@@ -201,12 +226,21 @@ const esRango = (r: Rango): boolean =>
 /**
  * Arma el calendario de una autoridad: un `Calendario` por tipo de plazo con los días de su
  * cobertura y, si el plazo es más corto que la cobertura amplia, su respaldo. Lanza RangeError si
- * los datos no cumplen las reglas: `general` cuenta todos los tipos de día, un plazo contiene las
+ * los datos no cumplen las reglas: cada plazo es de `PLAZOS` para su autoridad y trae sus mismos
+ * `excluir_tipos` (falta uno distinto de `general` y solo ese plazo no existe); `general` cuenta
+ * todos los tipos de día, un plazo contiene las
  * coberturas de los demás, cada año de esa cobertura cita sus fines de semana (y ningún otro) y
- * los días van en orden estricto y dentro de ella. Copia y congela lo que recibe.
+ * los días van en orden estricto y dentro de ella. Copia y congela lo que recibe, con solo los
+ * campos de cada cita.
  */
 export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioCurado {
   const { autoridad } = datos;
+  const regla = Object.hasOwn(PLAZOS, autoridad) ? PLAZOS[autoridad] : undefined;
+  if (regla === undefined) {
+    throw new RangeError(
+      `No hay calendario curado de ${String(autoridad)}: solo de ${Object.keys(PLAZOS).join(" y ")}.`,
+    );
+  }
   const falla = (motivo: string) => new RangeError(`El calendario de ${autoridad} ${motivo}.`);
   const leidos: [TipoPlazo, Rango, readonly TipoDiaCurado[]][] = [];
   for (const [tipo, plazo] of Object.entries(datos.plazos)) {
@@ -227,6 +261,20 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
   if (general === undefined || general[2].length > 0) {
     throw falla("no tiene un plazo general que cuente todos los días");
   }
+  for (const [tipo, , excluir] of leidos) {
+    const pide = regla[tipo];
+    if (pide === undefined) {
+      throw falla(
+        `trae el tipo de plazo ${tipo}, que no es suyo (solo ${Object.keys(regla).join(" y ")})`,
+      );
+    }
+    if (!mismosTipos(excluir, pide)) {
+      throw falla(
+        `tiene en ${tipo} excluir_tipos ${lista(excluir)} y la regla del núcleo pide ${lista(pide)}`,
+      );
+    }
+  }
+  leidos.sort(([a], [b]) => TIPOS_PLAZO.indexOf(a) - TIPOS_PLAZO.indexOf(b));
   const coberturas = leidos.map(([, cobertura]) => cobertura);
   const amplia = coberturas.find((c) => coberturas.every((otra) => contiene(c, otra)));
   if (amplia === undefined) throw falla("no tiene un plazo que contenga a los demás");
@@ -238,7 +286,7 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
   for (let anio = primero; anio <= ultimo; anio++) {
     const fuente = Object.hasOwn(citadas, String(anio)) ? citadas[String(anio)] : undefined;
     if (fuente === undefined) throw falla(`no cita los fines de semana de ${anio}`);
-    fuentes.set(anio, fuente);
+    fuentes.set(anio, copiarFuente(fuente));
   }
   if (Object.keys(citadas).length !== fuentes.size) {
     throw falla("cita fines de semana de años fuera de su cobertura");
@@ -256,15 +304,7 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
       throw falla(`tiene un día inesperado, repetido o fuera de orden: ${fecha}`);
     }
     anterior = fecha;
-    const { nombre, url, fecha_publicacion, fragmento } = fuente;
-    dias.push(
-      Object.freeze({
-        fecha,
-        motivo,
-        tipo,
-        fuente: Object.freeze({ nombre, url, fecha_publicacion, fragmento }),
-      }),
-    );
+    dias.push(Object.freeze({ fecha, motivo, tipo, fuente: copiarFuente(fuente) }));
   }
 
   const armar = (cobertura: Rango, excluirTipos: readonly TipoDiaCurado[]) =>
@@ -443,8 +483,10 @@ export function exigirAnio(autoridad: Autoridad, anio: number, cobertura: Rango)
  */
 function advertencias(calendario: CalendarioCurado, anio: string): string[] {
   const { autoridad, general, plazos } = calendario;
-  if (cubreAnio(anio, general.cobertura)) return [];
-  const tipos = faltan(calendario, general, (p) => cubreAnio(anio, p.cobertura));
+  // Con los plazos de PLAZOS, si general no cubre el año lo cubre un plazo que excluye algo.
+  const tipos = cubreAnio(anio, general.cobertura)
+    ? []
+    : faltan(calendario, general, (p) => cubreAnio(anio, p.cobertura));
   if (tipos.length === 0) return [];
   const { desde, hasta } = general.cobertura;
   const completas = [...plazos]
