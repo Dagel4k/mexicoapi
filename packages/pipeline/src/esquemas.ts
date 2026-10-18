@@ -1,4 +1,4 @@
-import type { Banco, Estado, Municipio, PeriodoBanco } from "@mexicoapi/core";
+import type { Banco, Estado, Municipio, PeriodoBanco, TipoCambioFix, Udi } from "@mexicoapi/core";
 import { z } from "zod";
 
 const cveEnt = z.string().regex(/^\d{2}$/);
@@ -58,4 +58,20 @@ export const esquemaBanco: z.ZodType<Banco> = z.object({
   activo: z.boolean().describe("Si la institución sigue en el catálogo vigente."),
   baja_detectada: fechaIso.nullable().describe("Fecha en que se detectó la baja; null si activo."),
   historial: z.array(esquemaPeriodoBanco).describe("Periodos con código SPEI y nombre."),
+});
+
+export const esquemaTipoCambioFix: z.ZodType<TipoCambioFix> = z.object({
+  fecha_publicacion: fechaIso.describe("Fecha de publicación en el DOF (AAAA-MM-DD)."),
+  valor: z
+    .string()
+    .regex(/^\d+\.\d{4}$/)
+    .describe("Pesos por dólar, con 4 decimales, como lo publica el DOF."),
+});
+
+export const esquemaUdi: z.ZodType<Udi> = z.object({
+  fecha: fechaIso.describe("Día al que aplica el valor (AAAA-MM-DD)."),
+  valor: z
+    .string()
+    .regex(/^\d+\.\d{6}$/)
+    .describe("Valor de la UDI en pesos, con 6 decimales, como lo publica el DOF."),
 });

@@ -29,6 +29,8 @@ export const FRESCURA_HORAS: Readonly<Record<string, number>> = {
   "inegi.estados": 216,
   "inegi.municipios": 216,
   bancos: 72,
+  "tipo-cambio.fix": 72,
+  udis: 72,
 };
 
 export function metaDesdeManifiesto(m: Manifiesto, directorio: string): Meta {
