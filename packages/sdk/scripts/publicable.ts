@@ -3,6 +3,7 @@
 // monorepo (el núcleo ya viaja en dist/nucleo). npm pack y npm publish se corren en esa carpeta:
 // así el .tgz y lo que npm registra de la versión salen del mismo manifiesto.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
+// packages/mcp/scripts/publicable.ts usa este mismo código para `mexicoapi-mcp`.
 //
 //   node scripts/publicable.ts <destino>   después de pnpm --filter mexicoapi... build
 import { access, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -12,16 +13,20 @@ import { fileURLToPath } from "node:url";
 const USO =
   "uso: node scripts/publicable.ts <destino>\n" +
   "  arma en <destino> (nuevo o vacío) el paquete que se publica; npm pack y npm publish se corren ahí.\n";
-const NO_DESDE_AQUI =
-  "mexicoapi no se empaqueta desde aquí: este package.json trae las devDependencies del monorepo. " +
+const noDesdeAqui = (nombre: string): string =>
+  `${nombre} no se empaqueta desde aquí: este package.json trae lo que solo sirve en el monorepo. ` +
   "Arma el paquete con node scripts/publicable.ts <destino> y corre npm pack o npm publish en <destino>.\n";
 
 /** Lo que solo sirve en el monorepo y no viaja en el paquete publicado. */
 const SOLO_MONOREPO = ["devDependencies", "scripts"] as const;
+/** Los campos de dependencias que viajan en el paquete y pueden nombrar otro del workspace. */
+const DEPENDENCIAS = ["dependencies", "peerDependencies", "optionalDependencies"] as const;
 /** Un paquete interno del monorepo o un rango de pnpm workspace, que npm no podría instalar. */
 const INTERNO = /@mexicoapi\/[\w.-]+|workspace:[^"]*/;
 
 type Manifiesto = Record<string, unknown>;
+/** Nombre de un paquete del workspace y el rango con que se publica, por ejemplo `^0.1.0`. */
+export type Versiones = Readonly<Record<string, string>>;
 
 async function existe(ruta: string): Promise<boolean> {
   try {
@@ -32,11 +37,29 @@ async function existe(ruta: string): Promise<boolean> {
   }
 }
 
-/** El manifiesto sin devDependencies ni scripts. Falla si lo demás nombra un paquete interno. */
-export function manifiestoPublicable(manifiesto: Readonly<Manifiesto>): Manifiesto {
+/**
+ * El manifiesto sin devDependencies ni scripts y con el rango `workspace:` de cada dependencia que
+ * está en `versiones` cambiado por su rango publicado. Falla si lo demás nombra un paquete interno
+ * o un rango `workspace:`.
+ */
+export function manifiestoPublicable(
+  manifiesto: Readonly<Manifiesto>,
+  versiones: Versiones = {},
+): Manifiesto {
   const publicable: Manifiesto = {};
   for (const [campo, valor] of Object.entries(manifiesto)) {
     if (!(SOLO_MONOREPO as readonly string[]).includes(campo)) publicable[campo] = valor;
+  }
+  for (const campo of DEPENDENCIAS) {
+    const dependencias = publicable[campo];
+    if (typeof dependencias !== "object" || dependencias === null) continue;
+    publicable[campo] = Object.fromEntries(
+      Object.entries(dependencias).map(([nombre, rango]) => {
+        const delWorkspace = typeof rango === "string" && rango.startsWith("workspace:");
+        const publicado = delWorkspace && Object.hasOwn(versiones, nombre);
+        return [nombre, publicado ? versiones[nombre] : rango];
+      }),
+    );
   }
   const interno = INTERNO.exec(JSON.stringify(publicable));
   if (interno !== null) {
@@ -70,7 +93,8 @@ async function revisar(raiz: string, manifiesto: Readonly<Manifiesto>): Promise<
   for (const entrada of files) {
     if (!(await existe(join(raiz, entrada)))) {
       throw new Error(
-        `falta ${entrada} (lo lista files); compila antes con pnpm --filter mexicoapi... build`,
+        `falta ${entrada} (lo lista files); compila antes con ` +
+          `pnpm --filter ${String(manifiesto.name)}... build`,
       );
     }
   }
@@ -86,15 +110,20 @@ async function revisar(raiz: string, manifiesto: Readonly<Manifiesto>): Promise<
 
 /**
  * Arma en `destino` (que no existe o está vacío, fuera de `raiz`) el paquete de `raiz` tal como se
- * publica. Si algo falla, no deja nada a medias. Devuelve lo que copió de `files`.
+ * publica, con las dependencias del workspace en `versiones` (ver manifiestoPublicable). Si algo
+ * falla, no deja nada a medias. Devuelve lo que copió de `files`.
  */
-export async function armarPublicable(raiz: string, destino: string): Promise<string[]> {
+export async function armarPublicable(
+  raiz: string,
+  destino: string,
+  versiones: Versiones = {},
+): Promise<string[]> {
   // Dentro del paquete, npm pack lo tomaría por parte de packages/sdk y cp se copiaría a sí mismo.
   const desdeRaiz = relative(resolve(raiz), resolve(destino));
   const fuera = isAbsolute(desdeRaiz) || desdeRaiz === ".." || desdeRaiz.startsWith(`..${sep}`);
   if (!fuera) throw new Error(`el destino debe estar fuera de ${raiz}`);
   const manifiesto = JSON.parse(await readFile(join(raiz, "package.json"), "utf8")) as Manifiesto;
-  const publicable = manifiestoPublicable(manifiesto);
+  const publicable = manifiestoPublicable(manifiesto, versiones);
   const files = await revisar(raiz, manifiesto);
   const existia = await existe(destino);
   if (existia && (await readdir(destino)).length > 0) {
@@ -126,6 +155,8 @@ export interface OpcionesPrincipal {
   errores: (texto: string) => void;
   /** `npm_lifecycle_event`: con `prepack`, npm intenta empaquetar desde `raiz`. */
   evento?: string | undefined;
+  /** Rango publicado de cada dependencia del workspace (ver manifiestoPublicable). */
+  versiones?: Versiones | undefined;
 }
 
 export async function principal(
@@ -133,7 +164,14 @@ export async function principal(
   opciones: OpcionesPrincipal,
 ): Promise<number> {
   if (opciones.evento === "prepack") {
-    opciones.errores(`publicable: ${NO_DESDE_AQUI}`);
+    let nombre = "el paquete";
+    try {
+      const manifiesto = await readFile(join(opciones.raiz, "package.json"), "utf8");
+      nombre = String((JSON.parse(manifiesto) as Manifiesto).name);
+    } catch {
+      // Sin un manifiesto legible el aviso es el mismo, sin el nombre.
+    }
+    opciones.errores(`publicable: ${noDesdeAqui(nombre)}`);
     return 1;
   }
   const [destino, ...resto] = argv;
@@ -142,7 +180,7 @@ export async function principal(
     return 2;
   }
   try {
-    const files = await armarPublicable(opciones.raiz, destino);
+    const files = await armarPublicable(opciones.raiz, destino, opciones.versiones);
     const { name, version } = JSON.parse(
       await readFile(join(destino, "package.json"), "utf8"),
     ) as Manifiesto;

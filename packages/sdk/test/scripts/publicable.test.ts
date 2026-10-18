@@ -117,6 +117,46 @@ describe("manifiestoPublicable", () => {
   ])("rechaza un paquete interno en lo que queda (%j)", (extra, mensaje) => {
     expect(() => manifiestoPublicable({ ...MANIFIESTO, ...extra })).toThrow(mensaje);
   });
+
+  it("publica con su versión los rangos workspace: de las dependencias indicadas", () => {
+    const manifiesto = {
+      ...MANIFIESTO,
+      name: "mexicoapi-mcp",
+      dependencies: { a: "1.0.0", mexicoapi: "workspace:*", z: "2.0.0" },
+      peerDependencies: { mexicoapi: "workspace:^" },
+    };
+    const publicable = manifiestoPublicable(manifiesto, { mexicoapi: "^1.2.3" });
+    expect(publicable.dependencies).toEqual({ a: "1.0.0", mexicoapi: "^1.2.3", z: "2.0.0" });
+    expect(Object.keys(publicable.dependencies as object)).toEqual(["a", "mexicoapi", "z"]);
+    expect(publicable.peerDependencies).toEqual({ mexicoapi: "^1.2.3" });
+    expect(Object.keys(publicable)).toEqual(
+      Object.keys(manifiesto).filter((c) => c !== "devDependencies" && c !== "scripts"),
+    );
+    // El del repositorio no se toca.
+    expect(manifiesto.dependencies.mexicoapi).toBe("workspace:*");
+  });
+
+  it("deja igual un rango que no es workspace: aunque traiga versión indicada", () => {
+    const manifiesto = { ...MANIFIESTO, dependencies: { mexicoapi: "0.1.0" } };
+    expect(manifiestoPublicable(manifiesto, { mexicoapi: "^9.9.9" }).dependencies).toEqual({
+      mexicoapi: "0.1.0",
+    });
+  });
+
+  it("rechaza un workspace: sin versión indicada", () => {
+    const manifiesto = {
+      ...MANIFIESTO,
+      dependencies: { mexicoapi: "workspace:*", otro: "workspace:*" },
+    };
+    expect(() => manifiestoPublicable(manifiesto, { mexicoapi: "^1.2.3" })).toThrow(/workspace:/);
+  });
+
+  it("rechaza una versión indicada que es otro rango workspace:", () => {
+    const manifiesto = { ...MANIFIESTO, dependencies: { mexicoapi: "workspace:*" } };
+    expect(() => manifiestoPublicable(manifiesto, { mexicoapi: "workspace:^" })).toThrow(
+      /workspace:/,
+    );
+  });
 });
 
 describe("armarPublicable", () => {
@@ -204,6 +244,31 @@ describe("armarPublicable", () => {
     expect(await readdir(join(dir, "vacio"))).toEqual([]);
   });
 
+  it("escribe las dependencias workspace: con la versión indicada", async () => {
+    const manifiesto = { ...MANIFIESTO, dependencies: { mexicoapi: "workspace:*" } };
+    await paqueteFalso(manifiesto);
+    await armarPublicable(join(dir, "sdk"), join(dir, "publicable"), { mexicoapi: "^1.2.3" });
+    const publicado = JSON.parse(await leer("publicable/package.json"));
+    expect(publicado.dependencies).toEqual({ mexicoapi: "^1.2.3" });
+    expect(publicado).toEqual(manifiestoPublicable(manifiesto, { mexicoapi: "^1.2.3" }));
+  });
+
+  it("falla si queda un workspace: sin versión, sin escribir nada", async () => {
+    await paqueteFalso({ ...MANIFIESTO, dependencies: { mexicoapi: "workspace:*" } });
+    await expect(armarPublicable(join(dir, "sdk"), join(dir, "publicable"))).rejects.toThrow(
+      /workspace:/,
+    );
+    await expect(readdir(join(dir, "publicable"))).rejects.toThrow();
+  });
+
+  it("si falta algo de files, dice cómo compilar ese paquete", async () => {
+    await paqueteFalso({ ...MANIFIESTO, name: "otro-paquete" });
+    await rm(join(dir, "sdk", "dist"), { recursive: true });
+    await expect(armarPublicable(join(dir, "sdk"), join(dir, "publicable"))).rejects.toThrow(
+      "pnpm --filter otro-paquete... build",
+    );
+  });
+
   it("falla si el manifiesto no trae files", async () => {
     const { files: _f, ...sinFiles } = MANIFIESTO;
     await paqueteFalso(sinFiles);
@@ -221,6 +286,16 @@ describe("principal", () => {
     expect(c.salida.join("")).toMatch(/mexicoapi@1\.2\.3 .*publicable.*npm pack.*npm publish/s);
     expect(c.errores).toEqual([]);
     expect(await listar("publicable")).toContain("package.json");
+  });
+
+  it("publica las dependencias workspace: con las versiones que recibe", async () => {
+    await paqueteFalso({ ...MANIFIESTO, dependencies: { mexicoapi: "workspace:*" } });
+    const c = consola();
+    const opciones = { ...c.opciones, versiones: { mexicoapi: "^1.2.3" } };
+    expect(await principal([join(dir, "publicable")], opciones)).toBe(0);
+    expect(JSON.parse(await leer("publicable/package.json")).dependencies).toEqual({
+      mexicoapi: "^1.2.3",
+    });
   });
 
   it("devuelve 1 con el motivo si falla", async () => {
@@ -242,6 +317,17 @@ describe("principal", () => {
     const c = consola();
     expect(await principal([], { ...c.opciones, evento: "prepack" })).toBe(1);
     expect(c.errores.join("")).toMatch(/no se empaqueta desde aquí.*publicable\.ts <destino>/s);
+  });
+
+  it("como prepack nombra el paquete que se intentó empaquetar", async () => {
+    await paqueteFalso({ ...MANIFIESTO, name: "otro-paquete" });
+    const c = consola();
+    expect(await principal([], { ...c.opciones, evento: "prepack" })).toBe(1);
+    expect(c.errores.join("")).toMatch(/^publicable: otro-paquete no se empaqueta desde aquí/);
+    const sinManifiesto = consola();
+    const opciones = { ...sinManifiesto.opciones, raiz: join(dir, "no-existe"), evento: "prepack" };
+    expect(await principal([], opciones)).toBe(1);
+    expect(sinManifiesto.errores.join("")).toMatch(/^publicable: el paquete no se empaqueta/);
   });
 
   it("como script sale con el código de principal", () => {
