@@ -21,11 +21,16 @@ export interface FuenteDatos {
   readonly citation: string;
 }
 
-/** De qué dataset salen los datos del paquete, a qué fecha corresponden y de qué fuentes. */
+/**
+ * De qué dataset salen los datos del paquete, a qué fecha corresponden, de qué fuentes y dónde
+ * se documentan: la misma forma que el `meta` de la API.
+ */
 export interface MetaDatos {
   /** Identificador del dataset, el mismo que usa la API (`inegi.municipios`, `udis`...). */
   readonly dataset: string;
   /** Fecha de los datos que trae esta versión del paquete. */
   readonly as_of: FechaISO;
   readonly sources: readonly FuenteDatos[];
+  /** Página de documentación del dataset, la misma que da la API en `meta.docs`. */
+  readonly docs: string;
 }

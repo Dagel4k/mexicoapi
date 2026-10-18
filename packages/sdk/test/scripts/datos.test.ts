@@ -109,6 +109,7 @@ describe("leerDataset", () => {
             citation: FUENTE.citation,
           },
         ],
+        docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/prueba-uno.md",
       },
     });
   });
