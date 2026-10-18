@@ -1,0 +1,194 @@
+[
+  {
+    "cve_ent": "01",
+    "nombre": "Aguascalientes",
+    "abreviatura": "Ags.",
+    "cvegeo": "01"
+  },
+  {
+    "cve_ent": "02",
+    "nombre": "Baja California",
+    "abreviatura": "BC",
+    "cvegeo": "02"
+  },
+  {
+    "cve_ent": "03",
+    "nombre": "Baja California Sur",
+    "abreviatura": "BCS",
+    "cvegeo": "03"
+  },
+  {
+    "cve_ent": "04",
+    "nombre": "Campeche",
+    "abreviatura": "Camp.",
+    "cvegeo": "04"
+  },
+  {
+    "cve_ent": "05",
+    "nombre": "Coahuila de Zaragoza",
+    "abreviatura": "Coah.",
+    "cvegeo": "05"
+  },
+  {
+    "cve_ent": "06",
+    "nombre": "Colima",
+    "abreviatura": "Col.",
+    "cvegeo": "06"
+  },
+  {
+    "cve_ent": "07",
+    "nombre": "Chiapas",
+    "abreviatura": "Chis.",
+    "cvegeo": "07"
+  },
+  {
+    "cve_ent": "08",
+    "nombre": "Chihuahua",
+    "abreviatura": "Chih.",
+    "cvegeo": "08"
+  },
+  {
+    "cve_ent": "09",
+    "nombre": "Ciudad de México",
+    "abreviatura": "CDMX",
+    "cvegeo": "09"
+  },
+  {
+    "cve_ent": "10",
+    "nombre": "Durango",
+    "abreviatura": "Dgo.",
+    "cvegeo": "10"
+  },
+  {
+    "cve_ent": "11",
+    "nombre": "Guanajuato",
+    "abreviatura": "Gto.",
+    "cvegeo": "11"
+  },
+  {
+    "cve_ent": "12",
+    "nombre": "Guerrero",
+    "abreviatura": "Gro.",
+    "cvegeo": "12"
+  },
+  {
+    "cve_ent": "13",
+    "nombre": "Hidalgo",
+    "abreviatura": "Hgo.",
+    "cvegeo": "13"
+  },
+  {
+    "cve_ent": "14",
+    "nombre": "Jalisco",
+    "abreviatura": "Jal.",
+    "cvegeo": "14"
+  },
+  {
+    "cve_ent": "15",
+    "nombre": "México",
+    "abreviatura": "Mex.",
+    "cvegeo": "15"
+  },
+  {
+    "cve_ent": "16",
+    "nombre": "Michoacán de Ocampo",
+    "abreviatura": "Mich.",
+    "cvegeo": "16"
+  },
+  {
+    "cve_ent": "17",
+    "nombre": "Morelos",
+    "abreviatura": "Mor.",
+    "cvegeo": "17"
+  },
+  {
+    "cve_ent": "18",
+    "nombre": "Nayarit",
+    "abreviatura": "Nay.",
+    "cvegeo": "18"
+  },
+  {
+    "cve_ent": "19",
+    "nombre": "Nuevo León",
+    "abreviatura": "NL",
+    "cvegeo": "19"
+  },
+  {
+    "cve_ent": "20",
+    "nombre": "Oaxaca",
+    "abreviatura": "Oax.",
+    "cvegeo": "20"
+  },
+  {
+    "cve_ent": "21",
+    "nombre": "Puebla",
+    "abreviatura": "Pue.",
+    "cvegeo": "21"
+  },
+  {
+    "cve_ent": "22",
+    "nombre": "Querétaro",
+    "abreviatura": "Qro.",
+    "cvegeo": "22"
+  },
+  {
+    "cve_ent": "23",
+    "nombre": "Quintana Roo",
+    "abreviatura": "Q. Roo",
+    "cvegeo": "23"
+  },
+  {
+    "cve_ent": "24",
+    "nombre": "San Luis Potosí",
+    "abreviatura": "SLP",
+    "cvegeo": "24"
+  },
+  {
+    "cve_ent": "25",
+    "nombre": "Sinaloa",
+    "abreviatura": "Sin.",
+    "cvegeo": "25"
+  },
+  {
+    "cve_ent": "26",
+    "nombre": "Sonora",
+    "abreviatura": "Son.",
+    "cvegeo": "26"
+  },
+  {
+    "cve_ent": "27",
+    "nombre": "Tabasco",
+    "abreviatura": "Tab.",
+    "cvegeo": "27"
+  },
+  {
+    "cve_ent": "28",
+    "nombre": "Tamaulipas",
+    "abreviatura": "Tamps.",
+    "cvegeo": "28"
+  },
+  {
+    "cve_ent": "29",
+    "nombre": "Tlaxcala",
+    "abreviatura": "Tlax.",
+    "cvegeo": "29"
+  },
+  {
+    "cve_ent": "30",
+    "nombre": "Veracruz de Ignacio de la Llave",
+    "abreviatura": "Ver.",
+    "cvegeo": "30"
+  },
+  {
+    "cve_ent": "31",
+    "nombre": "Yucatán",
+    "abreviatura": "Yuc.",
+    "cvegeo": "31"
+  },
+  {
+    "cve_ent": "32",
+    "nombre": "Zacatecas",
+    "abreviatura": "Zac.",
+    "cvegeo": "32"
+  }
+]

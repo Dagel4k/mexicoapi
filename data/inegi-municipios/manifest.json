@@ -1,0 +1,181 @@
+{
+  "dataset": "inegi.municipios",
+  "schema_version": 1,
+  "as_of": "2026-10-17",
+  "fetched_at": "2026-10-18T01:09:02.948Z",
+  "data_file": "municipios.json",
+  "data_sha256": "b4801a8ccc5345da84306e6be54e595d147a127f92509a81b7b1161c8c545503",
+  "records": 2478,
+  "sources": [
+    {
+      "name": "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
+      "url": "https://gaia.inegi.org.mx/wscatgeo/v2/",
+      "license": "Términos de libre uso de la información del INEGI",
+      "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
+      "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio wscatgeo v2.",
+      "published_at": null,
+      "raw": [
+        {
+          "file": "raw/mgem-01.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/01",
+          "sha256": "3143fa70bf5200f619607e444072264a37210244df7826ae28bfee5c645a82d1"
+        },
+        {
+          "file": "raw/mgem-02.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/02",
+          "sha256": "31e633c6ea1b3704bcdc175d75a535a56a35629962789d6acd1a1cd9ca350e65"
+        },
+        {
+          "file": "raw/mgem-03.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/03",
+          "sha256": "243080b6c4571587e2f2d3b3b0823ea6d0fb78fff1fbe5adf195c8a7ce807189"
+        },
+        {
+          "file": "raw/mgem-04.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/04",
+          "sha256": "8cc5f12b823ac594dc72eda819f72fb9786589e5031f05816594951dafb106e5"
+        },
+        {
+          "file": "raw/mgem-05.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/05",
+          "sha256": "25a91ad8e4bf84037a22d49eace530033523c822958a0fe9737b96a1cf23d04a"
+        },
+        {
+          "file": "raw/mgem-06.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/06",
+          "sha256": "d3915837448bdf7004688bcefc2b542aef6f6285af5705566a1be4f42c99ecf9"
+        },
+        {
+          "file": "raw/mgem-07.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/07",
+          "sha256": "8bf119b5cc25a0421ee7c86f5d52948aae50377a8c4820b2e2bfec9b8ea43145"
+        },
+        {
+          "file": "raw/mgem-08.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/08",
+          "sha256": "a60a4234c34c2c7b893f15cea664ae70f3bb8d27e4025fc23972788040d51900"
+        },
+        {
+          "file": "raw/mgem-09.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/09",
+          "sha256": "b11a202fd0ed19956b098f1f2f3e8a4d9edcca6c7ea5408534da1ef0b02510e2"
+        },
+        {
+          "file": "raw/mgem-10.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/10",
+          "sha256": "0dad1522e9c14b269ac2a5976810cdae6c638e9b2cff1bebcf8a87fbebabfccd"
+        },
+        {
+          "file": "raw/mgem-11.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/11",
+          "sha256": "ad8a28c7d7bdbbe993cea70a6ed7bdc66c25d545e3759aadf3990429add63f88"
+        },
+        {
+          "file": "raw/mgem-12.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/12",
+          "sha256": "0fe0da20b587e90d1e304cebaa7cad21948be1d50a2ce8992f0a25f059c5ed7e"
+        },
+        {
+          "file": "raw/mgem-13.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/13",
+          "sha256": "d44e31190fdb6142f776023d55fe4e6cac332b5238456433b29e867848e03b84"
+        },
+        {
+          "file": "raw/mgem-14.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/14",
+          "sha256": "e5e35a99b9dac7d33128403adc8400bfeabee28334333c04a269c88c95ee1a38"
+        },
+        {
+          "file": "raw/mgem-15.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/15",
+          "sha256": "cf14d09d1db9e158ac8a1fa7483225bc447388ef5ffc00fa61517dd2614f3a62"
+        },
+        {
+          "file": "raw/mgem-16.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/16",
+          "sha256": "dd3370193086485db54a865a49fae64fec07101bc92aa4ccb27f0811acde5514"
+        },
+        {
+          "file": "raw/mgem-17.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/17",
+          "sha256": "eae31f8203faa218efa7d94b4f1dcd7270e88a020d7f15bf0900490a7ca3eb2a"
+        },
+        {
+          "file": "raw/mgem-18.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/18",
+          "sha256": "9b06caef35c52234532858ea72ba68efcd6b5aceb050ab3d6faa50f22945da37"
+        },
+        {
+          "file": "raw/mgem-19.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/19",
+          "sha256": "31f5a3912494ba652d25964af7871190d9e83c258a2b6fbed9e31f5d33fbf19e"
+        },
+        {
+          "file": "raw/mgem-20.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/20",
+          "sha256": "39c2b503a15eddf5c3bef56b16892ff896a5aa7ba57ae151dadc0f3c7db72fdc"
+        },
+        {
+          "file": "raw/mgem-21.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/21",
+          "sha256": "054a9fb30faf071eee7c915c63a352cee67e5215bd1a367512818c463dffc8f2"
+        },
+        {
+          "file": "raw/mgem-22.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/22",
+          "sha256": "5bc7b1678d062666c32423b7dc9cae9b9e80cda7e23caf22ed79edd56159b935"
+        },
+        {
+          "file": "raw/mgem-23.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/23",
+          "sha256": "ea31ed8bfb6df4fbbb79788f7e8344d163bae1d4e4754290c0bc3d1b67b86440"
+        },
+        {
+          "file": "raw/mgem-24.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/24",
+          "sha256": "795baf09719d8c8462a93d843b5efaaf3ca333e2688d6ae63e4bac0358ba334c"
+        },
+        {
+          "file": "raw/mgem-25.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/25",
+          "sha256": "823d6637b08395c702c753dd2f5b1d1f45ced39271b79bb55f1fe8cd9afb4444"
+        },
+        {
+          "file": "raw/mgem-26.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/26",
+          "sha256": "ab63badd30cff561c658040c3c81eba8141ddaa4b7e2c206c22b681d310277be"
+        },
+        {
+          "file": "raw/mgem-27.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/27",
+          "sha256": "21d2fee2a258f0ba229d3765b8227b31a42279813f7888e85384070305108b90"
+        },
+        {
+          "file": "raw/mgem-28.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/28",
+          "sha256": "7c2a43bb4b067fb043f417cc6e1c2a5f16c74afe68d7fc8492cb45a480151369"
+        },
+        {
+          "file": "raw/mgem-29.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/29",
+          "sha256": "fa32c92c55beb6b3adb006d96009b26a3c92d95225d248884530d8171ca700e1"
+        },
+        {
+          "file": "raw/mgem-30.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/30",
+          "sha256": "661c235fa4cc60a23f2632d44dc61dce4c714b4567f52a9b2271a346399c91c3"
+        },
+        {
+          "file": "raw/mgem-31.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/31",
+          "sha256": "8f93f889d64f90eaf8dcfe10ae666b61e43c9dfbccb11bee496dfac40b30d0b1"
+        },
+        {
+          "file": "raw/mgem-32.json",
+          "url": "https://gaia.inegi.org.mx/wscatgeo/v2/mgem/32",
+          "sha256": "067fb84e1526a1a390658cf5d98dd0c7b159c58a277cb28cd7137332bce05f50"
+        }
+      ]
+    }
+  ]
+}

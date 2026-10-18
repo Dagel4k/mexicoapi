@@ -1,0 +1,46 @@
+{
+  "dataset": "bancos",
+  "schema_version": 1,
+  "as_of": "2026-10-17",
+  "fetched_at": "2026-10-18T02:51:10.906Z",
+  "data_file": "bancos.json",
+  "data_sha256": "7c7e54a5e189179fbc56642971cde180b17e73670e519e15b9a232d803cd99bc",
+  "records": 150,
+  "sources": [
+    {
+      "name": "Banco de México, Comprobante Electrónico de Pago: instituciones participantes",
+      "url": "https://www.banxico.org.mx/cep/",
+      "license": "Banco de México: autorización general de reproducción con cita de la fuente",
+      "license_url": "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+      "citation": "Banco de México. Comprobante Electrónico de Pago, instituciones participantes. https://www.banxico.org.mx/cep/",
+      "published_at": null,
+      "raw": [
+        {
+          "file": "raw/cep-instituciones.json",
+          "url": "https://www.banxico.org.mx/cep/instituciones.do?fecha=17-10-2026",
+          "sha256": "936892109c42c46c17e78580fee1509d6313e04756530907fdc4a9b9ee589b3f"
+        },
+        {
+          "file": "raw/cep-historico.json",
+          "url": "https://www.banxico.org.mx/cep/instituciones.do",
+          "sha256": "d314d7d8318045ac69536d08ed96f9fa0575affad5f9c5730b68b65af79e80c2"
+        }
+      ]
+    },
+    {
+      "name": "Banco de México, Participantes directos en el SPEI",
+      "url": "https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf",
+      "license": "Banco de México: autorización general de reproducción con cita de la fuente",
+      "license_url": "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+      "citation": "Banco de México. Participantes directos en el SPEI. https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf",
+      "published_at": "2026-09-23",
+      "raw": [
+        {
+          "file": "raw/participantes-spei.pdf",
+          "url": "https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf",
+          "sha256": "8107c2178371a75ce4fb8e2a5c3d2e70e319a043f81fbe444e4c215e43b30e83"
+        }
+      ]
+    }
+  ]
+}
