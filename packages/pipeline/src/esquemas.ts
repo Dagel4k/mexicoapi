@@ -16,6 +16,9 @@ export const esquemaMunicipio: z.ZodType<Municipio> = z.object({
   cve_ent: cveEnt,
   cve_mun: cveMun,
   nombre: z.string().min(1),
-  // Las 16 alcaldías de la Ciudad de México no tienen cabecera: la fuente trae "----".
-  cve_cabecera: z.string().regex(/^(\d{4}|-{4})$/),
+  // Las alcaldías de la Ciudad de México no tienen cabecera: null.
+  cve_cabecera: z
+    .string()
+    .regex(/^\d{4}$/)
+    .nullable(),
 });

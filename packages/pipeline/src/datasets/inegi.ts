@@ -154,12 +154,16 @@ export const municipiosInegi: DefinicionDataset<Municipio> = {
             id,
           );
         }
+        // La fuente marca "sin cabecera" (alcaldías de la CDMX) con "----".
+        if (d.cve_cab !== "----" && !/^\d{4}$/.test(d.cve_cab)) {
+          throw new ErrorDatos(`cve_cab inválida en ${d.cvegeo}: ${d.cve_cab}`, id);
+        }
         registros.push({
           cvegeo: d.cvegeo,
           cve_ent: d.cve_ent,
           cve_mun: d.cve_mun,
           nombre: limpiarTexto(d.nomgeo),
-          cve_cabecera: d.cve_cab,
+          cve_cabecera: d.cve_cab === "----" ? null : d.cve_cab,
         });
       }
     }
