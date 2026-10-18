@@ -77,7 +77,7 @@ function aMetaInterna(valor: unknown): MetaInterna {
 }
 
 /** Lo que vive entre peticiones no se puede alterar desde una de ellas. */
-function congelar<T>(valor: T): T {
+export function congelar<T>(valor: T): T {
   if (typeof valor === "object" && valor !== null) {
     for (const hijo of Object.values(valor)) congelar(hijo);
     Object.freeze(valor);

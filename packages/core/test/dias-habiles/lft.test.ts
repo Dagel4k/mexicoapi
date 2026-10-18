@@ -4,7 +4,9 @@ import {
   diasDescansoLft,
   FUENTE_LFT_74,
   FUENTE_LFT_715,
+  VIGENCIA_LFT,
 } from "../../src/dias-habiles/lft.js";
+import { esFechaIsoValida } from "../../src/fechas.js";
 
 const fechas = (anio: number) => diasDescansoLft(anio).map((d) => d.fecha);
 
@@ -94,6 +96,12 @@ describe("fuentes y cobertura", () => {
     expect(FUENTE_LFT_715.nombre).toBe("Ley Federal del Trabajo, artículo 715");
     expect(FUENTE_LFT_715.fragmento).toContain("con excepción de los sábados y domingos");
     expect(FUENTE_LFT_715.url).toBe(FUENTE_LFT_74.url);
+  });
+
+  it("la vigencia es la fecha de la última reforma de la LFT en el DOF", () => {
+    expect(VIGENCIA_LFT).toBe("2026-05-14");
+    expect(esFechaIsoValida(VIGENCIA_LFT)).toBe(true);
+    expect(VIGENCIA_LFT >= COBERTURA_LFT.desde && VIGENCIA_LFT <= COBERTURA_LFT.hasta).toBe(true);
   });
 
   it("congela las constantes y define la cobertura", () => {
