@@ -27,15 +27,28 @@ concurrency:
   group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '0 12 * * 1' && 'inegi') || (github.event.schedule == '30 19 * * *' && 'fix') || (github.event.schedule == '30 20 * * *' && 'udis') || 'bancos' }}
   cancel-in-progress: false
 
+# La corrida va en jobs separados para que la clave de la GitHub App no conviva con código de
+# terceros (ver docs/operacion/bot-de-datos.md):
+# - preparar elige el grupo y comprueba que existan los secretos del bot; no hace checkout.
+# - generar, sin secretos ni permisos de escritura, instala el pipeline, descarga y valida los
+#   datos y sube como artefacto el parche de data/ y el resumen. Es el único job que procesa datos
+#   externos (PDF, JSON, HTML).
+# - publicar crea el token de la App en un runner limpio, aplica el parche solo si toca archivos
+#   de data/ y nada más, y hace commit, push, PR e issues. No instala dependencias ni corre nada
+#   que venga de generar.
+# - estado-kv escribe el estado de cada dataset en KV con el token de Cloudflare.
+# Los jobs con secretos corren solo desde main; los del bot, en el Environment datos.
 jobs:
-  actualizar:
+  preparar:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    environment: datos
+    permissions: {}
     outputs:
-      codigo: ${{ steps.cli.outputs.codigo }}
-      # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
-      # Con el código 3 el PR lleva la etiqueta revisar y no se fusiona solo: no cuenta.
-      publicado: ${{ steps.publicar.outcome == 'success' && steps.cli.outputs.codigo == '0' && 'si' || 'no' }}
+      tiene_bot: ${{ steps.bot.outputs.tiene_bot }}
+      grupo: ${{ steps.grupo.outputs.grupo }}
+      ids: ${{ steps.grupo.outputs.ids }}
     steps:
       - name: Comprobar secretos del bot
         id: bot
@@ -79,35 +92,31 @@ jobs:
             echo "ids=${ids}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Token de la GitHub App
-        id: app
-        if: steps.bot.outputs.tiene_bot == 'true'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ secrets.BOT_CLIENT_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-          permission-issues: write
-
+  generar:
+    needs: preparar
+    if: needs.preparar.outputs.tiene_bot == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      codigo: ${{ steps.cli.outputs.codigo }}
+      cambios: ${{ steps.parche.outputs.cambios }}
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.bot.outputs.tiene_bot == 'true'
         with:
-          token: ${{ steps.app.outputs.token }}
           fetch-depth: 1
           persist-credentials: false
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        if: steps.bot.outputs.tiene_bot == 'true'
 
+      # Sin caché de pnpm: este job procesa datos externos y no guarda nada que lean otros
+      # workflows.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: steps.bot.outputs.tiene_bot == 'true'
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Instalar y compilar
-        if: steps.bot.outputs.tiene_bot == 'true'
         run: |
           set -euo pipefail
           # Solo el pipeline y lo que usa (el núcleo): el bot no necesita wrangler ni workerd.
@@ -116,50 +125,191 @@ jobs:
 
       - name: Actualizar datos
         id: cli
-        if: steps.bot.outputs.tiene_bot == 'true'
         env:
-          IDS: ${{ steps.grupo.outputs.ids }}
-          RESUMEN_DIR: ${{ runner.temp }}
+          IDS: ${{ needs.preparar.outputs.ids }}
+          CORRIDA: ${{ runner.temp }}/corrida
         run: |
           set -uo pipefail
           # GitHub corre bash con -e; el || evita abortar con los códigos 1 y 3.
           codigo=0
+          # El CLI imprime textos de las fuentes: mientras corre, el runner no interpreta comandos
+          # de workflow (líneas que empiezan con ::).
+          pausa="$(openssl rand -hex 16)"
+          echo "::stop-commands::${pausa}"
           # IDS son varios argumentos: se deja sin comillas a propósito.
           # shellcheck disable=SC2086
-          node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${RESUMEN_DIR}/resumen" || codigo=$?
+          node packages/pipeline/dist/bin.js actualizar ${IDS} --resumen "${CORRIDA}/resumen" || codigo=$?
+          echo "::${pausa}::"
           echo "codigo=${codigo}" >> "${GITHUB_OUTPUT}"
 
-      # El job estado-kv lee este resumen. Si falta (la corrida falló antes de escribirlo), ese job
-      # falla con un aviso y la corrida de datos no cambia.
-      - name: Guardar el resumen para estado-kv
-        if: steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != ''
-        continue-on-error: true
+      # El parche lleva todo lo que cambió en data/, incluidos los archivos nuevos y los binarios
+      # (el PDF de Banxico). --no-renames: cada ruta sale tal cual, y publicar rechaza renombres.
+      # --no-textconv y --no-ext-diff: ninguna configuración de git cambia el contenido del parche
+      # (Git para Windows, por ejemplo, convierte los PDF en texto y los deja fuera).
+      - name: Armar el parche de data/
+        id: parche
+        if: steps.cli.outputs.codigo != ''
+        env:
+          CORRIDA: ${{ runner.temp }}/corrida
+        run: |
+          set -euo pipefail
+          mkdir -p "${CORRIDA}"
+          git add -A -- data/
+          git diff --cached --binary --no-renames --no-textconv --no-ext-diff --full-index -- data/             > "${CORRIDA}/datos.patch"
+          if [ -s "${CORRIDA}/datos.patch" ]; then
+            echo "cambios=si" >> "${GITHUB_OUTPUT}"
+            git diff --cached --stat -- data/
+          else
+            echo "cambios=no" >> "${GITHUB_OUTPUT}"
+            echo "Sin cambios en data/."
+          fi
+
+      # Un solo artefacto con el resumen (resumen.json lo lee estado-kv) y el parche. Si el CLI
+      # falló antes de escribir el resumen, el artefacto solo lleva el parche vacío.
+      - name: Guardar el resumen y el parche
+        if: steps.cli.outputs.codigo != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resumen
-          path: ${{ runner.temp }}/resumen.json
-          if-no-files-found: warn
+          path: ${{ runner.temp }}/corrida/
+          if-no-files-found: error
           retention-days: 1
-          # Al volver a correr el job, reemplaza el resumen de la corrida anterior.
+          # Al volver a correr el job, reemplaza el de la corrida anterior.
           overwrite: true
+
+  # Corre si hay algo que publicar o que reportar: cambios en data/, un código distinto de 0 o
+  # una falla de generar antes del CLI (código vacío). Sin cambios y con código 0 no hace falta
+  # el token.
+  publicar:
+    needs: [preparar, generar]
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main'
+      && needs.preparar.result == 'success' && needs.preparar.outputs.tiene_bot == 'true'
+      && (needs.generar.outputs.cambios == 'si' || needs.generar.outputs.codigo != '0')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: datos
+    permissions:
+      contents: read
+    outputs:
+      # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
+      # Con el código 3 el PR lleva la etiqueta revisar y no se fusiona solo: no cuenta.
+      publicado: ${{ steps.publicar.outcome == 'success' && needs.generar.outputs.codigo == '0' && 'si' || 'no' }}
+    steps:
+      # El mismo commit de main que usó generar, que armó el parche sobre él. Sin dependencias:
+      # este job solo usa git, gh y jq del runner.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.generar.outputs.codigo != ''
+        with:
+          name: resumen
+          path: ${{ runner.temp }}/corrida
+
+      # El parche viene de generar, que procesó datos externos: se aplica solo si toca archivos
+      # comunes dentro de data/. Cualquier otra cosa detiene la corrida y el paso de fallas abre
+      # el issue. Con el código 1 no se publica nada, así que tampoco se aplica.
+      - name: Revisar y aplicar el parche
+        if: needs.generar.outputs.cambios == 'si' && needs.generar.outputs.codigo != '1'
+        env:
+          PARCHE: ${{ runner.temp }}/corrida/datos.patch
+        run: |
+          set -euo pipefail
+          git config core.hooksPath /dev/null
+          if [ ! -s "${PARCHE}" ]; then
+            echo "::error::generar marcó cambios, pero el parche está vacío."
+            exit 1
+          fi
+          mal=0
+          # Rutas, antes de aplicar. --numstat -z da "añadidas<TAB>borradas<TAB>ruta" por registro,
+          # sin comillas ni escapes. En un renombre o una copia solo trae la ruta nueva: esos se
+          # rechazan abajo con --summary (generar arma el parche con --no-renames).
+          rutas="${RUNNER_TEMP}/rutas-parche"
+          git apply --numstat -z "${PARCHE}" > "${rutas}"
+          n=0
+          while IFS= read -r -d '' registro; do
+            n=$((n + 1))
+            ruta="${registro#*$'\t'}"
+            ruta="${ruta#*$'\t'}"
+            case "${ruta}" in
+              data/?*) ;;
+              *) printf '::error::El parche toca una ruta fuera de data/: %q\n' "${ruta}"; mal=1; continue ;;
+            esac
+            case "/${ruta}/" in
+              */../* | */./* | *//* | */.git*)
+                printf '::error::Ruta no permitida en el parche: %q\n' "${ruta}"; mal=1 ;;
+            esac
+          done < "${rutas}"
+          if [ "${n}" -eq 0 ]; then
+            echo "::error::El parche no lista ninguna ruta."
+            mal=1
+          fi
+          # Ni renombres ni copias, ni enlaces simbólicos (120000) ni submódulos (160000).
+          resumen_parche="${RUNNER_TEMP}/resumen-parche"
+          git apply --summary "${PARCHE}" > "${resumen_parche}"
+          if grep -qE '^ (rename|copy) ' "${resumen_parche}"; then
+            echo "::error::El parche renombra o copia archivos."
+            mal=1
+          fi
+          if grep -qE ' (120000|160000) ' "${resumen_parche}"; then
+            echo "::error::El parche crea un enlace simbólico o un submódulo."
+            mal=1
+          fi
+          if [ "${mal}" -ne 0 ]; then
+            exit 1
+          fi
+          # nowarn: los avisos de espacios repiten líneas del parche en el log.
+          git apply --check --whitespace=nowarn "${PARCHE}"
+          git apply --index --whitespace=nowarn "${PARCHE}"
+          # Lo que quedó en el índice, otra vez: solo data/ y solo archivos comunes o borrados.
+          indice="${RUNNER_TEMP}/indice-parche"
+          git diff --cached --raw --no-renames -z > "${indice}"
+          while IFS= read -r -d '' meta && IFS= read -r -d '' ruta; do
+            modo="${meta#:* }"
+            modo="${modo%% *}"
+            case "${ruta}" in
+              data/?*) ;;
+              *) printf '::error::Quedó una ruta fuera de data/: %q\n' "${ruta}"; mal=1 ;;
+            esac
+            case "${modo}" in
+              100644 | 100755 | 000000) ;;
+              *) printf '::error::Modo no permitido (%s) en %q\n' "${modo}" "${ruta}"; mal=1 ;;
+            esac
+          done < "${indice}"
+          exit "${mal}"
+
+      # Se crea aunque un paso anterior haya fallado: el paso de fallas lo usa para abrir el issue.
+      - name: Token de la GitHub App
+        id: app
+        if: ${{ !cancelled() }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
 
       - name: Publicar resultado
         id: publicar
-        if: steps.bot.outputs.tiene_bot == 'true'
+        if: needs.generar.outputs.codigo != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
-          GRUPO: ${{ steps.grupo.outputs.grupo }}
-          CODIGO: ${{ steps.cli.outputs.codigo }}
+          GRUPO: ${{ needs.preparar.outputs.grupo }}
+          CODIGO: ${{ needs.generar.outputs.codigo }}
           GH_REPO: ${{ github.repository }}
-          RESUMEN_DIR: ${{ runner.temp }}
+          CORRIDA: ${{ runner.temp }}/corrida
         run: |
           set -euo pipefail
-          # Con el token en el entorno, ni el commit, ni el switch ni el push corren hooks del repo.
-          # El job verificacion del PR (que exige el check verify) cubre biome y gitleaks.
+          # Ni el commit, ni el switch ni el push corren hooks del repo. El job verificacion del
+          # PR (que exige el check verify) cubre biome y gitleaks.
           git config core.hooksPath /dev/null
-          resumen_md="${RESUMEN_DIR}/resumen.md"
-          resumen_json="${RESUMEN_DIR}/resumen.json"
+          resumen_md="${CORRIDA}/resumen.md"
+          resumen_json="${CORRIDA}/resumen.json"
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           fecha="$(TZ=America/Mexico_City date +%F)"
 
@@ -179,10 +329,24 @@ jobs:
             fi
           }
 
-          # Lista de motivos y errores del resumen JSON, una línea por elemento.
+          # El resumen en Markdown que armó generar. Ya trae los textos de las fuentes en código;
+          # por si acaso, ninguna @ queda como mención (se le agrega un espacio de ancho cero).
+          resumen() {
+            if [ -f "${resumen_md}" ]; then
+              sed 's/@/@\xe2\x80\x8b/g' "${resumen_md}"
+            fi
+          }
+
+          # Motivos y errores del resumen JSON, en un bloque de código y una línea por elemento:
+          # los saltos y controles pasan a espacio (ninguna línea puede cerrar el bloque) y las @
+          # no mencionan a nadie.
           motivos() {
             if [ -f "${resumen_json}" ]; then
-              jq -r '(.resultados[]?.motivos[]? | "- " + tostring), (.errores[]? | "- \(.dataset): \(.mensaje)")' "${resumen_json}"
+              echo '```text'
+              jq -r 'def linea: tostring | gsub("[[:cntrl:]\u2028\u2029]+"; " ") | gsub("@"; "@\u200b");
+                (.resultados[]?.motivos[]? | "- " + linea),
+                (.errores[]? | "- \(.dataset | linea): \(.mensaje | linea)")' "${resumen_json}"
+              echo '```'
             fi
           }
 
@@ -205,7 +369,8 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$(git status --porcelain data/)" ]; then
+          # El paso anterior dejó en el índice los cambios del parche, si los había.
+          if git diff --cached --quiet -- data/; then
             if [ "${CODIGO}" = "3" ]; then
               cuerpo="${RUNNER_TEMP}/issue-revisar.md"
               {
@@ -233,7 +398,7 @@ jobs:
             {
               echo "Una corrida nueva de \`${GRUPO}\` trae cambios, pero este PR sigue abierto, así que no se abrió otro."
               echo
-              cat "${resumen_md}"
+              resumen
               echo
               echo "Corrida: ${url_corrida}"
             } > "${cuerpo}"
@@ -276,6 +441,10 @@ jobs:
             exit 0
           fi
 
+          # git pide las credenciales a gh, que las toma de GH_TOKEN en este paso: el token no
+          # va en la URL ni queda en .git/config.
+          gh auth setup-git
+
           # Identidad del bot
           id_bot="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
           git config user.name "${APP_SLUG}[bot]"
@@ -290,14 +459,13 @@ jobs:
           done
 
           git switch -c "${rama}"
-          git add data/
           # Los hooks ya están apagados desde el inicio del paso; además, el commit no ve el token.
           env -u GH_TOKEN git commit -q -m "datos(${GRUPO}): ${fecha}"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${rama}"
+          git push origin "${rama}"
 
           cuerpo_pr="${RUNNER_TEMP}/pr.md"
           {
-            cat "${resumen_md}"
+            resumen
             echo
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo_pr}"
@@ -320,23 +488,24 @@ jobs:
             gh pr merge "${url_pr}" --auto --rebase
           fi
 
-      - name: Reportar falla previa al CLI
-        if: failure() && steps.bot.outputs.tiene_bot == 'true' && steps.cli.outputs.codigo != '1'
+      # Una falla de generar antes del CLI (instalación o compilación), del parche o de la
+      # publicación. Con el código 1 el paso de publicar ya abrió el issue.
+      - name: Reportar falla
+        if: >-
+          !cancelled() && steps.app.outputs.token != ''
+          && (needs.generar.outputs.codigo == ''
+            || (failure() && !(needs.generar.outputs.codigo == '1' && steps.publicar.outcome == 'failure')))
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           GH_REPO: ${{ github.repository }}
-          GRUPO: ${{ steps.grupo.outputs.grupo }}
+          GRUPO: ${{ needs.preparar.outputs.grupo }}
         run: |
           set -euo pipefail
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          if [ -z "${GH_TOKEN}" ] || [ -z "${GRUPO}" ]; then
-            echo "::error::La corrida falló antes de obtener el token; no se puede abrir un issue."
-            exit 0
-          fi
           titulo="Falla en datos: ${GRUPO}"
           cuerpo="${RUNNER_TEMP}/issue-falla-previa.md"
           {
-            echo "La corrida de datos de \`${GRUPO}\` falló (token, instalación, compilación o publicación)."
+            echo "La corrida de datos de \`${GRUPO}\` falló (instalación, compilación, parche de \`data/\` o publicación)."
             echo
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo}"
@@ -348,14 +517,16 @@ jobs:
           else
             gh issue create --title "${titulo}" --body-file "${cuerpo}"
           fi
+          # Si generar falló antes del CLI, la corrida queda en rojo por generar; aquí no se
+          # agrega otra falla.
 
   # Deja el estado de cada dataset en KV para /v1/status. Va en un job aparte, sin instalar
   # dependencias ni tocar datos externos, para que el token de Cloudflare no conviva con esos
   # pasos. Solo desde main (como el despliegue) y sin cambiar el resultado de la corrida de datos.
   # Si la corrida falló antes del CLI no hay resumen y no se escribe nada.
   estado-kv:
-    needs: actualizar
-    if: always() && github.ref == 'refs/heads/main' && needs.actualizar.outputs.codigo != ''
+    needs: [generar, publicar]
+    if: always() && github.ref == 'refs/heads/main' && needs.generar.outputs.codigo != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: produccion
@@ -366,12 +537,15 @@ jobs:
       - name: Comprobar secretos de Cloudflare
         id: cf
         env:
-          TIENE_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          TIENE_CF: ${{ (secrets.CLOUDFLARE_KV_TOKEN != '' || secrets.CLOUDFLARE_API_TOKEN != '') && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          TIENE_KV: ${{ secrets.CLOUDFLARE_KV_TOKEN != '' }}
         run: |
           set -euo pipefail
           echo "tiene_cf=${TIENE_CF}" >> "${GITHUB_OUTPUT}"
           if [ "${TIENE_CF}" != "true" ]; then
-            echo "::notice::Faltan los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID; no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+            echo "::notice::Faltan los secretos de Cloudflare (CLOUDFLARE_KV_TOKEN o CLOUDFLARE_API_TOKEN, y CLOUDFLARE_ACCOUNT_ID); no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+          elif [ "${TIENE_KV}" != "true" ]; then
+            echo "::notice::Sin CLOUDFLARE_KV_TOKEN se usa el token de despliegue. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
           fi
 
       # cloudflare.ts no tiene dependencias: basta su carpeta (el modo cono trae además los
@@ -397,10 +571,14 @@ jobs:
       - name: Escribir estado en KV
         if: steps.cf.outputs.tiene_cf == 'true'
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # El token propio de KV (solo Workers KV Storage: Edit); mientras no exista, el de
+          # despliegue.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_KV_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CODIGO: ${{ needs.actualizar.outputs.codigo }}
-          PUBLICADO: ${{ needs.actualizar.outputs.publicado }}
+          CODIGO: ${{ needs.generar.outputs.codigo }}
+          # Sin cambios y con código 0 publicar no corre: todos los datasets quedaron sin_cambios
+          # y publicado no cambia su estado.
+          PUBLICADO: ${{ needs.publicar.outputs.publicado == 'si' && 'si' || 'no' }}
           RESUMEN: ${{ runner.temp }}/resumen/resumen.json
         run: |
           set -euo pipefail
