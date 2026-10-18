@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import documento from "../../../../docs/api/problemas.md?raw";
 import { PROBLEMAS, URL_PROBLEMAS } from "../../src/problemas.js";
 
 describe("PROBLEMAS", () => {
@@ -31,10 +31,6 @@ describe("PROBLEMAS", () => {
 });
 
 describe("docs/api/problemas.md", () => {
-  const documento = readFileSync(
-    new URL("../../../../docs/api/problemas.md", import.meta.url),
-    "utf8",
-  );
   const encabezados = [...documento.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
 
   it("tiene un encabezado por cada tipo, cuyo ancla es el tipo", () => {
