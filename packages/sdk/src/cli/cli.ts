@@ -6,14 +6,13 @@
 // u opción, como --tipo-plazo con el SAT, sobra una, como --tipo-plazo con la LFT, o uno mal
 // formado, como un código postal de 4 dígitos).
 import { parseArgs } from "node:util";
+import { type NombresTipoPlazo, revisarTipoPlazoCon } from "@mexicoapi/core/combinaciones";
 import type { ConsultaDiasHabiles, FetchCompatible } from "../cliente/index.js";
 import {
   AUTORIDADES,
   type Autoridad,
   aUnaLinea,
   esFechaIsoValida,
-  type NombresTipoPlazo,
-  revisarTipoPlazo,
   type TipoPlazo,
 } from "../index.js";
 import { AYUDA, ayudaDe } from "./ayuda.js";
@@ -217,7 +216,7 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   // autoridad que no existe la rechaza antes su propia regla, como en la API.
   const conocida = autoridad ?? "lft";
   if ((AUTORIDADES as readonly string[]).includes(conocida)) {
-    const combinacion = revisarTipoPlazo(conocida as Autoridad, tipoPlazo, NOMBRES_CLI);
+    const combinacion = revisarTipoPlazoCon(conocida as Autoridad, tipoPlazo, NOMBRES_CLI);
     if (combinacion !== null) throw new ErrorUso(combinacion.detalle);
   }
   const cliente = await crearClienteCli(e, opciones);

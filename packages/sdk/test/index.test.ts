@@ -22,6 +22,7 @@ import type {
   ResultadoValidacion,
   TipoBanco,
   TipoCambioFix,
+  TipoPlazo,
   TipoRfc,
   Udi,
 } from "../src/index.js";
@@ -33,6 +34,15 @@ describe("mexicoapi desde src", () => {
 });
 
 describe("tipos públicos", () => {
+  it("revisarTipoPlazo solo recibe la autoridad y el tipo de plazo", () => {
+    // @ts-expect-error los nombres de cada superficie son internos: no se publican
+    type NoPublicado = mexicoapi.NombresTipoPlazo;
+    expectTypeOf<NoPublicado>().toBeAny();
+    expectTypeOf(mexicoapi.revisarTipoPlazo).parameters.toEqualTypeOf<
+      [autoridad: Autoridad, tipoPlazo: TipoPlazo | undefined]
+    >();
+  });
+
   it("exporta los tipos de los validadores", () => {
     expectTypeOf(mexicoapi.validarClabe).returns.toEqualTypeOf<ResultadoValidacion<DetalleClabe>>();
     expectTypeOf(mexicoapi.validarCurp).returns.toEqualTypeOf<ResultadoValidacion<DetalleCurp>>();

@@ -2,7 +2,7 @@
 // orden en que se revisan, sus textos y cómo se responden los errores. La API las envuelve en
 // Response y el cliente del paquete en MexicoApiError; el OpenAPI publica las mismas reglas.
 
-export { type NombresTipoPlazo, revisarFix, revisarTipoPlazo } from "./combinaciones.js";
+export { revisarFix, revisarTipoPlazo } from "./combinaciones.js";
 export { CONSULTAS, type RutaConConsulta, revisarConsulta } from "./consulta.js";
 export {
   cumpleRegla,

@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { Autoridad, TipoPlazo } from "../../src/dias-habiles/tipos.js";
 import * as core from "../../src/index.js";
-import { revisarFix, revisarTipoPlazo } from "../../src/rutas/combinaciones.js";
+import {
+  revisarFix,
+  revisarTipoPlazo,
+  revisarTipoPlazoCon,
+} from "../../src/rutas/combinaciones.js";
 import { cumpleRegla, REGLAS_RUTA, type ReglaParametro } from "../../src/rutas/parametros.js";
 
 describe("cumpleRegla", () => {
@@ -100,16 +105,24 @@ describe("revisarTipoPlazo", () => {
     }
   });
 
-  it("nombra la autoridad y el tipo de plazo como cada superficie", () => {
+  it("la versión pública solo recibe la autoridad y el tipo de plazo", () => {
+    expectTypeOf(revisarTipoPlazo).parameters.toEqualTypeOf<
+      [autoridad: Autoridad, tipoPlazo: TipoPlazo | undefined]
+    >();
+    expect(revisarTipoPlazo.length).toBe(2);
+  });
+
+  // La CLI y el SDK nombran los parámetros a su manera; lo hacen con la versión interna.
+  it("revisarTipoPlazoCon nombra la autoridad y el tipo de plazo como cada superficie", () => {
     const cli = { autoridad: (a: string) => `--autoridad ${a}`, tipoPlazo: "--tipo-plazo" };
-    expect(revisarTipoPlazo("sat", undefined, cli)?.detalle).toBe(
+    expect(revisarTipoPlazoCon("sat", undefined, cli)?.detalle).toBe(
       "Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos.",
     );
-    expect(revisarTipoPlazo("lft", "general", cli)?.detalle).toBe(
+    expect(revisarTipoPlazoCon("lft", "general", cli)?.detalle).toBe(
       "--tipo-plazo solo se acepta con --autoridad sat.",
     );
     const sdk = { autoridad: (a: string) => `autoridad=${a}`, tipoPlazo: "tipoPlazo" };
-    expect(revisarTipoPlazo("sat", undefined, sdk)?.detalle).toBe(
+    expect(revisarTipoPlazoCon("sat", undefined, sdk)?.detalle).toBe(
       "Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.",
     );
   });
@@ -131,8 +144,9 @@ describe("revisarFix", () => {
 });
 
 describe("índice del núcleo", () => {
-  it("exporta las reglas que el MCP y la CLI toman de mexicoapi", () => {
+  it("exporta las reglas que el MCP y la CLI toman de mexicoapi, sin la versión interna", () => {
     expect(core.revisarTipoPlazo).toBe(revisarTipoPlazo);
     expect(core.revisarFix).toBe(revisarFix);
+    expect((core as Record<string, unknown>).revisarTipoPlazoCon).toBeUndefined();
   });
 });

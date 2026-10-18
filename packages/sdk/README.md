@@ -285,7 +285,7 @@ Códigos de salida:
 - Las funciones y los métodos tipados del cliente, y sus parámetros, van en camelCase: `sumarDiasHabiles`, `tipoPlazo`, `permitirIncompleto`.
 - Los datos (`data`, `meta`, los registros de `mexicoapi/datos`), `consultar` y los problemas usan los nombres de la API: `cve_ent`, `nombre_corto`, `tipo_plazo`, `permitir_incompleto`, `inhabiles_saltados`. El servidor MCP (`mexicoapi-mcp`) también.
 - La CLI usa los de la API con guiones: `--tipo-plazo`, `--permitir-incompleto`.
-- Las reglas y sus textos son los mismos en todas: `revisarTipoPlazo` los arma con el nombre de cada superficie.
+- Las reglas y sus textos son los mismos en todas; solo cambia cómo se nombra cada parámetro. `revisarTipoPlazo` da los de la API.
 
 ## Privacidad
 
