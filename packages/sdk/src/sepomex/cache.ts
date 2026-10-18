@@ -1,10 +1,22 @@
 // Caché del catálogo en el equipo del usuario. `meta.json` dice qué archivos de datos valen
 // (`codigos-<id>.json` y, si hay node:sqlite, `codigos-<id>.sqlite`). Se escriben primero los
 // datos nuevos y al final `meta.json`, cada uno en un temporal que se renombra: quien lee ve el
-// catálogo anterior completo o el nuevo completo, nunca uno a medias.
+// catálogo anterior completo o el nuevo completo, nunca uno a medias. Quien escribe tiene el
+// candado `sync.lock`: dos guardados a la vez en el mismo directorio no se pisan.
 import { randomBytes } from "node:crypto";
-import { mkdir, open, readdir, readFile, rename, rm } from "node:fs/promises";
-import { homedir } from "node:os";
+import { constants } from "node:fs";
+import {
+  copyFile,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { homedir, hostname } from "node:os";
 import { join, posix, win32 } from "node:path";
 import type { Catalogo, CodigoPostal } from "./catalogo.js";
 import { SepomexError } from "./error.js";
@@ -16,6 +28,15 @@ const META = "meta.json";
 const DATOS = /^codigos-[0-9a-f]{12}\.(json|sqlite)$/;
 const JSON_DATOS = /^codigos-[0-9a-f]{12}\.json$/;
 const SQLITE_DATOS = /^codigos-[0-9a-f]{12}\.sqlite$/;
+/** Temporales de un guardado que se cortó y candados viejos apartados. */
+const RESTOS =
+  /^((codigos-[0-9a-f]{12}\.(json|sqlite)|meta\.json)\.tmp-|sync\.lock\.viejo-)[0-9a-f]{12}$/;
+
+const CANDADO = "sync.lock";
+/** Un candado más viejo que esto se puede tomar: ninguna sincronización tarda tanto. */
+const VIDA_CANDADO_MS = 10 * 60_000;
+/** Un archivo de datos que ningún meta.json nombra y es más viejo que esto es un resto. */
+const EDAD_RESTO_MS = 60 * 60_000;
 
 /**
  * Directorio por omisión de la caché: `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y
@@ -173,17 +194,142 @@ async function escribirSqliteAtomico(
   }
 }
 
-/** Borra los archivos de datos que ya no nombra meta.json. Nunca lanza. */
-async function limpiar(dir: string): Promise<void> {
+/**
+ * Borra los archivos del catálogo reemplazado y los restos (datos que ningún meta.json nombra y
+ * temporales) de más de una hora: los de un guardado que se cortó. Nunca lanza.
+ */
+async function limpiar(
+  dir: string,
+  anterior: MetaGuardada | null,
+  actual: MetaGuardada,
+): Promise<void> {
+  const vigentes = new Set([actual.json, actual.sqlite]);
   try {
-    const meta = await leerMeta(dir);
-    if (meta === null) return;
-    const vigentes = new Set([meta.json, meta.sqlite]);
+    for (const nombre of [anterior?.json, anterior?.sqlite]) {
+      if (nombre && !vigentes.has(nombre)) await borrarSiPuede(join(dir, nombre));
+    }
+    const limite = Date.now() - EDAD_RESTO_MS;
     for (const nombre of await readdir(dir)) {
-      if (DATOS.test(nombre) && !vigentes.has(nombre)) await borrarSiPuede(join(dir, nombre));
+      if (vigentes.has(nombre) || !(DATOS.test(nombre) || RESTOS.test(nombre))) continue;
+      const info = await stat(join(dir, nombre)).catch(() => undefined);
+      if (info !== undefined && info.mtimeMs < limite) await borrarSiPuede(join(dir, nombre));
     }
   } catch {
     // Limpiar es de mejor esfuerzo: el catálogo nuevo ya quedó guardado.
+  }
+}
+
+interface Candado {
+  pid?: unknown;
+  host?: unknown;
+  desde?: unknown;
+  ficha?: unknown;
+}
+
+async function leerCandado(ruta: string): Promise<{ datos: Candado; edadMs: number } | null> {
+  try {
+    const [texto, info] = await Promise.all([readFile(ruta, "utf8"), stat(ruta)]);
+    let datos: Candado = {};
+    try {
+      const leido: unknown = JSON.parse(texto);
+      if (typeof leido === "object" && leido !== null) datos = leido as Candado;
+    } catch {
+      // Un candado recién creado puede estar vacío todavía.
+    }
+    return { datos, edadMs: Date.now() - info.mtimeMs };
+  } catch (error) {
+    if (codigoDe(error) === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function procesoVivo(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return codigoDe(error) === "EPERM";
+  }
+}
+
+/** Viejo, o de un proceso de este equipo que ya terminó (una corrida cortada con Ctrl+C). */
+function abandonado({ datos, edadMs }: { datos: Candado; edadMs: number }): boolean {
+  if (edadMs > VIDA_CANDADO_MS) return true;
+  return (
+    datos.host === hostname() &&
+    typeof datos.pid === "number" &&
+    datos.pid !== process.pid &&
+    !procesoVivo(datos.pid)
+  );
+}
+
+function ocupado(dir: string, datos: Candado): SepomexError {
+  const pid = typeof datos.pid === "number" ? datos.pid : "?";
+  const desde = typeof datos.desde === "string" ? datos.desde : "?";
+  return new SepomexError(
+    "ocupado",
+    `Otra sincronización está guardando en ${dir} (proceso ${pid} desde ${desde}). Espera a que termine; si no hay ninguna, borra ${join(dir, CANDADO)}.`,
+  );
+}
+
+/**
+ * Aparta un candado abandonado con un nombre único (rename es atómico: si dos lo intentan, solo
+ * uno lo mueve). Si lo que se movió ya era el candado nuevo de otro proceso, se devuelve.
+ */
+async function apartar(ruta: string, visto: Candado): Promise<void> {
+  const aparte = `${ruta}.viejo-${randomBytes(6).toString("hex")}`;
+  try {
+    await rename(ruta, aparte);
+  } catch {
+    return;
+  }
+  const movido = await leerCandado(aparte).catch(() => null);
+  if (movido !== null && movido.datos.ficha !== visto.ficha) {
+    await copyFile(aparte, ruta, constants.COPYFILE_EXCL).catch(() => undefined);
+  }
+  await borrarSiPuede(aparte);
+}
+
+/**
+ * Toma el candado de `dir` y devuelve cómo soltarlo. Lanza SepomexError `ocupado` si otro
+ * proceso lo tiene; uno abandonado se toma.
+ */
+async function tomarCandado(dir: string): Promise<() => Promise<void>> {
+  const ruta = join(dir, CANDADO);
+  const propio = {
+    pid: process.pid,
+    host: hostname(),
+    desde: new Date().toISOString(),
+    ficha: randomBytes(8).toString("hex"),
+  };
+  let visto: Candado = {};
+  for (let intento = 0; intento < 3; intento++) {
+    try {
+      await writeFile(ruta, JSON.stringify(propio), { flag: "wx" });
+      return async () => {
+        const actual = await leerCandado(ruta).catch(() => null);
+        if (actual?.datos.ficha === propio.ficha) await borrarSiPuede(ruta);
+      };
+    } catch (error) {
+      if (codigoDe(error) !== "EEXIST") throw error;
+    }
+    const actual = await leerCandado(ruta);
+    if (actual === null) continue;
+    visto = actual.datos;
+    if (!abandonado(actual)) break;
+    await apartar(ruta, actual.datos);
+  }
+  throw ocupado(dir, visto);
+}
+
+/** Corre `trabajo` con el candado de `dir` tomado (crea el directorio si falta). */
+export async function conCandado<T>(dir: string, trabajo: () => Promise<T>): Promise<T> {
+  await mkdir(dir, { recursive: true });
+  const soltar = await tomarCandado(dir);
+  try {
+    return await trabajo();
+  } finally {
+    await soltar();
   }
 }
 
@@ -196,11 +342,12 @@ export interface Guardado {
 }
 
 /**
- * Guarda el catálogo en `dir`: los datos nuevos con nombres nuevos y después meta.json. Si algo
- * falla antes de meta.json, borra lo nuevo y la caché anterior sigue igual.
+ * Guarda el catálogo en `dir` (con el candado tomado, ver `conCandado`): los datos nuevos con
+ * nombres nuevos y después meta.json. Si algo falla antes de meta.json, borra lo nuevo y la caché
+ * anterior sigue igual. Un meta.json dañado se reemplaza.
  */
 export async function guardar(dir: string, g: Guardado): Promise<MetaGuardada> {
-  await mkdir(dir, { recursive: true });
+  const anterior = await leerMeta(dir).catch(() => null);
   const id = randomBytes(6).toString("hex");
   const json = `codigos-${id}.json`;
   const sqlite = `codigos-${id}.sqlite`;
@@ -217,7 +364,7 @@ export async function guardar(dir: string, g: Guardado): Promise<MetaGuardada> {
     await borrarSiPuede(join(dir, sqlite));
     throw error;
   }
-  await limpiar(dir);
+  await limpiar(dir, anterior, meta);
   return meta;
 }
 
