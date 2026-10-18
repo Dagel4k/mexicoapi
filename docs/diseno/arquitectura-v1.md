@@ -116,9 +116,9 @@ mexicoapi/
 ├─ data/
 │  ├─ inegi-estados/    # estados.json, manifest.json, raw/
 │  ├─ inegi-municipios/ # municipios.json, manifest.json, raw/
-│  ├─ bancos/      # bancos.json, manifest.json, raw/
-│  ├─ tipo-cambio/ # fix/2026.json, udis/2026.json, manifest.json
-│  └─ curado/      # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
+│  ├─ bancos/           # bancos.json, manifest.json, raw/
+│  ├─ tipo-cambio/      # fix/2026.json, udis/2026.json, manifest.json
+│  └─ curado/           # dias-inhabiles/*.yaml, constantes/*.yaml (con cita al DOF)
 ├─ scripts/verify.sh
 ├─ .github/workflows/  # ci, datos-*, despliegue, publicación, seguridad, frescura
 ├─ README.md  LICENSE  DATA_LICENSE.md  SECURITY.md  CONTRIBUTING.md
@@ -158,6 +158,8 @@ mexicoapi/
 
 El manifiesto describe **los datos** y solo cambia cuando cambian los datos. Así, el historial de git sigue siendo el historial de cambios de los datos.
 
+Hasta que llegue el plan de la API, el estado operativo en KV y el trabajo de frescura no existen: la frescura se ve en los PR e issues del bot de datos. Lo siguiente describe el diseño que se implementará con la API.
+
 El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of` del manifiesto y `last_attempt`, `last_success` y `status` de KV.
 
 Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan menos de 20 escrituras diarias.
@@ -169,8 +171,8 @@ Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura s
 | Dataset | Campos | Clave |
 | --- | --- | --- |
 | `inegi.estados` | `cve_ent` (2), `nombre`, `abreviatura`, `cvegeo` | `cve_ent` |
-| `inegi.municipios` | `cvegeo` (5), `cve_ent`, `cve_mun` (3), `nombre`, `cve_cabecera` (`null` en las 16 alcaldías de la CDMX, que la fuente no trae) | `cvegeo` |
-| `bancos` | `codigo` (3, el de la CLABE), `codigo_spei` (5), `nombre_corto` (CEP), `razon_social` (PDF oficial; `null` si no aparece), `sector` (PDF), `tipo` (por prefijo del código SPEI: `40` banca múltiple, `37` banca de desarrollo, `90` otras entidades; Banxico aparte), `participacion` (`directa` si aparece en el PDF, `no_confirmada` si solo aparece en el CEP), `activo`, `baja_detectada` (fecha de muestreo, si dejó de aparecer), `historial` (periodos observados `{codigo_spei, nombre_corto, desde, hasta}` como intervalos `[desde, hasta)`; `hasta: null` es el vigente) | `codigo` |
+| `inegi.municipios` | `cvegeo` (5), `cve_ent`, `cve_mun` (3), `nombre`, `cve_cabecera` (`null` en las 16 alcaldías de la CDMX, cuya fuente envía "----") | `cvegeo` |
+| `bancos` | `codigo` (3, el de la CLABE), `codigo_spei` (4 o 5 dígitos, como lo publica el CEP; BANXICO es `2001`), `nombre_corto` (CEP), `razon_social` (PDF oficial; `null` si no aparece), `sector` (PDF; `null` si no aparece), `tipo` (por prefijo del código SPEI: `40` banca múltiple, `37` banca de desarrollo, `90` otras entidades; Banxico aparte), `participacion` (`directa` si aparece en el PDF, `no_confirmada` si solo aparece en el CEP), `activo`, `baja_detectada` (fecha de muestreo, si dejó de aparecer), `historial` (periodos observados `{codigo_spei, nombre_corto, desde, hasta}` como intervalos `[desde, hasta)`; `hasta: null` es el vigente) | `codigo` |
 | `plazas-clabe` | `codigo` (3), `plaza`, `estado` | `codigo` |
 | `tipo-cambio.fix` | `fecha_publicacion_dof`, `valor` (decimal como string), `fuente_dof` | `fecha_publicacion_dof` |
 | `udis` | `fecha`, `valor` (string, 6 decimales) | `fecha` |
@@ -249,7 +251,9 @@ GitHub Actions por dataset con `schedule`:
 
 Si hay cambios, el bot abre un PR `datos(<dataset>): AAAA-MM-DD` con el resumen del diff. Se auto-fusiona si pasa CI y está dentro de los umbrales.
 
-El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos y pull requests), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita.
+El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos, pull requests e issues), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita.
+
+El estado operativo en KV y el trabajo de frescura llegan con el plan de la API. Mientras tanto, la frescura se ve en los PR y los issues del bot de datos.
 
 **Bancos:** las altas y las bajas de instituciones siempre van a revisión humana. Los cambios de nombre se fusionan solos.
 
