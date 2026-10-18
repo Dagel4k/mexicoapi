@@ -3,6 +3,7 @@
 import type { Cliente } from "mexicoapi/cliente";
 import { beforeAll, describe, expect, it } from "vitest";
 import { crearHerramientas } from "../src/catalogo.js";
+import { conectar } from "./ayudas.js";
 import { contenido, type Llamador, servidor, texto } from "./ayudas-herramientas.js";
 
 const META = {
@@ -68,5 +69,26 @@ describe("respuestas raras", () => {
   it("un municipio de un estado que el paquete no conoce queda sin nombre de estado", async () => {
     const r = await llamar("municipio", { cvegeo: "99001" });
     expect(contenido(r).datos).toMatchObject({ estado: "" });
+  });
+});
+
+describe("defectos del paquete", () => {
+  it("un TypeError del cliente es error interno, registrado sin argumentos ni mensaje", async () => {
+    const cliente = {
+      udi: async () => {
+        throw new TypeError("defecto con SECRETO");
+      },
+    } as unknown as Cliente;
+    const conexion = conectar({ herramientas: crearHerramientas({ cliente, conApi: false }) });
+    await conexion.inicializar();
+    const respuesta = await conexion.pedir("tools/call", {
+      name: "udis",
+      arguments: { fecha: "2026-10-01" },
+    });
+    expect(respuesta.error).toEqual({ code: -32603, message: "Error interno" });
+    const registros = conexion.registros.join("\n");
+    expect(registros).toContain("TypeError");
+    expect(registros).not.toContain("SECRETO");
+    expect(registros).not.toContain("2026-10-01");
   });
 });
