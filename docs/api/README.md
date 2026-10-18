@@ -365,7 +365,7 @@ Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día
 curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
 ```
 
-El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". Fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos, y esa parte no se revisa.
+El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos, y un resultado dentro de un periodo de vacaciones que todavía no se publica (diciembre de 2026, mientras falte el segundo periodo) no la trae por eso. En esos casos el resultado sigue siendo el último día del cómputo, nunca posterior al vencimiento legal.
 
 ### Cobertura del calendario
 

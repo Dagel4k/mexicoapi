@@ -643,6 +643,15 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       ]);
     });
 
+    it("no conoce las vacaciones que no se han publicado: un resultado ahí no avisa", () => {
+      // El segundo periodo de 2026 no está publicado: el 16 de diciembre no se sabe si es de
+      // vacaciones, y no se avisa. El resultado es el mismo (lado seguro).
+      expect(decl("2026-12-15", bancario)).toMatchObject({
+        resultado: "2026-12-16",
+        advertencias: [],
+      });
+    });
+
     it("un día hábil común no avisa, ni general aunque sea viernes", () => {
       expect(decl("2026-07-14", bancario).advertencias).toEqual([]);
       const general = sumarDiasHabilesCurado(SAT, {

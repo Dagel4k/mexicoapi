@@ -555,6 +555,10 @@ const enLista = (partes: readonly string[]): string =>
  * pagos que vence en viernes, en un día de vacaciones del SAT (hábil en este plazo) o en un día de
  * cierre bancario: según dónde se haga el trámite, el plazo se corre al siguiente día hábil. El
  * resultado no la aplica (es el lado seguro); undefined si no hay nada que avisar.
+ *
+ * Solo conoce las vacaciones publicadas y los cierres de la CNBV de su cobertura: un resultado
+ * dentro de un periodo de vacaciones que todavía no se publica (diciembre de 2026, mientras falte
+ * el segundo periodo) no avisa por eso. El resultado sigue siendo el lado seguro.
  */
 function avisoProrroga(
   calendario: CalendarioCurado,
