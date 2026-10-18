@@ -242,8 +242,9 @@ export function crearBancos(
       const anterioresDe = (entrada: EntradaCep, previo: Banco | undefined): string[] => {
         const propio = normalizarNombre(entrada[1]);
         const vistos = new Set<string>();
+        // Por unidades de código, como el resto de los datos; localeCompare depende del locale.
         const periodos = [...(previo?.historial ?? [])].sort((x, y) =>
-          y.desde.localeCompare(x.desde),
+          y.desde < x.desde ? -1 : y.desde > x.desde ? 1 : 0,
         );
         for (const p of periodos) {
           const n = normalizarNombre(p.nombre_corto);

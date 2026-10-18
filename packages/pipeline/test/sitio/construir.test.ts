@@ -350,13 +350,35 @@ describe("construirSitio", () => {
 });
 
 describe("salida y frescura", () => {
+  const SALIDA_MALA = /no puede ser la carpeta de datos, contenerla ni estar dentro de ella/;
+
   it("rechaza una salida igual a los datos o que los contiene", async () => {
     for (const mala of [datos, raiz, join(datos, "..", "..")]) {
-      await expect(construirSitio({ raizDatos: datos, salida: mala })).rejects.toThrow(
-        /no puede ser la carpeta de datos ni contenerla/,
-      );
+      await expect(construirSitio({ raizDatos: datos, salida: mala })).rejects.toThrow(SALIDA_MALA);
     }
     expect((await listar(datos)).length).toBeGreaterThan(0);
+  });
+
+  it("rechaza una salida dentro de los datos", async () => {
+    for (const mala of [join(datos, "x"), join(datos, "bancos", "sitio")]) {
+      await expect(construirSitio({ raizDatos: datos, salida: mala })).rejects.toThrow(SALIDA_MALA);
+      await expect(readdir(mala)).rejects.toThrow();
+    }
+  });
+
+  it("una carpeta que empieza con .. no es la carpeta de arriba", async () => {
+    // Los datos en <raiz>/..datos: la salida <raiz> los contiene aunque la ruta relativa
+    // empiece con "..".
+    const puntos = join(raiz, "..datos");
+    await crearDatos(puntos);
+    await expect(construirSitio({ raizDatos: puntos, salida: raiz })).rejects.toThrow(SALIDA_MALA);
+    // Y una salida <datos>/..sitio está dentro de los datos.
+    await expect(
+      construirSitio({ raizDatos: datos, salida: join(datos, "..sitio") }),
+    ).rejects.toThrow(SALIDA_MALA);
+    // Una hermana que empieza con .. sí se acepta.
+    await construirSitio({ raizDatos: datos, salida: join(raiz, "..sitio") });
+    expect(await listar(join(raiz, "..sitio"))).toContain("v1/openapi.json");
   });
 
   it("todo dataset registrado tiene frescura", () => {

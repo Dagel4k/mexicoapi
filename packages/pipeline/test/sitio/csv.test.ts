@@ -44,7 +44,14 @@ describe("aCsv", () => {
     expect(aCsv(["a", "b"], [{ a: "x" }])).toBe("a,b\r\nx,\r\n");
   });
 
-  it.each(["=SUMA(1)", "+52", "-x", "@a", "\tx", "\rx"])("rechaza %j", (valor) => {
-    expect(() => aCsv(["a"], [{ a: valor }])).toThrow(ErrorDatos);
+  it.each(["=SUMA(1)", "+52", "-x", "@a", "\tx", "\rx", "\nx", "＝SUMA(1)", "＋52", "－x", "＠a"])(
+    "rechaza %j",
+    (valor) => {
+      expect(() => aCsv(["a"], [{ a: valor }])).toThrow(ErrorDatos);
+    },
+  );
+
+  it("acepta esos caracteres fuera del inicio", () => {
+    expect(aCsv(["a"], [{ a: "x=+-@＝＋－＠" }])).toBe("a\r\nx=+-@＝＋－＠\r\n");
   });
 });
