@@ -609,6 +609,25 @@ const prorroga = (fecha: string, hechos: string) =>
   `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 
 /**
+ * La advertencia de la prórroga que toca a un resultado de declaraciones_pagos según los datos:
+ * si es viernes, día de vacaciones del SAT o día de cierre bancario de la CNBV.
+ */
+function prorrogaSegunDatos(resultado: string): string[] {
+  const hechos = [
+    ...(diaDeLaSemana(resultado) === 5 ? ["viernes"] : []),
+    ...(DIAS_SAT.some((d) => d.fecha === resultado && d.tipo === "vacaciones")
+      ? ["día de vacaciones del SAT"]
+      : []),
+    ...(DIAS_CNBV.some((d) => d.fecha === resultado)
+      ? ["día de cierre bancario según la CNBV"]
+      : []),
+  ];
+  if (hechos.length === 0) return [];
+  const ultimo = hechos.pop() as string;
+  return [prorroga(resultado, hechos.length === 0 ? ultimo : `${hechos.join(", ")} y ${ultimo}`)];
+}
+
+/**
  * El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`, con lo que
  * puede faltar: los días del art. 12 y, en un plazo que las cuenta, las vacaciones.
  */
@@ -622,6 +641,25 @@ function avisosDelNucleo(cobertura: Rango, resultado: string, vacaciones: boolea
   }
   return avisos;
 }
+
+/** El último año de la lista publicada del SAT: hasta ahí trae los días del art. 12. */
+const FIN_LISTA_SAT = Number(anioDe(DIAS_SAT.at(-1)?.fecha ?? ""));
+
+/**
+ * Los días del SAT que conoce el Worker hasta dos años después de la lista publicada: los de la
+ * lista y, después, los del art. 12 que da la regla. Así las pruebas del respaldo no dependen de
+ * hasta dónde llegan las vacaciones capturadas.
+ */
+const SAT_CON_REGLA: DiaReal[] = [
+  ...DIAS_SAT,
+  ...[1, 2].flatMap((i) =>
+    diasDescansoCff(FIN_LISTA_SAT + i).map((d) => ({
+      ...d,
+      autoridad: "sat",
+      fuente: { ...d.fuente },
+    })),
+  ),
+];
 
 /** Los días de un año del SAT como los responde la API: los del art. 12 y las vacaciones. */
 function delSat(anio: string): Obj[] {
@@ -697,14 +735,16 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   });
 
   it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni advertencias", async () => {
-    // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha.
+    // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha. Sin aviso de
+    // calendario incompleto; el de la prórroga solo si los datos lo piden (hoy, en ninguno: si se
+    // capturan vacaciones o cierres bancarios de enero de 2027, aparece y el resultado no cambia).
     for (const [desde, dias, resultado] of [
       ["2026-12-30", 2, "2027-01-04"],
       ["2026-11-20", 30, "2027-01-05"],
       ["2026-12-15", 15, "2027-01-07"],
     ] as const) {
       const { data } = await datos(sat("declaraciones_pagos", desde, dias));
-      expect(data, desde).toMatchObject({ resultado, advertencias: [] });
+      expect(data, desde).toMatchObject({ resultado, advertencias: prorrogaSegunDatos(resultado) });
       expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toContain("2027-01-01");
     }
   });
@@ -723,6 +763,8 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       const { data } = await datos(sat("declaraciones_pagos", desde, 1));
       expect(data.resultado, desde).toBe(resultado);
       expect(data.advertencias, desde).toEqual([prorroga(resultado, hechos)]);
+      // El cálculo de la prueba con los datos coincide con los casos conocidos.
+      expect(prorrogaSegunDatos(resultado), desde).toEqual(data.advertencias);
     }
     // Con general no aplica.
     expect((await datos(sat("general", "2026-07-16", 1))).data.advertencias).toEqual([]);
@@ -782,25 +824,29 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       const aviso = `Calendario incompleto: SAT con tipo_plazo=general cubre ${rango(general)}; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
       const permitir = (desde: string, dias: number) =>
         sat("general", desde, dias, "&permitir_incompleto=true");
+      // Con la regla del art. 12, el respaldo también descuenta los días de la regla después de
+      // la lista publicada (si se captura el segundo periodo de 2026, el 1 de enero de 2027).
       const cruce = await datos(permitir(general.hasta, 1));
       expect(cruce.data).toMatchObject({
-        resultado: siguienteHabil(general.hasta, DIAS_SAT),
+        resultado: siguienteHabil(general.hasta, SAT_CON_REGLA),
         advertencias: [aviso],
       });
-      // Un día publicado después de la cobertura de general (el 25 de diciembre de 2026) se
+      // Un día inhábil después de la cobertura de general (hoy, el 25 de diciembre de 2026) se
       // salta con su cita y el resultado es hábil.
-      const publicado = DIAS_SAT.find(
+      const publicado = SAT_CON_REGLA.find(
         (d) => d.fecha > general.hasta && d.fecha <= declaraciones.hasta,
       ) as DiaReal;
       expect(publicado).toBeDefined();
       const vispera = sumarDias(publicado.fecha, -1);
       const salto = await datos(permitir(vispera, 1));
       expect(salto.data).toMatchObject({
-        resultado: siguienteHabil(vispera, DIAS_SAT),
+        resultado: siguienteHabil(vispera, SAT_CON_REGLA),
         advertencias: [aviso],
       });
       expect(salto.data.inhabiles_saltados).toEqual(
-        DIAS_SAT.filter((d) => d.fecha > vispera && d.fecha < salto.data.resultado).map(comoApi),
+        SAT_CON_REGLA.filter((d) => d.fecha > vispera && d.fecha < salto.data.resultado).map(
+          comoApi,
+        ),
       );
       expect(salto.data.inhabiles_saltados).toContainEqual(comoApi(publicado));
       // Pasar la cobertura más amplia (la regla del art. 12, hasta 2100) suma el aviso del
@@ -811,10 +857,20 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
         aviso,
         ...avisosDelNucleo(declaraciones, largo.data.resultado, true),
       ]);
-      // Un plazo largo desde el fin de general descuenta el 1 de enero de 2027, que da la regla.
-      const enero = await datos(permitir(general.hasta, 40));
+      // Un plazo largo que pasa la lista publicada descuenta los días del art. 12 que da la regla.
+      // Empieza a lo más 10 días antes del fin de la lista (hoy, el 21 de diciembre de 2026: salta
+      // el 25 de diciembre, el 1 de enero y el primer lunes de febrero de 2027).
+      const finLista = `${FIN_LISTA_SAT}-12-31`;
+      const antesDelFin = sumarDias(finLista, -10);
+      const desdeLargo = general.hasta > antesDelFin ? general.hasta : antesDelFin;
+      const enero = await datos(permitir(desdeLargo, 40));
       expect(enero.data.advertencias).toEqual([aviso]);
-      expect(enero.data.inhabiles_saltados.map((d: Obj) => d.fecha)).toContain("2027-01-01");
+      const entreSemana = (d: { fecha: string }) => !esFinDeSemana(d.fecha);
+      const esperados = SAT_CON_REGLA.filter(
+        (d) => d.fecha > desdeLargo && d.fecha <= enero.data.resultado && entreSemana(d),
+      );
+      expect(esperados.some((d) => d.fecha > finLista)).toBe(true);
+      expect(enero.data.inhabiles_saltados.filter(entreSemana)).toEqual(esperados.map(comoApi));
     },
   );
 
