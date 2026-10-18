@@ -114,7 +114,10 @@ async function deLaApi(
       data: cuerpo.data,
       ...(esObjeto(cuerpo.meta) ? { meta: cuerpo.meta } : {}),
       origen: "api" as const,
-      advertencias: [],
+      // Las de primer nivel de la API (`/v1/dias-inhabiles`); solo los textos.
+      advertencias: Array.isArray(cuerpo.advertencias)
+        ? cuerpo.advertencias.filter((a): a is string => typeof a === "string")
+        : [],
     });
     guardar(c, url, respuesta, r, r.encabezado("ETag"));
     return respuesta;
@@ -256,6 +259,7 @@ function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaSinMeta<unk
     ...guardado.respuesta,
     advertencias: [
       `Respuesta guardada de la API, de hace ${duracion(ahora - guardado.guardadoEn)} y caducada hace ${duracion(ahora - guardado.expira)}, porque la API falló: ${causa.message}`,
+      ...guardado.respuesta.advertencias,
     ],
   });
 }

@@ -417,7 +417,10 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 - **Entradas:**
   - `mexicoapi`: validadores y reglas del núcleo, sin red.
   - `mexicoapi/cliente`: cliente HTTP de la API. Va aparte porque con el núcleo no cabe en 15 KB gzip.
-  - `mexicoapi/datos`: datos offline de los datasets estables (estados, municipios, bancos, constantes, días inhábiles) incluidos en el paquete.
+  - `mexicoapi/datos`: estados, municipios y bancos incluidos en el paquete, para usarlos sin red.
+  - `mexicoapi/datos/fix` y `mexicoapi/datos/udis`: las series del FIX y de las UDIS.
+  - `mexicoapi/datos/calendarios`: los calendarios de días inhábiles de la CNBV y el SAT, con los mismos tipos de plazo y coberturas que la API (el build arma los plazos con la cobertura del YAML curado). Trae el núcleo, porque arma cada calendario con `crearCalendario`.
+  - `mexicoapi/datos/constantes`: la UMA, el salario mínimo y las tarifas de ISR.
   - `mexicoapi/sepomex`: descarga local (sección 7).
   - `mexicoapi/cli`: binario `mexicoapi`.
 - **Cliente** (`crearCliente({ base, timeoutMs, reintentos, esperaMaximaMs, fetch, cache, offline })`; pide `base` u `offline: true`, si no lanza TypeError):
@@ -429,8 +432,9 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
   - las respuestas del paquete siguen las reglas de la API para la query: parámetro sin nombre, desconocido, faltante, vacío o inválido, en ese orden.
 - **Versionado:** semver para la API del SDK. Los datos incluidos se actualizan con versiones *patch* semanales automáticas (changesets) cuando hay cambios.
 - **Tamaño:** la entrada `mexicoapi` (núcleo) ≤ 15 KB gzip, y el cliente ≤ 15 KB gzip sin lo que carga al responder desde el paquete. Los datos van en entradas separadas para no inflar a quien no los usa.
-- **Datos que caducan** (FIX, UDIS, días hábiles e inhábiles, constantes): por defecto se consultan en la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), se usan los datos del paquete y la respuesta lo dice con `origen: "paquete"`, su `as_of` y advertencias: la del fallo y, en las series, otra si el último dato del paquete tiene más de 7 días. Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
+- **Datos que caducan** (FIX, UDIS, días hábiles e inhábiles de la LFT, la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR): por defecto se consultan en la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), se usan los datos del paquete y la respuesta lo dice con `origen: "paquete"`, su `as_of` y advertencias: la del fallo y, en las series, otra si el último dato del paquete tiene más de 7 días. Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
   - Los datos estables (estados, municipios, bancos, plazas) y la validación de la CLABE se leen del paquete sin red; con `fuente: "api"` se piden a la API. No llevan advertencia de antigüedad: su `as_of` es la fecha del último cambio en la fuente, no de la última revisión (un catálogo sin cambios en años tiene un `as_of` viejo y está al día), y el paquete no guarda cuándo se construyó. Quien necesite el catálogo al día con la fuente usa `fuente: "api"`.
+  - Sin red, los calendarios de la CNBV y el SAT responden con las reglas del Worker: `tipo_plazo` obligatorio con el SAT, el respaldo con los días publicados cuando `permitir_incompleto` sale de la cobertura de un plazo, los 422 con el mismo texto y las advertencias de primer nivel de `/v1/dias-inhabiles`. Las constantes dan los mismos 404 (antes del primer año, `no-encontrado`; después del último, `dato-no-disponible`). Una prueba de integración compara cada respuesta y cada problema del paquete con los del Worker.
   - `{ offline: true }` fuerza el modo sin red; `/v1/status` solo existe en la API.
 - **Entornos:** el cliente, los validadores y `mexicoapi/datos` funcionan en Node ≥ 20, navegadores, Cloudflare Workers, Deno y Bun.
   - `mexicoapi/sepomex` y la CLI requieren Node ≥ 22.13: la caché se guarda en JSON y, si `node:sqlite` está disponible, también en SQLite.

@@ -98,6 +98,74 @@ function consultas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
     ["FIX para una operación", (api, op) => api.fixParaOperacion(mover(publicado, 1), op)],
     ["FIX último", (api, op) => api.fixUltimo(op)],
     ["UDI", (api, op) => api.udi(enMedio(udis.serie).fecha, op)],
+    [
+      "días hábiles CNBV",
+      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2026-12-23", dias: 3 }, op),
+    ],
+    [
+      "días hábiles SAT general",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "general", desde: "2026-07-17", dias: 3 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT declaraciones_pagos",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-07-17", dias: 3 },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT general con respaldo después de su cobertura",
+      (api, op) =>
+        api.diasHabiles(
+          {
+            autoridad: "sat",
+            tipoPlazo: "general",
+            desde: "2026-11-27",
+            dias: 20,
+            permitirIncompleto: true,
+          },
+          op,
+        ),
+    ],
+    [
+      "días hábiles SAT general más allá de la cobertura amplia",
+      (api, op) =>
+        api.diasHabiles(
+          {
+            autoridad: "sat",
+            tipoPlazo: "general",
+            desde: "2026-11-27",
+            dias: 60,
+            permitirIncompleto: true,
+          },
+          op,
+        ),
+    ],
+    [
+      "días hábiles CNBV con permitir_incompleto",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "cnbv", desde: "2026-12-28", dias: 10, permitirIncompleto: true },
+          op,
+        ),
+    ],
+    ["días inhábiles CNBV", (api, op) => api.diasInhabiles({ autoridad: "cnbv", anio: 2026 }, op)],
+    [
+      "días inhábiles CNBV 2025",
+      (api, op) => api.diasInhabiles({ autoridad: "cnbv", anio: 2025 }, op),
+    ],
+    ["días inhábiles SAT", (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2026 }, op)],
+    ["UMA por año", (api, op) => api.uma(2026, op)],
+    ["UMA vigente en enero", (api, op) => api.umaVigente("2026-01-15", op)],
+    ["UMA vigente en febrero", (api, op) => api.umaVigente("2026-02-01", op)],
+    ["salario mínimo", (api, op) => api.salarioMinimo(2026, op)],
+    ["tarifa mensual de ISR", (api, op) => api.tarifaIsr("mensual", 2026, op)],
+    ["tarifa anual de ISR", (api, op) => api.tarifaIsr("anual", 2025, op)],
   ];
 }
 
@@ -132,11 +200,85 @@ function problemas(): [string, (api: Cliente, op: OpcionesConsulta) => Promise<u
         ),
     ],
     ["FIX sin fecha", (api, op) => api.consultar("/v1/tipo-cambio/fix", {} as never, op)],
+    [
+      "SAT sin tipo_plazo",
+      (api, op) => api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 }, op),
+    ],
+    [
+      "LFT con tipo_plazo",
+      (api, op) => api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 }, op),
+    ],
+    [
+      "CNBV con tipo_plazo",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "cnbv", tipoPlazo: "general", desde: "2026-07-17", dias: 3 },
+          op,
+        ),
+    ],
+    [
+      "tipo_plazo que no existe",
+      (api, op) =>
+        api.consultar(
+          "/v1/dias-habiles",
+          { autoridad: "sat", tipo_plazo: "anual", desde: "2026-07-17", dias: 3 } as never,
+          op,
+        ),
+    ],
+    [
+      "SAT general fuera de su cobertura",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "general", desde: "2026-11-27", dias: 5 },
+          op,
+        ),
+    ],
+    [
+      "SAT declaraciones_pagos fuera de su cobertura",
+      (api, op) =>
+        api.diasHabiles(
+          { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-12-30", dias: 3 },
+          op,
+        ),
+    ],
+    [
+      "CNBV fuera de su cobertura",
+      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2026-12-30", dias: 3 }, op),
+    ],
+    [
+      "CNBV antes de su cobertura",
+      (api, op) => api.diasHabiles({ autoridad: "cnbv", desde: "2024-12-20", dias: 3 }, op),
+    ],
+    [
+      "días inhábiles SAT 2027",
+      (api, op) => api.diasInhabiles({ autoridad: "sat", anio: 2027 }, op),
+    ],
+    [
+      "días inhábiles CNBV 2024",
+      (api, op) => api.diasInhabiles({ autoridad: "cnbv", anio: 2024 }, op),
+    ],
+    ["días inhábiles LFT 2101", (api, op) => api.diasInhabiles({ anio: 2101 }, op)],
+    ["UMA de 2016", (api, op) => api.uma(2016, op)],
+    ["UMA de 2030", (api, op) => api.uma(2030, op)],
+    ["UMA vigente antes de la primera", (api, op) => api.umaVigente("2017-01-31", op)],
+    ["UMA vigente después de la última", (api, op) => api.umaVigente("2028-01-01", op)],
+    ["UMA vigente sin fecha", (api, op) => api.consultar("/v1/constantes/uma", {} as never, op)],
+    ["UMA vigente con fecha inválida", (api, op) => api.umaVigente("2026-02-30", op)],
+    ["salario mínimo de 2018", (api, op) => api.salarioMinimo(2018, op)],
+    ["salario mínimo de 2030", (api, op) => api.salarioMinimo(2030, op)],
+    ["tarifa mensual de ISR de 2025", (api, op) => api.tarifaIsr("mensual", 2025, op)],
+    ["tarifa anual de ISR de 2030", (api, op) => api.tarifaIsr("anual", 2030, op)],
+    [
+      "parámetro desconocido en una constante",
+      (api, op) =>
+        api.consultar("/v1/constantes/uma/{anio}", { anio: 2026, zona: "x" } as never, op),
+    ],
     ["año 0", (api, op) => api.diasInhabiles({ anio: 0 }, op)],
     ["año de 5 dígitos", (api, op) => api.diasInhabiles({ anio: 10_000 }, op)],
     [
       "autoridad que no existe",
-      (api, op) => api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "sat" }, op),
+      (api, op) =>
+        api.diasHabiles({ desde: "2026-11-13", dias: 3, autoridad: "imss" as "lft" }, op),
     ],
     [
       "permitir_incompleto que no es booleano",
@@ -190,10 +332,12 @@ describe("el cliente contra el Worker", () => {
       const deApi = (await consultar(api, API)) as RespuestaSinMeta<unknown> & { meta: unknown };
       const dePaquete = (await consultar(api, PAQUETE)) as typeof deApi;
       expect(deApi.origen, nombre).toBe("api");
-      expect(deApi.advertencias, nombre).toEqual([]);
       expect(dePaquete.origen, nombre).toBe("paquete");
       expect(dePaquete.data, nombre).toEqual(deApi.data);
       expect(dePaquete.meta, nombre).toEqual(deApi.meta);
+      // Las mismas advertencias de primer nivel; la de antigüedad de una serie es solo del paquete.
+      const propias = dePaquete.advertencias.filter((a) => !/^Los datos de .* del paquete/.test(a));
+      expect(propias, nombre).toEqual(deApi.advertencias);
     }
   });
 
@@ -233,6 +377,23 @@ describe("el cliente contra el Worker", () => {
       ["/v1/clabe/{clabe}", "8", (v) => api.clabe(v, API)],
       ["/v1/clabe/{clabe}", "a", (v) => api.clabe(v, API)],
       ["/v1/clabe/{clabe}", CLABE.slice(0, 17), (v) => api.clabe(v, API)],
+      ["/v1/constantes/uma/{anio}", "26", (v) => api.uma(Number(v), API)],
+      [
+        "/v1/constantes/uma/{anio}",
+        "0000",
+        (v) => api.consultar("/v1/constantes/uma/{anio}", { anio: v } as never, API),
+      ],
+      [
+        "/v1/constantes/salario-minimo/{anio}",
+        "x",
+        (v) => api.consultar("/v1/constantes/salario-minimo/{anio}", { anio: v } as never, API),
+      ],
+      ["/v1/isr/tarifa/{periodo}/2026", "semanal", (v) => api.tarifaIsr(v as "mensual", 2026, API)],
+      [
+        "/v1/isr/tarifa/semanal/{anio}",
+        "20260",
+        (v) => api.tarifaIsr("semanal" as "mensual", Number(v), API),
+      ],
     ];
     for (const [plantilla, valor, consultar] of casos) {
       const ruta = plantilla.replace(/\{\w+\}/, valor);

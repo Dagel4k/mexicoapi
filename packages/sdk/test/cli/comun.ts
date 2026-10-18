@@ -172,7 +172,7 @@ export function probarCli(correr: Correr, version: string): void {
     }
     const sat = await correr([...DIAS, "--autoridad", "sat"]);
     expect(sat.codigo).toBe(1);
-    expect(sat.errores).toContain("lft");
+    expect(sat.errores).toContain("falta el parámetro tipo_plazo");
     const lejos = await correr(["dias-habiles", "--desde", "2101-01-04", "--dias", "5"]);
     expect(lejos.codigo).toBe(1);
     expect(lejos.salida).toBe("");

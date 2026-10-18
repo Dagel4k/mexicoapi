@@ -14,6 +14,7 @@ import {
   medirEntrada,
 } from "../../scripts/revisar.ts";
 import { type ModuloCliente, probarClienteSinRed } from "../cliente/comun.ts";
+import { probarCuradosSinRed } from "../cliente/curados.ts";
 import { type Modulo, probarModulo } from "../comun.ts";
 import {
   type ModuloDatos,
@@ -71,6 +72,15 @@ describe("mexicoapi/cliente sin red desde dist", () => {
     datos: await importar<ModuloDatos>("datos/index.js"),
     fix: await importar<ModuloFix>("datos/fix.js"),
     udis: await importar<ModuloUdis>("datos/udis.js"),
+    mexicoapi: await importar<Modulo>("index.js"),
+  }));
+});
+
+describe("calendarios y constantes del cliente sin red desde dist", () => {
+  probarCuradosSinRed(async () => ({
+    cliente: await importar<ModuloCliente>("cliente/index.js"),
+    calendarios: await importar<ModuloCalendarios>("datos/calendarios.js"),
+    constantes: await importar<ModuloConstantes>("datos/constantes.js"),
     mexicoapi: await importar<Modulo>("index.js"),
   }));
 });
@@ -146,7 +156,7 @@ describe("dist", () => {
       ]),
     );
     for (const archivo of despues) {
-      expect(archivo).toMatch(/^(cliente\/paquete\.js|nucleo\/|datos\/)/);
+      expect(archivo).toMatch(/^(cliente\/paquete(?:-[a-z]+)?\.js|nucleo\/|datos\/)/);
     }
     // Ni la entrada de datos completa: cada dataset se carga por separado.
     expect(despues).not.toContain("datos/index.js");

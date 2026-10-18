@@ -14,7 +14,7 @@ import type { Estado } from "mexicoapi/datos";
 // Una ruta que el cliente todavía no trae se agrega a RutasApi y se pide con consultar.
 declare module "mexicoapi/cliente" {
   interface RutasApi {
-    "/v1/constantes/uma/{anio}": {
+    "/v1/isr/subsidio/{anio}": {
       parametros: { anio: number };
       respuesta: Respuesta<{ valor: string }>;
     };
@@ -35,7 +35,7 @@ export async function usar(): Promise<readonly string[]> {
     cve_ent: "25",
   });
   const clabe: Respuesta<ResultadoClabe> = await sinRed.clabe("002010077777777771");
-  const uma: Respuesta<{ valor: string }> = await api.consultar("/v1/constantes/uma/{anio}", {
+  const subsidio: Respuesta<{ valor: string }> = await api.consultar("/v1/isr/subsidio/{anio}", {
     anio: 2026,
   });
   const status: RespuestaSinMeta<readonly EstadoDataset[]> = await api.status();
@@ -52,6 +52,6 @@ export async function usar(): Promise<readonly string[]> {
     estado.meta.as_of,
     String(clabe.data.detalle?.banco?.activo),
     String(status.data.length),
-    uma.data.valor,
+    subsidio.data.valor,
   ];
 }

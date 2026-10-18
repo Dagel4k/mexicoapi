@@ -5,33 +5,18 @@
 import type { CoberturaSerie, Consulta, FechaISO } from "@mexicoapi/core";
 import type { MetaDatos } from "../datos/tipos.js";
 import type { RutaDelPaquete } from "./cliente.js";
-import { type ContextoLocal, type MexicoApiError, problemaLocal, type TipoLocal } from "./error.js";
+import {
+  type Contexto,
+  conDocs,
+  type Dato,
+  falla,
+  type Nucleo,
+  type RutaPaquete,
+  valor,
+} from "./paquete-comun.js";
+import { SALARIO_MINIMO, TARIFA_ISR, UMA, UMA_VIGENTE } from "./paquete-constantes.js";
+import { DIAS_HABILES, DIAS_INHABILES } from "./paquete-dias.js";
 
-type Nucleo = typeof import("@mexicoapi/core");
-
-export interface Contexto extends ContextoLocal {
-  /** Los parámetros como texto, igual que irían en la URL. */
-  valores: Readonly<Record<string, string | undefined>>;
-  /** Solo los de la query. */
-  consulta: Readonly<Record<string, string>>;
-  /** Cambia cada valor de la ruta por `{nombre}`. */
-  ocultar(texto: string): string;
-  /** Se le agregan las advertencias de antigüedad. */
-  advertencias: string[];
-}
-
-interface Dato {
-  data: unknown;
-  meta: MetaDatos;
-}
-
-interface RutaPaquete {
-  /** Parámetros de la query en el orden en que la API los revisa, y si son obligatorios. */
-  consulta?: readonly (readonly [nombre: string, obligatorio: boolean])[];
-  responder(c: Contexto, n: Nucleo): Promise<Dato> | Dato;
-}
-
-const DOCS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs";
 const MS_POR_DIA = 86_400_000;
 
 const nucleo = (): Promise<Nucleo> => import("@mexicoapi/core");
@@ -39,27 +24,11 @@ const estados = () => import("../datos/estados.js");
 const municipios = () => import("../datos/municipios.js");
 const bancos = () => import("../datos/bancos.js");
 
-const falla = (
-  c: Contexto,
-  tipo: TipoLocal,
-  detalle: string,
-  extras?: Readonly<Record<string, unknown>>,
-): MexicoApiError => problemaLocal(c, tipo, detalle, extras);
-
-/** El `meta` de un dataset con el enlace a la sección de la API, como en las rutas calculadas. */
-const conDocs = (meta: MetaDatos, seccion: string): MetaDatos => ({
-  ...meta,
-  docs: `${DOCS}/api/README.md#${seccion}`,
-});
-
 /** El texto nombra el valor pedido, como el 404 de la API: se oculta. */
 function existe<T>(c: Contexto, valor: T | undefined, recurso: string): T {
   if (valor === undefined) throw falla(c, "no-encontrado", c.ocultar(`No existe ${recurso}.`));
   return valor;
 }
-
-/** El valor de un parámetro que ya pasó su regla. */
-const valor = (c: Contexto, nombre: string): string => c.valores[nombre] as string;
 
 type Regla = readonly [cumple: (valor: string) => boolean, detalle: string];
 
@@ -70,7 +39,15 @@ function reglas(n: Nucleo): Readonly<Record<string, Regla>> {
     `La ${que} (${nombre}) debe ser una fecha válida con formato AAAA-MM-DD.`,
   ];
   return {
-    autoridad: [(v) => v === "lft", "Autoridades disponibles: lft."],
+    autoridad: [
+      (v) => v === "lft" || v === "cnbv" || v === "sat",
+      "Autoridades disponibles: lft, cnbv y sat.",
+    ],
+    // La ruta lo exige con sat y lo rechaza con las demás autoridades.
+    tipo_plazo: [
+      (v) => v === "general" || v === "declaraciones_pagos",
+      "El tipo de plazo (tipo_plazo) debe ser general o declaraciones_pagos.",
+    ],
     desde: fecha("fecha de partida", "desde"),
     dias: [
       (v) => /^[1-9]\d{0,3}$/.test(v) && Number(v) <= 3650,
@@ -88,6 +65,7 @@ function reglas(n: Nucleo): Readonly<Record<string, Regla>> {
     publicado: fecha("fecha de publicación", "publicado"),
     operacion: fecha("fecha de la operación", "operacion"),
     fecha: fecha("fecha del valor", "fecha"),
+    fecha_uma: fecha("fecha que se consulta", "fecha"),
   };
 }
 
@@ -110,52 +88,20 @@ export async function responderPaquete(plantilla: RutaDelPaquete, c: Contexto): 
   }
   const n = await nucleo();
   const r = reglas(n);
-  for (const [nombre, obligatorio] of ruta.consulta ?? []) {
+  for (const [nombre, obligatorio, regla = nombre] of ruta.consulta ?? []) {
     const v = c.valores[nombre];
     const parametro = { parametro: nombre };
     if (v === undefined) {
       if (!obligatorio) continue;
       throw falla(c, "parametro-faltante", `Falta el parámetro ${nombre}.`, parametro);
     }
-    const [cumple, detalle] = r[nombre] as Regla;
+    const [cumple, detalle] = r[regla] as Regla;
     if (v === "") {
       throw falla(c, "parametro-invalido", `El parámetro ${nombre} está vacío.`, parametro);
     }
     if (!cumple(v)) throw falla(c, "parametro-invalido", detalle, parametro);
   }
   return ruta.responder(c, n);
-}
-
-/** Los días de la LFT salen del núcleo; su `meta` es el que da la API. */
-const metaLft = (n: Nucleo, seccion: string): MetaDatos => ({
-  dataset: "dias-inhabiles.lft",
-  as_of: n.VIGENCIA_LFT,
-  sources: [
-    {
-      name: "Ley Federal del Trabajo, artículos 74 y 715",
-      url: n.FUENTE_LFT_74.url,
-      license:
-        "Texto legislativo, no es objeto de derecho de autor (Ley Federal del Derecho de Autor, art. 14, fracción VIII)",
-      license_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf",
-      citation:
-        "Ley Federal del Trabajo, artículos 74 y 715, texto vigente con última reforma publicada en el DOF el 14 de mayo de 2026.",
-    },
-  ],
-  docs: `${DOCS}/api/README.md#${seccion}`,
-});
-
-function calendarioIncompleto(
-  c: Contexto,
-  fecha: FechaISO,
-  { desde, hasta }: CoberturaSerie,
-  queNoCubre: string,
-): MexicoApiError {
-  return falla(
-    c,
-    "calendario-incompleto",
-    `El calendario de lft no cubre ${queNoCubre}; cubre del ${desde} al ${hasta}.`,
-    { autoridad: "lft", fecha, cobertura: { desde, hasta } },
-  );
 }
 
 interface Serie {
@@ -260,51 +206,8 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
       };
     },
   },
-  "/v1/dias-habiles": {
-    consulta: [
-      ["autoridad", true],
-      ["desde", true],
-      ["dias", true],
-      ["permitir_incompleto", false],
-    ],
-    responder: (c, n) => {
-      try {
-        const data = n.sumarDiasHabiles({
-          calendario: n.calendarioLft(),
-          desde: valor(c, "desde"),
-          dias: Number(valor(c, "dias")),
-          permitirIncompleto: c.valores.permitir_incompleto === "true",
-        });
-        return { data, meta: metaLft(n, "dias-habiles") };
-      } catch (error) {
-        // Los errores del núcleo traen `codigo` para reconocerlos sin instanceof.
-        const codigo = (error as { codigo?: unknown }).codigo;
-        if (codigo === "calendario-incompleto") {
-          const { fecha, cobertura } = error as InstanceType<Nucleo["CalendarioIncompletoError"]>;
-          throw calendarioIncompleto(c, fecha, cobertura, fecha);
-        }
-        if (codigo === "fecha-fuera-de-rango") {
-          const detalle = "Con estos días, el resultado pasaría del año 9999.";
-          throw falla(c, "parametro-invalido", detalle, { parametro: "desde" });
-        }
-        throw error;
-      }
-    },
-  },
-  "/v1/dias-inhabiles": {
-    consulta: [
-      ["autoridad", true],
-      ["anio", true],
-    ],
-    responder: (c, n) => {
-      const anio = valor(c, "anio");
-      const cobertura = n.COBERTURA_LFT;
-      if (`${anio}-01-01` < cobertura.desde || `${anio}-12-31` > cobertura.hasta) {
-        throw calendarioIncompleto(c, `${anio}-01-01`, cobertura, `el año ${anio}`);
-      }
-      return { data: n.diasDescansoLft(Number(anio)), meta: metaLft(n, "dias-inhabiles") };
-    },
-  },
+  "/v1/dias-habiles": DIAS_HABILES,
+  "/v1/dias-inhabiles": DIAS_INHABILES,
   "/v1/tipo-cambio/fix": {
     consulta: [
       ["publicado", false],
@@ -375,4 +278,8 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
       });
     },
   },
+  "/v1/constantes/uma": UMA_VIGENTE,
+  "/v1/constantes/uma/{anio}": UMA,
+  "/v1/constantes/salario-minimo/{anio}": SALARIO_MINIMO,
+  "/v1/isr/tarifa/{periodo}/{anio}": TARIFA_ISR,
 };
