@@ -211,6 +211,85 @@ describe("compilarEsquema: listas y enum", () => {
   });
 });
 
+describe("compilarEsquema: format, const, minItems y maxItems", () => {
+  const fecha = compilarEsquema({ type: "string", format: "date" });
+  const fechaHora = compilarEsquema({ type: "string", format: "date-time" });
+
+  it.each(["2024-02-29", "2000-02-29", "0001-01-01", "9999-12-31", "2024-04-30"])(
+    "date acepta %s",
+    (valor) => {
+      expect(fecha(valor)).toEqual([]);
+    },
+  );
+
+  it.each([
+    "2023-02-29",
+    "1900-02-29",
+    "2024-13-01",
+    "2024-00-10",
+    "2024-04-31",
+    "2024-01-00",
+    "2024-1-01",
+    "24-01-01",
+    "2024-01-01T00:00:00Z",
+    " 2024-01-01",
+    "２０２４-01-01",
+  ])("date rechaza %j", (valor) => {
+    expect(fecha(valor)).toEqual(["el valor debe ser una fecha AAAA-MM-DD válida"]);
+  });
+
+  it.each([
+    "2024-02-29T23:59:59Z",
+    "2024-02-29t23:59:59z",
+    "2024-01-01T00:00:00.123+05:30",
+    "2024-01-01T12:00:00-06:00",
+    "2024-01-01T12:00:00+23:59",
+  ])("date-time acepta %s", (valor) => {
+    expect(fechaHora(valor)).toEqual([]);
+  });
+
+  it.each([
+    "2024-02-30T00:00:00Z",
+    "2024-01-01T24:00:00Z",
+    "2024-01-01T23:60:00Z",
+    "2024-01-01T23:59:60Z",
+    "2024-01-01T00:00:00",
+    "2024-01-01 00:00:00Z",
+    "2024-01-01T00:00:00+24:00",
+    "2024-01-01T00:00:00+05:60",
+    "2024-01-01T00:00:00.Z",
+    "2024-01-01",
+  ])("date-time rechaza %j", (valor) => {
+    expect(fechaHora(valor)).toEqual(["el valor debe ser una fecha y hora RFC 3339 válida"]);
+  });
+
+  it("format solo revisa textos y usa la ruta en el mensaje", () => {
+    const validar = compilarEsquema({
+      type: "object",
+      properties: { desde: { type: ["string", "null"], format: "date" } },
+    });
+    expect(validar({ desde: null })).toEqual([]);
+    expect(validar({ desde: "2024-02-30" })).toEqual([
+      '"desde" debe ser una fecha AAAA-MM-DD válida',
+    ]);
+  });
+
+  it("const compara con igualdad estricta", () => {
+    const validar = compilarEsquema({ const: "api" });
+    expect(validar("api")).toEqual([]);
+    expect(validar("paquete")).toEqual(['el valor debe ser "api"']);
+    expect(compilarEsquema({ const: null })(0)).toEqual(["el valor debe ser null"]);
+  });
+
+  it("minItems y maxItems cuentan elementos de listas", () => {
+    const validar = compilarEsquema({ type: "array", minItems: 1, maxItems: 2 });
+    expect(validar([1])).toEqual([]);
+    expect(validar([])).toEqual(["el valor debe tener al menos 1 elementos"]);
+    expect(validar([1, 2, 3])).toEqual(["el valor debe tener como máximo 2 elementos"]);
+    expect(compilarEsquema({ minItems: 1 })("texto")).toEqual([]);
+  });
+});
+
 describe("compilarEsquema: esquemas no soportados", () => {
   it.each([
     [{ oneOf: [] }, "#: palabra clave no soportada: oneOf"],
@@ -234,6 +313,14 @@ describe("compilarEsquema: esquemas no soportados", () => {
     [{ minimum: "1" }, "#/minimum: debe ser un número"],
     [{ maximum: Number.NaN }, "#/maximum: debe ser un número"],
     [{ items: [] }, "#/items: el esquema debe ser un objeto"],
+    [{ format: "email" }, "#/format: solo se admiten date y date-time"],
+    [{ format: 1 }, "#/format: solo se admiten date y date-time"],
+    [{ format: "toString" }, "#/format: solo se admiten date y date-time"],
+    [{ const: {} }, "#/const: debe ser texto, número, booleano o null"],
+    [{ minItems: -1 }, "#/minItems: debe ser un entero mayor o igual a 0"],
+    [{ maxItems: "2" }, "#/maxItems: debe ser un entero mayor o igual a 0"],
+    [{ anyOf: [] }, "#: palabra clave no soportada: anyOf"],
+    [{ not: {} }, "#: palabra clave no soportada: not"],
     [
       { $schema: "http://json-schema.org/draft-07/schema#" },
       "#/$schema: solo se admite https://json-schema.org/draft/2020-12/schema",
@@ -255,14 +342,12 @@ describe("compilarEsquema: esquemas no soportados", () => {
       description: "d",
       default: 1,
       examples: [1],
-      format: "date",
       deprecated: false,
       readOnly: true,
       writeOnly: false,
       type: "string",
     });
-    // format es solo anotación en 2020-12: no se valida.
-    expect(validar("no es fecha")).toEqual([]);
+    expect(validar("lo que sea")).toEqual([]);
   });
 
   it("no lee propiedades heredadas del esquema", () => {

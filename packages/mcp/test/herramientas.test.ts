@@ -56,6 +56,18 @@ describe("crearRegistro", () => {
     [{ annotations: { readOnlyHint: true } }, "eco: openWorldHint debe ser booleano"],
     [{ inputSchema: { type: "string" } }, 'eco: inputSchema debe tener type "object"'],
     [{ inputSchema: { type: "object", oneOf: [] } }, "eco: inputSchema: #: palabra clave"],
+    [
+      { inputSchema: { type: "object", additionalProperties: false, anyOf: [] } },
+      "eco: inputSchema: #: palabra clave no soportada: anyOf",
+    ],
+    [
+      { inputSchema: { type: "object" } },
+      "eco: inputSchema debe tener additionalProperties: false",
+    ],
+    [
+      { inputSchema: { type: "object", additionalProperties: true } },
+      "eco: inputSchema debe tener additionalProperties: false",
+    ],
     [{ outputSchema: { type: "array" } }, 'eco: outputSchema debe tener type "object"'],
     [{ outputSchema: { type: "object", $ref: "#" } }, "eco: outputSchema: #: palabra clave"],
     [{ ejecutar: "no" }, "eco: falta ejecutar"],

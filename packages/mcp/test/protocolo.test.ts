@@ -759,7 +759,7 @@ describe("tools/call", () => {
       name: "lanza",
       title: "Lanza",
       description: "Rechaza con un texto.",
-      inputSchema: { type: "object" },
+      inputSchema: { type: "object", additionalProperties: false },
       annotations: { readOnlyHint: true, openWorldHint: false },
       ejecutar: () => Promise.reject("texto con SECRETO"),
     };
@@ -917,7 +917,7 @@ describe("tools/call", () => {
       name: "cae",
       title: "Cae",
       description: "Falla cuando la sueltan.",
-      inputSchema: { type: "object" },
+      inputSchema: { type: "object", additionalProperties: false },
       annotations: { readOnlyHint: true, openWorldHint: false },
       ejecutar: (_args, contexto) => {
         senales.push(contexto.signal);

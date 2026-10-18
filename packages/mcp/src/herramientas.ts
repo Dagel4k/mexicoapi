@@ -129,6 +129,10 @@ export function crearRegistro(
     if (typeof definicion.ejecutar !== "function") throw new Error(`${name}: falta ejecutar`);
     revisarAnotaciones(name, definicion.annotations);
     const validarEntrada = compilarRaiz(name, "inputSchema", definicion.inputSchema);
+    // Un argumento de más (mal escrito, por ejemplo) debe dar error, no ignorarse en silencio.
+    if (definicion.inputSchema.additionalProperties !== false) {
+      throw new Error(`${name}: inputSchema debe tener additionalProperties: false`);
+    }
     const validarSalida =
       definicion.outputSchema === undefined
         ? null

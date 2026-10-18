@@ -38,7 +38,11 @@ export const falla: Herramienta = {
   name: "falla",
   title: "Falla",
   description: "Siempre lanza una excepción.",
-  inputSchema: { type: "object", properties: { dato: { type: "string" } } },
+  inputSchema: {
+    type: "object",
+    properties: { dato: { type: "string" } },
+    additionalProperties: false,
+  },
   annotations: { readOnlyHint: true, openWorldHint: false },
   async ejecutar(args) {
     throw new TypeError(`no se pudo con ${String(args.dato)}`);
@@ -63,7 +67,11 @@ export const salidaMala: Herramienta = {
   name: "salida_mala",
   title: "Salida mala",
   description: "Devuelve un resultado que no cumple su esquema de salida.",
-  inputSchema: { type: "object", properties: { caso: { type: "string" } } },
+  inputSchema: {
+    type: "object",
+    properties: { caso: { type: "string" } },
+    additionalProperties: false,
+  },
   outputSchema: { type: "object", properties: { n: { type: "integer" } }, required: ["n"] },
   annotations: { readOnlyHint: true, openWorldHint: false },
   async ejecutar(args) {
@@ -77,7 +85,11 @@ export const formaMala: Herramienta = {
   name: "forma_mala",
   title: "Forma mala",
   description: "Devuelve un resultado sin content.",
-  inputSchema: { type: "object", properties: { caso: { type: "string" } } },
+  inputSchema: {
+    type: "object",
+    properties: { caso: { type: "string" } },
+    additionalProperties: false,
+  },
   annotations: { readOnlyHint: true, openWorldHint: false },
   async ejecutar(args) {
     const casos: Record<string, unknown> = {
@@ -105,7 +117,7 @@ export function crearLenta(): {
     name: "lenta",
     title: "Lenta",
     description: "Tarda hasta que la sueltan.",
-    inputSchema: { type: "object" },
+    inputSchema: { type: "object", additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: true },
     ejecutar(_args, contexto) {
       senales.push(contexto.signal);
