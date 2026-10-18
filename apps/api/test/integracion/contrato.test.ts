@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { sumarDias } from "@mexicoapi/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { PROBLEMAS } from "../../src/problemas.js";
@@ -120,6 +121,31 @@ interface Caso {
   metodo?: string;
 }
 
+/**
+ * Hasta dónde cubre cada plazo de un calendario curado, del calendario que usa el Worker: los
+ * casos del borde se arman con ella y no con la cobertura de hoy.
+ */
+async function hastaDonde(
+  autoridad: string,
+  tipo: string,
+): Promise<{ desde: string; hasta: string }> {
+  const texto = await readFile(
+    new URL(`v1/_internos/calendarios/${autoridad}.json`, PUBLICO),
+    "utf8",
+  );
+  const { plazos } = JSON.parse(texto) as {
+    plazos: Record<string, { cobertura: { desde: string; hasta: string } }>;
+  };
+  const plazo = plazos[tipo];
+  if (plazo === undefined) throw new Error(`${autoridad} no tiene el plazo ${tipo}.`);
+  return plazo.cobertura;
+}
+
+const SAT_GENERAL = await hastaDonde("sat", "general");
+const SAT_DECLARACIONES = await hastaDonde("sat", "declaraciones_pagos");
+const CNBV = await hastaDonde("cnbv", "general");
+const anioDe = (fecha: string): string => fecha.slice(0, 4);
+
 /** Peticiones por operación; cada estado practicable que declara una operación tiene al menos una. */
 const CASOS: Caso[] = [
   { ruta: "/", estado: 200 },
@@ -195,11 +221,11 @@ const CASOS: Caso[] = [
     estado: 200,
   },
   {
-    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=2&permitir_incompleto=true",
+    ruta: `/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=${SAT_GENERAL.hasta}&dias=2&permitir_incompleto=true`,
     estado: 200,
   },
   {
-    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-12-24&dias=5&permitir_incompleto=true",
+    ruta: `/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=${SAT_DECLARACIONES.hasta}&dias=5&permitir_incompleto=true`,
     estado: 200,
   },
   { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-12-11&dias=1", estado: 200 },
@@ -210,14 +236,14 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=anual&desde=2026-01-05&dias=10", estado: 400 },
   { ruta: "/v1/dias-habiles?autoridad=banxico&desde=2026-01-05&dias=10", estado: 400 },
   {
-    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=2",
+    ruta: `/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=${SAT_GENERAL.hasta}&dias=1`,
     estado: 422,
   },
   {
-    ruta: "/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-12-31&dias=1",
+    ruta: `/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=${SAT_DECLARACIONES.hasta}&dias=1`,
     estado: 422,
   },
-  { ruta: "/v1/dias-habiles?autoridad=cnbv&desde=2026-12-31&dias=1", estado: 422 },
+  { ruta: `/v1/dias-habiles?autoridad=cnbv&desde=${CNBV.hasta}&dias=1`, estado: 422 },
 
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2026", estado: 200 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2030", estado: 200 },
@@ -228,11 +254,17 @@ const CASOS: Caso[] = [
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2006", estado: 422 },
   { ruta: "/v1/dias-inhabiles?autoridad=lft&anio=2101", estado: 422 },
   { ruta: "/v1/dias-inhabiles?autoridad=cnbv&anio=2025", estado: 200 },
-  // La lista conocida, con la advertencia de las vacaciones que faltan.
+  // La lista publicada, con la advertencia si faltan vacaciones; los años junto a cada cobertura.
   { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026", estado: 200 },
   { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2026&tipo_plazo=general", estado: 400 },
-  { ruta: "/v1/dias-inhabiles?autoridad=sat&anio=2027", estado: 422 },
-  { ruta: "/v1/dias-inhabiles?autoridad=cnbv&anio=2024", estado: 422 },
+  {
+    ruta: `/v1/dias-inhabiles?autoridad=sat&anio=${anioDe(sumarDias(SAT_DECLARACIONES.hasta, 1))}`,
+    estado: 422,
+  },
+  {
+    ruta: `/v1/dias-inhabiles?autoridad=cnbv&anio=${anioDe(sumarDias(CNBV.desde, -1))}`,
+    estado: 422,
+  },
 
   // Lunes tras un viernes con publicación; cambio de año (sin publicación en 2021 antes del 4).
   { ruta: "/v1/tipo-cambio/fix?publicado=2026-10-16", estado: 200 },

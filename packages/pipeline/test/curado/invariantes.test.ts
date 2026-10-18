@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
-import type {
-  CoberturaCurada,
-  DiaInhabilCurado,
-  SalarioMinimo,
-  TarifaIsr,
-  Uma,
+import {
+  type CoberturaCurada,
+  type DiaInhabilCurado,
+  type SalarioMinimo,
+  sumarDias,
+  type TarifaIsr,
+  type Uma,
 } from "@mexicoapi/core";
 import { describe, expect, it } from "vitest";
 import type { ExcepcionCuotaFija } from "../../src/curado/esquemas.js";
@@ -422,36 +423,35 @@ describe("días inhábiles y tipos de plazo", () => {
     ).toEqual(["la cobertura del plazo general queda vacía"]);
   });
 
-  it("el YAML real con vacaciones hasta 2027 sin extender descanso no pasa", async () => {
+  it("el YAML real con vacaciones más allá de la cobertura de descanso no pasa", async () => {
+    // El caso que hacía responder 500 al Worker: vacaciones capturadas cuatro días después del
+    // fin de la cobertura de descanso, sin extenderla. Se arma sobre la cobertura del YAML.
     const yaml = await readFile(
       new URL("../../../../data/curado/dias-inhabiles-sat.yaml", import.meta.url),
       "utf8",
     );
-    const linea = "vacaciones: { desde: 2026-01-01, hasta: 2026-11-30 }";
-    expect(yaml).toContain(linea);
-    const fechas = [
-      ...Array.from({ length: 8 }, (_, i) => `2026-12-${17 + i}`),
-      ...Array.from({ length: 6 }, (_, i) => `2026-12-${26 + i}`),
-      "2027-01-01",
-      "2027-01-02",
-      "2027-01-03",
-      "2027-01-04",
-    ];
-    const extra = fechas.map(
+    const { descanso, vacaciones } =
+      interpretarCurado(curadoDiasSat, yaml).documento?.cobertura ?? {};
+    if (descanso === undefined || vacaciones === undefined) throw new Error("faltan coberturas");
+    const fuera = [1, 2, 3, 4].map((n) => sumarDias(descanso.hasta, n));
+    const linea = /vacaciones: \{ desde: ([\d-]+), hasta: [\d-]+ \}/;
+    expect(yaml).toMatch(linea);
+    const extra = fuera.map(
       (f) =>
-        `  - { fecha: ${f}, autoridad: sat, motivo: "Segundo periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }`,
+        `  - { fecha: ${f}, autoridad: sat, motivo: "Segundo periodo general de vacaciones", tipo: vacaciones, fuente: primera-rm-2026 }`,
     );
     const cambiado = [
-      yaml.replace(linea, "vacaciones: { desde: 2026-01-01, hasta: 2027-01-04 }").trimEnd(),
+      yaml.replace(linea, `vacaciones: { desde: $1, hasta: ${fuera.at(-1)} }`).trimEnd(),
       ...extra,
       "",
     ].join("\n");
     const { documento, problemas } = interpretarCurado(curadoDiasSat, cambiado);
     expect(documento).toBeNull();
+    const desde = descanso.desde > vacaciones.desde ? descanso.desde : vacaciones.desde;
     expect(problemas).toEqual(
-      ["2027-01-01", "2027-01-02", "2027-01-03", "2027-01-04"].map(
+      fuera.map(
         (f) =>
-          `invariante: ${f}: no cae en la cobertura de ningún tipo de plazo (general del 2026-01-01 al 2026-12-31; declaraciones_pagos del 2026-01-01 al 2026-12-31)`,
+          `invariante: ${f}: no cae en la cobertura de ningún tipo de plazo (general del ${desde} al ${descanso.hasta}; declaraciones_pagos del ${descanso.desde} al ${descanso.hasta})`,
       ),
     );
   });

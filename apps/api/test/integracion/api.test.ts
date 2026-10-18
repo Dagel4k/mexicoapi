@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { diaDeLaSemana, sumarDias } from "@mexicoapi/core";
 import { describe, expect, inject, it } from "vitest";
 import { probarHumo } from "../../scripts/humo.ts";
 import {
@@ -490,10 +491,70 @@ async function calendarioIncompleto(ruta: string, esperado: Obj): Promise<Obj> {
   return cuerpo as Obj;
 }
 
+interface Rango {
+  desde: string;
+  hasta: string;
+}
+
+/**
+ * La cobertura de cada plazo, del calendario que usa el Worker. Las pruebas la toman de aquí y no
+ * fijan la de hoy: siguen valiendo cuando se capture un periodo de vacaciones o un año nuevo.
+ */
+async function coberturas(autoridad: string): Promise<Record<string, Rango>> {
+  const ruta = `v1/_internos/calendarios/${autoridad}.json`;
+  const { plazos } = JSON.parse((await leerPublico(ruta)).toString("utf8")) as {
+    plazos: Record<string, { cobertura: Rango }>;
+  };
+  return Object.fromEntries(Object.entries(plazos).map(([tipo, p]) => [tipo, p.cobertura]));
+}
+
+const COBERTURA_SAT = await coberturas("sat");
+const COBERTURA_CNBV = await coberturas("cnbv");
+
+const despues = (r: Rango): string => sumarDias(r.hasta, 1);
+const rango = (r: Rango): string => `del ${r.desde} al ${r.hasta}`;
+const anioDe = (fecha: string): string => fecha.slice(0, 4);
+const esFinDeSemana = (fecha: string): boolean => [0, 6].includes(diaDeLaSemana(fecha));
+
+/** El primer día después de `desde` que no es fin de semana ni un día publicado. */
+function siguienteHabil(desde: string, publicados: readonly DiaReal[]): string {
+  const fechas = new Set(publicados.map((d) => d.fecha));
+  let fecha = sumarDias(desde, 1);
+  while (esFinDeSemana(fecha) || fechas.has(fecha)) fecha = sumarDias(fecha, 1);
+  return fecha;
+}
+
+/** Días de calendario del fin de una cobertura al de otra. */
+const diasEntre = (a: Rango, b: Rango): number =>
+  (Date.parse(b.hasta) - Date.parse(a.hasta)) / 86_400_000;
+
+/** El aviso del núcleo por cada año, de después de la cobertura hasta `resultado`. */
+function avisosDelNucleo(cobertura: Rango, resultado: string): string[] {
+  const avisos: string[] = [];
+  for (let anio = Number(anioDe(despues(cobertura))); anio <= Number(anioDe(resultado)); anio++) {
+    avisos.push(`Calendario incompleto: SAT ${anio}; solo se descontaron fines de semana.`);
+  }
+  return avisos;
+}
+
+/** Los años que la cobertura incluye completos. */
+function aniosCompletos({ desde, hasta }: Rango): string[] {
+  const anios: string[] = [];
+  for (let anio = Number(anioDe(desde)); anio <= Number(anioDe(hasta)); anio++) {
+    if (`${anio}-01-01` >= desde && `${anio}-12-31` <= hasta) anios.push(String(anio));
+  }
+  return anios;
+}
+
 describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   const sat = (tipo: string, desde: string, dias: number, extra = "") =>
     `/v1/dias-habiles?autoridad=sat&tipo_plazo=${tipo}&desde=${desde}&dias=${dias}${extra}`;
   const primerPeriodo = DIAS_SAT.filter((d) => d.fecha >= "2026-07-20" && d.fecha <= "2026-07-31");
+  const general = COBERTURA_SAT.general as Rango;
+  const declaraciones = COBERTURA_SAT.declaraciones_pagos as Rango;
+  const bancaria = COBERTURA_CNBV.general as Rango;
+  // Mientras falte un periodo de vacaciones, general termina antes que declaraciones_pagos.
+  const hueco = general.hasta < declaraciones.hasta;
 
   it("los datos tienen los casos que se prueban", () => {
     expect(primerPeriodo.map((d) => d.fecha)).toEqual(
@@ -501,9 +562,30 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     );
     expect(primerPeriodo.every((d) => d.tipo === "vacaciones")).toBe(true);
     expect(DIAS_SAT.find((d) => d.fecha === "2026-12-25")?.tipo).toBe("descanso");
-    expect(DIAS_SAT.some((d) => d.tipo === "vacaciones" && d.fecha > "2026-11-30")).toBe(false);
+    expect(Object.keys(COBERTURA_SAT)).toEqual(["general", "declaraciones_pagos"]);
+    expect(Object.keys(COBERTURA_CNBV)).toEqual(["general"]);
+    // general cuenta todos los tipos de día: ninguna vacación publicada queda fuera de su cobertura.
+    expect(DIAS_SAT.some((d) => d.tipo === "vacaciones" && d.fecha > general.hasta)).toBe(false);
     expect(DIAS_CNBV.map((d) => d.fecha)).toEqual(
       expect.arrayContaining(["2025-12-12", "2026-11-02"]),
+    );
+  });
+
+  it("la descarga de coberturas trae las de los calendarios que usa el Worker", async () => {
+    const descarga = JSON.parse(
+      (await leerPublico("descargas/dias-inhabiles-coberturas.json")).toString("utf8"),
+    );
+    expect(descarga).toEqual(
+      [
+        ["cnbv", COBERTURA_CNBV],
+        ["sat", COBERTURA_SAT],
+      ].flatMap(([autoridad, plazos]) =>
+        Object.entries(plazos as Record<string, Rango>).map(([tipo_plazo, r]) => ({
+          autoridad,
+          tipo_plazo,
+          ...r,
+        })),
+      ),
     );
   });
 
@@ -531,58 +613,88 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     );
   });
 
-  it("general cruza el 30 de noviembre: 422 con autoridad, fecha y cobertura, y el detalle dice por qué", async () => {
-    const cuerpo = await calendarioIncompleto(sat("general", "2026-11-27", 2), {
+  it("un día después de la cobertura de general: 422 con autoridad, fecha y cobertura, y el detalle dice por qué", async () => {
+    const cuerpo = await calendarioIncompleto(sat("general", general.hasta, 1), {
       autoridad: "sat",
-      fecha: "2026-12-01",
-      cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
+      fecha: despues(general),
+      cobertura: general,
     });
+    const base = `El calendario del SAT para tipo_plazo=general no cubre ${despues(general)}; cubre ${rango(general)}`;
     expect(cuerpo.detail).toBe(
-      "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2026-12-31.",
+      hueco
+        ? `${base} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre ${rango(declaraciones)}.`
+        : `${base}.`,
     );
   });
 
-  it("general con permitir_incompleto=true calcula con lo publicado después del 30 de noviembre", async () => {
-    const aviso =
-      "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.";
-    const permitir = (desde: string, dias: number) =>
-      sat("general", desde, dias, "&permitir_incompleto=true");
-    const cruce = await datos(permitir("2026-11-27", 2));
-    expect(cruce.data).toMatchObject({ resultado: "2026-12-01", advertencias: [aviso] });
-    // El 25 de diciembre está publicado: se salta con su cita y el resultado es hábil.
-    const navidad = await datos(permitir("2026-12-24", 1));
-    expect(navidad.data).toMatchObject({ resultado: "2026-12-28", advertencias: [aviso] });
-    expect(navidad.data.inhabiles_saltados).toEqual(
-      DIAS_SAT.filter((d) => d.fecha === "2026-12-25").map(comoApi),
+  it.runIf(hueco)(
+    "general con permitir_incompleto=true calcula con lo publicado después de su cobertura",
+    async () => {
+      const aviso = `Calendario incompleto: SAT con tipo_plazo=general cubre ${rango(general)}; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
+      const permitir = (desde: string, dias: number) =>
+        sat("general", desde, dias, "&permitir_incompleto=true");
+      const cruce = await datos(permitir(general.hasta, 1));
+      expect(cruce.data).toMatchObject({
+        resultado: siguienteHabil(general.hasta, DIAS_SAT),
+        advertencias: [aviso],
+      });
+      // Un día publicado después de la cobertura de general (el 25 de diciembre de 2026) se
+      // salta con su cita y el resultado es hábil.
+      const publicado = DIAS_SAT.find(
+        (d) => d.fecha > general.hasta && d.fecha <= declaraciones.hasta,
+      ) as DiaReal;
+      expect(publicado).toBeDefined();
+      const vispera = sumarDias(publicado.fecha, -1);
+      const salto = await datos(permitir(vispera, 1));
+      expect(salto.data).toMatchObject({
+        resultado: siguienteHabil(vispera, DIAS_SAT),
+        advertencias: [aviso],
+      });
+      expect(salto.data.inhabiles_saltados).toEqual(
+        DIAS_SAT.filter((d) => d.fecha > vispera && d.fecha < salto.data.resultado).map(comoApi),
+      );
+      expect(salto.data.inhabiles_saltados).toContainEqual(comoApi(publicado));
+      // Contar más días hábiles que días hay en el hueco pasa la cobertura más amplia: se suma
+      // el aviso del núcleo, uno por año.
+      const largo = await datos(permitir(general.hasta, diasEntre(general, declaraciones) + 1));
+      expect(largo.data.resultado > declaraciones.hasta).toBe(true);
+      expect(largo.data.advertencias).toEqual([
+        aviso,
+        ...avisosDelNucleo(declaraciones, largo.data.resultado),
+      ]);
+    },
+  );
+
+  it("con permitir_incompleto=true, después de la cobertura más amplia solo descuenta fines de semana", async () => {
+    const { data } = await datos(
+      sat("declaraciones_pagos", declaraciones.hasta, 5, "&permitir_incompleto=true"),
     );
-    const hasta2027 = await datos(permitir("2026-12-24", 5));
-    expect(hasta2027.data.advertencias).toEqual([
-      aviso,
-      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
-    ]);
+    expect(data.inhabiles_saltados).toEqual([]);
+    expect(esFinDeSemana(data.resultado)).toBe(false);
+    expect(data.advertencias).toEqual(avisosDelNucleo(declaraciones, data.resultado));
   });
 
-  it("declaraciones_pagos llega al 31 de diciembre, salta el 25, y después da 422", async () => {
+  it("declaraciones_pagos salta el 25 de diciembre y da 422 al día siguiente de su cobertura", async () => {
     const { data } = await datos(sat("declaraciones_pagos", "2026-12-24", 1));
     expect(data.resultado).toBe("2026-12-28");
     expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toEqual(["2026-12-25"]);
-    await calendarioIncompleto(sat("declaraciones_pagos", "2026-12-31", 1), {
+    await calendarioIncompleto(sat("declaraciones_pagos", declaraciones.hasta, 1), {
       autoridad: "sat",
-      fecha: "2027-01-01",
-      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+      fecha: despues(declaraciones),
+      cobertura: declaraciones,
     });
   });
 
-  it("la CNBV salta sus días de 2025 y 2026 y no cubre 2027", async () => {
+  it("la CNBV salta sus días de 2025 y 2026 y da 422 al día siguiente de su cobertura", async () => {
     const cnbv = (desde: string) => `/v1/dias-habiles?autoridad=cnbv&desde=${desde}&dias=1`;
     const noviembre = await datos(cnbv("2026-10-30"));
     expect(noviembre.data.resultado).toBe("2026-11-03");
     expect(noviembre.meta.dataset).toBe("dias-inhabiles.cnbv");
     expect((await datos(cnbv("2025-12-11"))).data.resultado).toBe("2025-12-15");
-    await calendarioIncompleto(cnbv("2026-12-31"), {
+    await calendarioIncompleto(cnbv(bancaria.hasta), {
       autoridad: "cnbv",
-      fecha: "2027-01-01",
-      cobertura: { desde: "2025-01-01", hasta: "2026-12-31" },
+      fecha: despues(bancaria),
+      cobertura: bancaria,
     });
   });
 
@@ -597,28 +709,44 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     });
   });
 
-  it("dias-inhabiles del SAT 2026: la lista publicada, con la advertencia de las vacaciones", async () => {
-    const cuerpo = await datos("/v1/dias-inhabiles?autoridad=sat&anio=2026");
-    expect(cuerpo.data).toEqual(DIAS_SAT.filter((d) => d.fecha.startsWith("2026-")).map(comoApi));
-    expect(cuerpo.advertencias).toEqual([
-      "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.",
-    ]);
-    expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
-    await calendarioIncompleto("/v1/dias-inhabiles?autoridad=sat&anio=2027", {
-      autoridad: "sat",
-      fecha: "2027-01-01",
-      cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
-    });
+  it("dias-inhabiles del SAT: la lista publicada de cada año, con la advertencia si faltan vacaciones", async () => {
+    const anios = aniosCompletos(declaraciones);
+    expect(anios).toContain("2026");
+    for (const anio of anios) {
+      const cuerpo = await datos(`/v1/dias-inhabiles?autoridad=sat&anio=${anio}`);
+      expect(cuerpo.data).toEqual(
+        DIAS_SAT.filter((d) => d.fecha.startsWith(`${anio}-`)).map(comoApi),
+      );
+      const completo = `${anio}-01-01` >= general.desde && `${anio}-12-31` <= general.hasta;
+      expect(cuerpo.advertencias, anio).toEqual(
+        completo
+          ? []
+          : [
+              `Los días de tipo vacaciones del SAT solo están completos ${rango(general)}; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de ${anio} está completa.`,
+            ],
+      );
+      expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
+    }
+    await calendarioIncompleto(
+      `/v1/dias-inhabiles?autoridad=sat&anio=${anioDe(despues(declaraciones))}`,
+      { autoridad: "sat", fecha: despues(declaraciones), cobertura: declaraciones },
+    );
   });
 
   it("dias-inhabiles de la CNBV: cada año completo, sin advertencias", async () => {
-    for (const anio of ["2025", "2026"]) {
+    const anios = aniosCompletos(bancaria);
+    expect(anios).toEqual(expect.arrayContaining(["2025", "2026"]));
+    for (const anio of anios) {
       const cuerpo = await datos(`/v1/dias-inhabiles?autoridad=cnbv&anio=${anio}`);
       expect(cuerpo.data).toEqual(
         DIAS_CNBV.filter((d) => d.fecha.startsWith(`${anio}-`)).map(comoApi),
       );
       expect(cuerpo.advertencias).toEqual([]);
     }
+    await calendarioIncompleto(
+      `/v1/dias-inhabiles?autoridad=cnbv&anio=${anioDe(despues(bancaria))}`,
+      { autoridad: "cnbv", fecha: despues(bancaria), cobertura: bancaria },
+    );
   });
 });
 

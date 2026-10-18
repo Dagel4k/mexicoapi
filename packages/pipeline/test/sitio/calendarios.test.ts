@@ -6,6 +6,7 @@ import {
   crearCalendario,
   type DiaInhabilCurado,
   type FuenteDof,
+  sumarDias,
   sumarDiasHabiles,
   type TipoPlazo,
 } from "@mexicoapi/core";
@@ -231,16 +232,17 @@ describe("shardCalendario", () => {
 
 describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabiles", async () => {
   const raiz = fileURLToPath(new URL("../../../../data", import.meta.url));
-  async function real(
-    def: DefinicionCurado<DiaInhabilCurado>,
-    autoridad: AutoridadCurada,
-  ): Promise<ShardCalendario> {
+  async function leer(def: DefinicionCurado<DiaInhabilCurado>) {
     const lectura = await leerCurado(def, raiz);
     if (lectura?.documento == null) throw new Error(`no se pudo leer ${def.yaml}`);
-    return shardDe(autoridad, lectura.documento);
+    return lectura.documento;
   }
-  const sat = await real(curadoDiasSat, "sat");
-  const cnbv = await real(curadoDiasCnbv, "cnbv");
+  // La cobertura sale del YAML: las pruebas no fijan la de hoy y siguen valiendo cuando se
+  // capture un periodo de vacaciones o un año nuevo.
+  const yamlSat = await leer(curadoDiasSat);
+  const yamlCnbv = await leer(curadoDiasCnbv);
+  const sat = shardDe("sat", yamlSat);
+  const cnbv = shardDe("cnbv", yamlCnbv);
   const general = calendarioDe(sat, "general");
   const declaraciones = calendarioDe(sat, "declaraciones_pagos");
   const bancos = calendarioDe(cnbv, "general");
@@ -274,41 +276,53 @@ describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabil
     expect(sumar(declaraciones, "2026-09-15", 1).resultado).toBe("2026-09-17");
   });
 
-  it("SAT: general llega al 30 de noviembre; declaraciones y pagos cubre diciembre", () => {
-    expect(sumar(general, "2026-11-27", 1).resultado).toBe("2026-11-30");
-    expect(() => sumar(general, "2026-11-27", 2)).toThrow(CalendarioIncompletoError);
+  /** El error de sumar un día hábil desde el último día de la cobertura del calendario. */
+  function alDiaSiguiente(calendario: Calendario): unknown {
     try {
-      sumar(general, "2026-11-27", 2);
+      sumar(calendario, calendario.cobertura.hasta, 1);
     } catch (e) {
-      expect(e).toMatchObject({
+      return e;
+    }
+    return expect.unreachable();
+  }
+
+  it("SAT: general cubre donde se cruzan descanso y vacaciones; declaraciones y pagos, donde hay descanso", () => {
+    const { descanso, vacaciones } = yamlSat.cobertura ?? {};
+    if (descanso === undefined || vacaciones === undefined) throw new Error("faltan coberturas");
+    expect(general.cobertura).toEqual({
+      desde: descanso.desde > vacaciones.desde ? descanso.desde : vacaciones.desde,
+      hasta: descanso.hasta < vacaciones.hasta ? descanso.hasta : vacaciones.hasta,
+    });
+    expect(declaraciones.cobertura).toEqual(descanso);
+    for (const calendario of [general, declaraciones]) {
+      const error = alDiaSiguiente(calendario);
+      expect(error).toBeInstanceOf(CalendarioIncompletoError);
+      expect(error).toMatchObject({
         autoridad: "sat",
-        fecha: "2026-12-01",
-        cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
+        fecha: sumarDias(calendario.cobertura.hasta, 1),
+        cobertura: calendario.cobertura,
       });
     }
+    // El 25 de diciembre de 2026 cuenta en los dos plazos.
     const d = sumar(declaraciones, "2026-12-24", 1);
     expect(d.resultado).toBe("2026-12-28");
     expect(fechas(d)).toEqual(["2026-12-25"]);
-    expect(() => sumar(declaraciones, "2026-12-31", 1)).toThrow(CalendarioIncompletoError);
   });
 
-  it("CNBV: salta sus días de 2025 y 2026 y no cubre 2027", () => {
+  it("CNBV: salta sus días de 2025 y 2026 y falla al día siguiente de su cobertura", () => {
+    expect(bancos.cobertura).toEqual(yamlCnbv.cobertura?.descanso);
     expect(sumar(bancos, "2026-04-01", 1).resultado).toBe("2026-04-06");
     expect(sumar(bancos, "2025-12-11", 1).resultado).toBe("2025-12-15");
     expect(fechas(sumar(bancos, "2025-11-14", 1))).toEqual(["2025-11-17"]);
     // El 2 de noviembre cierran los bancos, aunque no es descanso de la LFT.
     expect(sumar(bancos, "2026-10-30", 1).resultado).toBe("2026-11-03");
-    try {
-      sumar(bancos, "2026-12-31", 1);
-      expect.unreachable();
-    } catch (e) {
-      expect(e).toBeInstanceOf(CalendarioIncompletoError);
-      expect(e).toMatchObject({
-        autoridad: "cnbv",
-        fecha: "2027-01-01",
-        cobertura: { desde: "2025-01-01", hasta: "2026-12-31" },
-      });
-    }
+    const error = alDiaSiguiente(bancos);
+    expect(error).toBeInstanceOf(CalendarioIncompletoError);
+    expect(error).toMatchObject({
+      autoridad: "cnbv",
+      fecha: sumarDias(bancos.cobertura.hasta, 1),
+      cobertura: bancos.cobertura,
+    });
   });
 
   it("los fines de semana citan la fuente de cada autoridad y de cada año", () => {
