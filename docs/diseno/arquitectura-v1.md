@@ -158,13 +158,13 @@ mexicoapi/
 
 El manifiesto describe **los datos** y solo cambia cuando cambian los datos. Así, el historial de git sigue siendo el historial de cambios de los datos.
 
-El Worker ya lee el estado operativo de KV para `/v1/status`, pero ningún workflow lo escribe todavía: sin registro de corridas, `status` es `unknown` y la frescura se ve en los PR e issues del bot de datos. El resto de esta sección describe el diseño completo.
+El estado operativo lo escribe el job `estado-kv` de `datos.yml`, aparte del job que actualiza los datos y solo desde `main`. Mientras no haya registro de corridas (por ejemplo, sin los secretos de Cloudflare), `status` es `unknown`.
 
-El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records` y `data_sha256` del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV.
+El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records` y `data_sha256` del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV. `last_success` avanza con `sin_cambios` y con `actualizado` cuando la corrida publicó el cambio; no avanza con `requiere_revision` ni con una corrida fallida.
 
 La frescura no va en `meta` de las respuestas de datos, solo en `/v1/status`. Así los shards son estáticos y su `ETag` no cambia con la hora.
 
-Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan menos de 20 escrituras diarias.
+Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan de 1 a 3 escrituras diarias.
 
 **Originales crudos:** el último original de cada fuente se guarda en `data/<dataset>/raw/` (todos los de v1 pesan menos de 1 MB) y su sha256 va en el manifiesto. El historial de git conserva las versiones anteriores, así que cualquiera puede comprobar el hash y reconstruir un dato.
 
@@ -255,7 +255,7 @@ Si hay cambios, el bot abre un PR `datos(<dataset>): AAAA-MM-DD` con el resumen 
 
 El bot actúa con una **GitHub App propia** (tokens que duran una hora y permisos solo sobre este repo: contenidos, pull requests e issues), no con `GITHUB_TOKEN`. Los PRs abiertos con `GITHUB_TOKEN` no disparan CI ni despliegue, y un token personal de larga duración es justo lo que la sección 12 evita.
 
-La escritura del estado operativo en KV y el trabajo de frescura llegan con el despliegue. Mientras tanto, la frescura se ve en los PR y los issues del bot de datos.
+Al terminar cada corrida, el job `estado-kv` escribe el estado operativo en KV, y `frescura.yml` abre un issue cuando un dataset se desactualiza ([docs/operacion/cloudflare.md](../operacion/cloudflare.md)).
 
 **Bancos:** las altas y las bajas de instituciones siempre van a revisión humana. Los cambios de nombre se fusionan solos.
 
@@ -368,9 +368,9 @@ Un parámetro de query desconocido, repetido o vacío, o un segmento vacío (`?&
 
 Dos Workers en la misma cuenta: `mexicoapi-staging` y `mexicoapi` (producción), ambos en `workers.dev`. Staging es un Worker aparte y no una URL de vista previa, porque las vistas previas con assets y rate limiting no están garantizadas.
 
-`apps/api/scripts/cloudflare.ts configurar` resuelve (o crea) el namespace de KV titulado `mexicoapi-estado` y genera la configuración de cada entorno a partir de `wrangler.jsonc`, con el binding `ESTADO` de KV y el de rate limiting. El namespace se comparte entre staging y producción, porque el estado es del pipeline de datos y no del entorno.
+`apps/api/scripts/cloudflare.ts configurar` resuelve (o crea) el namespace de KV titulado `mexicoapi-estado` y genera la configuración de cada entorno a partir de `wrangler.jsonc`, con el binding `ESTADO` de KV y el de rate limiting. La base se llama `mexicoapi-local`: un `wrangler deploy` a mano con ella no publica producción sin esos bindings. El namespace se comparte entre staging y producción, porque el estado es del pipeline de datos y no del entorno.
 
-`despliegue.yml` corre en cada merge a `main` y a mano: despliega a staging, corre la prueba de humo (`apps/api/scripts/humo.ts`, hasta 5 intentos con 10 s entre ellos), despliega a producción y vuelve a correr el humo. Si el humo de producción falla, ejecuta `wrangler rollback --yes` y la corrida queda en rojo. El resumen lista las URLs y los IDs de versión. Sin los secretos de Cloudflare no despliega y deja un aviso.
+`despliegue.yml` corre en cada merge a `main` y a mano, solo desde `main` y en el Environment `produccion`: despliega a staging, corre la prueba de humo (`apps/api/scripts/humo.ts`, hasta 5 intentos con esperas de 10, 20, 30 y 60 s), despliega a producción y vuelve a correr el humo, también si el paso de despliegue falló después de subir la versión. Si el humo de producción falla, ejecuta `wrangler rollback --yes` y la corrida queda en rojo; en el primer despliegue no hay versión anterior y el resumen dice que no se pudo revertir. El resumen lista las URLs, los IDs de versión y el resultado de la reversión. Sin los secretos de Cloudflare no despliega y deja un aviso.
 
 Rate limiting: el binding de Workers limita a 600 peticiones por minuto por IP (las IPv6 por /64) y por ubicación de Cloudflare, en todo lo que pasa por el Worker. Un cliente muy intenso recibe 429 y debe usar las descargas. Los pasos de la cuenta, el token, el rollback y los límites están en [docs/operacion/cloudflare.md](../operacion/cloudflare.md).
 
@@ -428,8 +428,8 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 | Paquete malicioso en dependencias | Lockfile, `minimumReleaseAge` de pnpm (no instalar versiones con menos de 7 días), Dependabot con cooldown de 7 días y revisión, `osv-scanner` en CI, mínimo de dependencias |
 | Robo de credenciales de publicación | npm trusted publishing con OIDC y procedencia, 2FA obligatorio, sin tokens largos en el repo |
 | Fuente comprometida o datos envenenados | Solo HTTPS, sha256 del original guardado, umbrales de anomalía, revisión humana de datos curados |
-| Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: token de Cloudflare (despliegue y KV), credenciales de la GitHub App del bot y, en v1.1, token de Banxico SIE. Ninguno en el código |
-| Abuso o saturación de la API | Rutas estáticas sin cómputo; rate limiting del Worker en todas las rutas (600/min por IP y por ubicación); descargas completas documentadas |
+| Secretos filtrados | gitleaks en pre-commit y en CI. Secretos de Actions, todos con permiso mínimo: token de Cloudflare (despliegue y KV, en el Environment `produccion`, solo para `main`), credenciales de la GitHub App del bot y, en v1.1, token de Banxico SIE. Ninguno en el código |
+| Abuso o saturación de la API | Rutas estáticas sin cómputo; rate limiting del Worker en lo que pasa por él (`/v1`, 600/min por IP y por ubicación; las descargas en `/descargas/*` son assets directos y no cuentan); descargas completas documentadas |
 | Inyección vía parámetros | Expresiones regulares estrictas; nunca se construyen rutas de archivo con entrada sin validar |
 | Prompt injection vía MCP | Herramientas de solo lectura, descripciones fijas, sin texto libre de terceros en las descripciones |
 | Workflows de GitHub inseguros | Acciones fijadas por SHA, `permissions` mínimos por job, nada de `pull_request_target` con código ajeno |
