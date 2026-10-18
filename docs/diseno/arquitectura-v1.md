@@ -161,7 +161,7 @@ El manifiesto describe **los datos** y solo cambia cuando cambian los datos. As�
 
 El estado operativo lo escribe el job `estado-kv` de `datos.yml`, aparte del job que actualiza los datos y solo desde `main`. Mientras no haya registro de corridas (por ejemplo, sin los secretos de Cloudflare), `status` es `unknown`.
 
-El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records` y `data_sha256` del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV. `last_success` avanza con `sin_cambios` y con `actualizado` cuando la corrida publicó el cambio (código 0); no avanza con `requiere_revision`, con una corrida que pide revisión (código 3) ni con una fallida.
+El **estado operativo** (última corrida, último éxito, `ok` o `stale`) vive en Cloudflare KV, en una clave por dataset (`estado:<dataset>`). Cada workflow lo escribe al terminar, haya cambios o no y falle o no. `/v1/status` combina ambos: `as_of`, `records`, `data_sha256` y, en las series, `cobertura` (`desde` y `hasta`) del build, y `last_attempt`, `last_success` y `status` (`ok`, `stale` o `unknown`) de KV. `last_success` avanza con `sin_cambios` y con `actualizado` cuando la corrida publicó el cambio (código 0); no avanza con `requiere_revision`, con una corrida que pide revisión (código 3) ni con una fallida.
 
 La frescura no va en `meta` de las respuestas de datos, solo en `/v1/status`. Así los shards son estáticos y su `ETag` no cambia con la hora.
 

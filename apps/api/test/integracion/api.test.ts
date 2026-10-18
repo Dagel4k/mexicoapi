@@ -137,6 +137,14 @@ describe("datos reales del build", () => {
         last_success: null,
       });
     }
+    // Solo las series traen cobertura, la misma del meta interno.
+    const coberturas = Object.fromEntries(
+      data.filter((d: Obj) => d.cobertura !== undefined).map((d: Obj) => [d.dataset, d.cobertura]),
+    );
+    expect(coberturas).toEqual({
+      "tipo-cambio.fix": interna.datasets["tipo-cambio.fix"]?.cobertura,
+      udis: interna.datasets.udis?.cobertura,
+    });
     const registros = Object.fromEntries(data.map((d: Obj) => [d.dataset, d.records]));
     expect(registros).toEqual({
       bancos: await registrosDe("bancos"),
@@ -222,6 +230,13 @@ describe("tipo de cambio FIX y UDIS con los datos reales", () => {
       expect(data).toMatchObject({ fecha_operacion: fecha, ...fixDe("2020-12-31") });
     },
   );
+
+  it("/v1/status: la cobertura de cada serie va de su primera a su última fecha", async () => {
+    const { data } = await datos("/v1/status");
+    const de = (id: string) => data.find((d: Obj) => d.dataset === id)?.cobertura;
+    expect(de("tipo-cambio.fix")).toEqual(coberturaFix);
+    expect(de("udis")).toEqual(coberturaUdis);
+  });
 
   it("ultimo: la última publicación de la serie", async () => {
     const { data, meta } = await datos("/v1/tipo-cambio/fix/ultimo");

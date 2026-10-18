@@ -103,6 +103,31 @@ describe("documento OpenAPI", () => {
     });
   });
 
+  it("EstadoDataset declara la cobertura de las series como opcional", () => {
+    const estado = doc.components.schemas.EstadoDataset;
+    expect(estado.required).not.toContain("cobertura");
+    expect(estado.properties.cobertura).toMatchObject({
+      type: "object",
+      required: ["desde", "hasta"],
+      properties: {
+        desde: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+        hasta: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+      },
+    });
+    expect(estado.properties.cobertura.description).toContain("series");
+    expect(Object.keys(estado.properties)).toEqual([
+      "dataset",
+      "as_of",
+      "records",
+      "data_sha256",
+      "cobertura",
+      "status",
+      "last_attempt",
+      "last_success",
+      "frescura_horas",
+    ]);
+  });
+
   it("cada esquema de componentes es un JSON Schema 2020-12 válido", () => {
     const ajv = new Ajv2020({ strict: false, validateFormats: false });
     for (const [nombre, esquema] of Object.entries(doc.components.schemas as Obj)) {
