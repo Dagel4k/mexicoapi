@@ -10,6 +10,18 @@ describe("fechaEnMexico", () => {
   });
 });
 
+describe("zona horaria del proceso", () => {
+  // test:coverage corre la suite con TZ=America/Mexico_City y test:tz corre con TZ=UTC los
+  // proyectos que usan fechas del sistema, este incluido; esto confirma que en cada corrida la
+  // zona sí cambió.
+  it.runIf(process.env.TZ !== undefined)("coincide con TZ", () => {
+    // Intl normaliza alias como Etc/UTC a UTC, así que se compara contra el nombre canónico.
+    const esperada = new Intl.DateTimeFormat("en", { timeZone: process.env.TZ }).resolvedOptions()
+      .timeZone;
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(esperada);
+  });
+});
+
 describe("anioDe", () => {
   it("da el año de la fecha como número", () => {
     expect(anioDe("2026-10-18")).toBe(2026);

@@ -494,13 +494,13 @@ El Worker corre primero en `/v1` y `/v1/*` y sirve los shards con `ASSETS.fetch`
 - **`scripts/verify.sh`** (definición de terminado) corre:
   1. Biome (formato y lint);
   2. `tsc --noEmit`;
-  3. Vitest con umbrales de cobertura, y las pruebas en varias zonas horarias;
-  4. build de paquetes y API (shards, descargas, OpenAPI y sitio);
-  5. integración y contrato de la API en workerd (con el sitio), el servidor MCP por stdio (también con el cliente oficial de MCP) y los paquetes instalados desde su `.tgz`;
-  6. validación de todos los `data/*/manifest.json` y snapshots;
+  3. build de paquetes y API (shards, descargas, OpenAPI y sitio), antes de las pruebas para que un error de compilación aparezca pronto;
+  4. validación de todos los `data/*/manifest.json` y snapshots;
+  5. Vitest con umbrales de cobertura en la zona horaria de la Ciudad de México, y otra vez en UTC los proyectos que usan fechas del sistema (todos menos el núcleo, que calcula fechas con enteros);
+  6. integración y contrato de la API en workerd (con el sitio), el servidor MCP por stdio (también con el cliente oficial de MCP) y los paquetes instalados desde su `.tgz`;
   7. gitleaks.
 
-  El sitio es parte del build: el paso 4 lo genera y el 5 lo prueba en workerd (páginas, `llms.txt` y el 404 de los assets).
+  El sitio es parte del build: el paso 3 lo genera y el 6 lo prueba en workerd (páginas, `llms.txt` y el 404 de los assets).
 - **Workflows:**
   - `ci.yml` (cada PR): `verificacion` (actionlint y `verify.sh`), `paquete` (el `.tgz` de `mexicoapi`), `paquete-node` (ese `.tgz` instalado y probado en Node 22.13.0, 22, 24 y 26), `paquete-runtimes` (el mismo `.tgz` en Bun, en Deno y empaquetado para el navegador) y `paquete-mcp` (el `.tgz` de `mexicoapi-mcp` instalado con ese en un proyecto nuevo y probado por stdio en Node 22.13.0, 22.23.3 y 24.21.0). El check `verify`, el que exige la protección de `main`, pasa solo si los cinco terminan bien;
   - `datos.yml` (cron; un workflow con un grupo por dataset);
