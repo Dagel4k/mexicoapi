@@ -1,5 +1,7 @@
 // Pruebas de la CLI que corren igual con la lógica (sobre src) y con el binario construido (dist).
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -31,6 +33,41 @@ const COMANDOS = [
 ];
 const json = (c: Corrida): unknown => JSON.parse(c.salida);
 const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
+
+/**
+ * Una API local en 127.0.0.1 que responde cualquier ruta con un resultado de días hábiles que el
+ * paquete no daría (2026-03-30), para saber de dónde salió la respuesta. Guarda lo que le piden.
+ */
+async function apiLocal(): Promise<{ base: string; pedidos: string[]; cerrar(): Promise<void> }> {
+  const pedidos: string[] = [];
+  const servidor = createServer((pedido, respuesta) => {
+    pedidos.push(pedido.url ?? "");
+    respuesta.writeHead(200, { "Content-Type": "application/json" });
+    respuesta.end(
+      JSON.stringify({
+        data: {
+          desde: "2026-03-16",
+          dias: 5,
+          autoridad: "lft",
+          resultado: "2026-03-30",
+          inhabiles_saltados: [],
+          advertencias: [],
+        },
+        meta: { dataset: "calendario.lft", as_of: "2026-03-01", sources: [], docs: "" },
+      }),
+    );
+  });
+  await new Promise<void>((listo) => servidor.listen(0, "127.0.0.1", listo));
+  return {
+    base: `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`,
+    pedidos,
+    cerrar: () =>
+      new Promise((listo) => {
+        servidor.closeAllConnections();
+        servidor.close(() => listo());
+      }),
+  };
+}
 
 export function probarCli(correr: Correr, version: string): void {
   it("--version imprime la versión y sale con 0", async () => {
@@ -360,6 +397,49 @@ export function probarCli(correr: Correr, version: string): void {
     expect(c.salida).toContain("Aviso:");
     const porEntorno = await correr(DIAS, { MEXICOAPI_BASE: "http://127.0.0.1:1" });
     expect(porEntorno.salida).toContain("la API no respondió");
+  });
+
+  it("con --base y una API que responde, dias-habiles sale de la API y banco y municipio del paquete", async () => {
+    const api = await apiLocal();
+    try {
+      const dias = await correr([...DIAS, "--base", api.base]);
+      expect(dias.codigo).toBe(0);
+      expect(dias.salida).toContain("2026-03-16 + 5 días hábiles (lft): 2026-03-30");
+      expect(dias.salida).toContain("Origen: API");
+      expect(dias.salida).not.toContain("no respondió");
+      for (const [argv, env] of [
+        [["banco", "002", "--base", api.base], {}],
+        [["municipio", "25006", "--base", api.base], {}],
+        [["banco", "002"], { MEXICOAPI_BASE: api.base }],
+      ] as const) {
+        const c = await correr(argv, env);
+        expect(c.codigo, argv.join(" ")).toBe(0);
+        expect(c.salida, argv.join(" ")).toContain("Origen: datos del paquete, sin red");
+        expect(c.salida, argv.join(" ")).not.toContain("no respondió");
+      }
+      // Solo dias-habiles llegó a la API: banco y municipio nunca la consultan.
+      expect(api.pedidos).toEqual(["/v1/dias-habiles?autoridad=lft&desde=2026-03-16&dias=5"]);
+    } finally {
+      await api.cerrar();
+    }
+  });
+
+  it("con una API caída, banco no dice que la API falló: nunca la consulta", async () => {
+    const c = await correr(["banco", "002", "--base", "http://127.0.0.1:1"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    expect(c.salida).not.toContain("Aviso:");
+  });
+
+  it("la ayuda dice que municipio y banco salen siempre del paquete", async () => {
+    expect((await correr(["--help"])).salida).toContain(
+      "municipio y banco salen siempre del paquete",
+    );
+    for (const comando of ["municipio", "banco"]) {
+      const c = await correr([comando, "--help"]);
+      expect(c.salida, comando).toContain("Sale siempre de los datos del paquete");
+      expect(c.salida, comando).not.toContain("--base <url>");
+    }
   });
 
   it("sepomex estado y cp sin catálogo salen con 1 y explican qué hacer", async () => {

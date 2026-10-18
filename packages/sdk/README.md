@@ -260,7 +260,7 @@ Inhábiles saltados:
 Origen: datos del paquete, sin red
 ```
 
-Sin red todo sale del paquete. Con `--base <url>` (o la variable `MEXICOAPI_BASE`), `municipio`, `banco`, `dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando.
+Sin red todo sale del paquete. Con `--base <url>` (o la variable `MEXICOAPI_BASE`), `dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API y, si no responde, usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). `municipio` y `banco` salen siempre del paquete, sin red, también con `--base`. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando.
 
 Códigos de salida:
 
