@@ -565,6 +565,34 @@ describe("días sin publicación entre semana (sinPublicacion)", () => {
       ),
     );
   });
+
+  it("un hueco de más de 31 días después de lo cargado es no_disponible sin recorrerlo", () => {
+    let consultas = 0;
+    const siempre = {
+      sinPublicacion: () => {
+        consultas++;
+        return true;
+      },
+    };
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "9999-12-31", siempre)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "9999-12-31", siempre)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(consultas).toBe(0);
+    // En el límite: 31 días después del viernes 13 todavía se revisan; 32 ya no.
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-12-15", siempre)).toEqual(
+      encontrado(VIE_13),
+    );
+    expect(fixParaOperacion(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-12-16", siempre)).toEqual(
+      NO_DISPONIBLE,
+    );
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-12-14", siempre)).toEqual(SIN_DATO);
+    expect(fixPublicado(NOVIEMBRE, TRAMO_13, HASTA_13, "2026-12-15", siempre)).toEqual(
+      NO_DISPONIBLE,
+    );
+  });
 });
 
 describe("udiDeFecha", () => {
@@ -876,6 +904,8 @@ describe("propiedades", () => {
           const feriados = new Set([...lejanos, ...cercanos.map((k) => fin + k)].map(fechaDe));
           const opciones = { sinPublicacion: (f: string) => feriados.has(f) };
           const sinPublicacion = (d: number) => esFinDeSemana(BASE + d) || feriados.has(fechaDe(d));
+          // Un hueco de más de 31 días no se revisa: no_disponible.
+          const cabe = (dias: number[]) => dias.length <= 31 && dias.every(sinPublicacion);
 
           // Referencia lineal: el hueco después de lo cargado solo puede tener días sin publicación.
           const hueco: number[] = [];
@@ -885,7 +915,7 @@ describe("propiedades", () => {
             fecha < cobertura.desde
               ? SIN_DATO
               : fecha > cobertura.hasta
-                ? [...hueco, desplazamiento].every(sinPublicacion)
+                ? cabe([...hueco, desplazamiento])
                   ? SIN_DATO
                   : NO_DISPONIBLE
                 : exacto
@@ -895,7 +925,7 @@ describe("propiedades", () => {
           const operacion =
             fecha <= cobertura.desde
               ? SIN_DATO
-              : !hueco.every(sinPublicacion)
+              : !cabe(hueco)
                 ? NO_DISPONIBLE
                 : anterior
                   ? encontrado(anterior)
