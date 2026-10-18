@@ -23,8 +23,8 @@ Además, el repo necesita tener activos "Allow auto-merge" y "Automatically dele
 - INEGI (`inegi.estados` e `inegi.municipios`): lunes a las 06:00 de la Ciudad de México.
 - Bancos: todos los días a las 08:00 de la Ciudad de México.
 - Tipo de cambio FIX (grupo `fix`, dataset `tipo-cambio.fix`): todos los días a las 13:30 de la Ciudad de México (cron `30 19 * * *`, en UTC), después de la publicación del DOF.
-- UDIS (grupo `udis`, dataset `udis`): todos los días a las 13:40 de la Ciudad de México (cron `40 19 * * *`).
-- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. México no tiene horario de verano desde 2022, así que las horas no se mueven.
+- UDIS (grupo `udis`, dataset `udis`): todos los días a las 14:30 de la Ciudad de México (cron `30 20 * * *`).
+- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. Las UDIS corren una hora después del FIX porque `main` exige que la rama del PR esté al día: si los dos PRs se abrieran casi a la vez, el segundo quedaría atrasado en cuanto se fusionara el primero y su auto-merge no avanzaría hasta pulsar "Update branch". México no tiene horario de verano desde 2022, así que las horas no se mueven.
 - A mano con "Run workflow".
 
 ## Qué hace el bot

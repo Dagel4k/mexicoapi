@@ -4,9 +4,10 @@ on:
   schedule:
     - cron: "0 12 * * 1" # INEGI, lunes 06:00 CDMX
     - cron: "0 14 * * *" # bancos, diario 08:00 CDMX
-    # FIX y UDIS van en grupos aparte: una falla de una serie no detiene la otra.
+    # FIX y UDIS van en grupos aparte: una falla de una serie no detiene la otra. Las UDIS
+    # corren una hora después para que su PR no compita con el del FIX por estar al día con main.
     - cron: "30 19 * * *" # FIX, diario 13:30 CDMX (sin horario de verano desde 2022)
-    - cron: "40 19 * * *" # UDIS, diario 13:40 CDMX
+    - cron: "30 20 * * *" # UDIS, diario 14:30 CDMX
   workflow_dispatch:
     inputs:
       dataset:
@@ -23,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '0 12 * * 1' && 'inegi') || (github.event.schedule == '30 19 * * *' && 'fix') || (github.event.schedule == '40 19 * * *' && 'udis') || 'bancos' }}
+  group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '0 12 * * 1' && 'inegi') || (github.event.schedule == '30 19 * * *' && 'fix') || (github.event.schedule == '30 20 * * *' && 'udis') || 'bancos' }}
   cancel-in-progress: false
 
 jobs:
@@ -61,8 +62,8 @@ jobs:
             grupo="inegi" # cron lunes 06:00 CDMX
           elif [ "${CRON}" = "30 19 * * *" ]; then
             grupo="fix" # cron diario 13:30 CDMX
-          elif [ "${CRON}" = "40 19 * * *" ]; then
-            grupo="udis" # cron diario 13:40 CDMX
+          elif [ "${CRON}" = "30 20 * * *" ]; then
+            grupo="udis" # cron diario 14:30 CDMX
           else
             grupo="bancos" # cron diario 08:00 CDMX
           fi
