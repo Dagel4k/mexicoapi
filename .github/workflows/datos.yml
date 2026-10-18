@@ -131,12 +131,15 @@ jobs:
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           fecha="$(TZ=America/Mexico_City date +%F)"
 
-          # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él.
+          # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él. Si la
+          # búsqueda falla, devuelve error sin crear nada: llamada con `|| …`, errexit no corre
+          # dentro de la función y sin este return abriría un issue repetido.
           abrir_o_comentar() {
             local titulo="$1" cuerpo="$2" numero
             numero="$(gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
               --json number,title \
-              | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
+              | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')" \
+              || return 1
             if [ -n "${numero}" ]; then
               gh issue comment "${numero}" --body-file "${cuerpo}"
             else
