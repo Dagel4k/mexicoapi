@@ -21,6 +21,7 @@ import type {
   ProblemaConsulta,
   ResultadoDiasHabiles,
   ResultadoValidacion,
+  ResultadoValidacionClabe,
   TipoBanco,
   TipoCambioFix,
   TipoPlazo,
@@ -48,7 +49,10 @@ describe("tipos públicos", () => {
   });
 
   it("exporta los tipos de los validadores", () => {
-    expectTypeOf(mexicoapi.validarClabe).returns.toEqualTypeOf<ResultadoValidacion<DetalleClabe>>();
+    // Cambio: la CLABE agrega banco_revisado.
+    expectTypeOf(mexicoapi.validarClabe).returns.toEqualTypeOf<ResultadoValidacionClabe>();
+    expectTypeOf<ResultadoValidacionClabe>().toExtend<ResultadoValidacion<DetalleClabe>>();
+    expectTypeOf<ResultadoValidacionClabe["banco_revisado"]>().toEqualTypeOf<boolean>();
     expectTypeOf(mexicoapi.validarCurp).returns.toEqualTypeOf<ResultadoValidacion<DetalleCurp>>();
     expectTypeOf(mexicoapi.validarRfc).returns.toEqualTypeOf<ResultadoValidacion<DetalleRfc>>();
     expectTypeOf<DetalleRfc["tipo"]>().toEqualTypeOf<TipoRfc>();

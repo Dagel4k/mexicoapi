@@ -338,7 +338,7 @@ Cada validador responde por separado:
 
 - `formato_valido`;
 - `digito_verificador_valido`, cuando aplica;
-- la nota fija "Valida formato y dígito verificador; no confirma que exista ante el SAT, RENAPO, el IMSS o un banco."
+- una nota propia (`NOTAS_VALIDACION`) que dice qué revisa y ante quién no confirma nada; en la CLABE, "Valida formato, banco y dígito de control; no confirma que la cuenta exista." Sin el catálogo de bancos, la CLABE trae `banco_revisado: false` y otra nota que lo dice.
 
 | Validador | Qué revisa |
 | --- | --- |

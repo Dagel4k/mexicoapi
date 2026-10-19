@@ -1,5 +1,6 @@
 import { fechaValida } from "./fechas.js";
 import {
+  NOTAS_VALIDACION,
   normalizar,
   type ResultadoValidacion,
   rechazoPorTipo,
@@ -45,25 +46,28 @@ function fechaRfcValida(yymmdd: string): boolean {
   return fechaValida(1900 + aa, mes, dia) || fechaValida(2000 + aa, mes, dia);
 }
 
+const NOTA = NOTAS_VALIDACION.rfc;
+
 export function validarRfc(rfc: string): ResultadoValidacion<DetalleRfc> {
-  const rechazo = rechazoPorTipo<DetalleRfc>(rfc);
+  const rechazo = rechazoPorTipo<DetalleRfc>(rfc, NOTA);
   if (rechazo) return rechazo;
   const valor = normalizar(rfc);
-  if (valor.length === 0) return resultadoInvalido(valor, "vacio");
-  if (!/^[A-Z0-9Ñ&]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
-  if (valor.length !== 12 && valor.length !== 13) return resultadoInvalido(valor, "longitud");
+  if (valor.length === 0) return resultadoInvalido(valor, "vacio", NOTA);
+  if (!/^[A-Z0-9Ñ&]+$/.test(valor)) return resultadoInvalido(valor, "caracteres", NOTA);
+  if (valor.length !== 12 && valor.length !== 13) return resultadoInvalido(valor, "longitud", NOTA);
 
   const partes = ESTRUCTURA.exec(valor);
   const nombre = partes?.[1] as string;
   const fecha = partes?.[2] as string;
   const homoclave = partes?.[3] as string;
   if (partes === null || nombre.length !== valor.length - 9) {
-    return resultadoInvalido(valor, "estructura");
+    return resultadoInvalido(valor, "estructura", NOTA);
   }
-  if (!fechaRfcValida(fecha)) return resultadoInvalido(valor, "fecha");
+  if (!fechaRfcValida(fecha)) return resultadoInvalido(valor, "fecha", NOTA);
 
   if (GENERICOS.has(valor)) {
-    return resultadoConFormato(valor, { tipo: "generico", fecha_yymmdd: fecha, homoclave }, true);
+    const generico: DetalleRfc = { tipo: "generico", fecha_yymmdd: fecha, homoclave };
+    return resultadoConFormato(valor, generico, true, NOTA);
   }
   const detalle: DetalleRfc = {
     tipo: valor.length === 13 ? "fisica" : "moral",
@@ -77,6 +81,7 @@ export function validarRfc(rfc: string): ResultadoValidacion<DetalleRfc> {
     valor,
     detalle,
     digitoVerificadorRfc(valor.slice(0, -1)) === homoclave.slice(-1),
+    NOTA,
     { digitoInformativo: true },
   );
 }

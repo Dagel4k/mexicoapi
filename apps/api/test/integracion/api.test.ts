@@ -107,7 +107,8 @@ describe("datos reales del build", () => {
 
   it("/v1/clabe/{clabe} valida con el catálogo de bancos", async () => {
     const valida = await datos("/v1/clabe/002010077777777771");
-    expect(valida.data).toMatchObject({ valido: true, errores: [] });
+    // Nuevo: la API siempre revisa el banco contra el catálogo y lo dice.
+    expect(valida.data).toMatchObject({ valido: true, banco_revisado: true, errores: [] });
     expect(valida.data.detalle.banco.codigo).toBe("002");
     const malDigito = await datos("/v1/clabe/002010077777777770");
     expect(malDigito.data).toMatchObject({ valido: false, errores: ["digito_verificador"] });

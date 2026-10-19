@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { digitoVerificadorNss, validarNss } from "../src/nss.js";
-import { NOTA_VALIDACION } from "../src/validacion.js";
+import { NOTAS_VALIDACION } from "../src/validacion.js";
 
 describe("digitoVerificadorNss", () => {
   it("calcula el dígito verificador", () => {
@@ -24,9 +24,14 @@ describe("validarNss", () => {
       formato_valido: true,
       digito_verificador_valido: true,
       errores: [],
-      nota: NOTA_VALIDACION,
+      nota: NOTAS_VALIDACION.nss,
       detalle: null,
     });
+  });
+  it("su nota nombra solo al IMSS", () => {
+    expect(validarNss("12345678904").nota).toBe(NOTAS_VALIDACION.nss);
+    expect(NOTAS_VALIDACION.nss).toContain("no confirma que el NSS exista ante el IMSS");
+    expect(NOTAS_VALIDACION.nss).not.toMatch(/SAT|RENAPO|banco/);
   });
   it("dígito verificador incorrecto", () => {
     const r = validarNss("12345678904");

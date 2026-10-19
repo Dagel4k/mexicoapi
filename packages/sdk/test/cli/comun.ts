@@ -177,9 +177,11 @@ export function probarCli(correr: Correr, version: string): void {
     const r = json(c) as {
       valido: boolean;
       valor: string;
+      banco_revisado: boolean;
       detalle: { banco: { activo: boolean } };
     };
     expect(r.valido).toBe(true);
+    expect(r.banco_revisado).toBe(true);
     expect(r.valor).toBe("002010077777777771");
     expect(r.detalle.banco.activo).toBe(true);
   });

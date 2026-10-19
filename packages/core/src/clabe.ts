@@ -1,4 +1,5 @@
 import {
+  NOTAS_VALIDACION,
   normalizar,
   type ResultadoValidacion,
   rechazoPorTipo,
@@ -26,6 +27,14 @@ export interface DetalleClabe {
   plaza: Plaza | null;
 }
 
+/**
+ * El resultado de `validarClabe`. `banco_revisado` dice si se revisó el código de banco contra el
+ * catálogo: sin él (`false`), `valido: true` no garantiza que el banco exista.
+ */
+export type ResultadoValidacionClabe = ResultadoValidacion<DetalleClabe> & {
+  banco_revisado: boolean;
+};
+
 const PESOS = [3, 7, 1] as const;
 
 /**
@@ -48,26 +57,45 @@ export function digitoControlClabe(primeros17: string): string {
   return String((10 - (suma % 10)) % 10);
 }
 
+/** `r` con `banco_revisado`, junto a los demás campos de la validación. */
+function conBanco(
+  { errores, nota, detalle, ...inicio }: ResultadoValidacion<DetalleClabe>,
+  banco_revisado: boolean,
+): ResultadoValidacionClabe {
+  return { ...inicio, banco_revisado, errores, nota, detalle };
+}
+
 /**
  * Con `catalogos.bancos`, un código de banco que no está en el catálogo es una falla de
- * formato (`banco`), revisada después de la longitud y antes del dígito de control.
+ * formato (`banco`), revisada después de la longitud y antes del dígito de control. Sin él no se
+ * revisa el banco: el resultado lo dice con `banco_revisado: false` y en su nota.
  * La plaza solo es informativa: si no está en `catalogos.plazas`, queda en null.
  */
 export function validarClabe(
   clabe: string,
   catalogos?: { bancos?: ReadonlyMap<string, BancoClabe>; plazas?: ReadonlyMap<string, Plaza> },
+): ResultadoValidacionClabe {
+  const revisado = catalogos?.bancos !== undefined;
+  return conBanco(validar(clabe, catalogos, revisado), revisado);
+}
+
+function validar(
+  clabe: string,
+  catalogos: Parameters<typeof validarClabe>[1],
+  revisado: boolean,
 ): ResultadoValidacion<DetalleClabe> {
-  const rechazo = rechazoPorTipo<DetalleClabe>(clabe);
+  const nota = revisado ? NOTAS_VALIDACION.clabe : NOTAS_VALIDACION.clabe_sin_banco;
+  const rechazo = rechazoPorTipo<DetalleClabe>(clabe, nota);
   if (rechazo) return rechazo;
   const valor = normalizarClabe(clabe);
-  if (valor.length === 0) return resultadoInvalido(valor, "vacio");
-  if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
-  if (valor.length !== 18) return resultadoInvalido(valor, "longitud");
+  if (valor.length === 0) return resultadoInvalido(valor, "vacio", nota);
+  if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres", nota);
+  if (valor.length !== 18) return resultadoInvalido(valor, "longitud", nota);
 
   const codigo_banco = valor.slice(0, 3);
   const codigo_plaza = valor.slice(3, 6);
   const banco = catalogos?.bancos?.get(codigo_banco) ?? null;
-  if (catalogos?.bancos && banco === null) return resultadoInvalido(valor, "banco");
+  if (revisado && banco === null) return resultadoInvalido(valor, "banco", nota);
   const plaza = catalogos?.plazas?.get(codigo_plaza) ?? null;
 
   // Copias, para que quien reciba el resultado no altere el catálogo.
@@ -83,5 +111,6 @@ export function validarClabe(
     valor,
     detalle,
     digitoControlClabe(valor.slice(0, 17)) === detalle.digito_control,
+    nota,
   );
 }

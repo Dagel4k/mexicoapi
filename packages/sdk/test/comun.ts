@@ -39,6 +39,7 @@ export const ERRORES = [
 
 export const CONSTANTES = [
   "NOTA_VALIDACION",
+  "NOTAS_VALIDACION",
   "ENTIDADES_CURP",
   "RFC_GENERICOS",
   "COBERTURA_LFT",
@@ -109,7 +110,10 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
       const r = m.validarClabe("002010077777777771");
       expect(r.valido).toBe(true);
       expect(r.detalle?.codigo_banco).toBe("002");
-      expect(r.nota).toBe(m.NOTA_VALIDACION);
+      // Sin el catálogo no revisa el banco y lo dice.
+      expect(r.banco_revisado).toBe(false);
+      expect(r.nota).toBe(m.NOTAS_VALIDACION.clabe_sin_banco);
+      expect(m.validarClabe("002010077777777771", { bancos: new Map() }).banco_revisado).toBe(true);
       expect(m.digitoControlClabe("00201007777777777")).toBe("1");
     });
 

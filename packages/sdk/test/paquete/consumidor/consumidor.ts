@@ -11,6 +11,7 @@ import {
   type OpcionesFix,
   type ResultadoDiasHabiles,
   type ResultadoValidacion,
+  type ResultadoValidacionClabe,
   sumarDiasHabiles,
   type TipoCambioFix,
   type Udi,
@@ -59,9 +60,10 @@ function esIncompleto(error: unknown): string | null {
 }
 
 const catalogo: ReadonlyMap<string, BancoCatalogo> = catalogoClabe();
-const conCatalogo: ResultadoValidacion<DetalleClabe> = validarClabe("002010077777777771", {
+const conCatalogo: ResultadoValidacionClabe = validarClabe("002010077777777771", {
   bancos: catalogo,
 });
+const bancoRevisado: boolean = conCatalogo.banco_revisado;
 const culiacan: Municipio | undefined = buscarMunicipio("culiacan", {
   cve_ent: "25",
   limite: 1,
@@ -92,6 +94,7 @@ export const usados = [
   valorFix,
   esIncompleto,
   conCatalogo.detalle?.banco?.nombre_corto,
+  bancoRevisado,
   culiacan?.cvegeo,
   sinaloa.length,
   asOf,
