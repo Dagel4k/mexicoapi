@@ -30,6 +30,7 @@ import {
   esquemaTarifaIsr,
   esquemaTramoIsr,
   esquemaUma,
+  TIPO_ESTABLE,
 } from "./esquemas-api.js";
 
 type Json = Record<string, unknown>;
@@ -68,7 +69,7 @@ function esquemas(): Record<string, Json> {
   const tipos = Object.entries(PROBLEMAS)
     .map(([nombre, p]) => `${nombre} (${p.status}, ${p.title})`)
     .join("; ");
-  tipo.description = `URI del tipo de problema: ${URL_PROBLEMAS}#<tipo>. Tipos (status, título): ${tipos}.`;
+  tipo.description = `URI del tipo de problema: ${URL_PROBLEMAS}#<tipo>. ${TIPO_ESTABLE} Tipos (status, título): ${tipos}.`;
 
   const sustituirFuente = (esquema: Json): Json => {
     const props = esquema.properties as Record<string, Json>;

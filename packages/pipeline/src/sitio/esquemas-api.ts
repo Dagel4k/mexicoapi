@@ -32,8 +32,12 @@ export const esquemaMeta = z.object({
   docs: z.string().describe("Documentación del dataset."),
 });
 
+/** Lo que dice docs/api/problemas.md del `type`, con las mismas palabras. */
+export const TIPO_ESTABLE =
+  "Es un identificador estable: dentro de /v1 no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el type completo o la parte después de #.";
+
 export const esquemaProblema = z.object({
-  type: z.string().describe("URI del tipo de problema."),
+  type: z.string().describe(`URI del tipo de problema. ${TIPO_ESTABLE}`),
   title: z.string().describe("Título corto del tipo de problema."),
   status: z.number().int().describe("Código HTTP de la respuesta."),
   detail: z.string().describe("Explicación para este caso."),
