@@ -31,6 +31,8 @@ const COMANDOS = [
   "isr",
   "fix",
   "udi",
+  "estados",
+  "municipios",
   "sepomex",
 ];
 const SUBCOMANDOS = ["sync", "importar", "cp", "resumen"];
@@ -214,6 +216,15 @@ export function probarCli(correr: Correr, version: string): void {
       [["fix", "--fecha", "2026-10-12"], /--fecha no aplica a "fix"/],
       [["banco", "002", "--operacion", "2026-10-13"], /--operacion no aplica a "banco"/],
       [["udi"], /Falta la fecha AAAA-MM-DD en "udi"/],
+      [["estados", "x"], /"estados" no recibe argumentos: x/],
+      [["estados", "--fecha", "2026-01-01"], /--fecha no aplica a "estados"/],
+      [["municipios"], /Falta la clave del estado \(cve_ent\) en "municipios"/],
+      [["municipios", "25", "26"], /Sobran argumentos en "municipios": 26/],
+      [
+        ["municipios", "sinaloa"],
+        /La clave del estado son 2 dígitos, como 25; no "sinaloa"\. mexicoapi estados da las claves\./,
+      ],
+      [["municipios", "8"], /2 dígitos/],
       [["udi", "2026-10-01", "x"], /Sobran argumentos en "udi": x/],
       [["udi", "ayer"], /La fecha de "udi" debe ser una fecha válida AAAA-MM-DD, no "ayer"/],
     ];
@@ -652,6 +663,59 @@ export function probarCli(correr: Correr, version: string): void {
     }
   });
 
+  it("estados lista las 32 con su clave y abreviatura, del paquete", async () => {
+    const c = await correr(["estados"]);
+    expect(c.codigo).toBe(0);
+    expect(c.errores).toBe("");
+    const lineas = c.salida.split("\n").filter((l) => /^\d{2} {2}/.test(l));
+    expect(lineas).toHaveLength(32);
+    expect(lineas).toContain("25  Sinaloa (Sin.)");
+    expect(lineas).toContain("09  Ciudad de México (CDMX)");
+    expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    const r = json(await correr(["estados", "--json"])) as {
+      data: { cve_ent: string }[];
+      meta: { dataset: string };
+      avisos: unknown[];
+    };
+    expect(r.data).toHaveLength(32);
+    expect(r.meta.dataset).toBe("inegi.estados");
+    expect(r.avisos).toEqual([]);
+  });
+
+  it("municipios da todos los de un estado con el total, y sale con 1 si la clave no existe", async () => {
+    const c = await correr(["municipios", "25"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toMatch(/^Sinaloa \(25\): 20 municipios\n25001 {2}Ahome\n/);
+    expect(c.salida).toContain("25006  Culiacán\n");
+    expect(c.salida.split("\n").filter((l) => l.startsWith("25"))).toHaveLength(20);
+    expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    const cdmx = await correr(["municipios", "09"]);
+    expect(cdmx.salida).toMatch(/^Ciudad de México \(09\): 16 alcaldías\n/);
+    // Sin tope: el estado con más municipios sale completo.
+    const oaxaca = await correr(["municipios", "20"]);
+    expect(oaxaca.salida.split("\n").filter((l) => l.startsWith("20"))).toHaveLength(570);
+    const r = json(await correr(["municipios", "25", "--json"])) as {
+      data: { cvegeo: string }[];
+      meta: { dataset: string };
+      avisos: unknown[];
+    };
+    expect(r.data).toHaveLength(20);
+    expect(r.meta.dataset).toBe("inegi.municipios");
+    expect(r.avisos).toEqual([]);
+    const no = await correr(["municipios", "33"]);
+    expect(no.codigo).toBe(1);
+    expect(no.salida).toBe("");
+    expect(no.errores).toMatch(/^mexicoapi: 404 .*No existe el estado 33\./);
+  });
+
+  it("municipio con una clave de estado sugiere municipios", async () => {
+    const c = await correr(["municipio", "25"]);
+    expect(c.codigo).toBe(1);
+    expect(c.salida).toContain('Sin municipios que coincidan con "25".');
+    expect(c.salida).toContain("Para los municipios del estado 25, usa mexicoapi municipios 25.");
+    expect((await correr(["municipio", "zzzzzz"])).salida).not.toContain("mexicoapi municipios");
+  });
+
   it("banco por código, inexistente y en JSON", async () => {
     const c = await correr(["banco", "002"]);
     expect(c.codigo).toBe(0);
@@ -745,11 +809,11 @@ export function probarCli(correr: Correr, version: string): void {
     expect(c.salida).not.toContain("Aviso:");
   });
 
-  it("la ayuda dice que municipio y banco salen siempre del paquete", async () => {
+  it("la ayuda dice que estados, municipios, municipio y banco salen siempre del paquete", async () => {
     expect((await correr(["--help"])).salida).toContain(
-      "municipio y banco salen siempre del paquete",
+      "estados, municipios, municipio y banco salen\nsiempre del paquete",
     );
-    for (const comando of ["municipio", "banco"]) {
+    for (const comando of ["municipio", "banco", "estados", "municipios"]) {
       const c = await correr([comando, "--help"]);
       expect(c.salida, comando).toContain("Sale siempre de los datos del paquete");
       expect(c.salida, comando).not.toContain("--base <url>");

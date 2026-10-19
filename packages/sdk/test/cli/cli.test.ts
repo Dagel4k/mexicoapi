@@ -116,6 +116,8 @@ describe("CLI: a qué API pregunta", () => {
       ["banco", "002"],
       ["municipio", "25006"],
       ["municipio", "culiacan"],
+      ["estados"],
+      ["municipios", "25"],
       ["rfc", "XAXX010101000"],
     ]) {
       expect((await correr(argv, conRed, enDirectorio, fetch)).codigo, argv.join(" ")).toBe(0);
