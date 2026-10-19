@@ -172,6 +172,10 @@ describe("CLI: a qué API pregunta", () => {
       );
     }
     expect(urls).toEqual([]);
+    // Es un error de configuración, no de uso: sin la línea de --help, y la ayuda lo dice así.
+    const ayuda = (await correr(["--help"])).salida;
+    expect(ayuda).toContain("o un error de configuración, como un MEXICOAPI_SIN_RED");
+    expect(ayuda).toContain("que no se reconoce");
     // Los validadores no usan la API: la variable no les importa.
     const clabe = await correr(["clabe", "002010077777777771"], { MEXICOAPI_SIN_RED: "x" });
     expect(clabe.codigo).toBe(0);

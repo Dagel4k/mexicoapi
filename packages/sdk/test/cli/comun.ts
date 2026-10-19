@@ -811,7 +811,7 @@ export function probarCli(correr: Correr, version: string): void {
 
   it("la ayuda dice que estados, municipios, municipio y banco salen siempre del paquete", async () => {
     expect((await correr(["--help"])).salida).toContain(
-      "estados, municipios, municipio y banco salen\nsiempre del paquete",
+      "estados,\nmunicipios, municipio y banco salen siempre del paquete",
     );
     for (const comando of ["municipio", "banco", "estados", "municipios"]) {
       const c = await correr([comando, "--help"]);
