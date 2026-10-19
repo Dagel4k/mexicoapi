@@ -121,7 +121,8 @@ export const ESQUEMA_AVISOS = {
     required: ["codigo", "texto"],
     additionalProperties: false,
   },
-  description: "Las advertencias con su código estable.",
+  description:
+    "Las advertencias con su código estable: avisos[i].texto es advertencias[i]. Un código desconocido vale como otro.",
 } as const;
 
 const DESCRIPCION_AS_OF =
