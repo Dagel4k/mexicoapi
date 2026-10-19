@@ -34,6 +34,15 @@ async function atender(
   opciones: Opciones,
   rastro: Rastro,
 ): Promise<Response> {
+  // El preflight va antes del límite: con un 429 el navegador solo vería un error CORS, sin el
+  // Retry-After. No toca datos.
+  if (peticion.method === "OPTIONS") {
+    return respuestaVacia(204, {
+      "Access-Control-Allow-Methods": METODOS,
+      "Access-Control-Allow-Headers": "If-None-Match",
+      "Access-Control-Max-Age": "86400",
+    });
+  }
   if (!(await dentroDelLimite(peticion, entorno))) {
     const r = respuestaProblema(
       "demasiadas-peticiones",
@@ -45,13 +54,6 @@ async function atender(
     return r;
   }
 
-  if (peticion.method === "OPTIONS") {
-    return respuestaVacia(204, {
-      "Access-Control-Allow-Methods": METODOS,
-      "Access-Control-Allow-Headers": "If-None-Match",
-      "Access-Control-Max-Age": "86400",
-    });
-  }
   if (peticion.method !== "GET" && peticion.method !== "HEAD") {
     const r = respuestaProblema(
       "metodo-no-permitido",

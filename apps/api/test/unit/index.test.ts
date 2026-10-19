@@ -294,12 +294,29 @@ describe("límite de peticiones", () => {
     expect(assets.pedidas).toEqual([]);
   });
 
-  it("también limita OPTIONS y métodos no permitidos", async () => {
+  it("también limita los métodos no permitidos", async () => {
     const { binding } = limite(async () => ({ success: false }));
-    for (const method of ["OPTIONS", "POST"]) {
+    for (const method of ["POST", "DELETE"]) {
       const { respuesta } = await pedir("/v1", { method }, { LIMITE: binding });
       expect(respuesta.status).toBe(429);
     }
+  });
+
+  // Un preflight que no es 2xx falla como error CORS: el navegador no deja ver el 429 ni su
+  // Retry-After. Responderlo no toca datos, así que no gasta del límite.
+  it("OPTIONS responde 204 sin consultar el límite, aunque esté agotado", async () => {
+    const { binding, claves } = limite(async () => ({ success: false }));
+    for (const ruta of ["/v1/estados", "/v1/no-existe", "/v1/estados/"]) {
+      const { respuesta } = await pedir(
+        ruta,
+        { method: "OPTIONS", headers: { "CF-Connecting-IP": "203.0.113.7" } },
+        { LIMITE: binding },
+      );
+      expect(respuesta.status, ruta).toBe(204);
+      expect(respuesta.headers.get("access-control-allow-methods")).toBe("GET, HEAD, OPTIONS");
+      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+    }
+    expect(claves).toEqual([]);
   });
 
   it("deja pasar si el límite lo permite; sin IP usa una clave fija", async () => {

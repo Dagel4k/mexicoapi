@@ -919,7 +919,7 @@ Se omiten los demás encabezados. El `ETag` lo da el archivo publicado y cambia 
 
 ## CORS
 
-Todas las respuestas de `/v1` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
+Todas las respuestas de `/v1` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204 y no cuentan en el límite de peticiones. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
 
 Los archivos estáticos de `/descargas/`, `/llms.txt` y `/llms-full.txt` también llevan `Access-Control-Allow-Origin: *`, pero solo aceptan `GET` y `HEAD`: otro método, `OPTIONS` incluido, da 405 sin cuerpo. Como no piden encabezados propios, un `fetch` simple desde el navegador no necesita `OPTIONS`.
 
