@@ -2,6 +2,10 @@ name: CI
 
 on:
   pull_request:
+  # Aprobar un PR (o descartar una aprobación) vuelve a correr CI: revision-datos exige una
+  # aprobación en los PRs del bot que piden revisión. En los demás PRs corre igual que un push.
+  pull_request_review:
+    types: [submitted, dismissed]
   push:
     branches: [main]
 
@@ -310,8 +314,9 @@ jobs:
         id: bot
         env:
           EVENTO: ${{ github.event_name }}
-          RAMA: ${{ github.head_ref }}
-          BASE: ${{ github.base_ref }}
+          # Del PR del evento: head_ref y base_ref solo existen con pull_request.
+          RAMA: ${{ github.event.pull_request.head.ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
           AUTOR: ${{ github.event.pull_request.user.login }}
           AUTOR_TIPO: ${{ github.event.pull_request.user.type }}
           EMISOR: ${{ github.event.sender.login }}
@@ -319,7 +324,7 @@ jobs:
         run: |
           set -euo pipefail
           es_bot=no
-          if [ "${EVENTO}" = "pull_request" ]; then
+          if [ "${EVENTO}" = "pull_request" ] || [ "${EVENTO}" = "pull_request_review" ]; then
             case "${RAMA}" in
               datos/*) es_bot=si ;;
             esac
@@ -402,6 +407,9 @@ jobs:
   # main), sin caché y sin secretos. Los avisos que generar saca de las fuentes (un banco del PDF
   # que no está en el CEP, por ejemplo) no se pueden repetir aquí; los umbrales, sí. La etiqueta se
   # lee de la API al final y no del evento: gh pr create la agrega justo después de abrir el PR.
+  # Con la etiqueta no basta, porque quien tenga el token de la App puede ponerla y fusionar: además
+  # hace falta una aprobación del commit actual de una persona con permiso de escritura. Aprobar
+  # vuelve a correr CI (pull_request_review), y este job pasa.
   revision-datos:
     name: revision-datos
     needs: solo-datos
@@ -464,26 +472,50 @@ jobs:
             *) echo "::error::revisar terminó con el código ${codigo}."; exit 1 ;;
           esac
 
-      - name: Exigir la etiqueta revisar
+      - name: Exigir la etiqueta revisar y una aprobación
         if: steps.revision.outputs.codigo == '3'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
+          CABEZA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           etiquetada="$(gh pr view "${PR}" --json labels --jq '[.labels[].name] | index("revisar") != null')"
-          if [ "${etiquetada}" = "true" ]; then
-            echo "El PR lleva la etiqueta revisar: no se fusiona solo."
-          else
-            echo "::error::Los datos del PR piden revisión y el PR no lleva la etiqueta revisar. Revisa los motivos del paso anterior; si los cambios son correctos, agrega la etiqueta, quita el auto-merge y vuelve a correr este job."
+          if [ "${etiquetada}" != "true" ]; then
+            echo "::error::Los datos del PR piden revisión y el PR no lleva la etiqueta revisar. Que generar no la pidiera es una señal de que algo anda mal: revisa su corrida antes que los datos (ver docs/operacion/bot-de-datos.md)."
+            exit 1
+          fi
+          # La última revisión que decide (aprobar, pedir cambios o descartada) de cada persona, sin
+          # cuentas Bot; vale si aprueba el commit actual.
+          revisiones="${RUNNER_TEMP}/revisiones.json"
+          gh api --paginate "repos/${GH_REPO}/pulls/${PR}/reviews?per_page=100" > "${revisiones}"
+          aprobadores="$(jq -rs --arg sha "${CABEZA}" '
+            add // []
+            | map(select(.user.type != "Bot" and (.state | IN("APPROVED", "CHANGES_REQUESTED", "DISMISSED"))))
+            | group_by(.user.login) | map(max_by(.id))
+            | map(select(.state == "APPROVED" and .commit_id == $sha)) | .[].user.login' "${revisiones}")"
+          aprobado=no
+          while IFS= read -r usuario; do
+            [[ "${usuario}" =~ ^[A-Za-z0-9-]+$ ]] || continue
+            permiso="$(gh api "repos/${GH_REPO}/collaborators/${usuario}/permission" --jq .permission)"
+            case "${permiso}" in
+              admin | maintain | write)
+                echo "Aprobado por ${usuario} (${permiso}) en ${CABEZA}."
+                aprobado=si
+                ;;
+            esac
+          done <<< "${aprobadores}"
+          if [ "${aprobado}" != "si" ]; then
+            echo "::error::Los datos del PR piden revisión: hace falta que una persona con permiso de escritura apruebe este commit (${CABEZA}). Al aprobar, CI vuelve a correr."
             exit 1
           fi
 
   # El check que exige la protección de main. Pasa solo si la verificación, el empaquetado, cada
   # Node de las matrices, la prueba en Bun, Deno y navegador, la del servidor MCP y las dos
-  # revisiones de los PRs del bot de datos terminaron bien: con always() corre aunque alguno falle, se salte o se
-  # cancele, y en ese caso falla en vez de quedar saltado (un check saltado cuenta como aprobado).
+  # revisiones de los PRs del bot de datos terminaron bien: con always() corre aunque alguno falle,
+  # se salte o se cancele, y en ese caso falla en vez de quedar saltado (un check saltado cuenta
+  # como aprobado).
   verify:
     name: verify
     if: always()
