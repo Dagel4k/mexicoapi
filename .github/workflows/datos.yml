@@ -663,7 +663,7 @@ jobs:
   estado-kv:
     needs: [generar, publicar]
     if: >-
-      always() && github.ref == 'refs/heads/main'
+      !cancelled() && github.ref == 'refs/heads/main'
       && needs.generar.result == 'success' && needs.generar.outputs.codigo != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10

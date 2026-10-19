@@ -201,8 +201,10 @@ jobs:
             node packages/pipeline/dist/bin.js coberturas --json \
               | jq -r '.[] | "| \(.id) | \(.hasta) | \(.dias_restantes) |"'
           } >> "${resumen}"
-          # En una sola línea: un JSON compacto no lleva saltos de línea.
-          echo "lista=$(jq -c . <<< "${lista}")" >> "${GITHUB_OUTPUT}"
+          # En una sola línea: un JSON compacto no lleva saltos de línea. Si no es un arreglo, el
+          # paso falla (la asignación lleva el código de jq; dentro del echo se perdería).
+          compacta="$(jq -ce 'if type == "array" then . else error("no es un arreglo") end' <<< "${lista}")"
+          echo "lista=${compacta}" >> "${GITHUB_OUTPUT}"
 
   avisar-coberturas:
     needs: coberturas
