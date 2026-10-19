@@ -9,7 +9,8 @@
     "actualizar": "node dist/bin.js actualizar",
     "bancos-historico": "node dist/bin.js bancos-historico",
     "verificar": "node dist/bin.js verificar",
-    "curar": "node dist/bin.js curar"
+    "curar": "node dist/bin.js curar",
+    "coberturas": "node dist/bin.js coberturas"
   },
   "dependencies": {
     "@mexicoapi/core": "workspace:*",
