@@ -16,6 +16,7 @@ import {
   type Herramienta,
   type ResultadoHerramienta,
   resultadoError,
+  SIN_CONEXION,
   textoDeError,
 } from "./herramientas.js";
 
@@ -320,12 +321,54 @@ export function resultado(
   };
 }
 
+/** El detalle de un MexicoApiError en una línea, o su mensaje si el detalle está vacío. */
+const detalleDe = (error: MexicoApiError): string =>
+  aUnaLinea(error.detail) || aUnaLinea(error.message);
+
+/** El cliente no llegó a la API: sin conexión o tiempo agotado (estado 0, sin tipo de problema). */
+const sinConexion = (error: unknown): MexicoApiError | undefined =>
+  error instanceof MexicoApiError && error.status === 0 && error.tipo === undefined
+    ? error
+    : undefined;
+
+/**
+ * Los problemas del paquete que la API podría no tener: un dato más reciente que los del paquete o
+ * un calendario que la API ya cubre. Un argumento inválido lo es también en la API.
+ */
+const LA_API_PODRIA_TENERLO: ReadonlySet<string> = new Set([
+  "no-encontrado",
+  "dato-no-disponible",
+  "calendario-incompleto",
+]);
+
+/**
+ * El error de la herramienta de un MexicoApiError. SIN_CONEXION si el cliente no llegó a la API y
+ * no hubo respaldo, o si el paquete de respaldo no tenía el dato (su detalle va después): con otro
+ * tipo, el modelo diría que el dato no existe cuando solo no se pudo consultar.
+ */
+function errorDeHerramienta(error: MexicoApiError): ErrorHerramienta {
+  if (sinConexion(error) !== undefined) return new ErrorHerramienta(SIN_CONEXION, detalleDe(error));
+  const causa = sinConexion(error.cause);
+  if (
+    causa !== undefined &&
+    error.origen === "paquete" &&
+    error.tipo !== undefined &&
+    LA_API_PODRIA_TENERLO.has(error.tipo)
+  ) {
+    return new ErrorHerramienta(
+      SIN_CONEXION,
+      `${detalleDe(causa)} Con los datos del paquete: ${detalleDe(error)}`,
+    );
+  }
+  return new ErrorHerramienta(error.tipo, detalleDe(error));
+}
+
 /**
  * Corre una consulta al cliente. Un problema de la API o del paquete (MexicoApiError) pasa a
- * ErrorHerramienta con su detalle en una línea, que no trae rutas de archivos ni trazas. Cualquier
- * otro error (también TypeError o RangeError: con los argumentos ya validados son defectos) sigue
- * tal cual y el protocolo lo responde como error interno, sin detalles. Si la llamada ya se
- * canceló, el error sigue tal cual: no se responde.
+ * ErrorHerramienta con su detalle en una línea, que no trae rutas de archivos ni trazas; sin
+ * conexión con la API, con SIN_CONEXION. Cualquier otro error (también TypeError o RangeError: con
+ * los argumentos ya validados son defectos) sigue tal cual y el protocolo lo responde como error
+ * interno, sin detalles. Si la llamada ya se canceló, el error sigue tal cual: no se responde.
  */
 export async function consultar<T extends { origen: Origen; data: unknown }>(
   signal: AbortSignal,
@@ -337,9 +380,7 @@ export async function consultar<T extends { origen: Origen; data: unknown }>(
     r = await consulta();
   } catch (error) {
     if (signal.aborted) throw error;
-    if (error instanceof MexicoApiError) {
-      throw new ErrorHerramienta(error.tipo, aUnaLinea(error.detail) || aUnaLinea(error.message));
-    }
+    if (error instanceof MexicoApiError) throw errorDeHerramienta(error);
     throw error;
   }
   // Lo que viene de la API se revisa antes de usarlo: el texto se arma con esos campos.

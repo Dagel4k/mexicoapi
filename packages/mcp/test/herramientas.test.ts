@@ -4,6 +4,7 @@ import {
   ErrorHerramienta,
   type Herramienta,
   resultadoError,
+  SIN_CONEXION,
   textoDeError,
 } from "../src/herramientas.js";
 import { eco, rechaza } from "./ayudas.js";
@@ -111,9 +112,16 @@ describe("textoDeError", () => {
   });
 
   it("sin tipo, o con uno de otra forma, usa error-interno", () => {
-    expect(textoDeError(undefined, "No se pudo conectar con la API.")).toBe(
-      "[error-interno] No se pudo conectar con la API.",
+    expect(textoDeError(undefined, "La respuesta no es JSON.")).toBe(
+      "[error-interno] La respuesta no es JSON.",
     );
     expect(textoDeError("raro tipo]", "Detalle.")).toBe("[error-interno] Detalle.");
+  });
+
+  it("sin conexión con la API usa su propio tipo, que no es de la API", () => {
+    expect(SIN_CONEXION).toBe("sin-conexion");
+    expect(textoDeError(SIN_CONEXION, "No se pudo conectar con la API.")).toBe(
+      "[sin-conexion] No se pudo conectar con la API.",
+    );
   });
 });

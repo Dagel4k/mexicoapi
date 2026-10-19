@@ -70,10 +70,16 @@ const NOMBRE_VALIDO = /^[A-Za-z0-9_.-]{1,128}$/;
 const TIPO_PROBLEMA = /^[a-z][a-z-]{0,63}$/;
 
 /**
- * El texto de todo error de herramienta: el tipo de problema de la API entre corchetes y el
- * detalle en una línea (`[dato-no-disponible] …`). Así el modelo distingue sin leer el español un
- * dato que todavía no se publica (vuelve a intentar después) de uno que no existe, o un argumento
- * que debe corregir. Sin tipo (sin conexión, una respuesta que no es de la API) o con uno de otra
+ * Tipo de error propio del servidor, no de la API: el cliente no llegó a la API (sin conexión o
+ * tiempo agotado) y los datos del paquete no bastan para responder. Puede funcionar más tarde.
+ */
+export const SIN_CONEXION = "sin-conexion";
+
+/**
+ * El texto de todo error de herramienta: el tipo de problema de la API (o SIN_CONEXION) entre
+ * corchetes y el detalle en una línea (`[dato-no-disponible] …`). Así el modelo distingue sin leer
+ * el español un dato que todavía no se publica (vuelve a intentar después) de uno que no existe, o
+ * un argumento que debe corregir. Sin tipo (una respuesta que no es de la API) o con uno de otra
  * forma, `error-interno`.
  */
 export function textoDeError(tipo: string | undefined, detalle: string): string {
