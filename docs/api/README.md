@@ -33,7 +33,7 @@ Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin �
 | [`GET /v1/constantes/salario-minimo/{anio}`](#constantes) | El salario mínimo de un año, por zona |
 | [`GET /v1/isr/tarifa/{periodo}/{anio}`](#constantes) | La tarifa de ISR mensual o anual de un año |
 | `GET /v1/status` | Frescura de cada dataset |
-| `GET /v1/openapi.json` | Especificación OpenAPI 3.1; en `servers` trae `/` (el mismo origen) y la API pública, para importarla desde un archivo |
+| `GET /v1/openapi.json` | Especificación OpenAPI 3.1; en `servers` trae primero la API pública, la base que toman Postman, Insomnia u openapi-generator al importarla desde un archivo, y después `/` (el mismo origen) |
 | `GET /descargas/*` | Datos completos (ver [Descargas](#descargas)) |
 
 Los campos de cada dataset están en [estados](../datos/inegi-estados.md), [municipios](../datos/inegi-municipios.md), [bancos](../datos/bancos.md), [tipo de cambio FIX](../datos/tipo-cambio-fix.md), [UDIS](../datos/udis.md), [días inhábiles de la CNBV](../datos/dias-inhabiles-cnbv.md), [días inhábiles del SAT](../datos/dias-inhabiles-sat.md), [UMA](../datos/constantes-uma.md), [salario mínimo](../datos/constantes-salario-minimo.md) y [tarifas de ISR](../datos/isr-tarifas.md).
