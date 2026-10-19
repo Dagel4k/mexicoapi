@@ -86,6 +86,27 @@ r.advertencias; // ["Solo descuenta sábados, domingos y los días de descanso o
 
 `desde` no se cuenta: en un plazo que corre desde una notificación, es el día en que surte efectos, no el día en que se hizo.
 
+Si conoces los días que cierra el tribunal o el centro de conciliación (sus vacaciones, sus suspensiones), arma un calendario con ellos y los de la LFT:
+
+```ts
+import { crearCalendario, diasDescansoLft, FUENTE_LFT_715, sumarDiasHabiles } from "mexicoapi";
+
+// Las vacaciones de diciembre del tribunal, con el acuerdo que las publica.
+const acuerdo = { nombre: "Acuerdo del pleno del tribunal", url: "https://tribunal.example/acuerdo" };
+const vacaciones = ["2026-12-21", "2026-12-22", "2026-12-23", "2026-12-24", "2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31"]
+  .map((fecha) => ({ fecha, motivo: "Vacaciones del tribunal", tipo: "vacaciones" as const, fuente: acuerdo }));
+const tribunal = crearCalendario({
+  autoridad: "lft",
+  cobertura: { desde: "2026-01-01", hasta: "2027-12-31" },
+  dias: [...diasDescansoLft(2026), ...diasDescansoLft(2027), ...vacaciones],
+  fuenteFinDeSemana: FUENTE_LFT_715,
+});
+sumarDiasHabiles({ calendario: tribunal, desde: "2026-12-18", dias: 1 }).resultado;
+// "2027-01-04": salta las vacaciones, el 25 de diciembre y el 1 de enero. Con calendarioLft(), "2026-12-21".
+```
+
+La cobertura debe incluir el resultado: fuera de ella, `CalendarioIncompletoError`. Este calendario no trae el aviso del art. 715 de `calendarioLft()`, porque los días del tribunal ya están en él.
+
 Con parámetros inválidos lanza `RangeError`. Fuera de la cobertura del calendario lanza `CalendarioIncompletoError` (`tipo: "calendario-incompleto"`) y, si el resultado pasaría del año 9999, `FechaFueraDeRangoError` (`tipo: "fecha-fuera-de-rango"`); las consultas de FIX y UDIS lanzan `SerieIncompletaError` (`tipo: "serie-incompleta"`). Compara `error.tipo` (y `error.name`), como en `MexicoApiError`, en vez de `instanceof`, que falla si el proyecto tiene dos copias del paquete. Los dos pueden traer `tipo: "calendario-incompleto"` con otra forma: un `CalendarioIncompletoError` del núcleo (`name: "CalendarioIncompletoError"`) lleva `autoridad`, `fecha`, `cobertura` y `detalle` en el propio error; un `MexicoApiError` (`name: "MexicoApiError"`) los lleva en `error.problema`, el problem+json de la API.
 
 Los calendarios de la CNBV y el SAT están en `mexicoapi/datos/calendarios`. El de la CNBV (el calendario bancario) y las vacaciones del SAT se transcriben del DOF; los días del artículo 12 del CFF se calculan por regla de 2026 a 2100. Con el SAT el tipo de plazo es obligatorio: en `declaraciones_pagos` sus vacaciones cuentan como hábiles (CFF, artículo 12) y en `general` no.
