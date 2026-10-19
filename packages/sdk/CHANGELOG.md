@@ -1,5 +1,23 @@
 # Cambios
 
+## 0.2.0 (sin publicar)
+
+Cambios de comportamiento. Revisa tu código si usas lo que nombran:
+
+- `diasHabiles` del cliente revisa `tipoPlazo` antes de ir a la red o al paquete: con el SAT sin él, con otra autoridad y con él, o con un valor que no es `general` ni `declaraciones_pagos`, lanza `TypeError` (que nombra `tipoPlazo`) en lugar de `MexicoApiError`. `consultar("/v1/dias-habiles", …)` sigue dando el `MexicoApiError` de la API, con `tipo_plazo`.
+- Las `advertencias` de primer nivel del cliente traen también las del cálculo (`data.advertencias` de `diasHabiles`), al final y sin repetidos; `data.advertencias` no cambia. Si las juntabas a mano (`[...advertencias, ...data.advertencias]`), tendrás repetidas: usa solo `advertencias`.
+- `sumarDiasHabiles` con `calendario("sat", "general")` y `permitirIncompleto: true` sigue con el respaldo del plazo, como la API: del 2026-12-23, 2 días hábiles dan el 2026-12-28 (antes, el 25, inhábil por el art. 12), con la advertencia de la API.
+- Cada validador tiene su propia `nota`: la de la CLABE ya no nombra al SAT, RENAPO ni el IMSS y, sin catálogo de bancos, dice que no revisó el banco. `NOTA_VALIDACION` sigue exportada, pero ningún validador la usa y queda obsoleta: usa `NOTAS_VALIDACION`.
+- `fixUltimo()` respondido con los datos del paquete (sin red, con `fuente: "paquete"` o de respaldo) trae siempre la advertencia `AVISO_SIN_API`: pueden faltar publicaciones recientes.
+- Con el SAT y `declaraciones_pagos`, advertencia nueva cuando el resultado cae fuera de las vacaciones publicadas: ese día podría ser de vacaciones y aplicaría la prórroga del art. 12. El resultado no cambia.
+- Textos más claros: el 422 del SAT `general` fuera de su cobertura sugiere `permitir_incompleto=true` y nombra `declaraciones_pagos` solo para plazos de declaraciones o pagos; el 404 del FIX con `publicado` en un día sin publicación sugiere `operacion`. La CLI muestra esos errores con sus opciones (`--tipo-plazo`, `--permitir-incompleto`) y rechaza con su nombre un `--tipo-plazo` que no existe.
+
+Nuevo:
+
+- `banco_revisado` en el resultado de `validarClabe` (`false` si no se pasa el catálogo de bancos; `bancos: null` cuenta como no pasarlo, como en la 0.1.0) y en `clabe()` del cliente (siempre `true`, como la API). Tipo `ResultadoValidacionClabe`.
+- `hoyEnMexico()`: la fecha de hoy en la Ciudad de México, la zona de todas las fechas de MéxicoAPI.
+- `NOTAS_VALIDACION`, `AVISO_SIN_API`, el tipo `RespaldoCalendario` y `Calendario.respaldo`.
+
 ## 0.1.0 (2026-10-18)
 
 Primera versión.
