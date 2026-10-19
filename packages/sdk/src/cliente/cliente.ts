@@ -1,7 +1,7 @@
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
-import { AVISO_RESPALDO, congelar } from "./comun.js";
+import { AVISO_RESPALDO, congelar, esObjeto } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
 import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
 import type { Contexto } from "./paquete-comun.js";
@@ -211,7 +211,30 @@ async function desdePaquete(
   });
 }
 
+/**
+ * `r` con las advertencias del cálculo (`data.advertencias`, en `/v1/dias-habiles`) también en las
+ * de primer nivel, después de las que ya trae y sin repetir ninguna: quien solo mira `advertencias`
+ * ve todo lo que hay que decir. `data` no cambia.
+ */
+function conAdvertenciasDelCalculo(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
+  const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
+  if (!Array.isArray(delCalculo)) return r;
+  const todas = new Set(r.advertencias);
+  for (const a of delCalculo) if (typeof a === "string") todas.add(a);
+  if (todas.size === r.advertencias.length) return r;
+  return congelar({ ...r, advertencias: [...todas] });
+}
+
 async function ejecutar(
+  c: Config,
+  plantilla: string,
+  parametros: Readonly<Record<string, unknown>> | undefined,
+  opciones: OpcionesConsulta | undefined,
+): Promise<RespuestaSinMeta<unknown>> {
+  return conAdvertenciasDelCalculo(await responder(c, plantilla, parametros, opciones));
+}
+
+async function responder(
   c: Config,
   plantilla: string,
   parametros: Readonly<Record<string, unknown>> | undefined,

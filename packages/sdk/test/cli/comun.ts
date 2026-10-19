@@ -324,10 +324,17 @@ export function probarCli(correr: Correr, version: string): void {
     expect(c.salida).toContain(
       "Aviso: Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
     );
+    // Cada aviso sale una vez, aunque el cliente también lo suba a sus advertencias.
+    const avisos = c.salida.split("\n").filter((l) => l.startsWith("Aviso: "));
+    expect(avisos).toEqual([...new Set(avisos)]);
+    expect(avisos).toHaveLength(2);
     const enJson = json(await correr([...lejos, "--permitir-incompleto", "--json"])) as {
       data: { resultado: string; advertencias: string[] };
+      advertencias: string[];
     };
     expect(enJson.data.resultado).toBe("2101-01-11");
+    // Nuevo: la salida --json es la del cliente, con las del cálculo también arriba.
+    expect(enJson.advertencias).toEqual(enJson.data.advertencias);
     const banco = await correr(["banco", "002", "--permitir-incompleto"]);
     expect(banco.codigo).toBe(2);
     expect(banco.errores).toContain('La opción --permitir-incompleto no aplica a "banco".');

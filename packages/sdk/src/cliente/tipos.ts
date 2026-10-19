@@ -31,11 +31,13 @@ export interface RespuestaSinMeta<D> {
   readonly data: D;
   readonly origen: Origen;
   /**
-   * Avisos. Los de la API en su campo `advertencias` de primer nivel (`/v1/dias-inhabiles`: la
-   * lista de un año puede estar incompleta para algún tipo de plazo), o los mismos calculados con
-   * el paquete; antes, los del cliente: que la API no respondió y se usó el paquete o una
-   * respuesta guardada, o que los datos del paquete de una serie llegan a más de 7 días antes de
-   * hoy. Vacío si no hay nada que avisar.
+   * Todo lo que hay que avisarle a quien usa el dato. Primero los del cliente: que la API no
+   * respondió y se usó el paquete o una respuesta guardada, o que los datos del paquete de una
+   * serie llegan a más de 7 días antes de hoy. Después, los de la API en su campo `advertencias`
+   * de primer nivel (`/v1/dias-inhabiles`: la lista de un año puede estar incompleta para algún
+   * tipo de plazo), o los mismos calculados con el paquete. Al final, los del cálculo que vienen
+   * en `data.advertencias` (`/v1/dias-habiles`: calendario incompleto, art. 715, prórroga del
+   * art. 12), que siguen también en `data`. Sin repetidos; vacío si no hay nada que avisar.
    */
   readonly advertencias: readonly string[];
 }
