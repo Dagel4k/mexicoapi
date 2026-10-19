@@ -212,6 +212,10 @@ describe("documento OpenAPI", () => {
     expect(operacion.description).toContain("día de la Ciudad de México");
     expect(operacion.description).toContain("CFF art. 20");
     expect(operacion.description).toContain("art. 172 de la Circular 3/2012 del Banco de México");
+    // Las dos reglas solo se separan si el DOF se sale de los días hábiles bancarios.
+    expect(operacion.description).toContain(
+      "Solo se separarían si el DOF no publicara el FIX un día hábil bancario o lo publicara uno inhábil; entonces sigue al CFF.",
+    );
   });
 
   // HEAD y OPTIONS valen en toda ruta y el documento solo declara GET: declararlos daría a los
