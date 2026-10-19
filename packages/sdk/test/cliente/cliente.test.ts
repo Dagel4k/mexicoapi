@@ -15,6 +15,7 @@ import {
   type OpcionesComunes,
   type OpcionesConsulta,
   type Respuesta,
+  type RespuestaFetch,
   type RespuestaSinMeta,
   URL_API,
 } from "../../src/cliente/index.js";
@@ -659,6 +660,81 @@ describe("límites de la respuesta", () => {
     });
     const error = (await rechazo(conFetch(fetch).estados({ fuente: "api" }))) as MexicoApiError;
     expect(error.detail).toBe("La respuesta pasa de 8 MB.");
+  });
+  it("un cuerpo que se corta a la mitad es un fallo de conexión", async () => {
+    let entregado = false;
+    const flujo = new ReadableStream<Uint8Array>({
+      pull(control) {
+        if (entregado) {
+          control.error(new TypeError("terminated"));
+          return;
+        }
+        entregado = true;
+        control.enqueue(new TextEncoder().encode('{"data":['));
+      },
+    });
+    const { fetch } = fetchFalso(new Response(flujo, { status: 200 }));
+    const error = (await rechazo(
+      conFetch(fetch, { reintentos: 0 }).estados({ fuente: "api" }),
+    )) as MexicoApiError;
+    expect(error.status).toBe(0);
+    expect(error.detail).toBe("No se pudo conectar con la API.");
+  });
+
+  it("si se agota el tiempo mientras llega el cuerpo, lo cancela", async () => {
+    relojFalso();
+    const vigia = { cancelado: false };
+    const flujo = new ReadableStream<Uint8Array>(
+      {
+        pull: () => colgada<void>(),
+        cancel() {
+          vigia.cancelado = true;
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const { fetch } = fetchFalso(new Response(flujo, { status: 200 }));
+    const consulta = conFetch(fetch, { timeoutMs: 1000 }).estados({ fuente: "api" });
+    const estado = seguir(consulta);
+    await avanzar(1000);
+    expect(estado.listo).toBe(true);
+    expect((estado.error as MexicoApiError).detail).toBe("Se agotó el tiempo de espera (1000 ms).");
+    expect(vigia.cancelado).toBe(true);
+  });
+
+  it("lee un body propio que entrega trozos vacíos, y usa text() si body no es un stream", async () => {
+    const trozos = [
+      { done: false, value: undefined },
+      {
+        done: false,
+        value: new TextEncoder().encode(JSON.stringify({ data: [SINALOA], meta: META })),
+      },
+      { done: true, value: undefined },
+    ];
+    const conLector = {
+      status: 200,
+      headers: { get: () => null },
+      body: {
+        getReader: () => ({
+          read: async () => trozos.shift() ?? { done: true },
+          cancel: async () => {},
+        }),
+      },
+      text: async () => {
+        throw new Error("no debió usar text()");
+      },
+    };
+    // Como node-fetch 2: body es un stream de Node, sin getReader.
+    const sinLector = {
+      status: 200,
+      headers: { get: () => null },
+      body: {},
+      text: async () => JSON.stringify({ data: [SINALOA], meta: META }),
+    } as unknown as RespuestaFetch;
+    const { fetch } = fetchFalso(conLector, sinLector);
+    const api = conFetch(fetch);
+    expect((await api.estados({ fuente: "api" })).data).toEqual([SINALOA]);
+    expect((await api.estados({ fuente: "api" })).data).toEqual([SINALOA]);
   });
 });
 
