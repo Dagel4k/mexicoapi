@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { esFechaIsoValida } from "@mexicoapi/core";
+import { coberturasEnTexto, leerCoberturas, porVencer } from "./coberturas.js";
 import { curarDatos } from "./curado/curar.js";
 import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { crearBancos, HOSTS_BANCOS, registrosDesdeHistorico } from "./datasets/bancos/bancos.js";
@@ -34,6 +35,7 @@ const USO = `Uso:
   verificar [--datos <ruta>]
   curar [--datos <ruta>]
   construir --salida <ruta> [--datos <ruta>]
+  coberturas [--dias <entero >= 0>] [--fecha AAAA-MM-DD] [--json] [--datos <ruta>]
 Datasets: ${[...DATASETS.keys()].join(", ")}
 Curados (data/curado/*.yaml): ${CURADOS.map((d) => d.id).join(", ")}
 `;
@@ -44,6 +46,7 @@ const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   verificar: ["datos"],
   curar: ["datos"],
   construir: ["salida", "datos"],
+  coberturas: ["dias", "fecha", "json", "datos"],
 };
 
 function leer(argumentos: readonly string[]) {
@@ -58,6 +61,8 @@ function leer(argumentos: readonly string[]) {
       intervalo: { type: "string" },
       datos: { type: "string" },
       salida: { type: "string" },
+      dias: { type: "string" },
+      json: { type: "boolean" },
     },
   });
 }
@@ -220,6 +225,45 @@ async function bancosHistorico(
   }
 }
 
+/**
+ * Las coberturas de los datos curados y los días que faltan para que terminen; con `--dias`, solo
+ * las que terminan en ese plazo o ya terminaron. Con `--json`, la lista que usa la alerta de
+ * frescura.yml.
+ */
+async function coberturas(
+  valores: { dias?: string | undefined; fecha?: string | undefined; json?: boolean | undefined },
+  entorno: Entorno,
+  raizDatos: string,
+): Promise<number> {
+  const { dias } = valores;
+  if (dias !== undefined && !/^(?:0|[1-9]\d{0,4})$/.test(dias)) {
+    entorno.escribirError(`--dias inválido: ${dias} (entero de 0 a 99999)\n${USO}`);
+    return 1;
+  }
+  const fecha = resolverFecha(valores.fecha, entorno);
+  if (fecha === null) {
+    entorno.escribirError(`Fecha inválida: ${valores.fecha}\n`);
+    return 1;
+  }
+  let lista: ReturnType<typeof porVencer>;
+  try {
+    lista = porVencer(
+      await leerCoberturas(raizDatos),
+      fecha,
+      dias === undefined ? dias : Number(dias),
+    );
+  } catch (error) {
+    entorno.escribirError(`coberturas: ${mensajeDe(error)}\n`);
+    return 1;
+  }
+  entorno.escribir(
+    valores.json === true
+      ? `${JSON.stringify(lista, null, 2)}\n`
+      : coberturasEnTexto(lista, fecha, dias === undefined ? dias : Number(dias)),
+  );
+  return 0;
+}
+
 async function curar(entorno: Entorno, raizDatos: string): Promise<number> {
   let salida: Awaited<ReturnType<typeof curarDatos>>;
   try {
@@ -281,6 +325,8 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
     }
     case "curar":
       return curar(entorno, raizDatos);
+    case "coberturas":
+      return coberturas(values, entorno, raizDatos);
     case "construir": {
       if (values.salida === undefined) {
         entorno.escribirError(`Falta --salida.
