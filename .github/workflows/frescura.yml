@@ -40,12 +40,13 @@ jobs:
           estado="${RUNNER_TEMP}/status.json"
           resumen="${GITHUB_STEP_SUMMARY:-/dev/null}"
 
-          # Número del issue abierto con el título exacto, o vacío. Si la búsqueda falla,
-          # devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
+          # Número del issue abierto con el título exacto, o vacío. Solo cuentan los que abrió
+          # este workflow (github-actions): uno con ese título de otra cuenta no. Si la búsqueda
+          # falla, devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
           buscar_abierto() {
             local titulo="$1"
-            gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
-              --json number,title \
+            gh issue list --state open --limit 100 --author app/github-actions \
+              --search "in:title \"${titulo}\"" --json number,title \
               | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty'
           }
 
@@ -221,12 +222,13 @@ jobs:
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           procedimiento="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/datos-curados.md"
 
-          # Número del issue abierto con el título exacto, o vacío. Si la búsqueda falla,
-          # devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
+          # Número del issue abierto con el título exacto, o vacío. Solo cuentan los que abrió
+          # este workflow (github-actions): uno con ese título de otra cuenta no. Si la búsqueda
+          # falla, devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
           buscar_abierto() {
             local titulo="$1"
-            gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
-              --json number,title \
+            gh issue list --state open --limit 100 --author app/github-actions \
+              --search "in:title \"${titulo}\"" --json number,title \
               | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty'
           }
 

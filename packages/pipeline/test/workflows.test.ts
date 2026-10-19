@@ -245,6 +245,24 @@ describe("revision-datos de ci.yml", () => {
   });
 });
 
+describe("issues de alerta", () => {
+  it("cada búsqueda de un issue filtra por la cuenta que lo abre", async () => {
+    const casos: [string, string][] = [
+      ["datos.yml", `--author "app/\${APP_SLUG}"`],
+      ["frescura.yml", "--author app/github-actions"],
+    ];
+    for (const [nombre, autor] of casos) {
+      const wf = await workflow(nombre);
+      const lineas = Object.values(wf.jobs)
+        .flatMap((j) => j.steps)
+        .flatMap((p) => (p.run ?? "").split("\n"))
+        .filter((l) => l.includes("gh issue list"));
+      expect(lineas.length, nombre).toBeGreaterThan(1);
+      for (const l of lineas) expect(l, nombre).toContain(autor);
+    }
+  });
+});
+
 describe("estado-kv de datos.yml", () => {
   // El token de despliegue puede publicar el Worker: estado-kv solo debe recibir el de KV.
   it("usa solo CLOUDFLARE_KV_TOKEN, sin el respaldo del token de despliegue", async () => {
