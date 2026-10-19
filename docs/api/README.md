@@ -130,7 +130,7 @@ En `/v1/dias-habiles` van dentro de `data`, junto a `data.advertencias`; en `/v1
 | `aviso-sepomex-distinto` | El aviso de uso del archivo de Correos de México no es el que conoce `mexicoapi` | `mexicoapi/sepomex` | Lee el aviso nuevo antes de usar los datos |
 | `otro` | Un texto que esta versión no conoce | Un calendario propio de `crearCalendario`, o una API más nueva que el paquete | Lee el texto |
 
-La API da los siete primeros. Los demás son del paquete `mexicoapi` (el cliente y `mexicoapi/sepomex`) y del servidor MCP, que usan el mismo catálogo. Una versión nueva puede agregar códigos: trata uno que no conozcas como `otro`. El catálogo está en `CODIGOS_AVISO` de `mexicoapi` y en el documento OpenAPI (`components.schemas.Aviso`).
+La API da los siete primeros. Los demás son del paquete `mexicoapi` (el cliente y `mexicoapi/sepomex`) y del servidor MCP, que usan el mismo catálogo. Una versión nueva puede agregar códigos: trata uno que no conozcas como `otro`. Por eso el documento OpenAPI publica `codigo` como texto abierto (`components.schemas.Aviso`), con los de la API en `x-extensible-enum`; el catálogo completo está en `CODIGOS_AVISO` de `mexicoapi`.
 
 ## Estados
 

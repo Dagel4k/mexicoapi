@@ -4,6 +4,7 @@ import {
   type Aviso,
   avisosDe,
   CODIGOS_AVISO,
+  CODIGOS_AVISO_API,
   type CodigoAviso,
   codigoAviso,
 } from "../src/avisos.js";
@@ -62,6 +63,22 @@ describe("CODIGOS_AVISO", () => {
       "aviso-sepomex-distinto",
       "otro",
     ]);
+  });
+});
+
+describe("CODIGOS_AVISO_API", () => {
+  it("son los códigos que da la API: del catálogo, sin otro, congelados", () => {
+    expect(Object.isFrozen(CODIGOS_AVISO_API)).toBe(true);
+    expect(CODIGOS_AVISO_API).toEqual([
+      "calendario-incompleto",
+      "tipo-plazo-incompleto",
+      "lista-incompleta",
+      "lft-art-715",
+      "transmision-poder-ejecutivo",
+      "prorroga-art-12",
+      "vacaciones-sin-publicar",
+    ]);
+    for (const codigo of CODIGOS_AVISO_API) expect(CODIGOS_AVISO).toContain(codigo);
   });
 });
 

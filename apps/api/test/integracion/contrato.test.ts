@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { type CodigoAviso, codigoAviso, sumarDias } from "@mexicoapi/core";
+import { CODIGOS_AVISO_API, type CodigoAviso, codigoAviso, sumarDias } from "@mexicoapi/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { PROBLEMAS } from "../../src/problemas.js";
@@ -396,8 +396,8 @@ const CASOS_308: Caso[] = OPERACIONES.map((o) => ({
 
 /**
  * Donde una respuesta trae advertencias (de primer nivel o en `data`) trae `avisos`: los mismos
- * textos en el mismo orden, cada uno con su código, y ninguno sin código (`otro`). Devuelve los
- * códigos que vio.
+ * textos en el mismo orden, cada uno con un código de CODIGOS_AVISO_API (el documento lo publica
+ * abierto) y el mismo que da `codigoAviso` para ese texto. Devuelve los códigos que vio.
  */
 function revisarAvisos(cuerpo: Record<string, unknown>, ruta: string): CodigoAviso[] {
   const codigos: CodigoAviso[] = [];
@@ -408,7 +408,7 @@ function revisarAvisos(cuerpo: Record<string, unknown>, ruta: string): CodigoAvi
       advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto })),
     );
     for (const texto of advertencias) {
-      expect(codigoAviso(texto), `${ruta}: ${texto}`).not.toBe("otro");
+      expect(CODIGOS_AVISO_API, `${ruta}: ${texto}`).toContain(codigoAviso(texto));
       codigos.push(codigoAviso(texto));
     }
   }
@@ -587,17 +587,7 @@ describe("respuestas del Worker contra el documento", () => {
       const cuerpo = (await (await pedir(ruta)).json()) as Record<string, unknown>;
       for (const codigo of revisarAvisos(cuerpo, ruta)) vistos.add(codigo);
     }
-    expect([...vistos].sort()).toEqual(
-      [
-        "calendario-incompleto",
-        "lft-art-715",
-        "lista-incompleta",
-        "prorroga-art-12",
-        "tipo-plazo-incompleto",
-        "transmision-poder-ejecutivo",
-        "vacaciones-sin-publicar",
-      ].sort(),
-    );
+    expect([...vistos].sort()).toEqual([...CODIGOS_AVISO_API].sort());
   });
 
   it.each(CASOS_308)("GET $ruta → 308 a la misma ruta sin la / final", async (caso) => {

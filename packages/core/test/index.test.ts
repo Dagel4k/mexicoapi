@@ -45,6 +45,7 @@ const VALORES_PUBLICOS = [
   "AVISO_SIN_API",
   // El catálogo de códigos de los avisos y el código de cada texto.
   "CODIGOS_AVISO",
+  "CODIGOS_AVISO_API",
   "codigoAviso",
   "COBERTURA_LFT",
   "FUENTE_LFT_74",
