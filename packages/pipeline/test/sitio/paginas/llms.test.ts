@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../../../src/sitio/meta.js";
 import { documentoOpenApi } from "../../../src/sitio/openapi.js";
-import { CATALOGO } from "../../../src/sitio/paginas/catalogo.js";
+import { CATALOGO, rutasDe } from "../../../src/sitio/paginas/catalogo.js";
 import {
   archivoLlms,
   archivoLlmsCompleto,
@@ -26,6 +26,12 @@ const DATASETS: DatasetLlms[] = [
     id: "dias-inhabiles.cnbv",
     as_of: "2025-12-20",
     docs: `${URL_DOCS}/datos/dias-inhabiles-cnbv.md`,
+  },
+  {
+    id: "tipo-cambio.fix",
+    as_of: "2026-10-18",
+    ultimo_dato: "2026-10-16",
+    docs: `${URL_DOCS}/datos/tipo-cambio-fix.md`,
   },
 ];
 
@@ -76,6 +82,24 @@ describe("llms.txt", () => {
     expect(intro).not.toContain("<base>");
   });
 
+  // Con /ultimo un modelo daría el FIX del viernes como "el de hoy" y con publicado de un domingo
+  // recibiría un 404 que no sabría leer.
+  it("explica el FIX de hoy: operacion, la fecha del DOF, la zona y el 404 sin publicación", () => {
+    const intro = lineas.slice(3, lineas.indexOf("## Docs")).join("\n");
+    const fix = intro.split("\n\n").find((p) => p.startsWith("El FIX"));
+    expect(fix).toBeDefined();
+    expect(fix).toContain("usa `operacion` con la fecha del pago");
+    expect(fix).toContain("el último publicado en el DOF antes de ese día");
+    expect(fix).toContain("`fecha_publicacion` es la fecha del DOF");
+    expect(fix).toContain("un día hábil bancario antes, con su fecha de determinación");
+    expect(fix).toContain("días de la Ciudad de México (America/Mexico_City)");
+    expect(fix).toContain("desde las 18:00 de la Ciudad de México ya es el día siguiente");
+    expect(fix).toContain(
+      "Con `publicado`, un 404 `no-encontrado` en fin de semana o feriado bancario significa que ese día no hubo publicación",
+    );
+    expect(fix).not.toMatch(/\n/);
+  });
+
   it("Docs: la referencia, los errores, las rutas de cálculo, el OpenAPI y llms-full.txt", () => {
     const docs = seccion("Docs");
     expect(docs.map((l) => enlaces(l)[0])).toEqual([
@@ -83,6 +107,7 @@ describe("llms.txt", () => {
       `${URL_DOCS}/api/problemas.md`,
       `${URL_DOCS}/api/README.md#clabe`,
       `${URL_DOCS}/api/README.md#dias-habiles`,
+      `${URL_DOCS}/api/README.md#publicado-y-operación`,
       `${URL_DOCS}/api/README.md#último`,
       "/v1/openapi.json",
       "/llms-full.txt",
@@ -102,7 +127,13 @@ describe("llms.txt", () => {
       "no incluye los festivos ni las suspensiones de labores del art. 715",
     );
     expect(docs[3]).toContain("`desde` es el día en que surte efectos la notificación");
-    expect(docs[4]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\/ultimo\]\(/);
+    expect(docs[4]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\?operacion=\{fecha\}\]\(/);
+    expect(docs[4]).toContain("el FIX que aplica a un pago o una operación de esa fecha");
+    expect(docs[4]).toContain("CFF art. 20");
+    expect(docs[4]).toContain("art. 172 de la Circular 3/2012 del Banco de México");
+    expect(docs[4]).toContain('cuando pregunten por "el FIX de hoy"');
+    expect(docs[5]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\/ultimo\]\(/);
+    expect(docs[5]).toContain("no es el FIX de hoy");
     expect(texto).toContain("Las fechas van en `AAAA-MM-DD`.");
   });
 
@@ -118,7 +149,7 @@ describe("llms.txt", () => {
     const rutas = seccion("Docs")
       .map((l) => /^- \[GET ([^\]]+)\]/.exec(l)?.[1])
       .filter((r): r is string => r !== undefined);
-    expect(rutas).toHaveLength(3);
+    expect(rutas).toHaveLength(4);
     for (const ruta of rutas) {
       const [camino, consulta = ""] = ruta.split("?") as [string, string?];
       expect(Object.keys(doc.paths), ruta).toContain(camino);
@@ -153,7 +184,15 @@ describe("llms.txt", () => {
     expect(seccion("Datos")).toEqual([
       `- [Estados](${URL_DOCS}/datos/inegi-estados.md): \`inegi.estados\`, as_of 2026-10-17, \`GET /v1/estados\``,
       `- [Días inhábiles de la CNBV](${URL_DOCS}/datos/dias-inhabiles-cnbv.md): \`dias-inhabiles.cnbv\`, as_of 2025-12-20, \`GET /v1/dias-inhabiles?autoridad=cnbv&anio={anio}\``,
+      `- [Tipo de cambio FIX](${URL_DOCS}/datos/tipo-cambio-fix.md): \`tipo-cambio.fix\`, as_of 2026-10-18, último dato 2026-10-16, \`GET /v1/tipo-cambio/fix?operacion={fecha}\` (el que aplica a un pago o una operación de esa fecha); también \`GET /v1/tipo-cambio/fix/ultimo\` (la publicación más reciente) y \`GET /v1/tipo-cambio/fix?publicado={fecha}\` (el que publicó el DOF ese día)`,
     ]);
+  });
+
+  // as_of es la fecha de la última corrida que cambió la serie, no la de su último dato.
+  it("dice qué es as_of y que en las series el último dato va aparte", () => {
+    const intro = lineas.slice(3, lineas.indexOf("## Docs")).join("\n");
+    expect(intro).toContain("`as_of` es la fecha de la última actualización que cambió el dataset");
+    expect(intro).toContain("el último dato es la fecha de su registro más reciente");
   });
 
   it("cada ruta del catálogo sale tal cual, con sus parámetros obligatorios", () => {
@@ -163,7 +202,9 @@ describe("llms.txt", () => {
       docs: `${URL_DOCS}/datos/${id}.md`,
     }));
     const datos = archivoLlms(todos);
-    for (const { ruta } of Object.values(CATALOGO)) expect(datos).toContain(`\`GET ${ruta}\``);
+    for (const entrada of Object.values(CATALOGO)) {
+      for (const ruta of rutasDe(entrada)) expect(datos).toContain(`\`GET ${ruta}\``);
+    }
   });
 
   // Un dataset nuevo sale de su manifiesto: aparece sin tocar este generador ni el catálogo.

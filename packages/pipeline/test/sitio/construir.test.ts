@@ -865,6 +865,16 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       expect(llms, def.id).toContain(`: \`${def.id}\`, as_of ${as_of}, `);
     }
     expect(llms).toContain(`(${URL_DOCS}/datos/inegi-estados.md): \`inegi.estados\``);
+    // En las series, el último dato es el fin de su cobertura; los demás no lo llevan.
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    for (const [id, hasta] of [
+      ["tipo-cambio.fix", "2026-10-16"],
+      ["udis", "2026-01-01"],
+    ] as const) {
+      expect(interna.datasets[id]?.cobertura?.hasta).toBe(hasta);
+      expect(llms).toMatch(new RegExp(`: \`${id}\`, as_of [0-9-]+, último dato ${hasta}, \`GET `));
+    }
+    expect(llms.match(/, último dato /g)).toHaveLength(2);
     const completo = await readFile(join(salida, "llms-full.txt"), "utf8");
     expect(completo.startsWith("# docs/api/README.md\n\n# API v1\n")).toBe(true);
     expect(completo).toContain("\n# docs/api/problemas.md\n\n");
