@@ -293,7 +293,6 @@ describe("consultar", () => {
     it("si el paquete de respaldo no tiene el dato, dice que no hubo conexión y lo que dijo el paquete", async () => {
       for (const [tipo, status] of [
         ["dato-no-disponible", 404],
-        ["no-encontrado", 404],
         ["calendario-incompleto", 422],
       ] as const) {
         const error = await fallar(
@@ -305,10 +304,15 @@ describe("consultar", () => {
       }
     });
 
-    it("un argumento inválido sigue siéndolo, y una API que respondió con error no es sin-conexion", async () => {
+    it("un argumento inválido o un dato que no existe siguen siéndolo, y una API que respondió con error no es sin-conexion", async () => {
       const red = sinRespuesta("No se pudo conectar con la API.");
       expect((await fallar(delPaquete("parametro-invalido", 400, red))).message).toBe(
         "[parametro-invalido] Detalle del paquete.",
+      );
+      // no-encontrado es definitivo (un día sin publicación, un banco que no existe): la API diría
+      // lo mismo, así que no se cambia por sin-conexion.
+      expect((await fallar(delPaquete("no-encontrado", 404, red))).message).toBe(
+        "[no-encontrado] Detalle del paquete.",
       );
       const caida = new MexicoApiError(
         { type: "about:blank", title: "Respuesta inesperada de la API", status: 503, detail: "x" },

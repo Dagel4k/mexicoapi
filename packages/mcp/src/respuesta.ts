@@ -333,10 +333,10 @@ const sinConexion = (error: unknown): MexicoApiError | undefined =>
 
 /**
  * Los problemas del paquete que la API podría no tener: un dato más reciente que los del paquete o
- * un calendario que la API ya cubre. Un argumento inválido lo es también en la API.
+ * un calendario que la API ya cubre. Un argumento inválido y un dato que no existe (un día sin
+ * publicación, un banco que no está) son respuestas definitivas: la API diría lo mismo.
  */
 const LA_API_PODRIA_TENERLO: ReadonlySet<string> = new Set([
-  "no-encontrado",
   "dato-no-disponible",
   "calendario-incompleto",
 ]);

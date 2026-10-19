@@ -208,6 +208,16 @@ describe("tipo_de_cambio_fix con la API", () => {
       /^\[sin-conexion\] No se pudo conectar con la API\. Con los datos del paquete: El FIX del 2099-01-05 no está en los datos del paquete; /,
     );
     esError(
+      await llamar("sumar_dias_habiles", { autoridad: "lft", desde: "2101-01-04", dias: 5 }),
+      /^\[sin-conexion\] No se pudo conectar con la API\. Con los datos del paquete: /,
+    );
+    // Un no-encontrado es definitivo aunque la API no responda: un sábado no hay publicación.
+    esError(
+      await llamar("tipo_de_cambio_fix", { publicado: "2026-10-10" }),
+      /^\[no-encontrado\] No hubo publicación del FIX en el DOF el 2026-10-10\./,
+    );
+    // Una UMA de un año que todavía no se publica es dato-no-disponible: la API podría tenerla.
+    esError(
       await llamar("constantes", { tipo: "uma", anio: 2099 }),
       /^\[sin-conexion\] No se pudo conectar con la API\. Con los datos del paquete: /,
     );
