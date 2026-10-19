@@ -8,10 +8,10 @@ import type { TipoProblema } from "./problemas.js";
 export interface ReglaParametro {
   /**
    * Expresión anclada (`^…$`) y sin banderas que debe cumplir el valor completo. Es el `pattern`
-   * del parámetro en el OpenAPI.
+   * del parámetro en el OpenAPI, así que dice todo lo que pueda (un máximo, un valor excluido).
    */
   readonly patron: RegExp;
-  /** Lo que el patrón no puede decir (un máximo, una fecha que existe); se prueba después. */
+  /** Lo que el patrón no puede decir (una fecha que existe); se prueba después. */
   readonly cumple?: (valor: string) => boolean;
   /** El `detail` del 400 cuando el valor no la cumple. */
   readonly detalle: string;
@@ -62,9 +62,9 @@ export const REGLAS_RUTA = Object.freeze({
   codigo: Object.freeze({ patron: /^\d{3}$/, detalle: "El código de banco debe tener 3 dígitos." }),
   clabe: Object.freeze({ patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." }),
   anio: Object.freeze({
-    patron: /^\d{4}$/,
-    // No hay año 0000: las fechas van de 0001 a 9999.
-    cumple: (valor: string) => valor !== "0000",
+    // No hay año 0000: las fechas van de 0001 a 9999. Sin lookahead, que no todos los motores de
+    // expresiones de los clientes generados tienen.
+    patron: /^(?:000[1-9]|00[1-9]\d|0[1-9]\d{2}|[1-9]\d{3})$/,
     detalle: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
   }),
   periodo: enumeracion(["mensual", "anual"], "El periodo de la tarifa debe ser mensual o anual."),

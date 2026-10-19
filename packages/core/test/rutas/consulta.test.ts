@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DIAS_MAX } from "../../src/dias-habiles/sumar.js";
 import { CONSULTAS, revisarConsulta } from "../../src/rutas/consulta.js";
 import { cumpleRegla, type ReglaConsulta } from "../../src/rutas/parametros.js";
 
@@ -181,6 +182,30 @@ describe("CONSULTAS", () => {
     }
     expect(acepta("/v1/dias-inhabiles", "anio", "0000")).toBe(false);
     expect(acepta("/v1/dias-habiles", "permitir_incompleto", "1")).toBe(false);
+  });
+
+  // El patrón es el `pattern` del OpenAPI: debe decir todo lo que la API revisa. Solo una fecha
+  // necesita una comprobación aparte (que el día exista), y el OpenAPI lo dice con format: date.
+  it("el patrón de dias es la regla completa: de 1 a DIAS_MAX, sin ceros a la izquierda", () => {
+    const { dias } = CONSULTAS["/v1/dias-habiles"] as Readonly<Record<string, ReglaConsulta>>;
+    expect(dias?.cumple).toBeUndefined();
+    expect(dias?.patron.source).not.toMatch(/\(\?<?[=!]/);
+    for (let n = 0; n <= 10_000; n++) {
+      expect(dias?.patron.test(String(n)), String(n)).toBe(n >= 1 && n <= DIAS_MAX);
+      expect(dias?.patron.test(`0${n}`), `0${n}`).toBe(false);
+    }
+    for (const v of ["", "+1", "1.0", "1e3", " 1", "36500"]) {
+      expect(dias?.patron.test(v), JSON.stringify(v)).toBe(false);
+    }
+  });
+
+  it("solo las fechas necesitan una comprobación además del patrón", () => {
+    for (const [ruta, reglas] of Object.entries(CONSULTAS)) {
+      for (const [nombre, regla] of Object.entries(reglas)) {
+        const esFecha = regla.patron.source === /^\d{4}-\d{2}-\d{2}$/.source;
+        expect(regla.cumple !== undefined, `${ruta} ${nombre}`).toBe(esFecha);
+      }
+    }
   });
 
   it("las reglas de enumeración traen sus valores y están congeladas", () => {
