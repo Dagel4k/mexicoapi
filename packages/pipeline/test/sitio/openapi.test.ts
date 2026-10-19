@@ -39,8 +39,9 @@ const operaciones: Array<{ ruta: string; metodo: string; op: Obj }> = Object.ent
 const leerJson = async (url: URL) => JSON.parse(await readFile(url, "utf8"));
 
 /** Los patrones de `anio` (0001 a 9999) y `dias` (1 a 3650), como los publica el documento. */
-const ANIO = "^(?:000[1-9]|00[1-9]\\d|0[1-9]\\d{2}|[1-9]\\d{3})$";
-const DIAS = "^(?:[1-9]\\d{0,2}|[12]\\d{3}|3[0-5]\\d{2}|36[0-4]\\d|3650)$";
+const ANIO = "^(?:000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})$";
+const DIAS = "^(?:[1-9][0-9]{0,2}|[12][0-9]{3}|3[0-5][0-9]{2}|36[0-4][0-9]|3650)$";
+const FECHA = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$";
 
 /** Esquema de la respuesta 200 en JSON de la operación de `ruta`. */
 function esquema200(ruta: string): Obj {
@@ -336,10 +337,10 @@ describe("documento OpenAPI", () => {
 
   it("los parámetros de ruta son obligatorios y tienen el patrón exacto", () => {
     const patrones: Record<string, string> = {
-      cve_ent: "^\\d{2}$",
-      cvegeo: "^\\d{5}$",
-      codigo: "^\\d{3}$",
-      clabe: "^\\d{18}$",
+      cve_ent: "^[0-9]{2}$",
+      cvegeo: "^[0-9]{5}$",
+      codigo: "^[0-9]{3}$",
+      clabe: "^[0-9]{18}$",
       anio: ANIO,
     };
     let vistos = 0;
@@ -412,7 +413,7 @@ describe("documento OpenAPI", () => {
     expect(inhabiles.autoridad.required).toBe(true);
     expect(inhabiles.autoridad.schema.enum).toEqual(["lft", "cnbv", "sat"]);
     expect(Object.keys(inhabiles).sort()).toEqual(["anio", "autoridad"]);
-    const fecha = { type: "string", format: "date", pattern: "^\\d{4}-\\d{2}-\\d{2}$" };
+    const fecha = { type: "string", format: "date", pattern: FECHA };
     expect(habiles.desde.schema).toEqual(fecha);
     // Se pide exactamente uno de los dos: ninguno es obligatorio por sí solo.
     const fix = params("/v1/tipo-cambio/fix");
@@ -1027,9 +1028,32 @@ describe("parámetros y reglas del núcleo", () => {
     for (const { ruta, op } of operaciones) {
       for (const p of delDocumento(op, "query")) {
         const regla = consultas[ruta]?.[p.name] as ReglaConsulta;
-        const esFecha = regla.patron.source === /^\d{4}-\d{2}-\d{2}$/.source;
+        const esFecha = regla.patron.source === FECHA;
         expect(p.schema.format === "date", `${ruta} ${p.name}`).toBe(esFecha);
       }
     }
+  });
+
+  // En Python o .NET, \d acepta cualquier dígito Unicode: un validador generado de este documento
+  // aceptaría "２０２６", que la API rechaza. Los patrones publicados solo usan [0-9] y ASCII.
+  it("los patrones de los parámetros solo aceptan dígitos ASCII", () => {
+    const ajv = new Ajv2020({ strict: false });
+    let vistos = 0;
+    for (const { ruta, op } of operaciones) {
+      for (const p of (op.parameters ?? []) as Obj[]) {
+        const { pattern } = p.schema as { pattern?: string };
+        if (pattern === undefined) continue;
+        vistos += 1;
+        const contexto = `${ruta} ${p.name}`;
+        expect(pattern, contexto).not.toMatch(/\\[dDwWsSb]/);
+        expect(pattern, contexto).toMatch(/^[\x20-\x7e]+$/);
+        const ancho = String(p.example).replace(/[0-9]/g, (d) =>
+          String.fromCodePoint(0xff10 + Number(d)),
+        );
+        expect(ancho, contexto).not.toBe(p.example);
+        expect(ajv.compile({ type: "string", pattern })(ancho), `${contexto} ${ancho}`).toBe(false);
+      }
+    }
+    expect(vistos).toBeGreaterThan(10);
   });
 });

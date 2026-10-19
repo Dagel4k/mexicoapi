@@ -49,22 +49,29 @@ export const enumeracion = (valores: readonly string[], detalle: string): ReglaP
 export const enLista = (partes: readonly string[]): string =>
   partes.length < 2 ? partes.join("") : `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}`;
 
-/** Las reglas de los valores de la ruta, por nombre del parámetro (`/v1/estados/{cve_ent}`). */
+/**
+ * Las reglas de los valores de la ruta, por nombre del parámetro (`/v1/estados/{cve_ent}`). Los
+ * dígitos van como `[0-9]` y no `\d`: en Python o .NET, un validador generado del OpenAPI lee `\d`
+ * como cualquier dígito Unicode.
+ */
 export const REGLAS_RUTA = Object.freeze({
   cve_ent: Object.freeze({
-    patron: /^\d{2}$/,
+    patron: /^[0-9]{2}$/,
     detalle: "La clave de estado (cve_ent) debe tener 2 dígitos.",
   }),
   cvegeo: Object.freeze({
-    patron: /^\d{5}$/,
+    patron: /^[0-9]{5}$/,
     detalle: "La clave de municipio (cvegeo) debe tener 5 dígitos.",
   }),
-  codigo: Object.freeze({ patron: /^\d{3}$/, detalle: "El código de banco debe tener 3 dígitos." }),
-  clabe: Object.freeze({ patron: /^\d{18}$/, detalle: "La CLABE debe tener 18 dígitos." }),
+  codigo: Object.freeze({
+    patron: /^[0-9]{3}$/,
+    detalle: "El código de banco debe tener 3 dígitos.",
+  }),
+  clabe: Object.freeze({ patron: /^[0-9]{18}$/, detalle: "La CLABE debe tener 18 dígitos." }),
   anio: Object.freeze({
     // No hay año 0000: las fechas van de 0001 a 9999. Sin lookahead, que no todos los motores de
     // expresiones de los clientes generados tienen.
-    patron: /^(?:000[1-9]|00[1-9]\d|0[1-9]\d{2}|[1-9]\d{3})$/,
+    patron: /^(?:000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})$/,
     detalle: "El año (anio) debe tener 4 dígitos, de 0001 a 9999.",
   }),
   periodo: enumeracion(["mensual", "anual"], "El periodo de la tarifa debe ser mensual o anual."),
