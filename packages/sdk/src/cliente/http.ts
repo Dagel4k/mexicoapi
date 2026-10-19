@@ -2,15 +2,9 @@
 // seguir redirecciones y con un tope para el cuerpo, reintentos con espera exponencial dentro de
 // un tope de espera total, y caché en memoria con revalidación por ETag y stale-if-error.
 import type { Cache, Guardado } from "./cache.js";
-import { congelar, esObjeto, type Objeto } from "./comun.js";
+import { congelar, esObjeto, type Objeto, type RespuestaPrevia } from "./comun.js";
 import { MexicoApiError, type Problema } from "./error.js";
-import type {
-  FetchCompatible,
-  InitFetch,
-  RespuestaFetch,
-  RespuestaSinMeta,
-  SenalAborto,
-} from "./tipos.js";
+import type { FetchCompatible, InitFetch, RespuestaFetch, SenalAborto } from "./tipos.js";
 
 /** Lo que el cliente usa del entorno, sin depender de los tipos de DOM ni de Node. */
 interface Entorno {
@@ -84,7 +78,7 @@ export const esDefinitivo = (error: MexicoApiError): boolean =>
  * Pide `p` a la API (o lo toma de la caché) y lo entrega congelado; lanza MexicoApiError. Si la
  * API no responde y hay una respuesta guardada dentro de su stale-if-error, entrega esa.
  */
-export async function pedirApi(c: ConfigHttp, p: Pedido): Promise<RespuestaSinMeta<unknown>> {
+export async function pedirApi(c: ConfigHttp, p: Pedido): Promise<RespuestaPrevia> {
   const fetch = c.fetch ?? entorno.fetch;
   if (fetch === undefined) {
     throw new TypeError("No hay fetch en este entorno; pásalo en crearCliente({ fetch }).");
@@ -113,7 +107,7 @@ async function deLaApi(
   url: string,
   guardado: Guardado | undefined,
   p: Pedido,
-): Promise<RespuestaSinMeta<unknown>> {
+): Promise<RespuestaPrevia> {
   const encabezados: Record<string, string> = { Accept: "application/json" };
   if (guardado?.etag != null) encabezados["If-None-Match"] = guardado.etag;
 
@@ -328,7 +322,7 @@ function retryAfter(valor: string | null): number | undefined {
 function guardar(
   c: ConfigHttp,
   url: string,
-  respuesta: RespuestaSinMeta<unknown>,
+  respuesta: RespuestaPrevia,
   r: Leida,
   etag: string | null,
 ): void {
@@ -360,7 +354,7 @@ function duracion(ms: number): string {
 }
 
 /** La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo. */
-function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaSinMeta<unknown> {
+function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaPrevia {
   const ahora = Date.now();
   return congelar({
     ...guardado.respuesta,

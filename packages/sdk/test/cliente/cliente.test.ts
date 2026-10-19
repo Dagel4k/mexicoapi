@@ -368,6 +368,9 @@ describe("consulta a la API", () => {
     const r = await conFetch(fetch).status();
     expect(r).toEqual({ data: [estado], origen: "api", advertencias: [], avisos: [] });
     expect("meta" in r).toBe(false);
+    // avisos es obligatorio también en una respuesta sin meta.
+    expectTypeOf(r.avisos).toEqualTypeOf<readonly mexicoapi.Aviso[]>();
+    expectTypeOf<RespuestaSinMeta<unknown>["avisos"]>().toEqualTypeOf<readonly mexicoapi.Aviso[]>();
   });
 
   it("lanza MexicoApiError con el problem+json y las claves públicas", async () => {

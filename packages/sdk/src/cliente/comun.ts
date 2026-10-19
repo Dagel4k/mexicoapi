@@ -1,4 +1,18 @@
+import type { Origen } from "./tipos.js";
+
 export type Objeto = Record<string, unknown>;
+
+/**
+ * Una respuesta antes de completarla (interna): la arman la consulta a la API, la caché y el
+ * paquete. `ejecutar` (cliente.ts) le agrega las advertencias del cálculo y los `avisos`, y lo que
+ * entrega es una `RespuestaSinMeta` o una `Respuesta`.
+ */
+export interface RespuestaPrevia {
+  readonly data: unknown;
+  readonly meta?: unknown;
+  readonly origen: Origen;
+  readonly advertencias: readonly string[];
+}
 
 /** Comienzo de la advertencia de una respuesta del paquete porque la API falló (la CLI la busca). */
 export const AVISO_RESPALDO = "Respuesta de los datos del paquete porque la API falló";
