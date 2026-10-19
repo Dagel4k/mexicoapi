@@ -19,7 +19,7 @@ import {
   esFechaIsoValida,
   type TipoPlazo,
 } from "../index.js";
-import { AYUDA, ayudaDe } from "./ayuda.js";
+import { AYUDA, ayudaDe, recordatorioDeAyuda } from "./ayuda.js";
 import {
   bancoTexto,
   conNombresCli,
@@ -149,6 +149,24 @@ function analizar(argv: readonly string[]): { posiciones: string[]; opciones: Op
     return { posiciones: positionals, opciones: values };
   } catch (error) {
     throw new ErrorUso((error as Error).message.replace(/\. If the argument.*$/s, "."));
+  }
+}
+
+/**
+ * El comando y el subcomando pedidos, aunque una opción esté mal: así un error de uso remite a la
+ * ayuda de ese comando.
+ */
+function comandoPedido(argv: readonly string[]): [string | undefined, string | undefined] {
+  try {
+    const { positionals } = parseArgs({
+      args: [...argv],
+      options: OPCIONES,
+      allowPositionals: true,
+      strict: false,
+    });
+    return [positionals[0], positionals[1]];
+  } catch {
+    return [undefined, undefined];
   }
 }
 
@@ -501,7 +519,7 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
     }
     if (error instanceof ErrorUso) {
       imprimirError(e, error.message, enJson);
-      if (!enJson) e.errores("Usa mexicoapi --help para ver los comandos.\n");
+      if (!enJson) e.errores(`${recordatorioDeAyuda(...comandoPedido(argv))}\n`);
       return 2;
     }
     falla(e, error, depurar, enJson);

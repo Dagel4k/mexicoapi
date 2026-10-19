@@ -31,7 +31,23 @@ const COMANDOS = [
   "isr",
   "sepomex",
 ];
+const SUBCOMANDOS = ["sync", "importar", "cp", "resumen"];
 const json = (c: Corrida): unknown => JSON.parse(c.salida);
+
+/**
+ * El --help que nombra un error de uso: el del comando (o del subcomando de sepomex) si existe y,
+ * si no, el general.
+ */
+function ayudaDeUso(argv: readonly string[]): string {
+  const [comando, sub] = argv.filter((a) => !a.startsWith("-"));
+  if (comando === undefined || !COMANDOS.includes(comando)) {
+    return "Usa mexicoapi --help para ver los comandos.";
+  }
+  if (comando === "sepomex" && sub !== undefined && SUBCOMANDOS.includes(sub)) {
+    return `Usa mexicoapi sepomex ${sub} --help para ver su uso.`;
+  }
+  return `Usa mexicoapi ${comando} --help para ver su uso.`;
+}
 const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
 
 /**
@@ -186,8 +202,20 @@ export function probarCli(correr: Correr, version: string): void {
       expect(c.codigo, argv.join(" ")).toBe(2);
       expect(c.salida, argv.join(" ")).toBe("");
       expect(c.errores, argv.join(" ")).toMatch(mensaje);
-      expect(c.errores, argv.join(" ")).toContain("mexicoapi --help");
+      // Antes todos remitían a mexicoapi --help; ahora, a la ayuda del comando.
+      expect(c.errores, argv.join(" ")).toContain(`\n${ayudaDeUso(argv)}\n`);
     }
+  });
+
+  it("un error de uso remite a la ayuda del comando, o a la general si no hay comando", async () => {
+    const dias = await correr(["dias-habiles", "--desde", "ayer", "--dias", "5"]);
+    expect(dias.errores).toMatch(/Usa mexicoapi dias-habiles --help para ver su uso\.\n$/);
+    const cp = await correr(["sepomex", "cp", "8"]);
+    expect(cp.errores).toMatch(/Usa mexicoapi sepomex cp --help para ver su uso\.\n$/);
+    const opcion = await correr(["banco", "--no-existe"]);
+    expect(opcion.errores).toMatch(/Usa mexicoapi banco --help para ver su uso\.\n$/);
+    const nada = await correr(["inventado"]);
+    expect(nada.errores).toMatch(/Usa mexicoapi --help para ver los comandos\.\n$/);
   });
 
   it("una CLABE válida: banco del paquete y código 0", async () => {
