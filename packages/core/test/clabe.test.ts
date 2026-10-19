@@ -198,6 +198,17 @@ describe("validarClabe", () => {
     });
   });
 
+  // Como en la 0.1.0: un catálogo null (o undefined) es no pasar catálogo, no un catálogo vacío.
+  it("con bancos: null no revisa el banco y no rechaza la CLABE", () => {
+    for (const catalogos of [{ bancos: null }, { bancos: undefined }, {}, undefined]) {
+      const r = validarClabe("002180012345678906", catalogos as Parameters<typeof validarClabe>[1]);
+      expect(r.valido, JSON.stringify(catalogos)).toBe(true);
+      expect(r.errores).toEqual([]);
+      expect(r.banco_revisado).toBe(false);
+      expect(r.nota).toBe(NOTAS_VALIDACION.clabe_sin_banco);
+    }
+  });
+
   it("la nota de la CLABE habla de la cuenta, no del SAT, RENAPO ni el IMSS", () => {
     for (const nota of [NOTAS_VALIDACION.clabe, NOTAS_VALIDACION.clabe_sin_banco]) {
       expect(nota).toContain("no confirma que la cuenta exista");
