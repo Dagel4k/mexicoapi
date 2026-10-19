@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { municipios } from "../../src/datos/index.js";
+import { codigoAviso } from "../../src/index.js";
 import { armarCatalogo } from "../../src/sepomex/catalogo.js";
 import { SepomexError } from "../../src/sepomex/error.js";
 import { leerTxt } from "../../src/sepomex/txt.js";
@@ -86,9 +87,12 @@ describe("armarCatalogo", () => {
     expect(c.resumen.advertencias).toEqual([
       "2 códigos postales tienen un municipio que no está en el catálogo de INEGI del paquete (van con cvegeo null y el nombre de SEPOMEX): 80998 (25099), 80999 (25099).",
     ]);
-    expect(
-      armarCatalogo(leerTxt(txt(lineasTxt([nuevo("80999")]))).filas).resumen.advertencias[0],
-    ).toMatch(/^1 código postal tiene un municipio que no está/);
+    const uno = armarCatalogo(leerTxt(txt(lineasTxt([nuevo("80999")]))).filas).resumen
+      .advertencias[0] as string;
+    expect(uno).toMatch(/^1 código postal tiene un municipio que no está/);
+    // Con uno o con varios, el mismo código.
+    expect(codigoAviso(uno)).toBe("municipio-sin-inegi");
+    expect(codigoAviso(c.resumen.advertencias[0] as string)).toBe("municipio-sin-inegi");
   });
 
   it("lista solo los primeros 10 que no cruzan con INEGI", () => {
@@ -108,6 +112,10 @@ describe("armarCatalogo", () => {
     expect(c.resumen.advertencias).toEqual([
       "1 código postal aparece en más de un municipio (se usa el de su primera fila): 80010 (25006, 25007).",
     ]);
+    expect(codigoAviso(c.resumen.advertencias[0] as string)).toBe("cp-varios-municipios");
+    const dos = catalogo([otro, FILAS_A_MANO[0].replace("|006|0001|", "|007|0098|")]);
+    expect(dos.resumen.advertencias[0]).toMatch(/^2 códigos postales aparecen en más de un/);
+    expect(codigoAviso(dos.resumen.advertencias[0] as string)).toBe("cp-varios-municipios");
   });
 
   it("falla con una entidad que no existe", () => {

@@ -1,5 +1,6 @@
 // Tipos públicos de mexicoapi/sepomex. Solo hay tipos y ninguno es de Node: quien usa el paquete
 // no necesita @types/node para compilar.
+import type { Aviso } from "@mexicoapi/core";
 
 /** Lo mínimo de una señal de cancelación, para un proyecto sin los tipos del DOM ni de Node. */
 export interface SenalAborto {
@@ -93,7 +94,13 @@ export interface ResumenSepomex {
   readonly municipios: number;
   /** Códigos postales cuyo municipio no está en el catálogo de INEGI del paquete. */
   readonly sin_municipio_inegi: number;
+  /**
+   * Lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI,
+   * que aparecen en más de un municipio o un aviso de uso distinto del conocido.
+   */
   readonly advertencias: readonly string[];
+  /** Las mismas advertencias, en el mismo orden, cada una con su código estable. */
+  readonly avisos: readonly Aviso[];
   /** SHA-256 del TXT de Correos de México. */
   readonly sha256: string;
   /** Ruta del JSON con el catálogo. */
