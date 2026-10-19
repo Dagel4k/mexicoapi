@@ -200,3 +200,21 @@ describe("alerta de coberturas en frescura.yml", () => {
     }
   });
 });
+
+describe("estado-kv de datos.yml", () => {
+  // El token de despliegue puede publicar el Worker: estado-kv solo debe recibir el de KV.
+  it("usa solo CLOUDFLARE_KV_TOKEN, sin el respaldo del token de despliegue", async () => {
+    const datos = await workflow("datos.yml");
+    const job = datos.jobs["estado-kv"] as Job;
+    expect(JSON.stringify(job)).not.toContain("CLOUDFLARE_API_TOKEN ");
+    expect(JSON.stringify(job)).not.toContain("secrets.CLOUDFLARE_API_TOKEN");
+    expect(paso(datos, "estado-kv", "Escribir estado en KV").env?.CLOUDFLARE_API_TOKEN).toBe(
+      expresion("secrets.CLOUDFLARE_KV_TOKEN"),
+    );
+    expect(paso(datos, "estado-kv", "Comprobar secretos de Cloudflare").env).toEqual({
+      TIENE_CF: expresion(
+        "secrets.CLOUDFLARE_KV_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != ''",
+      ),
+    });
+  });
+});
