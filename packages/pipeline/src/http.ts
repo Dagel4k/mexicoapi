@@ -139,7 +139,6 @@ function destinoDe(res: Response, url: string): string {
   return new URL(location, url).href;
 }
 
-/** Solo https y un host de la lista; `pedida` es la URL original, para el mensaje. */
 /** La URL sin usuario ni contraseña, para los mensajes de error. */
 function sinCredenciales(url: string): string {
   try {
@@ -152,6 +151,10 @@ function sinCredenciales(url: string): string {
   }
 }
 
+/**
+ * Solo https, sin usuario ni contraseña y a un host de la lista; `pedida` es la URL original,
+ * para el mensaje.
+ */
 function revisarDestino(actual: string, hosts: readonly string[], pedida: string): URL {
   const destino = new URL(actual);
   if (destino.username !== "" || destino.password !== "") {
