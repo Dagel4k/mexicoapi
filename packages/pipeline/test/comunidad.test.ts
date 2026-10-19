@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { metaLft } from "@mexicoapi/core/rutas";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { CURADOS } from "../src/curado/registro.js";
@@ -26,8 +27,11 @@ describe("formulario de error en los datos", () => {
   const form = formulario("error-en-datos.yml");
   const campo = (id: string) => form.body.find((b) => b.id === id);
 
-  it("lista todos los datasets del registro y la opción de salida", () => {
-    const ids = [...DATASETS.keys(), ...CURADOS.map((d) => d.id)].sort();
+  // La LFT no está en data/, pero sus días pueden estar mal calculados: va con el id que dan sus
+  // respuestas.
+  it("lista todos los datasets del registro, el calendario de la LFT y la opción de salida", () => {
+    const lft = metaLft("dias-inhabiles").dataset;
+    const ids = [...DATASETS.keys(), ...CURADOS.map((d) => d.id), lft].sort();
     const opciones = (campo("dataset")?.attributes.options ?? []) as string[];
     expect(opciones.filter((o) => o !== OTRO).sort()).toEqual(ids);
     expect(opciones).toContain(OTRO);
