@@ -58,7 +58,9 @@ describe("estilo.css", () => {
   // Debajo de 640 px una tabla de seis columnas no cabe: cada renglón es una tarjeta y cada celda
   // lleva la etiqueta de su columna (data-etiqueta), sin estilos en línea.
   it("debajo de 40rem las tablas .tarjetas se ven como tarjetas con la etiqueta de cada celda", () => {
-    const inicio = ESTILO.indexOf("@media (width < 40rem) {");
+    // max-width y no la sintaxis de rango, que Safari solo entiende desde la 16.4.
+    expect(ESTILO).not.toMatch(/@media \([^)]*[<>]/);
+    const inicio = ESTILO.indexOf("@media (max-width: 39.99rem) {");
     expect(inicio).toBeGreaterThan(0);
     const bloque = ESTILO.slice(inicio, ESTILO.indexOf("\n}\n", inicio));
     expect(bloque).toMatch(/\.tarjetas thead \{[^}]*display: none;/);
