@@ -4,8 +4,8 @@ import { URL_API } from "@mexicoapi/core/problemas";
 const OPCIONES_GLOBALES = `Opciones:
   --json                 imprime el resultado completo como JSON (los errores, por stderr)
   --depurar              muestra el detalle técnico de un error
-  --base <url>           origen de la API para dias-habiles, uma, salario-minimo e isr
-                         (por omisión, la API pública)
+  --base <url>           origen de la API para dias-habiles, fix, udi, uma, salario-minimo
+                         e isr (por omisión, la API pública)
   -h, --help             muestra esta ayuda
   -v, --version          muestra la versión`;
 
@@ -21,6 +21,8 @@ Comandos:
   dias-habiles           suma días hábiles a una fecha (LFT, CNBV o SAT)
   municipio <valor>      busca un municipio por clave (cvegeo) o por nombre
   banco <codigo>         consulta un banco por los 3 dígitos de la CLABE
+  fix                    tipo de cambio FIX: el más reciente, o con --operacion o --publicado
+  udi <fecha>            valor de la UDI de un día
   uma <anio>             UMA de un año (o la vigente en una fecha con --fecha)
   salario-minimo <anio>  salario mínimo de un año, por zona
   isr <periodo> <anio>   tarifa de ISR mensual o anual de un año
@@ -28,7 +30,7 @@ Comandos:
 
 ${OPCIONES_GLOBALES}
 
-dias-habiles, uma, salario-minimo e isr consultan primero la API pública
+dias-habiles, fix, udi, uma, salario-minimo e isr consultan primero la API pública
 (${URL_API}), o la de --base <url> o la variable MEXICOAPI_BASE, y si
 no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 (o true,
 yes, si, on) todo sale del paquete, sin red (--base gana a esa variable); con 0, false, no, off
@@ -107,6 +109,31 @@ Opciones:
 ${BASE}
 
 Ejemplo: mexicoapi uma 2026`,
+  fix: `Uso: mexicoapi fix [--operacion AAAA-MM-DD | --publicado AAAA-MM-DD] [--json]
+
+El tipo de cambio FIX (pesos por dólar) que publica el Banco de México en el DOF. Con
+--operacion, el que aplica a un pago o una operación de ese día según el CFF, art. 20 (el
+publicado el día anterior o, si ese día no hubo publicación, el último antes); con --publicado,
+el que se publicó ese día; sin ninguna, la publicación más reciente. Las fechas son días de la
+Ciudad de México. Sale con 1 si no hay ese dato.
+
+Opciones:
+  --operacion AAAA-MM-DD   el FIX que aplica a una operación de ese día
+  --publicado AAAA-MM-DD   el FIX publicado en el DOF ese día
+${BASE}
+
+Ejemplos:
+  mexicoapi fix
+  mexicoapi fix --operacion 2026-10-13`,
+  udi: `Uso: mexicoapi udi <AAAA-MM-DD> [--json]
+
+El valor de la UDI (unidad de inversión) de un día, en pesos, como lo publica el DOF. Sale con 1
+si ese día no está en los datos.
+
+Opciones:
+${BASE}
+
+Ejemplo: mexicoapi udi 2026-10-01`,
   "salario-minimo": `Uso: mexicoapi salario-minimo <anio> [--json]
 
 El salario mínimo de un año, en pesos diarios, para la zona general y la Zona Libre de la
