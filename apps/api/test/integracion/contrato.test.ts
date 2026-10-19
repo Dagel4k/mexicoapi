@@ -26,6 +26,7 @@ interface Operacion {
 }
 
 interface Documento {
+  info: { description: string };
   paths: Record<string, Record<string, Operacion>>;
   [clave: string]: unknown;
 }
@@ -80,9 +81,12 @@ function plantilla(ruta: string): RegExp {
   return new RegExp(`^${partes.join("[^/]+")}$`);
 }
 
-/** La única operación del documento cuya plantilla coincide con la ruta pedida. */
+/**
+ * La única operación del documento cuya plantilla coincide con la ruta pedida. Sin las `/` del
+ * final: con ellas la respuesta es la 308 que declara la operación de la ruta sin ellas.
+ */
 function operacionDe(ruta: string): OperacionDoc {
-  const camino = new URL(ruta, "http://local").pathname;
+  const camino = new URL(ruta, "http://local").pathname.replace(/(?<=.)\/+$/, "");
   const candidatas = OPERACIONES.filter((o) => plantilla(o.ruta).test(camino));
   if (candidatas.length !== 1) {
     throw new Error(`${camino} coincide con ${candidatas.length} operaciones del documento.`);
@@ -187,6 +191,8 @@ const CASOS: Caso[] = [
   { ruta: `/v1/clabe/${conDigito("99999900000000000")}`, estado: 200 },
   { ruta: "/v1/clabe/12345", estado: 400 },
   { ruta: "/v1/clabe/00201007777777777A", estado: 400 },
+  // La ruta se busca sin decodificar: un espacio codificado no la encuentra.
+  { ruta: "/v1/clabe/002%20010077777777771", estado: 404 },
 
   { ruta: "/v1/dias-habiles?autoridad=lft&desde=2026-01-30&dias=1", estado: 200 },
   {
@@ -332,7 +338,7 @@ const CASOS: Caso[] = [
 ];
 
 /** 429 pide el binding de límite y 500 un asset roto; ninguno se provoca en local. */
-const PRACTICABLES = [200, 400, 404, 422];
+const PRACTICABLES = [200, 308, 400, 404, 422];
 
 /**
  * Ejemplos de las operaciones que no se arman con sus parámetros obligatorios: `consultarFix`
@@ -373,6 +379,21 @@ function armarEjemplo(ruta: string, op: Operacion): string {
   return query.length === 0 ? camino : `${camino}?${query.join("&")}`;
 }
 
+/** `ruta` con una `/` al final del camino, antes de la query. */
+function conBarra(ruta: string): string {
+  const { pathname, search } = new URL(ruta, "http://local");
+  return `${pathname}/${search}`;
+}
+
+/**
+ * La misma ruta de cada ejemplo con `/` al final: 308 hacia la ruta sin ella. Se arman aquí y no
+ * en CASOS para que ninguna operación quede sin la suya.
+ */
+const CASOS_308: Caso[] = OPERACIONES.map((o) => ({
+  ruta: conBarra(ejemplo(o.ruta, o.op)),
+  estado: 308,
+}));
+
 /** Pide el caso y valida estado, tipo de medio y cuerpo contra lo que declara el documento. */
 async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void> {
   const o = operacionDe(ruta);
@@ -388,8 +409,12 @@ async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void
       expect(respuesta.headers.get(nombre), `${o.ruta} ${estado} ${nombre}`).not.toBeNull();
     }
   }
+  if (declarada.respuesta.content === undefined) {
+    expect(await respuesta.text(), `${ruta} sin cuerpo`).toBe("");
+    return;
+  }
   const tipo = tipoDeMedio(respuesta);
-  expect(Object.keys(declarada.respuesta.content ?? {})).toContain(tipo);
+  expect(Object.keys(declarada.respuesta.content)).toContain(tipo);
 
   const cuerpo = (await respuesta.json()) as Record<string, unknown>;
   const validar = ajv.getSchema(puntero(...declarada.base, "content", tipo, "schema"));
@@ -404,9 +429,11 @@ async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void
 }
 
 describe("documento OpenAPI del build", () => {
-  it("solo declara GET; el Worker resuelve HEAD y OPTIONS en toda ruta", () => {
+  it("solo declara GET; la descripción general dice que toda ruta acepta HEAD y OPTIONS", () => {
     expect(OPERACIONES.length).toBeGreaterThan(0);
     expect(OPERACIONES.filter((o) => o.metodo !== "get")).toEqual([]);
+    expect(doc.info.description).toContain("Toda ruta acepta también HEAD");
+    expect(doc.info.description).toContain("y OPTIONS, que responde 204 sin cuerpo con");
   });
 
   it("toda operación declara 400, 405, 429 y 500 como problem+json", () => {
@@ -421,7 +448,9 @@ describe("documento OpenAPI del build", () => {
   });
 
   it("cada operación tiene casos para cada estado practicable que declara", () => {
-    const cubiertos = new Set(CASOS.map((c) => `${operacionDe(c.ruta).ruta} ${c.estado}`));
+    const cubiertos = new Set(
+      [...CASOS, ...CASOS_308].map((c) => `${operacionDe(c.ruta).ruta} ${c.estado}`),
+    );
     const faltantes = OPERACIONES.flatMap((o) =>
       Object.keys(o.op.responses)
         .map(Number)
@@ -433,10 +462,12 @@ describe("documento OpenAPI del build", () => {
   });
 
   it("cada caso pide un estado que su operación declara", () => {
-    const sinDeclarar = CASOS.filter((c) => {
-      const o = operacionDe(c.ruta);
-      return o.op.responses[String(c.estado)] === undefined;
-    }).map((c) => `${c.ruta} ${c.estado}`);
+    const sinDeclarar = [...CASOS, ...CASOS_308]
+      .filter((c) => {
+        const o = operacionDe(c.ruta);
+        return o.op.responses[String(c.estado)] === undefined;
+      })
+      .map((c) => `${c.ruta} ${c.estado}`);
     expect(sinDeclarar).toEqual([]);
   });
 
@@ -526,6 +557,14 @@ describe("ETag y 304 según el documento", () => {
 describe("respuestas del Worker contra el documento", () => {
   it.each(CASOS)("GET $ruta → $estado", validarCaso);
 
+  it.each(CASOS_308)("GET $ruta → 308 a la misma ruta sin la / final", async (caso) => {
+    await validarCaso(caso);
+    const respuesta = await pedir(caso.ruta);
+    await respuesta.arrayBuffer();
+    const { pathname, search } = new URL(caso.ruta, "http://local");
+    expect(respuesta.headers.get("Location")).toBe(`${pathname.slice(0, -1)}${search}`);
+  });
+
   it("/v1/status: las series mandan la cobertura opcional que declara EstadoDataset", async () => {
     const respuesta = await pedir("/v1/status");
     const { data } = (await respuesta.json()) as { data: Array<Record<string, unknown>> };
@@ -559,6 +598,32 @@ describe("respuestas del Worker contra el documento", () => {
         }));
       it("POST → 405", () => validarCaso({ ruta, estado: 405, metodo: "POST" }));
       it("DELETE → 405", () => validarCaso({ ruta, estado: 405, metodo: "DELETE" }));
+
+      // Lo que dice la descripción general del documento sobre HEAD y OPTIONS.
+      it("HEAD → lo mismo que GET, sin cuerpo", async () => {
+        const get = await pedir(ruta);
+        await get.arrayBuffer();
+        const head = await pedir(ruta, { method: "HEAD" });
+        expect(head.status).toBe(get.status);
+        expect(await head.text()).toBe("");
+        // El runtime agrega la fecha y cómo manda el cuerpo (su largo o en partes).
+        const propios = (r: Response) =>
+          [...r.headers].filter(
+            ([nombre]) => !["date", "content-length", "transfer-encoding"].includes(nombre),
+          );
+        expect(propios(head)).toEqual(propios(get));
+      });
+      it("OPTIONS → 204 con los encabezados CORS", async () => {
+        const respuesta = await pedir(ruta, { method: "OPTIONS" });
+        expect(respuesta.status).toBe(204);
+        expect(await respuesta.text()).toBe("");
+        expect(Object.fromEntries(respuesta.headers)).toMatchObject({
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, HEAD, OPTIONS",
+          "access-control-allow-headers": "If-None-Match",
+          "access-control-max-age": "86400",
+        });
+      });
     },
   );
 });
