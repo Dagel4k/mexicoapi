@@ -365,21 +365,32 @@ function problemas(): Consulta[] {
         ),
     ],
     ["FIX sin fecha", (api, op) => api.consultar("/v1/tipo-cambio/fix", {} as never, op)],
-    // Los tipos no dejan escribir estas tres; la API y el paquete las rechazan igual.
+    // Los tipos no dejan escribir estas tres; la API y el paquete las rechazan igual. Cambio: con
+    // consultar, porque diasHabiles las rechaza antes con un TypeError (tipoPlazo).
     [
       "SAT sin tipo_plazo",
-      (api, op) => api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 } as never, op),
+      (api, op) =>
+        api.consultar(
+          "/v1/dias-habiles",
+          { autoridad: "sat", desde: "2026-07-17", dias: 3 } as never,
+          op,
+        ),
     ],
     [
       "LFT con tipo_plazo",
       (api, op) =>
-        api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never, op),
+        api.consultar(
+          "/v1/dias-habiles",
+          { autoridad: "lft", tipo_plazo: "general", desde: "2026-07-17", dias: 3 } as never,
+          op,
+        ),
     ],
     [
       "CNBV con tipo_plazo",
       (api, op) =>
-        api.diasHabiles(
-          { autoridad: "cnbv", tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never,
+        api.consultar(
+          "/v1/dias-habiles",
+          { autoridad: "cnbv", tipo_plazo: "general", desde: "2026-07-17", dias: 3 } as never,
           op,
         ),
     ],

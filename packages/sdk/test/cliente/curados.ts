@@ -104,9 +104,27 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
   });
 
   it("pide tipo_plazo con el SAT y lo rechaza con las demás autoridades", async () => {
-    const falta = await problemaDe(
+    // Cambio: diasHabiles lo revisa antes de ir a la red o al paquete y lanza TypeError con el
+    // nombre del método, tipoPlazo; antes daba el MexicoApiError con tipo_plazo.
+    await expect(
       // @ts-expect-error con el SAT el tipo de plazo es obligatorio
       api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 }),
+    ).rejects.toThrow(
+      new TypeError("Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos."),
+    );
+    for (const autoridad of ["lft", "cnbv", undefined] as const) {
+      await expect(
+        // @ts-expect-error el tipo de plazo solo va con el SAT
+        api.diasHabiles({ autoridad, tipoPlazo: "general", desde: "2026-07-17", dias: 3 }),
+      ).rejects.toThrow(new TypeError("tipoPlazo solo se acepta con autoridad=sat."));
+    }
+    const consultar = api.consultar as unknown as (
+      ruta: string,
+      parametros: Record<string, unknown>,
+    ) => Promise<unknown>;
+    // Con consultar, los nombres y el problema de la API.
+    const falta = await problemaDe(
+      consultar("/v1/dias-habiles", { autoridad: "sat", desde: "2026-07-17", dias: 3 }),
       "parametro-faltante",
       400,
     );
@@ -114,19 +132,17 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
       "Con autoridad=sat falta el parámetro tipo_plazo: general o declaraciones_pagos.",
     );
     expect(falta.problema.parametro).toBe("tipo_plazo");
-    for (const autoridad of ["lft", "cnbv"] as const) {
-      const sobra = await problemaDe(
-        // @ts-expect-error el tipo de plazo solo va con el SAT
-        api.diasHabiles({ autoridad, tipoPlazo: "general", desde: "2026-07-17", dias: 3 }),
-        "parametro-invalido",
-        400,
-      );
-      expect(sobra.detail).toBe("El parámetro tipo_plazo solo se acepta con autoridad=sat.");
-    }
-    const consultar = api.consultar as unknown as (
-      ruta: string,
-      parametros: Record<string, unknown>,
-    ) => Promise<unknown>;
+    const sobra = await problemaDe(
+      consultar("/v1/dias-habiles", {
+        autoridad: "cnbv",
+        tipo_plazo: "general",
+        desde: "2026-07-17",
+        dias: 3,
+      }),
+      "parametro-invalido",
+      400,
+    );
+    expect(sobra.detail).toBe("El parámetro tipo_plazo solo se acepta con autoridad=sat.");
     const malo = await problemaDe(
       consultar("/v1/dias-habiles", {
         autoridad: "sat",

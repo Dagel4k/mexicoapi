@@ -3,7 +3,7 @@
 // coberturas y respaldo), listos para sumarDiasHabiles:
 // `sumarDiasHabiles({ calendario: calendario("sat", "general"), ... })`.
 
-import { revisarTipoPlazoCon } from "@mexicoapi/core/combinaciones";
+import { NOMBRES_SDK, revisarTipoPlazoCon } from "@mexicoapi/core/combinaciones";
 import {
   type CalendarioCurado as CalendarioDelNucleo,
   crearCalendarioCurado,
@@ -25,7 +25,6 @@ export interface CalendarioCurado extends CalendarioDelNucleo {
 
 const GENERADOS = { cnbv, sat } as const;
 
-const NOMBRES_SDK = { autoridad: (a: string) => `autoridad=${a}`, tipoPlazo: "tipoPlazo" };
 const memoria = new Map<AutoridadCurada, CalendarioCurado>();
 
 /** Meta de cada calendario: sus publicaciones en el DOF. */
