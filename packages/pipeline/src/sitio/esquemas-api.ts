@@ -84,7 +84,9 @@ export const esquemaResultadoDiasHabiles = z.object({
   resultado: fechaIso.describe("Fecha resultante."),
   inhabiles_saltados: z
     .array(esquemaDiaInhabil)
-    .describe("Días inhábiles saltados, sin los fines de semana."),
+    .describe(
+      "Días inhábiles saltados. Los fines de semana no se listan por serlo; un día publicado que cae en fin de semana sí.",
+    ),
   advertencias: z
     .array(z.string())
     .describe(
@@ -205,7 +207,7 @@ export const esquemaResultadoClabe = z.object({
         })
         .nullable()
         .describe(
-          "Plaza del catálogo; null si no se encontró. La API no tiene catálogo de plazas: hoy siempre null.",
+          "Plaza del catálogo; null si no se encontró. Por ahora es siempre null: el catálogo de plazas de la CLABE está pendiente (v1.1).",
         ),
     })
     .nullable()

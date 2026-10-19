@@ -913,7 +913,16 @@ describe("documento OpenAPI", () => {
       expect(properties.errores.description, codigo).toContain(codigo);
     }
     const plaza = properties.detalle.anyOf[0].properties.plaza;
-    expect(plaza.description).toContain("hoy siempre null");
+    expect(plaza.description).toContain("Por ahora es siempre null");
+    expect(plaza.description).toContain("catálogo de plazas de la CLABE está pendiente (v1.1)");
+  });
+
+  // Un día publicado que cae en sábado (el 12 de diciembre de 2026 de la CNBV) sí se lista.
+  it("inhabiles_saltados dice que los fines de semana no se listan por serlo", () => {
+    const { description } =
+      doc.components.schemas.ResultadoDiasHabiles.properties.inhabiles_saltados;
+    expect(description).toContain("Los fines de semana no se listan por serlo");
+    expect(description).toContain("un día publicado que cae en fin de semana sí");
   });
 
   it("DiaInhabil.tipo solo enumera los tipos que da la API; fin_de_semana es del paquete", () => {
