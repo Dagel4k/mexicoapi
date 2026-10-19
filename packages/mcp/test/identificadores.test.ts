@@ -19,6 +19,7 @@ const PROCEDENCIA = {
   fuentes: [VALIDADORES],
   origen: "paquete",
   advertencias: [],
+  avisos: [],
 };
 
 let llamar: Llamador;

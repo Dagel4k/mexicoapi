@@ -132,6 +132,9 @@ describe("codigo_postal con catálogo", () => {
     expect(c.advertencias).toEqual([
       "El municipio de este código postal no está en el catálogo de INEGI del paquete: el nombre es el de Correos de México y no hay cvegeo.",
     ]);
+    expect(c.avisos).toEqual([
+      { codigo: "municipio-sin-inegi", texto: (c.advertencias as string[])[0] },
+    ]);
     const t = texto(r);
     expect(t).toContain("Código postal 80500: Municipio de Prueba, Sinaloa.");
     expect(t).toContain("- Rancho de Prueba (Ranchería, Rural)");

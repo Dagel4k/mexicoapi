@@ -150,6 +150,7 @@ describe("tipo_de_cambio_fix con la API", () => {
       fuentes: [{ nombre: "Fuente según la API", url: "https://fuente.prueba" }],
       origen: "api",
       advertencias: [],
+      avisos: [],
     });
     expect(texto(r)).toContain("Origen: API de MéxicoAPI");
     expect(urls).toEqual([`${BASE}/v1/tipo-cambio/fix?publicado=2026-10-19`]);

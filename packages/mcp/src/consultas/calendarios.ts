@@ -16,6 +16,7 @@ import {
   anotaciones,
   aUnaLinea,
   consultar,
+  ESQUEMA_AVISOS,
   ESQUEMA_FUENTE_DATO,
   esquemaSalida,
   FECHA,
@@ -57,8 +58,17 @@ const SUMA = {
     resultado: { ...FECHA, description: "Fecha en que vence el plazo." },
     inhabiles_saltados: { type: "array", items: DIA_INHABIL },
     advertencias: { type: "array", items: { type: "string" } },
+    avisos: ESQUEMA_AVISOS,
   },
-  required: ["autoridad", "desde", "dias", "resultado", "inhabiles_saltados", "advertencias"],
+  required: [
+    "autoridad",
+    "desde",
+    "dias",
+    "resultado",
+    "inhabiles_saltados",
+    "advertencias",
+    "avisos",
+  ],
 } as const;
 const revisarSuma = compilarEsquema(SUMA);
 

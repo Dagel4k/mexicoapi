@@ -86,7 +86,28 @@ describe("resultado", () => {
         "Advertencia: Ojo: esto",
       ].join("\n"),
     );
-    expect(r.structuredContent).toEqual({ datos: { n: 1 }, total: 1, ...p });
+    // avisos: las mismas advertencias con su código, después de advertencias.
+    expect(r.structuredContent).toEqual({
+      datos: { n: 1 },
+      total: 1,
+      ...p,
+      avisos: [{ codigo: "otro", texto: "Ojo:\nesto" }],
+    });
+    expect(Object.keys(r.structuredContent ?? {}).slice(-2)).toEqual(["advertencias", "avisos"]);
+  });
+
+  it("da en avisos el código estable de cada advertencia, en el mismo orden", () => {
+    const p = procedencia(
+      { meta: META, origen: "paquete", advertencias: ["Un aviso sin código."] },
+      { sinApi: true },
+    );
+    const r = resultado([], null, p);
+    expect(r.structuredContent?.avisos).toEqual([
+      { codigo: "datos-del-paquete", texto: AVISO_SIN_API },
+      { codigo: "otro", texto: "Un aviso sin código." },
+    ]);
+    // El texto no cambia: las advertencias, una por línea.
+    expect(r.content[0]?.text).not.toContain("datos-del-paquete");
   });
 
   it("dice por qué no hay fecha", () => {
@@ -108,8 +129,19 @@ describe("esquemaSalida", () => {
         { origenes: ["paquete"], extra: { total: { type: "integer" } } },
       ),
     );
-    const bien = { datos: 1, total: 1, ...procedencia({ meta: META, origen: "paquete" }) };
+    const bien = {
+      datos: 1,
+      total: 1,
+      ...procedencia({ meta: META, origen: "paquete" }),
+      avisos: [],
+    };
     expect(validar(bien)).toEqual([]);
+    const conAviso = { ...bien, advertencias: ["x"], avisos: [{ codigo: "otro", texto: "x" }] };
+    expect(validar(conAviso)).toEqual([]);
+    expect(validar({ ...conAviso, avisos: [{ codigo: "nuevo", texto: "x" }] })).toHaveLength(1);
+    expect(validar({ ...conAviso, avisos: [{ codigo: "otro" }] })).toHaveLength(1);
+    const { avisos: _a, ...sinAvisos } = bien;
+    expect(validar(sinAvisos)).toEqual(['falta "avisos"']);
     expect(validar({ ...bien, origen: "api" })).toHaveLength(1);
     expect(validar({ ...bien, as_of: null })).toHaveLength(1);
     expect(validar({ ...bien, otro: 1 })).toHaveLength(1);
@@ -144,8 +176,8 @@ describe("esquemaSalida", () => {
       esquemaSalida({ type: "null" }, { origenes: ["paquete"], asOfNulo: true }),
     );
     const p = procedencia({ meta: META, origen: "paquete" });
-    expect(validar({ datos: null, ...p, as_of: null })).toEqual([]);
-    expect(validar({ datos: null, ...p, as_of: "2026-02-30" })).toHaveLength(1);
+    expect(validar({ datos: null, ...p, avisos: [], as_of: null })).toEqual([]);
+    expect(validar({ datos: null, ...p, avisos: [], as_of: "2026-02-30" })).toHaveLength(1);
   });
 });
 

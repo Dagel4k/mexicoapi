@@ -141,6 +141,7 @@ describe("dias_inhabiles", () => {
       fuentes: [{ nombre: "Fuente del día", url: "https://dia.prueba" }],
       origen: "api",
       advertencias: ["Lista incompleta según la API."],
+      avisos: [{ codigo: "otro", texto: "Lista incompleta según la API." }],
     });
     expect(urls).toEqual([`${BASE}/v1/dias-inhabiles?autoridad=cnbv&anio=2027`]);
   });
@@ -178,6 +179,9 @@ describe("sumar_dias_habiles", () => {
     });
     // Sin API los calendarios no avisan de antigüedad; la LFT sí da su aviso fijo (art. 715).
     expect(c.advertencias).toEqual([AVISO_LFT]);
+    // Con su código, arriba y en datos, como en el cliente de mexicoapi.
+    expect(c.avisos).toEqual([{ codigo: "lft-art-715", texto: AVISO_LFT }]);
+    expect((c.datos as { avisos: unknown }).avisos).toEqual(c.avisos);
     const t = texto(r);
     expect(t).toContain(`Advertencia: ${AVISO_LFT}`);
     expect(t).toContain("2026-12-23 + 3 días hábiles según la LFT: 2026-12-29.");
@@ -300,7 +304,13 @@ describe("sumar_dias_habiles", () => {
         permitir_incompleto: false,
       }),
     );
-    expect(c).toMatchObject({ datos: calculo, origen: "api", advertencias: [] });
+    // El cliente agrega avisos a los datos aunque la API no los traiga.
+    expect(c).toMatchObject({
+      datos: { ...calculo, avisos: [] },
+      origen: "api",
+      advertencias: [],
+      avisos: [],
+    });
     expect(urls).toEqual([
       `${BASE}/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-17&dias=3&permitir_incompleto=false`,
     ]);
