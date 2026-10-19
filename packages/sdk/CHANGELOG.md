@@ -20,7 +20,7 @@ Nuevo:
 - `banco_revisado` en el resultado de `validarClabe` (`false` si no se pasa el catálogo de bancos; `bancos: null` cuenta como no pasarlo, como en la 0.1.0) y en `clabe()` del cliente (siempre `true`, como la API). Tipo `ResultadoValidacionClabe`.
 - `hoyEnMexico()`: la fecha de hoy en la Ciudad de México, la zona de todas las fechas de MéxicoAPI.
 - `NOTAS_VALIDACION`, `AVISO_SIN_API`, el tipo `RespaldoCalendario` y `Calendario.respaldo`.
-- `avisos` junto a cada `advertencias`: las mismas, en el mismo orden, como `{ codigo, texto }`, con un código estable para decidir sin leer el texto. Están en las respuestas del cliente (y en `data.avisos` de `diasHabiles`), en el resultado de `sumarDiasHabiles` (campo nuevo de `ResultadoDiasHabiles`) y en `resumen()` de `mexicoapi/sepomex`. `CODIGOS_AVISO` y `codigoAviso()` dan el catálogo y el código de un texto; tipos `Aviso` y `CodigoAviso`.
+- `avisos` junto a cada `advertencias`: las mismas, en el mismo orden, como `{ codigo, texto }`, con un código estable para decidir sin leer el texto. Están en las respuestas del cliente (y en `data.avisos` de `diasHabiles`), en el resultado de `sumarDiasHabiles` (campo nuevo de `ResultadoDiasHabiles`) y en `resumen()` de `mexicoapi/sepomex`. `CODIGOS_AVISO` y `codigoAviso()` dan el catálogo y el código de un texto; tipos `Aviso` y `CodigoAviso`. Si la API manda el código de un aviso, el cliente lo conserva; si no, lo saca del texto. Los códigos del cliente y de SEPOMEX: `api-fallo`, `respuesta-guardada`, `datos-viejos`, `datos-del-paquete`, `municipio-sin-inegi`, `cp-varios-municipios` y `aviso-de-uso-sepomex-distinto`.
 
 ## 0.1.0 (2026-10-18)
 

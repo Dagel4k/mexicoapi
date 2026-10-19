@@ -1503,7 +1503,7 @@ describe("de dónde sale cada respuesta", () => {
         /^Respuesta de los datos del paquete porque la API falló: /,
       );
       expect(r.avisos[0], nombre).toEqual({
-        codigo: "api-sin-respuesta",
+        codigo: "api-fallo",
         texto: r.advertencias[0],
       });
       esperarCongelado(r, "respuesta");
@@ -1550,7 +1550,7 @@ describe("de dónde sale cada respuesta", () => {
       "Respuesta de los datos del paquete porque la API falló: 500 Error interno: Ocurrió un error interno.",
       AVISO_LFT,
     ]);
-    expect(r.avisos.map((a) => a.codigo)).toEqual(["api-sin-respuesta", "lft-art-715"]);
+    expect(r.avisos.map((a) => a.codigo)).toEqual(["api-fallo", "lft-art-715"]);
     expect(r.data.avisos).toEqual([{ codigo: "lft-art-715", texto: AVISO_LFT }]);
   });
 
@@ -1768,7 +1768,7 @@ describe("advertencia de antigüedad", () => {
     expect(r.advertencias[1]).toBe(
       `Los datos de udis del paquete llegan hasta el ${udis.cobertura.hasta}, hace 30 días; la API puede tener datos más recientes.`,
     );
-    expect(r.avisos.map((a) => a.codigo)).toEqual(["api-sin-respuesta", "datos-viejos"]);
+    expect(r.avisos.map((a) => a.codigo)).toEqual(["api-fallo", "datos-viejos"]);
   });
 
   it("no aparece en los datos estables ni en los días de la LFT", async () => {

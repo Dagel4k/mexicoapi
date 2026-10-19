@@ -29,14 +29,17 @@ export const AVISO_SIN_API =
  * - `prorroga-art-12`: el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario;
  *   el quinto párrafo del art. 12 del CFF puede prorrogarlo y el resultado no lo incluye.
  * - `vacaciones-sin-publicar`: el resultado cae fuera de las vacaciones del SAT publicadas.
- * - `api-sin-respuesta`: la API falló y la respuesta sale de los datos del paquete.
+ * - `api-fallo`: la API falló (sin conexión, tiempo agotado, 5xx, 429 o una respuesta inesperada)
+ *   y la respuesta sale de los datos del paquete.
  * - `respuesta-guardada`: la API falló y la respuesta es una guardada en la caché, ya caducada.
  * - `datos-viejos`: la serie del paquete (FIX o UDIS) termina hace más de 7 días.
  * - `datos-del-paquete`: la serie sale del paquete y no de la API: pueden faltar publicaciones.
+ *   Con `datos-viejos`, quiere decir lo mismo para un programa: el dato puede no estar al día.
  * - `municipio-sin-inegi`: un código postal de Correos de México con un municipio que no está en
  *   el catálogo de INEGI.
  * - `cp-varios-municipios`: códigos postales que aparecen en más de un municipio.
- * - `aviso-sepomex-distinto`: el aviso de uso del archivo de Correos de México no es el conocido.
+ * - `aviso-de-uso-sepomex-distinto`: el aviso de uso del archivo de Correos de México no es el
+ *   conocido.
  * - `otro`: un texto sin código en esta versión.
  */
 export const CODIGOS_AVISO = Object.freeze([
@@ -47,13 +50,13 @@ export const CODIGOS_AVISO = Object.freeze([
   "transmision-poder-ejecutivo",
   "prorroga-art-12",
   "vacaciones-sin-publicar",
-  "api-sin-respuesta",
+  "api-fallo",
   "respuesta-guardada",
   "datos-viejos",
   "datos-del-paquete",
   "municipio-sin-inegi",
   "cp-varios-municipios",
-  "aviso-sepomex-distinto",
+  "aviso-de-uso-sepomex-distinto",
   "otro",
 ] as const);
 export type CodigoAviso = (typeof CODIGOS_AVISO)[number];
@@ -118,7 +121,7 @@ const PATRONES: readonly (readonly [CodigoAviso, RegExp])[] = [
       `^Las vacaciones del SAT (?:posteriores|anteriores) al ${FECHA} no están publicadas: `,
     ),
   ],
-  ["api-sin-respuesta", /^Respuesta de los datos del paquete porque la API falló/],
+  ["api-fallo", /^Respuesta de los datos del paquete porque la API falló/],
   ["respuesta-guardada", /^Respuesta guardada de la API, de hace /],
   [
     "datos-viejos",
@@ -131,7 +134,10 @@ const PATRONES: readonly (readonly [CodigoAviso, RegExp])[] = [
     ),
   ],
   ["cp-varios-municipios", new RegExp(`${CP}aparecen? en más de un municipio`)],
-  ["aviso-sepomex-distinto", /^El aviso de uso del archivo es distinto del que conoce mexicoapi/],
+  [
+    "aviso-de-uso-sepomex-distinto",
+    /^El aviso de uso del archivo es distinto del que conoce mexicoapi/,
+  ],
 ];
 
 /** El código de una advertencia; `otro` si esta versión no la conoce. */
