@@ -143,6 +143,38 @@ describe("CLI: a qué API pregunta", () => {
     expect(sinRed.urls).toEqual([]);
   });
 
+  // Antes solo "1" apagaba la red; "true" o "sí" la dejaban encendida sin decir nada.
+  it("MEXICOAPI_SIN_RED acepta los valores verdaderos y falsos comunes, como el MCP", async () => {
+    for (const valor of ["1", "true", "YES", "si", "sí", "On", " 1 "]) {
+      const sinRed = fetchFalso();
+      const c = await correr(DIAS, { MEXICOAPI_SIN_RED: valor }, enDirectorio, sinRed.fetch);
+      expect(c.salida, valor).toContain("Origen: datos del paquete, sin red");
+      expect(sinRed.urls, valor).toEqual([]);
+    }
+    for (const valor of ["0", "false", "No", "OFF", ""]) {
+      const red = fetchFalso();
+      const c = await correr(DIAS, { MEXICOAPI_SIN_RED: valor }, enDirectorio, red.fetch);
+      expect(c.salida, valor).toContain("Origen: API");
+      expect(red.urls, valor).toHaveLength(1);
+    }
+  });
+
+  it("MEXICOAPI_SIN_RED con otro valor sale con 2 y dice qué valores acepta, sin repetirlo", async () => {
+    const { fetch, urls } = fetchFalso();
+    for (const argv of [DIAS, ["banco", "002"], [...DIAS, "--base", "https://flag.example"]]) {
+      const c = await correr(argv, { MEXICOAPI_SIN_RED: "verdadero" }, enDirectorio, fetch);
+      expect(c.codigo, argv.join(" ")).toBe(2);
+      expect(c.salida).toBe("");
+      expect(c.errores).toBe(
+        "mexicoapi: MEXICOAPI_SIN_RED no es válida: usa 1, true, yes, si u on para responder sin red, o 0, false, no, off o nada para consultar la API.\n",
+      );
+    }
+    expect(urls).toEqual([]);
+    // Los validadores no usan la API: la variable no les importa.
+    const clabe = await correr(["clabe", "002010077777777771"], { MEXICOAPI_SIN_RED: "x" });
+    expect(clabe.codigo).toBe(0);
+  });
+
   it("--base gana a MEXICOAPI_SIN_RED y a MEXICOAPI_BASE", async () => {
     const { fetch, urls } = fetchFalso();
     const env = { MEXICOAPI_SIN_RED: "1", MEXICOAPI_BASE: "https://otra.example" };

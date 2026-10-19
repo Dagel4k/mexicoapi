@@ -30,8 +30,9 @@ ${OPCIONES_GLOBALES}
 
 dias-habiles, uma, salario-minimo e isr consultan primero la API pública
 (${URL_API}), o la de --base <url> o la variable MEXICOAPI_BASE, y si
-no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 todo sale
-del paquete, sin red (--base gana a esa variable). municipio y banco salen siempre del paquete,
+no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 (o true,
+yes, si, on) todo sale del paquete, sin red (--base gana a esa variable); con 0, false, no, off
+o vacía, consultan la API, y otro valor sale con 2. municipio y banco salen siempre del paquete,
 como los validadores.
 
 Códigos de salida:
