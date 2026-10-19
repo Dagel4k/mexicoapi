@@ -237,6 +237,30 @@ describe("consulta a la API", () => {
     ]);
   });
 
+  it("no pierde una del cálculo aunque las de primer nivel traigan repetidas", async () => {
+    const calculo = {
+      autoridad: "lft",
+      desde: "2026-12-22",
+      dias: 5,
+      resultado: "2026-12-30",
+      inhabiles_saltados: [],
+      advertencias: ["del cálculo"],
+    };
+    const { fetch } = fetchFalso(
+      json({ data: calculo, advertencias: ["de la API", "de la API"], meta: META }),
+      json({ data: calculo, advertencias: ["del cálculo", "del cálculo"], meta: META }),
+    );
+    const api = conFetch(fetch);
+    const r = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
+    expect(r.advertencias).toEqual(["de la API", "del cálculo"]);
+    expect(r.data.advertencias).toEqual(["del cálculo"]);
+    esperarCongelado(r, "respuesta");
+    // Sin repetidos aunque no haya nada nuevo.
+    expect((await api.diasHabiles({ desde: "2026-12-22", dias: 5 })).advertencias).toEqual([
+      "del cálculo",
+    ]);
+  });
+
   it("junta las del cálculo también en una respuesta guardada y con consultar", async () => {
     relojFalso();
     const calculo = {

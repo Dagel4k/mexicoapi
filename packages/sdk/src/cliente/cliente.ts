@@ -220,10 +220,13 @@ async function desdePaquete(
 function conAdvertenciasDelCalculo(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
   const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
   if (!Array.isArray(delCalculo)) return r;
-  const todas = new Set(r.advertencias);
-  for (const a of delCalculo) if (typeof a === "string") todas.add(a);
-  if (todas.size === r.advertencias.length) return r;
-  return congelar({ ...r, advertencias: [...todas] });
+  const textos = delCalculo.filter((a): a is string => typeof a === "string");
+  const todas = [...new Set([...r.advertencias, ...textos])];
+  // Igual a las que ya trae (ninguna nueva ni repetida): la misma respuesta.
+  if (todas.length === r.advertencias.length && todas.every((a, i) => a === r.advertencias[i])) {
+    return r;
+  }
+  return congelar({ ...r, advertencias: todas });
 }
 
 async function ejecutar(
