@@ -20,6 +20,43 @@ export type ConsultaUma =
   | { tipo: "sin_dato" | "no_disponible"; cobertura: Vigencia; detalle: string };
 
 /**
+ * Los días que cubren las UMA de `umas` (en años consecutivos, de la más antigua a la más
+ * reciente): del 1 de febrero de la primera al 31 de enero siguiente a la última. Está congelada.
+ * Lanza RangeError si la lista está vacía.
+ */
+export function coberturaUma(umas: readonly Uma[]): Vigencia {
+  const primera = umas[0];
+  const ultima = umas[umas.length - 1];
+  if (primera === undefined || ultima === undefined) {
+    throw new RangeError("La lista de la UMA está vacía");
+  }
+  return Object.freeze({ desde: primera.vigencia_desde, hasta: `${ultima.anio + 1}-01-31` });
+}
+
+const conCeros = (anio: number): string => String(anio).padStart(4, "0");
+
+/**
+ * Los días que cubre una constante por año del 1 de enero al 31 de diciembre (el salario mínimo,
+ * una tarifa de ISR), con `anios` en orden estricto: del 1 de enero del primero al 31 de
+ * diciembre del último. Lanza RangeError si la lista está vacía o desordenada, o si un año no es
+ * un entero de 1 a 9999.
+ */
+export function coberturaAnual(anios: readonly number[]): Vigencia {
+  if (
+    anios.length === 0 ||
+    !anios.every(
+      (a, i) =>
+        Number.isInteger(a) && a >= 1 && a <= 9999 && (i === 0 || a > (anios[i - 1] as number)),
+    )
+  ) {
+    throw new RangeError("Los años deben ser enteros de 1 a 9999 en orden estricto");
+  }
+  const primero = anios[0] as number;
+  const ultimo = anios[anios.length - 1] as number;
+  return Object.freeze({ desde: `${conCeros(primero)}-01-01`, hasta: `${conCeros(ultimo)}-12-31` });
+}
+
+/**
  * La UMA vigente en `fecha`. Cada una rige del 1 de febrero de su año al 31 de enero del
  * siguiente (Ley para Determinar el Valor de la UMA, art. 5): en enero aplica la del año
  * anterior. `umas` va en años consecutivos, del más antiguo al más reciente; la cobertura va del
@@ -28,15 +65,9 @@ export type ConsultaUma =
  */
 export function umaVigente(umas: readonly Uma[], fecha: FechaISO): ConsultaUma {
   if (!esFechaIsoValida(fecha)) throw new RangeError(`Fecha ISO inválida: ${fecha}`);
-  const primera = umas[0];
-  const ultima = umas[umas.length - 1];
-  if (primera === undefined || ultima === undefined) {
-    throw new RangeError("La lista de la UMA está vacía");
-  }
-  const cobertura = Object.freeze({
-    desde: primera.vigencia_desde,
-    hasta: `${ultima.anio + 1}-01-31`,
-  });
+  const cobertura = coberturaUma(umas);
+  const primera = umas[0] as Uma;
+  const ultima = umas[umas.length - 1] as Uma;
   if (fecha < cobertura.desde) {
     return {
       tipo: "sin_dato",
