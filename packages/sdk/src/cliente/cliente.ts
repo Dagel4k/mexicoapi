@@ -1,4 +1,4 @@
-import { type Aviso, CODIGOS_AVISO, type CodigoAviso, codigoAviso } from "@mexicoapi/core/avisos";
+import { type Aviso, type CodigoAviso, codigoAviso, esCodigoAviso } from "@mexicoapi/core/avisos";
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
@@ -274,8 +274,6 @@ function conAdvertenciasDelCalculo(r: RespuestaPrevia): RespuestaPrevia {
   return congelar({ ...r, advertencias: todas });
 }
 
-const CONOCIDOS: ReadonlySet<string> = new Set(CODIGOS_AVISO);
-
 /**
  * Los códigos de las listas de avisos que llegan (de la API, o los del núcleo en `data`), por el
  * texto de cada uno: solo los del catálogo, el primero de cada texto. Lo que no tiene esa forma
@@ -287,9 +285,7 @@ function codigosPorTexto(listas: readonly unknown[]): Map<string, CodigoAviso> {
     if (!Array.isArray(lista)) continue;
     for (const a of lista) {
       if (!esObjeto(a) || typeof a.texto !== "string" || typeof a.codigo !== "string") continue;
-      if (CONOCIDOS.has(a.codigo) && !codigos.has(a.texto)) {
-        codigos.set(a.texto, a.codigo as CodigoAviso);
-      }
+      if (esCodigoAviso(a.codigo) && !codigos.has(a.texto)) codigos.set(a.texto, a.codigo);
     }
   }
   return codigos;

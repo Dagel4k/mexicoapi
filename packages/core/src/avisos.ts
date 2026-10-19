@@ -158,8 +158,17 @@ export function codigoAviso(texto: string): CodigoAviso {
 export const avisosDe = (advertencias: readonly string[]): Aviso[] =>
   advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto }));
 
-/** Un aviso como `Aviso`: copia uno con código y le pone el de `codigoAviso` a un texto suelto. */
-export const aAviso = (aviso: string | Aviso): Aviso =>
-  typeof aviso === "string"
-    ? { codigo: codigoAviso(aviso), texto: aviso }
-    : { codigo: aviso.codigo, texto: aviso.texto };
+const CONOCIDOS: ReadonlySet<unknown> = new Set(CODIGOS_AVISO);
+
+/** Si `valor` es un código del catálogo. */
+export const esCodigoAviso = (valor: unknown): valor is CodigoAviso => CONOCIDOS.has(valor);
+
+/**
+ * Un aviso como `Aviso`: copia uno con un código del catálogo y le pone el de `codigoAviso` a un
+ * texto suelto o a uno cuyo código no es del catálogo (un objeto armado en JavaScript).
+ */
+export function aAviso(aviso: string | Aviso): Aviso {
+  if (typeof aviso === "string") return { codigo: codigoAviso(aviso), texto: aviso };
+  const { codigo, texto } = aviso;
+  return { codigo: esCodigoAviso(codigo) ? codigo : codigoAviso(texto), texto };
+}

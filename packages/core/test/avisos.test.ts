@@ -170,6 +170,47 @@ describe("codigoAviso con los textos que da el núcleo", () => {
     ]);
   });
 
+  it("un código que no es del catálogo (desde JavaScript) sale del texto", () => {
+    const calendario = crearCalendario({
+      autoridad: "lft",
+      cobertura: { desde: "2026-01-01", hasta: "2027-12-31" },
+      dias: [],
+      fuenteFinDeSemana: { nombre: "Tribunal", url: "https://example.com/t" },
+      avisos: () =>
+        [
+          { codigo: "inventado", texto: AVISO_LFT_715 },
+          { codigo: 5, texto: "Un texto suelto." },
+          { texto: "Sin código." },
+          { codigo: "otro", texto: AVISO_LFT_715 },
+        ] as never,
+    });
+    const r = sumarDiasHabiles({ calendario, desde: "2026-12-18", dias: 1 });
+    expect(r.avisos).toEqual([
+      { codigo: "lft-art-715", texto: AVISO_LFT_715 },
+      { codigo: "otro", texto: "Un texto suelto." },
+      { codigo: "otro", texto: "Sin código." },
+      // otro es del catálogo: se conserva.
+      { codigo: "otro", texto: AVISO_LFT_715 },
+    ]);
+    const respaldo = crearCalendario({
+      autoridad: "lft",
+      cobertura: { desde: "2026-01-01", hasta: "2026-06-30" },
+      dias: [],
+      fuenteFinDeSemana: { nombre: "Tribunal", url: "https://example.com/t" },
+      respaldo: {
+        calendario,
+        aviso: () => ({ codigo: "nuevo-codigo", texto: AVISO_LFT_715 }) as never,
+      },
+    });
+    const conRespaldo = sumarDiasHabiles({
+      calendario: respaldo,
+      desde: "2026-06-30",
+      dias: 1,
+      permitirIncompleto: true,
+    });
+    expect(conRespaldo.avisos[0]).toEqual({ codigo: "lft-art-715", texto: AVISO_LFT_715 });
+  });
+
   it("tipo-plazo-incompleto: el respaldo de un plazo más corto", () => {
     const r = sumarDiasHabilesCurado(sat, {
       tipoPlazo: "general",
