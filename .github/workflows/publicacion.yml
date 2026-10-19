@@ -10,9 +10,10 @@ on:
 
 permissions: {}
 
-# Una corrida por etiqueta; la segunda espera a la primera en vez de cancelarla.
+# Una corrida a la vez, de cualquier etiqueta: dos versiones no compiten por latest. La segunda
+# espera a la primera en vez de cancelarla.
 concurrency:
-  group: publicacion-${{ github.event.release.tag_name }}
+  group: publicacion
   cancel-in-progress: false
 
 jobs:
@@ -107,9 +108,13 @@ jobs:
             echo "${NOMBRE} todavía no existe en npm. La primera versión se publica a mano y después se configura el publicador de confianza: [publicacion-npm.md](${guia})."
           } >> "${GITHUB_STEP_SUMMARY}"
 
+      # Solo el paquete y lo que usa (con sus devDependencies y las de la raíz, que compilan): el
+      # .tgz no se arma en un workspace con dependencias que no necesita.
       - name: Instalar dependencias
         if: steps.npm.outputs.estado == 'publicable'
-        run: pnpm install --frozen-lockfile
+        env:
+          NOMBRE: ${{ steps.revisar.outputs.nombre }}
+        run: pnpm install --frozen-lockfile --filter "${NOMBRE}..."
 
       - name: Compilar
         if: steps.npm.outputs.estado == 'publicable'
@@ -193,8 +198,10 @@ jobs:
           name: paquete
           path: ${{ runner.temp }}/paquete
 
-      # Publica el .tgz que revisó preparar: mismo sha256, el paquete y la versión del Release y sin
-      # scripts en su package.json.
+      # Publica el .tgz que revisó preparar: mismo sha256, solo archivos comunes de la lista de
+      # files (dist, README.md, CHANGELOG.md, LICENSE) y el package.json, y en este el paquete y la
+      # versión del Release, sin scripts ni publishConfig (que podría cambiar el registro o la
+      # etiqueta de npm).
       - name: Publicar en npm con procedencia
         id: publicar
         env:
@@ -205,11 +212,40 @@ jobs:
           set -euo pipefail
           tgz="${RUNNER_TEMP}/paquete/${NOMBRE}-${VERSION}.tgz"
           echo "${SHA256}  ${tgz}" | sha256sum -c -
+          tar -tvzf "${tgz}" > "${RUNNER_TEMP}/tipos-tgz"
+          if grep -qv '^-' "${RUNNER_TEMP}/tipos-tgz"; then
+            echo "::error::El .tgz trae algo que no es un archivo común (un directorio, un enlace o un dispositivo)."
+            exit 1
+          fi
+          tar -tzf "${tgz}" > "${RUNNER_TEMP}/rutas-tgz"
+          mal=0
+          while IFS= read -r ruta || [ -n "${ruta}" ]; do
+            case "${ruta}" in
+              package/package.json | package/README.md | package/CHANGELOG.md | package/LICENSE) ;;
+              package/dist/*)
+                case "/${ruta}/" in
+                  */./* | */../* | *//*)
+                    printf '::error::Ruta no permitida en el .tgz: %q\n' "${ruta}"
+                    mal=1
+                    ;;
+                esac
+                ;;
+              *)
+                printf '::error::El .tgz trae un archivo fuera de la lista: %q\n' "${ruta}"
+                mal=1
+                ;;
+            esac
+          done < "${RUNNER_TEMP}/rutas-tgz"
+          if [ "${mal}" -ne 0 ]; then
+            exit 1
+          fi
           paquete="$(tar -xzOf "${tgz}" package/package.json | node -e '
             const m = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
-            if (m.scripts !== undefined) {
-              console.error("::error::El package.json del .tgz trae scripts y no se publica.");
-              process.exit(1);
+            for (const campo of ["scripts", "publishConfig"]) {
+              if (m[campo] !== undefined) {
+                console.error("::error::El package.json del .tgz trae " + campo + " y no se publica.");
+                process.exit(1);
+              }
             }
             console.log(m.name + "@" + m.version);
           ')"
