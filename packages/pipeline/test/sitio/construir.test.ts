@@ -9,6 +9,7 @@ import {
   type FuenteDof,
   sumarDiasHabiles,
   VIGENCIA_LFT,
+  validarClabe,
 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
@@ -36,6 +37,8 @@ import {
 import { paginaEstado } from "../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../src/sitio/paginas/estilo.js";
 import { FAVICON } from "../../src/sitio/paginas/favicon.js";
+import { escaparHtml } from "../../src/sitio/paginas/html.js";
+import { CLABE_EJEMPLO, respuestaRecortada } from "../../src/sitio/paginas/inicio.js";
 import { paginaNoEncontrada } from "../../src/sitio/paginas/no-encontrado.js";
 import { ROBOTS } from "../../src/sitio/paginas/robots.js";
 import * as verificar from "../../src/verificar.js";
@@ -841,6 +844,35 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "estilo.css"), "utf8")).toBe(ESTILO);
     expect(await readFile(join(salida, "robots.txt"), "utf8")).toBe(ROBOTS);
     expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
+  });
+
+  // El ejemplo sale de los datos del build con el mismo validador que usa el Worker; la prueba de
+  // integración lo compara contra la respuesta real.
+  it("la página de inicio muestra la respuesta recortada de la CLABE de los ejemplos", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const inicio = await readFile(join(salida, "index.html"), "utf8");
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    const meta = interna.datasets.bancos?.meta as Meta;
+    const catalogo = new Map(
+      bancos.map(({ codigo, nombre_corto, activo }) => [codigo, { codigo, nombre_corto, activo }]),
+    );
+    const esperado = respuestaRecortada({
+      data: validarClabe(CLABE_EJEMPLO, { bancos: catalogo }),
+      meta,
+    });
+    expect(esperado).toMatchObject({
+      data: { valido: true, detalle: { banco: { codigo: "002" } } },
+    });
+    expect(inicio).toContain(escaparHtml(JSON.stringify(esperado, null, 2)));
+  });
+
+  it("falla si la CLABE de los ejemplos deja de ser válida con el catálogo", async () => {
+    await writeFile(join(datos, "bancos/bancos.json"), jsonCanonico(bancos.slice(1)));
+    await expect(construirSitio({ raizDatos: datos, salida })).rejects.toMatchObject({
+      name: "ErrorDatos",
+      dataset: "bancos",
+      message: expect.stringContaining(CLABE_EJEMPLO),
+    });
   });
 
   it("escribe la página de estado y copia sitio.js tal cual", async () => {

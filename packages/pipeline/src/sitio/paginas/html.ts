@@ -45,8 +45,11 @@ export function enlaceSeguro(url: string, texto: string): string {
 /** Ruta de un script propio: absoluta, del mismo origen y sin caracteres raros. */
 const RUTA_SCRIPT = /^\/[\w.-][\w./-]*$/;
 
-/** La navegación del sitio: desde otra página, las secciones apuntan a las de `/`. */
-export function navegacion(desdeInicio: boolean): string {
+/**
+ * La navegación del sitio: desde otra página, las secciones apuntan a las de `/`. Con
+ * `repositorio` (una URL del proyecto, no de los datos), lo enlaza al final.
+ */
+export function navegacion(desdeInicio: boolean, repositorio?: string): string {
   const prefijo = desdeInicio ? "" : "/";
   const secciones = [
     ["empieza", "Empieza"],
@@ -56,10 +59,12 @@ export function navegacion(desdeInicio: boolean): string {
   ]
     .map(([id, texto]) => `<li><a href="${prefijo}#${id}">${texto}</a></li>`)
     .join("\n");
+  const repo =
+    repositorio === undefined ? "" : `\n<li><a href="${escaparHtml(repositorio)}">GitHub</a></li>`;
   return `<nav class="secciones" aria-label="Secciones">
 <ul>
 ${secciones}
-<li><a href="/estado/">Estado</a></li>
+<li><a href="/estado/">Estado</a></li>${repo}
 </ul>
 </nav>`;
 }

@@ -183,7 +183,47 @@ describe("datos reales del build", () => {
     expect(respuesta.status).toBe(200);
     expect(await respuesta.text()).toBe((await leerPublico("v1/openapi.json")).toString("utf8"));
   });
+
+  // Lo que muestra la página es un recorte: cada campo existe en la respuesta con el mismo valor.
+  it("la respuesta de la CLABE en la página de inicio es la del Worker, recortada", async () => {
+    const inicio = (await leerPublico("index.html")).toString("utf8");
+    const curl = /curl <span data-origen>[^<]*<\/span>(\/v1\/clabe\/[0-9]{18})<\/code>/.exec(
+      inicio,
+    );
+    const marca = '<p>La respuesta de la CLABE, recortada:</p>\n<pre tabindex="0"><code>';
+    const desde = inicio.indexOf(marca);
+    expect(curl).not.toBeNull();
+    expect(desde).toBeGreaterThan(0);
+    const entidades: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'" };
+    const texto = inicio
+      .slice(desde + marca.length, inicio.indexOf("</code></pre>", desde))
+      .replace(/&(amp|lt|gt|quot|#39);/g, (_, e: string) => entidades[e] as string);
+    const ejemplo = JSON.parse(texto) as Obj;
+    const respuesta = await pedir(curl?.[1] ?? "");
+    expect(respuesta.status).toBe(200);
+    const real = (await respuesta.json()) as Obj;
+    expect(ejemplo.data.valido).toBe(true);
+    expect(esRecorte(ejemplo, real), JSON.stringify(ejemplo)).toBe(true);
+  });
 });
+
+/** `parte` cabe en `todo`: sus campos existen ahí con el mismo valor; una lista es un prefijo. */
+function esRecorte(parte: unknown, todo: unknown): boolean {
+  if (Array.isArray(parte)) {
+    return (
+      Array.isArray(todo) &&
+      parte.length <= todo.length &&
+      parte.every((p, i) => esRecorte(p, todo[i]))
+    );
+  }
+  if (typeof parte === "object" && parte !== null) {
+    if (typeof todo !== "object" || todo === null || Array.isArray(todo)) return false;
+    return Object.entries(parte).every(
+      ([k, v]) => Object.hasOwn(todo, k) && esRecorte(v, (todo as Record<string, unknown>)[k]),
+    );
+  }
+  return Object.is(parte, todo);
+}
 
 interface Fix {
   fecha_publicacion: string;
