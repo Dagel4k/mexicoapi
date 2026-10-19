@@ -66,6 +66,10 @@ const PRORROGA = (fecha: string, hechos: string) =>
 const VACACIONES_SIN_PUBLICAR = (hasta: string, fecha: string) =>
   `Las vacaciones del SAT posteriores al ${hasta} no están publicadas: si el ${fecha} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
 
+/** Lo mismo con un resultado antes de las vacaciones publicadas. */
+const VACACIONES_ANTES = (desde: string, fecha: string) =>
+  `Las vacaciones del SAT anteriores al ${desde} no están publicadas: si el ${fecha} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
+
 /** Lo que nombra el SAT fuera de la cobertura, con o sin sus vacaciones. */
 const FALTA_ART_12 =
   "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero.";
@@ -787,6 +791,15 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     });
   });
 
+  it("declaraciones_pagos antes de 2026, con permitirIncompleto, avisa de las vacaciones", () => {
+    // Con los datos del SAT, general y declaraciones_pagos empiezan el mismo día: solo un resultado
+    // fuera de toda cobertura (permitirIncompleto) cae antes de las vacaciones publicadas.
+    expect(sat("declaraciones_pagos", "2025-12-29", 1, true).advertencias).toEqual([
+      `Calendario incompleto: SAT 2025; solo se descontaron fines de semana. ${FALTA_ART_12}`,
+      VACACIONES_ANTES("2026-01-01", "2025-12-30"),
+    ]);
+  });
+
   it("declaraciones_pagos cruza a 2027 con los días del art. 12 y para en 2100", () => {
     // Cambio: después de las vacaciones publicadas (2026-11-30) avisa que el resultado puede caer
     // en unas sin publicar; antes no había advertencias. El resultado es el mismo.
@@ -946,6 +959,14 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       expect(error.detalle).toBe(
         "El calendario del SAT para tipo_plazo=general no cubre 2026-01-06; cubre del 2026-02-01 al 2026-11-30 porque los días de tipo vacaciones anteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y cubre del 2026-01-01 al 2100-12-31.",
       );
+    });
+
+    it("declaraciones_pagos antes de las vacaciones publicadas también avisa", () => {
+      // General (las vacaciones publicadas) empieza en febrero; declaraciones_pagos cubre enero.
+      expect(sat("declaraciones_pagos", "2026-01-05", 1, false, desdeFebrero)).toMatchObject({
+        resultado: "2026-01-06",
+        advertencias: [VACACIONES_ANTES("2026-02-01", "2026-01-06")],
+      });
     });
 
     it("si ningún tipo de día puede faltar, ni advertencia ni explicación", () => {

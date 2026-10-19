@@ -632,7 +632,7 @@ const enLista = (partes: readonly string[]): string =>
  * resultado no la aplica (es el lado seguro); undefined si no hay nada que avisar.
  *
  * Solo conoce las vacaciones publicadas y los cierres de la CNBV de su cobertura: un resultado
- * después de las vacaciones publicadas (diciembre de 2026, mientras falte el segundo periodo) lo
+ * fuera de las vacaciones publicadas (diciembre de 2026, mientras falte el segundo periodo) lo
  * avisa `avisoVacacionesSinPublicar`. El resultado sigue siendo el lado seguro.
  */
 function avisoProrroga(
@@ -651,12 +651,21 @@ function avisoProrroga(
 }
 
 /**
- * El aviso de un resultado de `declaraciones_pagos` posterior a `hasta`, el último día con las
- * vacaciones del SAT publicadas: si ese día resulta ser de vacaciones, el quinto párrafo del
- * art. 12 del CFF puede prorrogar el plazo. El resultado no la aplica (es el lado seguro).
+ * El aviso de un resultado de `declaraciones_pagos` fuera de `publicadas`, el rango con las
+ * vacaciones del SAT publicadas (después de su fin o antes de su inicio): si ese día resulta ser de
+ * vacaciones, el quinto párrafo del art. 12 del CFF puede prorrogar el plazo. El resultado no la
+ * aplica (es el lado seguro). Undefined si el resultado cae dentro de `publicadas`.
  */
-export function avisoVacacionesSinPublicar(hasta: FechaISO, resultado: FechaISO): string {
-  return `Las vacaciones del SAT posteriores al ${hasta} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
+export function avisoVacacionesSinPublicar(
+  publicadas: Rango,
+  resultado: FechaISO,
+): string | undefined {
+  if (dentro(resultado, publicadas)) return undefined;
+  const lado =
+    resultado > publicadas.hasta
+      ? `posteriores al ${publicadas.hasta}`
+      : `anteriores al ${publicadas.desde}`;
+  return `Las vacaciones del SAT ${lado} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
 }
 
 /**
@@ -667,7 +676,7 @@ export function avisoVacacionesSinPublicar(hasta: FechaISO, resultado: FechaISO)
  * (lo hace `sumarDiasHabiles` con el calendario del plazo, que lleva su respaldo). En el SAT con
  * `declaraciones_pagos`, al final avisa de la prórroga del quinto párrafo del art. 12 si el
  * resultado cae en viernes, en vacaciones del SAT o en un cierre bancario y, después, si cae
- * después de las vacaciones publicadas (la cobertura de `general`), que puede caer en unas.
+ * fuera de las vacaciones publicadas (la cobertura de `general`), que puede caer en unas.
  * Lanza RangeError si el calendario no tiene ese plazo o los parámetros no son válidos, y
  * FechaFueraDeRangoError si el resultado pasaría de 9999.
  */
@@ -690,11 +699,9 @@ export function sumarDiasHabilesCurado(
   const despues: string[] = [];
   const prorroga = avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario);
   if (prorroga !== undefined) despues.push(prorroga);
-  // General cuenta las vacaciones: su cobertura llega hasta donde están publicadas.
-  const { hasta } = calendario.general.cobertura;
-  if (resultado.resultado > hasta) {
-    despues.push(avisoVacacionesSinPublicar(hasta, resultado.resultado));
-  }
+  // General cuenta las vacaciones: su cobertura es donde están publicadas.
+  const vacaciones = avisoVacacionesSinPublicar(calendario.general.cobertura, resultado.resultado);
+  if (vacaciones !== undefined) despues.push(vacaciones);
   if (despues.length === 0) return resultado;
   return { ...resultado, advertencias: [...resultado.advertencias, ...despues] };
 }
