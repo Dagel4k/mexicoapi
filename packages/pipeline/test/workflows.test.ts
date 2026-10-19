@@ -283,6 +283,11 @@ describe("publicar de datos.yml", () => {
     expect(funcion(run, "es_archivo")).toBe('es_archivo() {\n[ -f "$1" ] && [ ! -L "$1" ]\n}');
     expect(funcion(run, "resumen")).toContain(`if ! es_archivo "\${resumen_md}"; then`);
     expect(funcion(run, "resumen")).toContain(`echo "\${cerca}text"`);
+    // El tope se mide después de agregar los espacios de ancho cero (3 bytes por @ o #N).
+    const res = funcion(run, "resumen");
+    const aSeguro = res.indexOf(`> "\${seguro}"`);
+    expect(aSeguro).toBeGreaterThan(-1);
+    expect(aSeguro).toBeLessThan(res.indexOf("-gt 60000"));
     expect(funcion(run, "motivos")).toContain(`if es_archivo "\${resumen_json}"; then`);
     expect(paso(datos, "publicar", "Revisar y aplicar el parche").run).toContain(
       `if [ ! -f "\${PARCHE}" ] || [ -L "\${PARCHE}" ]; then`,
