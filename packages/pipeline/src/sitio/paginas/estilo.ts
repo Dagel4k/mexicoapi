@@ -170,7 +170,7 @@ tbody th { font-weight: 600; }
 .rutas code { display: block; width: fit-content; white-space: nowrap; }
 .rutas .detalle { margin-bottom: 0.25rem; }
 /* cada renglon como tarjeta; la etiqueta de cada celda sale de data-etiqueta */
-@media (width < 40rem) {
+@media (max-width: 39.99rem) {
   .tarjetas thead { display: none; }
   .tarjetas table, .tarjetas caption, .tarjetas tbody, .tarjetas tr, .tarjetas th, .tarjetas td { display: block; }
   .tarjetas tr { border-top: 1px solid var(--borde); padding: 0.5rem 0; }
