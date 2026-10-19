@@ -1,6 +1,6 @@
 # Cambios
 
-## 0.1.0 (sin publicar)
+## 0.1.0 (2026-10-18)
 
 Primera versión.
 

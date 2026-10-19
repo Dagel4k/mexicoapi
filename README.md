@@ -12,13 +12,13 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 
 Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, con su fuente. Un bot revisa las fuentes de los datos automáticos, a diario o cada semana, y los actualiza cuando cambian; los que se transcriben del DOF los captura una persona con cada publicación.
 
-> La API v1 ya está en línea en https://mexicoapi.dagel4k.workers.dev, con las descargas y el sitio. Los paquetes de npm (`mexicoapi` y el servidor MCP `mexicoapi-mcp`) están listos y se publicarán en npm como 0.1.0; todavía no hay versión publicada.
+> La API v1 ya está en línea en https://mexicoapi.dagel4k.workers.dev, con las descargas y el sitio. Los paquetes `mexicoapi` y `mexicoapi-mcp` están en npm desde el 2026-10-18 (0.1.0).
 
 ## Qué incluye
 
 - API pública de solo lectura, rápida (archivos estáticos en el borde) y gratuita.
-- Paquete de npm (`mexicoapi`) con cliente, validadores y datos para usar sin conexión (se publicará en npm).
-- Servidor MCP ([`mexicoapi-mcp`](packages/mcp/README.md)) para que los asistentes de IA consulten el dato oficial en vez de inventarlo (se publicará en npm).
+- Paquete de npm (`mexicoapi`) con cliente, validadores y datos para usar sin conexión: `npm install mexicoapi`.
+- Servidor MCP ([`mexicoapi-mcp`](packages/mcp/README.md)) para que los asistentes de IA consulten el dato oficial en vez de inventarlo: `npx -y mexicoapi-mcp`.
 - Descargas completas en JSON, CSV y SQLite.
 
 Cada respuesta indica de dónde salió el dato, su licencia y la fecha de su última actualización.

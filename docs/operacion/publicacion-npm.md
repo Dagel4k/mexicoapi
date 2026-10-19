@@ -38,7 +38,7 @@ Hoy (0.1.0) el paquete tiene 20 archivos (solo JavaScript en `dist`: es un binar
 
 1. Crea una cuenta en [npmjs.com](https://www.npmjs.com/signup). El nombre de usuario y el correo de la cuenta aparecen en los metadatos públicos de cada paquete que publiques (`maintainers`), así que usa un correo que no te importe mostrar.
 2. Activa la verificación en dos pasos en Account Settings, Two-Factor Authentication, con el modo que la pide para iniciar sesión y para publicar (Authorization and writes). Usa una llave de seguridad o una app de códigos y guarda los códigos de recuperación.
-3. Revisa que los nombres sigan libres: `npm view mexicoapi` y `npm view mexicoapi-mcp` responden 404 si nadie los tiene (libres el 2026-10-18). npm no reserva nombres sin publicar y su política no permite paquetes de relleno: el nombre se toma con la primera versión real. `mexicoapi` se toma con la 0.1.0 (siguiente sección) y `mexicoapi-mcp` con la suya, después.
+3. Revisa que los nombres sigan libres: `npm view mexicoapi` y `npm view mexicoapi-mcp` responden 404 si nadie los tiene. Los dos se tomaron el 2026-10-18 con su 0.1.0. npm no reserva nombres sin publicar y su política no permite paquetes de relleno: el nombre se toma con la primera versión real. `mexicoapi` se toma con la 0.1.0 (siguiente sección) y `mexicoapi-mcp` con la suya, después.
 
 ## Primera versión de `mexicoapi`, a mano
 
