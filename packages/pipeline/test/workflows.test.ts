@@ -349,7 +349,13 @@ describe("publicacion.yml", () => {
     expect(instalar.env).toEqual({ NOMBRE: expresion("steps.revisar.outputs.nombre") });
     expect(instalar.run).toBe(`pnpm install --frozen-lockfile --filter "\${NOMBRE}..."`);
     const publicar = paso(wf, "publicar", "Publicar en npm con procedencia").run ?? "";
-    expect(publicar).toContain('for (const campo of ["scripts", "publishConfig"])');
+    expect(publicar).toContain(
+      'for (const campo of ["scripts", "publishConfig", "bundleDependencies", "bundledDependencies"])',
+    );
+    expect(publicar).toContain(
+      'for (const campo of ["dependencies", "peerDependencies", "optionalDependencies", "devDependencies"])',
+    );
+    expect(publicar).toContain("if (!esRango(rango))");
     expect(publicar).toContain(
       "package/package.json | package/README.md | package/CHANGELOG.md | package/LICENSE) ;;",
     );
