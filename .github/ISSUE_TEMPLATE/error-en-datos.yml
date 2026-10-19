@@ -16,6 +16,7 @@ body:
         - constantes.salario-minimo
         - constantes.uma
         - dias-inhabiles.cnbv
+        - dias-inhabiles.lft
         - dias-inhabiles.sat
         - inegi.estados
         - inegi.municipios
@@ -32,7 +33,9 @@ body:
       options:
         - API
         - Paquete mexicoapi
+        - Servidor MCP (mexicoapi-mcp)
         - Descargas (JSON, CSV o SQLite)
+        - Sitio
         - Archivos de data/ en el repositorio
         - Otro
     validations:
