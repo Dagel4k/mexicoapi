@@ -1,7 +1,7 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
-// (as_of, fuente, origen y advertencias), sus esquemas, el texto legible y cómo se traducen los
-// errores esperables del paquete y de la API.
-import { AVISO_SIN_API, aUnaLinea, esFechaIsoValida } from "mexicoapi";
+// (as_of, fuente, origen y advertencias con sus avisos), sus esquemas, el texto legible y cómo se
+// traducen los errores esperables del paquete y de la API.
+import { AVISO_SIN_API, aUnaLinea, CODIGOS_AVISO, codigoAviso, esFechaIsoValida } from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -102,6 +102,29 @@ export const ESQUEMA_FUENTE_DATO = {
   required: ["nombre", "url"],
 } as const;
 
+/**
+ * `avisos` de un resultado o de un cálculo: sus advertencias con su código estable, en el mismo
+ * orden. Es el campo del mismo nombre de la API y del cliente de mexicoapi.
+ */
+export const ESQUEMA_AVISOS = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      codigo: { type: "string", enum: [...CODIGOS_AVISO] },
+      texto: { type: "string" },
+    },
+    required: ["codigo", "texto"],
+    additionalProperties: false,
+  },
+  description:
+    "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+} as const;
+
+/** Los avisos de unas advertencias, con el código del catálogo de mexicoapi. */
+const avisosDe = (advertencias: readonly string[]) =>
+  advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto }));
+
 const DESCRIPCION_AS_OF =
   "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.";
 
@@ -144,6 +167,7 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
         description: `${opciones.origenes.map((o) => `${o}: ${DESCRIPCION_ORIGEN[o]}`).join("; ")}.`,
       },
       advertencias: { type: "array", items: { type: "string" } },
+      avisos: ESQUEMA_AVISOS,
     },
     required: [
       "datos",
@@ -153,6 +177,7 @@ export function esquemaSalida(datos: EsquemaJson, opciones: OpcionesEsquema): Es
       "fuentes",
       "origen",
       "advertencias",
+      "avisos",
     ],
     additionalProperties: false,
   };
@@ -253,7 +278,8 @@ function pie(p: Procedencia, sinFecha: string): string[] {
 
 /**
  * Un resultado: el texto (las líneas propias y el pie de procedencia) y `structuredContent` con
- * `datos`, los campos propios y la procedencia.
+ * `datos`, los campos propios, la procedencia y, al final, `avisos`: las advertencias con su
+ * código. El texto solo trae las advertencias.
  */
 export function resultado(
   lineas: readonly string[],
@@ -264,7 +290,7 @@ export function resultado(
   const texto = [...lineas, ...pie(p, opciones.sinFecha ?? "sin fecha")].join("\n");
   return {
     content: [{ type: "text", text: texto }],
-    structuredContent: { datos, ...opciones.extra, ...p },
+    structuredContent: { datos, ...opciones.extra, ...p, avisos: avisosDe(p.advertencias) },
   };
 }
 
