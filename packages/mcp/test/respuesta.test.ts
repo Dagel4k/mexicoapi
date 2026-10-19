@@ -183,6 +183,9 @@ describe("esquemaSalida", () => {
     expect(texto).toContain('"pattern":"^[a-z0-9]+(-[a-z0-9]+)*$"');
     // Se repite en cada herramienta: tools/list no debe crecer de más.
     expect(texto.length).toBeLessThan(400);
+    // Dice lo mínimo para usarlo: la paridad con advertencias y qué hacer con un código nuevo.
+    expect(avisos.description).toContain("avisos[i].texto es advertencias[i]");
+    expect(avisos.description).toContain("otro");
   });
 
   /** La descripción de una propiedad del esquema de salida. */
