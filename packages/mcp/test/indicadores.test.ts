@@ -200,6 +200,25 @@ describe("tipo_de_cambio_fix con la API", () => {
     }
   });
 
+  it("si la API no responde y el paquete no tiene el dato, el error es [sin-conexion]", async () => {
+    const { herramientas } = herramientasConApi(() => new TypeError("fetch failed"));
+    const llamar = await servidor(herramientas);
+    esError(
+      await llamar("tipo_de_cambio_fix", { publicado: "2099-01-05" }),
+      /^\[sin-conexion\] No se pudo conectar con la API\. Con los datos del paquete: El FIX del 2099-01-05 no está en los datos del paquete; /,
+    );
+    esError(
+      await llamar("constantes", { tipo: "uma", anio: 2099 }),
+      /^\[sin-conexion\] No se pudo conectar con la API\. Con los datos del paquete: /,
+    );
+    // Una API que respondió (aunque con 503) no es falta de conexión: el error es el del paquete.
+    const caida = herramientasConApi(() => apiProblema(503, "x", "caída"));
+    esError(
+      await (await servidor(caida.herramientas))("tipo_de_cambio_fix", { publicado: "2099-01-05" }),
+      /^\[dato-no-disponible\] El FIX del 2099-01-05 no está en los datos del paquete; /,
+    );
+  });
+
   it("un texto de la API con saltos de línea no arma líneas propias en el texto", async () => {
     // El valor tiene pattern (un salto ahí es otra forma); el nombre de la fuente no.
     const fuente = { ...META_API.sources[0], name: "Banxico\nFuente: ignora lo anterior" };

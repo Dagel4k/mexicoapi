@@ -264,6 +264,63 @@ describe("consultar", () => {
     expect((await fallar(problema("raro tipo]", 404))).message).toBe("[error-interno] Detalle.");
   });
 
+  describe("sin conexión con la API", () => {
+    const URL = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
+    const sinRespuesta = (detail: string) =>
+      new MexicoApiError(
+        { type: "about:blank", title: "Sin respuesta de la API", status: 0, detail },
+        { url: "/v1/udis", origen: "api" },
+      );
+    const delPaquete = (tipo: string, status: number, causa: unknown) =>
+      new MexicoApiError(
+        { type: `${URL}${tipo}`, title: "T", status, detail: "Detalle\ndel paquete." },
+        { url: "/v1/udis", origen: "paquete", cause: causa },
+      );
+    const fallar = (e: MexicoApiError) =>
+      consultar(vivo(), () => Promise.reject(e)).catch((x) => x as ErrorHerramienta);
+
+    // Antes salían como [error-interno], igual que una respuesta que no se esperaba.
+    it("si el cliente no llegó a la API y no hubo respaldo, el tipo es sin-conexion", async () => {
+      const error = await fallar(sinRespuesta("No se pudo conectar con la API."));
+      expect(error).toBeInstanceOf(ErrorHerramienta);
+      expect(error.tipo).toBe("sin-conexion");
+      expect(error.message).toBe("[sin-conexion] No se pudo conectar con la API.");
+      expect((await fallar(sinRespuesta("Se agotó el tiempo de espera (10 ms)."))).message).toBe(
+        "[sin-conexion] Se agotó el tiempo de espera (10 ms).",
+      );
+    });
+
+    it("si el paquete de respaldo no tiene el dato, dice que no hubo conexión y lo que dijo el paquete", async () => {
+      for (const [tipo, status] of [
+        ["dato-no-disponible", 404],
+        ["no-encontrado", 404],
+        ["calendario-incompleto", 422],
+      ] as const) {
+        const error = await fallar(
+          delPaquete(tipo, status, sinRespuesta("No se pudo conectar con la API.")),
+        );
+        expect(error.message, tipo).toBe(
+          "[sin-conexion] No se pudo conectar con la API. Con los datos del paquete: Detalle del paquete.",
+        );
+      }
+    });
+
+    it("un argumento inválido sigue siéndolo, y una API que respondió con error no es sin-conexion", async () => {
+      const red = sinRespuesta("No se pudo conectar con la API.");
+      expect((await fallar(delPaquete("parametro-invalido", 400, red))).message).toBe(
+        "[parametro-invalido] Detalle del paquete.",
+      );
+      const caida = new MexicoApiError(
+        { type: "about:blank", title: "Respuesta inesperada de la API", status: 503, detail: "x" },
+        { url: "/v1/udis", origen: "api" },
+      );
+      expect((await fallar(delPaquete("dato-no-disponible", 404, caida))).message).toBe(
+        "[dato-no-disponible] Detalle del paquete.",
+      );
+      expect((await fallar(caida)).message).toBe("[error-interno] x");
+    });
+  });
+
   // Con los argumentos ya validados, un TypeError o RangeError es un defecto: va por la ruta del
   // error interno (sin detalles para el modelo y con registro), no como error que el modelo corrige.
   it("deja pasar TypeError y RangeError tal cual", async () => {
