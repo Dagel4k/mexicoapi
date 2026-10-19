@@ -331,8 +331,10 @@ describe("consulta a la API", () => {
     const delServidor = { codigo: "otro", texto: AVISO_LFT };
     expect(conAvisos.data.avisos).toEqual([delServidor]);
     expect(conAvisos.avisos).toEqual([{ codigo: "otro", texto: "de la API" }, delServidor]);
-    // Solo los textos, como en advertencias.
+    // Solo los textos, como en advertencias: lo que no es texto sale también de data.advertencias,
+    // para que data.avisos[i].texto siga siendo data.advertencias[i].
     const raro = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
+    expect(raro.data.advertencias).toEqual(["texto"]);
     expect(raro.data.avisos).toEqual([{ codigo: "otro", texto: "texto" }]);
     expect(raro.avisos).toEqual([{ codigo: "otro", texto: "texto" }]);
   });
