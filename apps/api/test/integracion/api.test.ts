@@ -687,6 +687,16 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   const bancaria = COBERTURA_CNBV.general as Rango;
   // Mientras falte un periodo de vacaciones, general termina antes que declaraciones_pagos.
   const hueco = general.hasta < declaraciones.hasta;
+  /**
+   * Nuevo: un resultado de declaraciones_pagos después de las vacaciones publicadas (el fin de
+   * general) avisa que puede caer en unas sin publicar; va después de la prórroga.
+   */
+  const vacacionesSinPublicar = (resultado: string): string[] =>
+    resultado > general.hasta
+      ? [
+          `Las vacaciones del SAT posteriores al ${general.hasta} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`,
+        ]
+      : [];
 
   it("los datos tienen los casos que se prueban", () => {
     expect(primerPeriodo.map((d) => d.fecha)).toEqual(
@@ -735,17 +745,21 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     );
   });
 
-  it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni advertencias", async () => {
+  it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni calendario incompleto", async () => {
     // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha. Sin aviso de
     // calendario incompleto; el de la prórroga solo si los datos lo piden (hoy, en ninguno: si se
     // capturan vacaciones o cierres bancarios de enero de 2027, aparece y el resultado no cambia).
+    // Cambio: después, el de las vacaciones sin publicar.
     for (const [desde, dias, resultado] of [
       ["2026-12-30", 2, "2027-01-04"],
       ["2026-11-20", 30, "2027-01-05"],
       ["2026-12-15", 15, "2027-01-07"],
     ] as const) {
       const { data } = await datos(sat("declaraciones_pagos", desde, dias));
-      expect(data, desde).toMatchObject({ resultado, advertencias: prorrogaSegunDatos(resultado) });
+      expect(data, desde).toMatchObject({
+        resultado,
+        advertencias: [...prorrogaSegunDatos(resultado), ...vacacionesSinPublicar(resultado)],
+      });
       expect(data.inhabiles_saltados.map((d: Obj) => d.fecha)).toContain("2027-01-01");
     }
   });
@@ -774,7 +788,9 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   it("avisa de la transmisión del Poder Ejecutivo de 2030 y no descuenta el 1o. de octubre", async () => {
     const { data } = await datos(sat("declaraciones_pagos", "2030-09-30", 1));
     expect(data.resultado).toBe("2030-10-01");
-    expect(data.advertencias).toHaveLength(1);
+    // Cambio: al final, que las vacaciones de 2030 no están publicadas.
+    expect(data.advertencias).toHaveLength(2);
+    expect(data.advertencias[1]).toBe(vacacionesSinPublicar("2030-10-01")[0]);
     expect(data.advertencias[0]).toMatch(
       /^En 2030 no se descuentan el 1o\. de octubre ni el 1o\. de diciembre: el art\. 12 del CFF/,
     );
@@ -886,6 +902,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     expect(data.advertencias).toEqual([
       ...avisosDelNucleo(declaraciones, data.resultado, false),
       ...(viernes ? [prorroga(data.resultado, "viernes")] : []),
+      ...vacacionesSinPublicar(data.resultado),
     ]);
   });
 
