@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DATASETS } from "../../../src/registro.js";
-import { NOMBRES_STATUS, nombresDeDatasets } from "../../../src/sitio/cliente/sitio.js";
+import { ETIQUETAS, NOMBRES_STATUS, nombresDeDatasets } from "../../../src/sitio/cliente/sitio.js";
 import { CATALOGO } from "../../../src/sitio/paginas/catalogo.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
@@ -26,7 +26,7 @@ describe("página de estado", () => {
   // sitio.js busca estos id; sin JS, la tabla y el botón no se ven.
   it("trae la tabla vacía, la región de mensajes y el botón que usa sitio.js", () => {
     const marco = etiquetaDe(html, "marco-estado");
-    expect(marco).toMatch(/^<div class="tabla" /);
+    expect(marco).toMatch(/^<div class="tabla tarjetas" /);
     expect(marco).toContain(' role="region" aria-labelledby="tabla-estado" tabindex="0"');
     expect(marco).toMatch(/\shidden>$/);
     expect(etiquetaDe(html, "filas-estado")).toMatch(/^<tbody /);
@@ -55,6 +55,22 @@ describe("página de estado", () => {
       "Plazo",
       "Cobertura",
     ]);
+  });
+
+  // as_of no es la fecha del último dato: en el FIX, el domingo dice "Datos al" del domingo.
+  it("explica que Datos al no es el último dato de las series, que va aparte", () => {
+    expect(html).toContain(
+      "<dt>Datos al</dt>\n<dd>La fecha de la última actualización que cambió el dataset. En las series (FIX y UDIS) no es la del último dato: esa va debajo, como «último dato», y es el final de la cobertura.</dd>",
+    );
+    expect(html).not.toContain("La fecha de los datos que se sirven ahora.");
+  });
+
+  // Los nombres de las columnas son las etiquetas que sitio.js pone a cada celda de las tarjetas.
+  it("las columnas son las etiquetas que sitio.js pone a cada celda", () => {
+    const columnas = [...html.matchAll(/<th scope="col"(?: class="[^"]+")?>([^<]+)<\/th>/g)].map(
+      (m) => m[1],
+    );
+    expect(columnas.slice(1)).toEqual([...ETIQUETAS]);
   });
 
   it("lleva el nombre de cada dataset del catálogo para que sitio.js lo muestre", () => {
