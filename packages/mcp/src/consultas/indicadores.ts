@@ -79,12 +79,18 @@ export function tipoDeCambioFixHerramienta({ cliente, conApi }: OpcionesHerramie
   return {
     name: "tipo_de_cambio_fix",
     title: "Tipo de cambio FIX",
-    description: `Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. ${RESPALDO_API} Sin red advierte en la publicación más reciente y en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último dato del paquete.`,
+    description: `Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Las fechas son días de la zona America/Mexico_City: para un pago de hoy, usa la fecha de hoy en esa zona; de las 18:00 a las 24:00 de esa zona, en UTC ya es el día siguiente. ${RESPALDO_API} Sin red advierte en la publicación más reciente y en fechas a ${DIAS_CERCA_DEL_FINAL} días o menos del último dato del paquete.`,
     inputSchema: {
       type: "object",
       properties: {
-        publicado: { ...FECHA, description: "Fecha de publicación en el DOF (AAAA-MM-DD)." },
-        operacion: { ...FECHA, description: "Fecha de la operación (AAAA-MM-DD)." },
+        publicado: {
+          ...FECHA,
+          description: "Fecha de publicación en el DOF (AAAA-MM-DD), día de America/Mexico_City.",
+        },
+        operacion: {
+          ...FECHA,
+          description: "Fecha de la operación (AAAA-MM-DD), día de America/Mexico_City.",
+        },
       },
       additionalProperties: false,
     },

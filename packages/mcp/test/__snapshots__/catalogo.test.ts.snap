@@ -1299,17 +1299,17 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red. Sin red advierte en la publicación más reciente y en fechas a 7 días o menos del último dato del paquete.",
+    "description": "Tipo de cambio FIX (pesos por dólar) publicado en el DOF. Con publicado, el valor que se publicó ese día; con operacion, el que aplica a una operación de ese día según el CFF, artículo 20 (el publicado el día anterior o, si ese día no hubo publicación, el último antes); sin ninguno de los dos, la publicación más reciente. Indica solo uno. Las fechas son días de la zona America/Mexico_City: para un pago de hoy, usa la fecha de hoy en esa zona; de las 18:00 a las 24:00 de esa zona, en UTC ya es el día siguiente. Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red. Sin red advierte en la publicación más reciente y en fechas a 7 días o menos del último dato del paquete.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
         "operacion": {
-          "description": "Fecha de la operación (AAAA-MM-DD).",
+          "description": "Fecha de la operación (AAAA-MM-DD), día de America/Mexico_City.",
           "format": "date",
           "type": "string",
         },
         "publicado": {
-          "description": "Fecha de publicación en el DOF (AAAA-MM-DD).",
+          "description": "Fecha de publicación en el DOF (AAAA-MM-DD), día de America/Mexico_City.",
           "format": "date",
           "type": "string",
         },

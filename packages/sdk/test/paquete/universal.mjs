@@ -67,6 +67,10 @@ igual(mexicoapi.validarClabe("002010077777777770").valido, false, "CLABE con mal
 igual(mexicoapi.validarRfc("XAXX010101000").valido, true, "RFC genérico");
 paso("valida una CLABE y un RFC");
 
+// El lunes 19 a la 01:03 en UTC todavía es domingo 18 en la Ciudad de México.
+igual(mexicoapi.hoyEnMexico(Date.parse("2026-10-19T01:03:00Z")), "2026-10-18", "hoyEnMexico");
+paso("da la fecha de hoy en la Ciudad de México");
+
 igual(datos.buscarMunicipio("culiacan")[0].cvegeo, "25006", "busca Culiacán");
 igual(datos.municipio("25006").nombre, "Culiacán", "municipio 25006");
 igual(datos.estados().length, 32, "estados");

@@ -52,6 +52,7 @@ export {
   fechaValida,
   sumarDias,
 } from "./fechas.js";
+export { hoyEnMexico } from "./hoy.js";
 export type { CoberturaSerie, Consulta, OpcionesFix } from "./indicadores/consulta.js";
 export {
   FUENTE_CFF_20,

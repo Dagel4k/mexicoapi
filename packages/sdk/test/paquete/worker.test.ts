@@ -65,6 +65,10 @@ describe("mexicoapi en un Worker (workerd)", () => {
     });
   });
 
+  it("da la fecha de hoy en la Ciudad de México", async () => {
+    expect(await pedir("/hoy?ahora=2026-10-19T01:03:00Z")).toEqual({ hoy: "2026-10-18" });
+  });
+
   it("busca municipios en los datos del paquete", async () => {
     expect(await pedir("/municipios?texto=culiacan")).toMatchObject({
       estados: 32,

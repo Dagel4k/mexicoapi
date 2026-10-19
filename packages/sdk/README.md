@@ -20,7 +20,7 @@ También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`. E
 
 | Entrada | Qué trae | Dónde corre |
 | --- | --- | --- |
-| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `aUnaLinea` | Universal |
+| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; `hoyEnMexico`; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `aUnaLinea` | Universal |
 | `mexicoapi/datos` | Estados, municipios y bancos | Universal |
 | `mexicoapi/datos/fix` | Serie del tipo de cambio FIX | Universal |
 | `mexicoapi/datos/udis` | Serie de las UDIS | Universal |
@@ -115,6 +115,20 @@ sat.plazos.get("general")?.cobertura; // { desde: "2026-01-01", hasta: "..." }
 El cliente (`crearCliente`, también sin red) da las mismas advertencias que la API, además de las del calendario: con `declaraciones_pagos`, la de la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un día de cierre bancario, que `resultado` no aplica.
 
 ## Tipo de cambio FIX y UDIS
+
+El FIX que aplica a un pago de hoy (CFF, artículo 20), con el cliente:
+
+```ts
+import { hoyEnMexico } from "mexicoapi";
+import { crearCliente } from "mexicoapi/cliente";
+
+const api = crearCliente(); // o crearCliente({ offline: true }), sin red
+const { data, advertencias } = await api.fixParaOperacion(hoyEnMexico());
+data.valor; // pesos por dólar, con 4 decimales: "18.4250"
+data.fecha_publicacion; // la publicación en el DOF que aplica: la última antes de hoy
+```
+
+Las fechas de la API, del paquete y del servidor MCP son días de la Ciudad de México (America/Mexico_City). `hoyEnMexico()` da la fecha de hoy en esa zona (`hoyEnMexico(fecha)` para otro momento). Si tu servidor está en UTC, `new Date().toISOString().slice(0, 10)` da el día siguiente de las 18:00 a las 24:00 de la Ciudad de México: un pago del lunes 19 de octubre de 2026 a las 19:00 se consultaría como del martes 20 y, ya cargado el FIX del lunes, daría ese en lugar del publicado el viernes 16, que es el que aplica. Sin el paquete, lo mismo es `new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date())`.
 
 Las series viajan en `mexicoapi/datos/fix` y `mexicoapi/datos/udis`; las reglas, en la entrada principal. Cada consulta da `{ tipo: "encontrado", registro }`, `{ tipo: "sin_dato" }` (ese día no hubo publicación) o `{ tipo: "no_disponible" }` (el paquete todavía no tiene el dato).
 
@@ -298,6 +312,7 @@ De `mexicoapi`:
 - `digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp` y `digitoVerificadorNss` calculan el dígito verificador a partir de los primeros caracteres (17 en la CLABE y la CURP, 11 o 12 en el RFC, 10 en el NSS). Lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados.
 - `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTAS_VALIDACION` (la nota de cada validador; la CLABE tiene una con el catálogo de bancos y otra sin él). `NOTA_VALIDACION`, la nota común de la 0.1.0, sigue exportada pero ningún validador la usa.
 - `esFechaIsoValida`: si un texto es una fecha real `AAAA-MM-DD`.
+- `hoyEnMexico(ahora?)`: la fecha de hoy (`AAAA-MM-DD`) en la Ciudad de México, la zona de todas las fechas de MéxicoAPI. `ahora` (un `Date` o milisegundos) fija el reloj, por ejemplo en pruebas.
 - `diasDescansoLft(anio)`: los días de descanso obligatorio del artículo 74 de un año, de 2007 a 2100, con su cita. `COBERTURA_LFT` es ese rango y `VIGENCIA_LFT`, la fecha de la última reforma de la LFT que se tomó en cuenta.
 - `crearCalendario`: arma un `Calendario` para `sumarDiasHabiles` con tus propios días inhábiles, su cobertura y la fuente de los fines de semana.
 - `FUENTE_LFT_74`, `FUENTE_LFT_715` y `FUENTE_CFF_20`: nombre, URL y fragmento citado de esos artículos.

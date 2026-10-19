@@ -60,6 +60,7 @@ export {
   FUENTE_LFT_715,
   fixParaOperacion,
   fixPublicado,
+  hoyEnMexico,
   NOMBRE_AUTORIDAD,
   NOTA_VALIDACION,
   NOTAS_VALIDACION,

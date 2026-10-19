@@ -30,6 +30,21 @@ beforeAll(async () => {
   sinRed = await servidor(herramientasSinRed());
 });
 
+describe("tipo_de_cambio_fix: las fechas", () => {
+  it("dice que son días de America/Mexico_City, no de UTC", () => {
+    const fixHerramienta = herramientasSinRed().find((h) => h.name === "tipo_de_cambio_fix");
+    if (fixHerramienta === undefined) throw new Error("Falta tipo_de_cambio_fix");
+    expect(fixHerramienta.description).toContain(
+      "Las fechas son días de la zona America/Mexico_City",
+    );
+    const { properties } = fixHerramienta.inputSchema as unknown as {
+      properties: Record<string, { description: string }>;
+    };
+    expect(properties.operacion?.description).toContain("America/Mexico_City");
+    expect(properties.publicado?.description).toContain("America/Mexico_City");
+  });
+});
+
 describe("tipo_de_cambio_fix sin API", () => {
   it("con publicado da el FIX publicado ese día, del paquete", async () => {
     const r = await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-12" });
