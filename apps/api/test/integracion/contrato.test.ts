@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { sumarDias } from "@mexicoapi/core";
+import { type CodigoAviso, codigoAviso, sumarDias } from "@mexicoapi/core";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { PROBLEMAS } from "../../src/problemas.js";
@@ -394,6 +394,27 @@ const CASOS_308: Caso[] = OPERACIONES.map((o) => ({
   estado: 308,
 }));
 
+/**
+ * Donde una respuesta trae advertencias (de primer nivel o en `data`) trae `avisos`: los mismos
+ * textos en el mismo orden, cada uno con su código, y ninguno sin código (`otro`). Devuelve los
+ * códigos que vio.
+ */
+function revisarAvisos(cuerpo: Record<string, unknown>, ruta: string): CodigoAviso[] {
+  const codigos: CodigoAviso[] = [];
+  for (const nodo of [cuerpo, cuerpo.data]) {
+    if (nodo === null || typeof nodo !== "object" || !("advertencias" in nodo)) continue;
+    const { advertencias, avisos } = nodo as { advertencias: string[]; avisos: unknown };
+    expect(avisos, ruta).toEqual(
+      advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto })),
+    );
+    for (const texto of advertencias) {
+      expect(codigoAviso(texto), `${ruta}: ${texto}`).not.toBe("otro");
+      codigos.push(codigoAviso(texto));
+    }
+  }
+  return codigos;
+}
+
 /** Pide el caso y valida estado, tipo de medio y cuerpo contra lo que declara el documento. */
 async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void> {
   const o = operacionDe(ruta);
@@ -421,6 +442,7 @@ async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void
   if (validar === undefined) throw new Error(`Sin esquema para ${o.ruta} ${estado} ${tipo}.`);
   expect(validar(cuerpo), JSON.stringify(validar.errors, null, 2)).toBe(true);
 
+  if (tipo === "application/json") revisarAvisos(cuerpo, ruta);
   if (tipo === "application/problem+json") {
     expect(String(cuerpo.type).startsWith(BASE_PROBLEMAS), String(cuerpo.type)).toBe(true);
     expect(cuerpo.status).toBe(estado);
@@ -556,6 +578,27 @@ describe("ETag y 304 según el documento", () => {
 
 describe("respuestas del Worker contra el documento", () => {
   it.each(CASOS)("GET $ruta → $estado", validarCaso);
+
+  it("los casos de días dan avisos de todos los códigos de la API", async () => {
+    const vistos = new Set<CodigoAviso>();
+    for (const { ruta } of CASOS.filter(
+      (c) => c.estado === 200 && c.ruta.startsWith("/v1/dias-"),
+    )) {
+      const cuerpo = (await (await pedir(ruta)).json()) as Record<string, unknown>;
+      for (const codigo of revisarAvisos(cuerpo, ruta)) vistos.add(codigo);
+    }
+    expect([...vistos].sort()).toEqual(
+      [
+        "calendario-incompleto",
+        "lft-art-715",
+        "lista-incompleta",
+        "prorroga-art-12",
+        "tipo-plazo-incompleto",
+        "transmision-poder-ejecutivo",
+        "vacaciones-sin-publicar",
+      ].sort(),
+    );
+  });
 
   it.each(CASOS_308)("GET $ruta → 308 a la misma ruta sin la / final", async (caso) => {
     await validarCaso(caso);

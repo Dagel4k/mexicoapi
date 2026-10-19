@@ -2,6 +2,7 @@
 // cada uno, los días que da una regla del núcleo (en el SAT, los del art. 12 del CFF), el
 // respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por su subruta del
 // núcleo (curados) y no por el índice, para no pesar en quien solo valida.
+import { avisosDe } from "../avisos.js";
 import {
   type AutoridadCurada,
   type CoberturaCurada,
@@ -703,7 +704,8 @@ export function sumarDiasHabilesCurado(
   const vacaciones = avisoVacacionesSinPublicar(calendario.general.cobertura, resultado.resultado);
   if (vacaciones !== undefined) despues.push(vacaciones);
   if (despues.length === 0) return resultado;
-  return { ...resultado, advertencias: [...resultado.advertencias, ...despues] };
+  const advertencias = [...resultado.advertencias, ...despues];
+  return { ...resultado, advertencias, avisos: avisosDe(advertencias) };
 }
 
 /** El año con 4 cifras (`"0001"`); lanza RangeError si no es un entero de 1 a 9999. */

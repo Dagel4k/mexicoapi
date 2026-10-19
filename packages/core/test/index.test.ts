@@ -43,6 +43,9 @@ const VALORES_PUBLICOS = [
   "AVISO_LFT_715",
   // Lo que avisan el cliente y el MCP cuando una serie sale del paquete y no de la API.
   "AVISO_SIN_API",
+  // El catálogo de códigos de los avisos y el código de cada texto.
+  "CODIGOS_AVISO",
+  "codigoAviso",
   "COBERTURA_LFT",
   "FUENTE_LFT_74",
   "FUENTE_LFT_715",

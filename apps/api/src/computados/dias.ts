@@ -5,6 +5,7 @@ import {
   sumarDiasHabiles,
   type TipoPlazo,
 } from "@mexicoapi/core";
+import { avisosDe } from "@mexicoapi/core/avisos";
 import {
   type CalendarioCurado,
   type ConsultaDiasHabilesCurado,
@@ -133,9 +134,15 @@ export function diasHabiles(c: Contexto): Response | Promise<Response> {
   return diasHabilesCurados(c, autoridad, { tipoPlazo, desde, dias, permitirIncompleto });
 }
 
-/** `{ data, advertencias, meta }`: la lista puede estar completa solo para algunos plazos. */
+/**
+ * `{ data, advertencias, avisos, meta }`: la lista puede estar completa solo para algunos plazos.
+ * `avisos` son las mismas advertencias, en el mismo orden, con su código.
+ */
 const respuestaInhabiles = (data: unknown, advertencias: readonly string[], meta: Meta) =>
-  respuestaJson({ data, advertencias, meta }, { cache: CACHE_DATOS });
+  respuestaJson(
+    { data, advertencias, avisos: avisosDe(advertencias), meta },
+    { cache: CACHE_DATOS },
+  );
 
 /**
  * Un año de un calendario curado con el núcleo: la lista si un plazo lo cubre completo y, si el

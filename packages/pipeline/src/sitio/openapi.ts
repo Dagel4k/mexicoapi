@@ -15,6 +15,8 @@ import {
   esquemaUdi,
 } from "../esquemas.js";
 import {
+  AVISOS_PARALELOS,
+  esquemaAviso,
   esquemaDiaInhabil,
   esquemaEstadoDataset,
   esquemaFixOperacion,
@@ -87,6 +89,7 @@ function esquemas(): Record<string, Json> {
     Problema: problema,
     Fuente: jsonSchema(esquemaFuente),
     DiaInhabil: conFuente(jsonSchema(esquemaDiaInhabil), "fuente"),
+    Aviso: jsonSchema(esquemaAviso),
     ResultadoDiasHabiles: sustituirDias(jsonSchema(esquemaResultadoDiasHabiles)),
     ResultadoClabe: jsonSchema(esquemaResultadoClabe),
     TipoCambioFix: jsonSchema(esquemaTipoCambioFix),
@@ -121,6 +124,7 @@ function tarifaIsr(): Json {
 function sustituirDias(esquema: Json): Json {
   const props = esquema.properties as Record<string, Json>;
   props.inhabiles_saltados = { ...props.inhabiles_saltados, items: ref("DiaInhabil") };
+  props.avisos = { ...props.avisos, items: ref("Aviso") };
   return esquema;
 }
 
@@ -423,6 +427,7 @@ function operaciones(): Operacion[] {
           description:
             "Avisos sobre lo que puede faltar en la lista, como días de un tipo que solo están completos en parte del año y los tipo_plazo para los que la lista sí está completa, los días de la transmisión del Poder Ejecutivo que el SAT no descuenta o, con lft, los festivos y las suspensiones de labores del art. 715. Vacía si la lista está completa.",
         },
+        avisos: { type: "array", items: ref("Aviso"), description: AVISOS_PARALELOS },
       }),
       errores: [422],
     },

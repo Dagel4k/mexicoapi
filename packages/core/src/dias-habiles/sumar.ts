@@ -1,3 +1,4 @@
+import { type Aviso, avisosDe } from "../avisos.js";
 import { CalendarioIncompletoError } from "../errores.js";
 import { aDias, deDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
 import type { Calendario } from "./calendario.js";
@@ -11,6 +12,8 @@ export interface ResultadoDiasHabiles {
   /** Inhábiles saltados, sin los de tipo "fin_de_semana". */
   inhabiles_saltados: DiaInhabil[];
   advertencias: string[];
+  /** Las mismas advertencias, en el mismo orden, cada una con su código estable. */
+  avisos: Aviso[];
 }
 
 /** Lo más que se puede sumar: unos 14 años hábiles. */
@@ -80,5 +83,6 @@ export function sumarDiasHabiles(parametros: {
     resultado: actual,
     inhabiles_saltados: saltados,
     advertencias,
+    avisos: avisosDe(advertencias),
   };
 }
