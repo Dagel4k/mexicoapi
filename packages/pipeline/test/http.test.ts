@@ -383,6 +383,27 @@ describe("redirecciones", () => {
     expect(m.pedidas).not.toContain(`${B}/privado/w`);
   });
 
+  it("no pide una URL con usuario o contraseña, ni la original ni la de una redirección", async () => {
+    const m = montar({
+      [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
+      [`${A}/x`]: [res(302, "", { location: "https://yo:clave@a.example.mx/y" })],
+      [`${A}/y`]: [res(200, "no")],
+    });
+    const e = await m.cliente.obtener(`${A}/x`).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(ErrorHttp);
+    expect((e as ErrorHttp).message).toMatch(/usuario o contraseña/);
+    // El mensaje no repite las credenciales.
+    expect((e as ErrorHttp).message).not.toMatch(/clave/);
+    expect(m.pedidas.filter((u) => u.includes("/y"))).toEqual([]);
+    for (const url of ["https://yo@a.example.mx/z", "https://:clave@a.example.mx/z"]) {
+      const directa = await m.cliente.obtener(url).catch((x: unknown) => x);
+      expect(directa).toBeInstanceOf(ErrorHttp);
+      expect((directa as ErrorHttp).message).toMatch(/usuario o contraseña/);
+      expect((directa as ErrorHttp).message).not.toMatch(/yo@|clave/);
+    }
+    expect(m.pedidas.filter((u) => u.includes("/z"))).toEqual([]);
+  });
+
   it("no sigue una redirección a http", async () => {
     const m = montar({
       [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
