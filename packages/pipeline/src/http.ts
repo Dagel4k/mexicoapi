@@ -140,8 +140,26 @@ function destinoDe(res: Response, url: string): string {
 }
 
 /** Solo https y un host de la lista; `pedida` es la URL original, para el mensaje. */
+/** La URL sin usuario ni contraseña, para los mensajes de error. */
+function sinCredenciales(url: string): string {
+  try {
+    const u = new URL(url);
+    u.username = "";
+    u.password = "";
+    return u.href;
+  } catch {
+    return url;
+  }
+}
+
 function revisarDestino(actual: string, hosts: readonly string[], pedida: string): URL {
   const destino = new URL(actual);
+  if (destino.username !== "" || destino.password !== "") {
+    const visible = sinCredenciales(actual);
+    const original = sinCredenciales(pedida);
+    const donde = actual === pedida ? visible : `${visible} (redirección al pedir ${original})`;
+    throw new ErrorHttp(`No se pide una URL con usuario o contraseña: ${donde}`, original, null);
+  }
   const donde = actual === pedida ? actual : `${actual} (redirección al pedir ${pedida})`;
   if (destino.protocol !== "https:") {
     throw new ErrorHttp(`Solo se pide por https: ${donde}`, pedida, null);
