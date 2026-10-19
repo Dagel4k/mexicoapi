@@ -187,7 +187,7 @@ export function sumarDiasHabilesHerramienta({
           ...calculo.inhabiles_saltados.map(lineaDia),
         );
       }
-      const p = procedencia(r, { advertencias: calculo.advertencias });
+      const p = procedencia(r, { advertencias: calculo.advertencias, avisos: calculo.avisos });
       return resultado(lineas, calculo, p);
     },
   };

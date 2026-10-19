@@ -137,6 +137,8 @@ async function deLaApi(
       advertencias: Array.isArray(cuerpo.advertencias)
         ? cuerpo.advertencias.filter((a): a is string => typeof a === "string")
         : [],
+      // Y sus avisos, con los códigos que da la API; se revisan al completar la respuesta.
+      ...(Array.isArray(cuerpo.avisos) ? { avisos: cuerpo.avisos } : {}),
     });
     guardar(c, url, respuesta, r, r.encabezado("ETag"));
     return respuesta;

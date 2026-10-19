@@ -152,6 +152,8 @@ export function codigoPostalHerramienta({ dirSepomex }: OpcionesHerramientas): H
         origen: "cache_local",
         // Las advertencias del catálogo (cuántos códigos no se unieron con INEGI) no son de este código.
         advertencias: municipio.cvegeo === null ? [SIN_INEGI] : [],
+        avisos:
+          municipio.cvegeo === null ? [{ codigo: "municipio-sin-inegi", texto: SIN_INEGI }] : [],
       };
       const descargado = resumen.descargado.slice(0, 10);
       return resultado(lineas, encontrado, p, {

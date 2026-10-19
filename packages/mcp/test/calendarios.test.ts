@@ -146,6 +146,24 @@ describe("dias_inhabiles", () => {
     expect(urls).toEqual([`${BASE}/v1/dias-inhabiles?autoridad=cnbv&anio=2027`]);
   });
 
+  it("con la API conserva el código de cada aviso que manda, aunque cambie su texto", async () => {
+    const reescrita = "La lista de vacaciones del SAT de 2027 puede estar incompleta.";
+    const { herramientas } = herramientasConApi(() =>
+      apiOk([], {
+        advertencias: [reescrita],
+        avisos: [{ codigo: "lista-incompleta", texto: reescrita }],
+      }),
+    );
+    const r = await (await servidor(herramientas))("dias_inhabiles", {
+      autoridad: "sat",
+      anio: 2027,
+    });
+    expect(contenido(r).avisos).toEqual([{ codigo: "lista-incompleta", texto: reescrita }]);
+    // El texto sigue con la advertencia, sin el código.
+    expect(texto(r)).toContain(`Advertencia: ${reescrita}`);
+    expect(texto(r)).not.toContain("lista-incompleta");
+  });
+
   it("sin días en la respuesta, cita las fuentes del meta", async () => {
     const { herramientas } = herramientasConApi(() => apiOk([]));
     const r = await (await servidor(herramientas))("dias_inhabiles", {

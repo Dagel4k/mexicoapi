@@ -250,25 +250,54 @@ describe("consulta a la API", () => {
   it("da avisos con el código de cada advertencia, en el mismo orden", async () => {
     const lista =
       "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
+    const reescrita = "La lista de vacaciones del SAT de 2026 puede estar incompleta.";
     const { fetch } = fetchFalso(
-      // Los avisos que mande la API no se toman: el cliente pone los códigos de su catálogo.
       json({
         data: [],
-        advertencias: [lista, "Un aviso nuevo de la API.", 3],
-        avisos: [{ codigo: "nuevo", texto: lista }],
+        advertencias: [lista, "Un aviso nuevo de la API.", reescrita, 3],
+        avisos: [
+          // Un código que esta versión no conoce: sale del texto.
+          { codigo: "nuevo", texto: lista },
+          // Un texto con otra redacción y un código conocido: se conserva el de la API.
+          { codigo: "lista-incompleta", texto: reescrita },
+          null,
+          { codigo: 5, texto: "Un aviso nuevo de la API." },
+          { texto: "Un aviso nuevo de la API." },
+        ],
         meta: META,
       }),
     );
     const r = await conFetch(fetch).diasInhabiles({ autoridad: "sat", anio: 2026 });
-    expect(r.advertencias).toEqual([lista, "Un aviso nuevo de la API."]);
+    expect(r.advertencias).toEqual([lista, "Un aviso nuevo de la API.", reescrita]);
     expect(r.avisos).toEqual([
       { codigo: "lista-incompleta", texto: lista },
       { codigo: "otro", texto: "Un aviso nuevo de la API." },
+      { codigo: "lista-incompleta", texto: reescrita },
     ]);
     expect(Object.keys(r)).toEqual(["data", "meta", "origen", "advertencias", "avisos"]);
     esperarCongelado(r, "respuesta");
     expectTypeOf(r.avisos).toEqualTypeOf<readonly mexicoapi.Aviso[]>();
     expectTypeOf(r.avisos[0]?.codigo).toEqualTypeOf<mexicoapi.CodigoAviso | undefined>();
+  });
+
+  it("conserva el código que manda la API aunque el texto cambie de redacción", async () => {
+    // Una versión de la API con otra redacción del aviso del art. 715 y el mismo código.
+    const nuevo = "La LFT de este cálculo no incluye los festivos ni las suspensiones de labores.";
+    const calculo = {
+      autoridad: "lft",
+      desde: "2026-12-22",
+      dias: 5,
+      resultado: "2026-12-30",
+      inhabiles_saltados: [],
+      advertencias: [nuevo],
+      avisos: [{ codigo: "lft-art-715", texto: nuevo }],
+    };
+    const { fetch } = fetchFalso(json({ data: calculo, meta: META }));
+    const r = await conFetch(fetch).diasHabiles({ desde: "2026-12-22", dias: 5 });
+    expect(mexicoapi.codigoAviso(nuevo)).toBe("otro");
+    expect(r.data.avisos).toEqual([{ codigo: "lft-art-715", texto: nuevo }]);
+    // En las de primer nivel también, por el texto.
+    expect(r.avisos).toEqual([{ codigo: "lft-art-715", texto: nuevo }]);
   });
 
   it("da también data.avisos con las del cálculo, aunque la API no los traiga", async () => {
@@ -283,7 +312,7 @@ describe("consulta a la API", () => {
     const { fetch } = fetchFalso(
       // Una API anterior a los avisos.
       json({ data: calculo, meta: META }),
-      // Una que los trae con otro código: el cliente pone el suyo.
+      // Una que los trae con su código: el cliente lo conserva, aunque no sea el que daría él.
       json({
         data: { ...calculo, avisos: [{ codigo: "otro", texto: AVISO_LFT }] },
         advertencias: ["de la API"],
@@ -299,8 +328,9 @@ describe("consulta a la API", () => {
     expect(r.avisos).toEqual([lft]);
     esperarCongelado(r, "respuesta");
     const conAvisos = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
-    expect(conAvisos.data.avisos).toEqual([lft]);
-    expect(conAvisos.avisos).toEqual([{ codigo: "otro", texto: "de la API" }, lft]);
+    const delServidor = { codigo: "otro", texto: AVISO_LFT };
+    expect(conAvisos.data.avisos).toEqual([delServidor]);
+    expect(conAvisos.avisos).toEqual([{ codigo: "otro", texto: "de la API" }, delServidor]);
     // Solo los textos, como en advertencias.
     const raro = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
     expect(raro.data.avisos).toEqual([{ codigo: "otro", texto: "texto" }]);
@@ -342,22 +372,35 @@ describe("consulta a la API", () => {
       advertencias: ["del cálculo"],
     };
     const { fetch } = fetchFalso(
-      json({ data: calculo, meta: META }, 200, {
-        "Cache-Control": "max-age=60, stale-if-error=600",
-      }),
+      json(
+        {
+          data: calculo,
+          advertencias: ["de la API"],
+          avisos: [{ codigo: "lista-incompleta", texto: "de la API" }],
+          meta: META,
+        },
+        200,
+        { "Cache-Control": "max-age=60, stale-if-error=600" },
+      ),
       errorInterno(),
     );
     const api = conFetch(fetch, { cache: true, reintentos: 0 });
     const consulta = { autoridad: "lft", desde: "2026-12-22", dias: 5 } as const;
     expect((await api.consultar("/v1/dias-habiles", consulta)).advertencias).toEqual([
+      "de la API",
       "del cálculo",
     ]);
     vi.advanceTimersByTime(61_000);
     const rancia = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
-    expect(rancia.advertencias).toHaveLength(2);
+    expect(rancia.advertencias).toHaveLength(3);
     expect(rancia.advertencias[0]).toMatch(/^Respuesta guardada de la API/);
-    expect(rancia.advertencias[1]).toBe("del cálculo");
-    expect(rancia.avisos.map((a) => a.codigo)).toEqual(["respuesta-guardada", "otro"]);
+    expect(rancia.advertencias.slice(1)).toEqual(["de la API", "del cálculo"]);
+    // La respuesta guardada conserva los códigos que mandó la API.
+    expect(rancia.avisos.map((a) => a.codigo)).toEqual([
+      "respuesta-guardada",
+      "lista-incompleta",
+      "otro",
+    ]);
     expect(rancia.avisos.map((a) => a.texto)).toEqual(rancia.advertencias);
     esperarCongelado(rancia, "respuesta");
   });
