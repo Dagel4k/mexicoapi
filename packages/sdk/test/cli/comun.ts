@@ -48,7 +48,9 @@ function ayudaDeUso(argv: readonly string[]): string {
   }
   return `Usa mexicoapi ${comando} --help para ver su uso.`;
 }
-const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
+/** Sin la autoridad, que ahora es obligatoria: para probar cada una. */
+const DESDE_Y_DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
+const DIAS = [...DESDE_Y_DIAS, "--autoridad", "lft"];
 
 /**
  * El entorno con una API: las pruebas corren con MEXICOAPI_SIN_RED=1 (sin MEXICOAPI_BASE, la CLI
@@ -167,6 +169,7 @@ export function probarCli(correr: Correr, version: string): void {
       [["dias-habiles", "--desde", "2026-03-16", "--dias", "-3"], /--dias|-3/],
       [["dias-habiles", "--desde", "2026-13-01", "--dias", "5"], /--desde debe ser una fecha/],
       [["dias-habiles", "--desde", "ayer", "--dias", "5"], /--desde debe ser una fecha/],
+      [DESDE_Y_DIAS, /Falta --autoridad lft, cnbv o sat en "dias-habiles"\./],
       [["clabe", "002", "--desde", "2026-01-01"], /--desde no aplica a "clabe"/],
       [["clabe", "002", "--base", "http://x"], /--base no aplica/],
       [["clabe", "--no-existe"], /no-existe/],
@@ -191,7 +194,7 @@ export function probarCli(correr: Correr, version: string): void {
       [["banco", "002", "--fecha", "2026-01-01"], /--fecha no aplica a "banco"/],
       [["isr", "mensual", "2026", "--fecha", "2026-01-01"], /--fecha no aplica a "isr"/],
       [
-        [...DIAS, "--autoridad", "sat"],
+        [...DESDE_Y_DIAS, "--autoridad", "sat"],
         /Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos\./,
       ],
       [["sepomex", "cp", "8000"], /El código postal debe tener 5 dígitos, como 01000; no "8000"/],
@@ -301,7 +304,7 @@ export function probarCli(correr: Correr, version: string): void {
   });
 
   it("dias-habiles --json imprime la respuesta del cliente", async () => {
-    const c = await correr([...DIAS, "--autoridad", "lft", "--json"]);
+    const c = await correr([...DESDE_Y_DIAS, "--autoridad", "lft", "--json"]);
     expect(c.codigo).toBe(0);
     const r = json(c) as { origen: string; data: { resultado: string; autoridad: string } };
     expect(r.origen).toBe("paquete");
@@ -309,22 +312,38 @@ export function probarCli(correr: Correr, version: string): void {
   });
 
   it("dias-habiles lista los inhábiles que salta", async () => {
-    const c = await correr(["dias-habiles", "--desde", "2026-03-13", "--dias", "3"]);
+    const c = await correr([
+      "dias-habiles",
+      "--autoridad",
+      "lft",
+      "--desde",
+      "2026-03-13",
+      "--dias",
+      "3",
+    ]);
     expect(c.codigo).toBe(0);
     expect(c.salida).toContain("Inhábiles saltados:");
     expect(c.salida).toContain("2026-03-16");
   });
 
   it("dias-habiles con entradas inválidas o sin cobertura sale con 1", async () => {
-    const rara = await correr([...DIAS, "--autoridad", "xx"]);
+    const rara = await correr([...DESDE_Y_DIAS, "--autoridad", "xx"]);
     expect(rara.codigo).toBe(1);
     expect(rara.errores).toContain("lft");
     for (const dias of ["0", "3651"]) {
-      const fuera = await correr(["dias-habiles", "--desde", "2026-03-16", "--dias", dias]);
+      const fuera = await correr([...DIAS.slice(0, 3), "--dias", dias, "--autoridad", "lft"]);
       expect(fuera.codigo, dias).toBe(1);
       expect(fuera.salida, dias).toBe("");
     }
-    const lejos = await correr(["dias-habiles", "--desde", "2101-01-04", "--dias", "5"]);
+    const lejos = await correr([
+      "dias-habiles",
+      "--autoridad",
+      "lft",
+      "--desde",
+      "2101-01-04",
+      "--dias",
+      "5",
+    ]);
     expect(lejos.codigo).toBe(1);
     expect(lejos.salida).toBe("");
     expect(lejos.errores).toMatch(/^mexicoapi: /);
@@ -371,13 +390,13 @@ export function probarCli(correr: Correr, version: string): void {
     expect(sobra.codigo).toBe(2);
     expect(sobra.errores).toContain("--tipo-plazo solo se acepta con --autoridad sat.");
     // Una autoridad que no existe la rechaza antes la regla de la API, como en la API.
-    const otra = await correr([...DIAS, "--autoridad", "imss", "--tipo-plazo", "general"]);
+    const otra = await correr([...DESDE_Y_DIAS, "--autoridad", "imss", "--tipo-plazo", "general"]);
     expect(otra.codigo).toBe(1);
     expect(otra.errores).toContain("Autoridades disponibles: lft, cnbv y sat.");
   });
 
   it("dias-habiles --permitir-incompleto calcula fuera de la cobertura y lo advierte", async () => {
-    const lejos = ["dias-habiles", "--desde", "2101-01-04", "--dias", "5"];
+    const lejos = ["dias-habiles", "--autoridad", "lft", "--desde", "2101-01-04", "--dias", "5"];
     expect((await correr(lejos)).codigo).toBe(1);
     const c = await correr([...lejos, "--permitir-incompleto"]);
     expect(c.codigo).toBe(0);

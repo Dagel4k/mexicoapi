@@ -257,15 +257,19 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   if (!esFechaIsoValida(desde)) {
     throw new ErrorUso(`--desde debe ser una fecha válida AAAA-MM-DD, no "${desde}".`);
   }
+  // Como en la API y el MCP, la autoridad no tiene valor por omisión: el calendario cambia el
+  // resultado y la LFT no descuenta los festivos.
+  if (autoridad === undefined) {
+    throw new ErrorUso('Falta --autoridad lft, cnbv o sat en "dias-habiles".');
+  }
   const tipoPlazo = opciones["tipo-plazo"] as TipoPlazo | undefined;
   // La regla de la API entre la autoridad y el tipo de plazo, con los nombres de la CLI. Con una
   // autoridad que no existe la rechaza antes su propia regla, como en la API.
-  const conocida = autoridad ?? "lft";
-  if ((AUTORIDADES as readonly string[]).includes(conocida)) {
+  if ((AUTORIDADES as readonly string[]).includes(autoridad)) {
     // Un valor que no es un tipo de plazo, como lo rechaza la API (sale con 1), con su nombre.
     const valor = revisarValorTipoPlazo(tipoPlazo, NOMBRES_CLI);
     if (valor !== null) throw new TypeError(valor.detalle);
-    const combinacion = revisarTipoPlazoCon(conocida as Autoridad, tipoPlazo, NOMBRES_CLI);
+    const combinacion = revisarTipoPlazoCon(autoridad as Autoridad, tipoPlazo, NOMBRES_CLI);
     if (combinacion !== null) throw new ErrorUso(combinacion.detalle);
   }
   const cliente = await crearClienteCli(e, opciones);
@@ -273,7 +277,7 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   const respuesta = await cliente.diasHabiles({
     desde,
     dias: Number(dias),
-    autoridad: autoridad as Autoridad | undefined,
+    autoridad: autoridad as Autoridad,
     tipoPlazo,
     permitirIncompleto: opciones["permitir-incompleto"],
   } as ConsultaDiasHabiles);

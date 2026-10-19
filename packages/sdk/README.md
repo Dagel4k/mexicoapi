@@ -314,7 +314,7 @@ await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, d
 ```bash
 npx mexicoapi clabe 002010077777777771
 npx mexicoapi rfc XAXX010101000 --json
-npx mexicoapi dias-habiles --desde 2026-03-16 --dias 5
+npx mexicoapi dias-habiles --autoridad lft --desde 2026-03-16 --dias 5
 npx mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-17 --dias 3
 npx mexicoapi dias-habiles --autoridad cnbv --desde 2026-12-28 --dias 5 --permitir-incompleto
 npx mexicoapi municipio culiacan
