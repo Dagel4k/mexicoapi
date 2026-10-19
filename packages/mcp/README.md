@@ -56,7 +56,7 @@ Una dirección inválida (con credenciales, query o fragmento) hace que el servi
 | `municipio` | Un municipio por su clave geoestadística (`cvegeo`) | No |
 | `validar_clabe` | Valida una CLABE (dígito de control y banco) | No |
 | `banco_por_codigo` | Un banco o participante del SPEI por su código de 3 dígitos | No |
-| `validar_rfc` | Valida el formato y la homoclave de un RFC | No |
+| `validar_rfc` | Valida el formato de un RFC; el dígito verificador de la homoclave se revisa, pero si no coincide solo se avisa y el RFC no se marca inválido | No |
 | `validar_curp` | Valida el formato y el dígito verificador de una CURP | No |
 | `validar_nss` | Valida un NSS del IMSS | No |
 | `tipo_de_cambio_fix` | FIX publicado un día, el que aplica a una operación o el más reciente | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
