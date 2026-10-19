@@ -39,6 +39,6 @@ Más detalle en [DATA_LICENSE.md](../../DATA_LICENSE.md).
 
 - Hay un valor para cada día del calendario, incluidos fines de semana y feriados.
 - Las UDIS se publican por adelantado, dos veces al mes, para los días siguientes. Por eso la serie llega unos días después de la fecha de la última corrida.
-- `as_of` (en el manifiesto, en `meta` y en `/v1/status`) es la fecha de la última corrida que cambió los datos, no la última fecha de la serie. La última fecha está en `cobertura.hasta` de `/v1/status` y va por delante de la fecha de hoy, de uno a unos 15 días según cuándo fue la última publicación: el 2026-10-18, `cobertura.hasta` es 2026-10-25.
+- `as_of` (en el manifiesto, en `meta` y en `/v1/status`) es la fecha de la última corrida del pipeline que cambió los datos, no la última fecha de la serie. La última fecha está en `cobertura.hasta` de `/v1/status` y va por delante de la fecha de hoy, de uno a unos 15 días según cuándo fue la última publicación: el 2026-10-18, `cobertura.hasta` es 2026-10-25.
 - La serie empieza el 1 de enero de 2020. Antes de esa fecha no hay datos.
 - La respuesta original de la fuente se guarda sin cambios, un archivo por año, en `data/udis/raw/`, y su hash va en el manifiesto.
