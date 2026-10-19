@@ -15,6 +15,8 @@ const definicion = ({ ejecutar: _, ...resto }: Herramienta) => resto;
 const NOMBRES = [
   "buscar_municipio",
   "municipio",
+  "estados",
+  "municipios_de_estado",
   "validar_clabe",
   "banco_por_codigo",
   "validar_rfc",

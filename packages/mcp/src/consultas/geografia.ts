@@ -1,6 +1,7 @@
-// Municipios y alcaldías del catálogo de INEGI que trae el paquete: datos estables, sin red.
-import type { Municipio } from "mexicoapi";
-import { buscarMunicipio, estado, meta } from "mexicoapi/datos";
+// Estados, municipios y alcaldías del catálogo de INEGI que trae el paquete: datos estables, sin
+// red.
+import type { Estado, Municipio } from "mexicoapi";
+import { buscarMunicipio, estado, estados, meta, municipios } from "mexicoapi/datos";
 import { type Herramienta, resultadoError } from "../herramientas.js";
 import {
   anotaciones,
@@ -12,7 +13,8 @@ import {
   resultado,
 } from "../respuesta.js";
 
-const MUNICIPIO = {
+/** Un municipio tal como viene en el catálogo. */
+const MUNICIPIO_INEGI = {
   type: "object",
   properties: {
     cvegeo: { type: "string" },
@@ -20,9 +22,29 @@ const MUNICIPIO = {
     cve_mun: { type: "string" },
     nombre: { type: "string" },
     cve_cabecera: { type: ["string", "null"] },
+  },
+  required: ["cvegeo", "cve_ent", "cve_mun", "nombre", "cve_cabecera"],
+} as const;
+
+/** Un municipio con el nombre de su estado. */
+const MUNICIPIO = {
+  type: "object",
+  properties: {
+    ...MUNICIPIO_INEGI.properties,
     estado: { type: "string", description: "Nombre del estado." },
   },
-  required: ["cvegeo", "cve_ent", "cve_mun", "nombre", "cve_cabecera", "estado"],
+  required: [...MUNICIPIO_INEGI.required, "estado"],
+} as const;
+
+const ESTADO = {
+  type: "object",
+  properties: {
+    cve_ent: { type: "string", description: "Clave INEGI de 2 dígitos." },
+    nombre: { type: "string" },
+    abreviatura: { type: "string" },
+    cvegeo: { type: "string" },
+  },
+  required: ["cve_ent", "nombre", "abreviatura", "cvegeo"],
 } as const;
 
 type ConEstado = Municipio & { estado: string };
@@ -107,6 +129,146 @@ export function buscarMunicipioHerramienta(): Herramienta {
             ];
       const p = procedencia({ meta: meta.municipios, origen: "paquete" });
       return resultado(lineas, datos, p, { extra: { total } });
+    },
+  };
+}
+
+/** Minúsculas, sin acentos y con cualquier signo como un espacio: como busca buscarMunicipio. */
+const normalizar = (texto: string): string =>
+  texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+type Resolucion = { estado: Estado } | { varios: readonly Estado[] } | { ninguno: true };
+
+/**
+ * El estado de un nombre: el de nombre o abreviatura iguales al texto (sin mayúsculas, acentos ni
+ * signos) o, si no hay, el único cuyo nombre empieza con esas palabras ("coahuila" es "Coahuila de
+ * Zaragoza"). "Estado de" al inicio no cuenta. Si el comienzo es de varios, los da todos.
+ */
+function resolverEstado(texto: string): Resolucion {
+  const n = normalizar(texto);
+  const buscado = n.startsWith("estado de ") ? n.slice("estado de ".length) : n;
+  const todos = estados();
+  const igual =
+    todos.find((e) => normalizar(e.nombre) === buscado) ??
+    todos.find((e) => normalizar(e.abreviatura) === buscado);
+  if (igual !== undefined) return { estado: igual };
+  const empiezan = todos.filter((e) => normalizar(e.nombre).startsWith(`${buscado} `));
+  if (empiezan.length === 1) return { estado: empiezan[0] as Estado };
+  return empiezan.length > 1 ? { varios: empiezan } : { ninguno: true };
+}
+
+export function estadosHerramienta(): Herramienta {
+  return {
+    name: "estados",
+    title: "Estados",
+    description:
+      "Las 32 entidades federativas del catálogo de INEGI que trae el paquete, sin red: clave de 2 dígitos (cve_ent), nombre, abreviatura y cvegeo. Úsala para saber la clave de un estado, que piden municipios_de_estado y buscar_municipio.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    outputSchema: esquemaSalida({ type: "array", items: ESTADO }, { origenes: ["paquete"] }),
+    annotations: anotaciones(false),
+    async ejecutar() {
+      const datos = estados();
+      const lineas = [
+        `${datos.length} entidades federativas (clave, nombre y abreviatura):`,
+        ...datos.map((e) => `- ${e.cve_ent} ${aUnaLinea(e.nombre)} (${aUnaLinea(e.abreviatura)})`),
+      ];
+      return resultado(lineas, datos, procedencia({ meta: meta.estados, origen: "paquete" }));
+    },
+  };
+}
+
+export function municipiosDeEstadoHerramienta(): Herramienta {
+  return {
+    name: "municipios_de_estado",
+    title: "Municipios de un estado",
+    description:
+      "Todos los municipios y alcaldías de un estado, con el total, del catálogo de INEGI que trae el paquete, sin red. Úsala para preguntas como qué municipios tiene un estado o cuántos son: buscar_municipio solo da los que coinciden con un texto. Indica el estado con cve_ent (su clave de 2 dígitos) o con estado (su nombre o abreviatura, sin distinguir mayúsculas ni acentos), no con los dos. Si el nombre no es de un solo estado, responde con error; estados da los nombres y las claves.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cve_ent: {
+          type: "string",
+          pattern: "^[0-9]{2}$",
+          description: "Clave INEGI del estado (2 dígitos).",
+        },
+        estado: {
+          type: "string",
+          minLength: 1,
+          maxLength: 60,
+          description: "Nombre o abreviatura del estado, como los da estados.",
+        },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: esquemaSalida(
+      { type: "array", items: MUNICIPIO_INEGI },
+      {
+        origenes: ["paquete"],
+        extra: {
+          estado: { ...ESTADO, description: "El estado consultado." },
+          total: { type: "integer", description: "Municipios y alcaldías del estado." },
+        },
+      },
+    ),
+    annotations: anotaciones(false),
+    async ejecutar(args) {
+      const { cve_ent, estado: nombre } = args as { cve_ent?: string; estado?: string };
+      if (cve_ent !== undefined && nombre !== undefined) {
+        return resultadoError("parametro-invalido", "Indica solo uno de cve_ent o estado.");
+      }
+      let elegido: Estado | undefined;
+      if (cve_ent !== undefined) {
+        elegido = estado(cve_ent);
+        if (elegido === undefined) {
+          return resultadoError(
+            "no-encontrado",
+            `No existe el estado ${cve_ent}. La herramienta estados da las claves.`,
+          );
+        }
+      } else if (nombre !== undefined) {
+        if (!/[\p{L}\p{N}]/u.test(nombre)) {
+          return resultadoError(
+            "parametro-invalido",
+            "El nombre del estado no tiene letras ni números.",
+          );
+        }
+        const r = resolverEstado(nombre);
+        const pedido = aUnaLinea(nombre).trim();
+        if ("varios" in r) {
+          const cuales = r.varios.map((e) => `${e.cve_ent} ${aUnaLinea(e.nombre)}`).join(", ");
+          return resultadoError(
+            "parametro-invalido",
+            `"${pedido}" corresponde a más de un estado: ${cuales}. Indica cve_ent.`,
+          );
+        }
+        if ("ninguno" in r) {
+          return resultadoError(
+            "no-encontrado",
+            `Ningún estado se llama "${pedido}". La herramienta estados da los nombres y las claves.`,
+          );
+        }
+        elegido = r.estado;
+      } else {
+        return resultadoError(
+          "parametro-faltante",
+          "Indica cve_ent (la clave de 2 dígitos) o estado (el nombre).",
+        );
+      }
+      const datos = municipios(elegido.cve_ent);
+      const total = datos.length;
+      // Las demarcaciones de la Ciudad de México son alcaldías, no municipios.
+      const que = elegido.cve_ent === "09" ? "alcaldías" : "municipios";
+      const lineas = [
+        `${aUnaLinea(elegido.nombre)} (cve_ent ${elegido.cve_ent}) tiene ${total} ${que}:`,
+        ...datos.map((m) => `- ${m.cvegeo} ${aUnaLinea(m.nombre)}`),
+      ];
+      const p = procedencia({ meta: meta.municipios, origen: "paquete" });
+      return resultado(lineas, datos, p, { extra: { estado: elegido, total } });
     },
   };
 }

@@ -1,6 +1,6 @@
 # mexicoapi-mcp
 
-Servidor MCP (Model Context Protocol) con datos de referencia oficiales de México, para que un asistente consulte el dato publicado en vez de inventarlo: municipios, bancos y CLABE, RFC, CURP y NSS, tipo de cambio FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo, tarifas de ISR y códigos postales.
+Servidor MCP (Model Context Protocol) con datos de referencia oficiales de México, para que un asistente consulte el dato publicado en vez de inventarlo: estados y municipios, bancos y CLABE, RFC, CURP y NSS, tipo de cambio FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo, tarifas de ISR y códigos postales.
 
 - Corre en tu equipo y habla con el cliente por stdio.
 - Es de solo lectura: ninguna herramienta escribe, borra ni hace peticiones arbitrarias.
@@ -54,6 +54,8 @@ Una dirección inválida (con credenciales, query o fragmento) o un `MEXICOAPI_S
 | --- | --- | --- |
 | `buscar_municipio` | Busca municipios y alcaldías por nombre en el catálogo de INEGI | No |
 | `municipio` | Un municipio por su clave geoestadística (`cvegeo`) | No |
+| `estados` | Las 32 entidades federativas con su clave (`cve_ent`), nombre y abreviatura | No |
+| `municipios_de_estado` | Todos los municipios y alcaldías de un estado, con el total; el estado va por su clave (`cve_ent`) o por su nombre | No |
 | `validar_clabe` | Valida una CLABE (dígito de control y banco) | No |
 | `banco_por_codigo` | Un banco o participante del SPEI por su código de 3 dígitos | No |
 | `validar_rfc` | Valida el formato de un RFC; el dígito verificador de la homoclave se revisa, pero si no coincide solo se avisa y el RFC no se marca inválido | No |
