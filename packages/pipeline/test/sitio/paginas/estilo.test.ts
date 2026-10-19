@@ -50,11 +50,9 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/\npre \{[^}]*overflow-x: auto;/);
   });
 
-  // El primer comando que uno copia no puede quedar cortado en una columna angosta.
-  it("los bloques de Empieza parten las líneas largas en vez de cortarlas", () => {
-    expect(ESTILO).toMatch(
-      /\n\.bloque pre \{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/,
-    );
+  // El primer comando que uno copia no puede quedar cortado en una columna angosta ni en móvil.
+  it("los bloques de código parten las líneas largas en vez de cortarlas", () => {
+    expect(ESTILO).toMatch(/\npre \{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/);
   });
 
   // Debajo de 640 px una tabla de seis columnas no cabe: cada renglón es una tarjeta y cada celda
