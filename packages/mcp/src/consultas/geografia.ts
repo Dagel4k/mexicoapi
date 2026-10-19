@@ -143,16 +143,44 @@ const normalizar = (texto: string): string =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
-type Resolucion = { estado: Estado } | { varios: readonly Estado[] } | { ninguno: true };
+/**
+ * Otros nombres de uso común, normalizados, con la clave de su estado: los del Estado de México, el
+ * del antiguo Distrito Federal y el nombre anterior de Querétaro. Los nombres oficiales largos
+ * ("Coahuila de Zaragoza", "Veracruz de Ignacio de la Llave") ya son los del catálogo.
+ */
+const OTROS_NOMBRES: Readonly<Record<string, string>> = {
+  "estado de mexico": "15",
+  "edo de mexico": "15",
+  "edo mex": "15",
+  edomex: "15",
+  "distrito federal": "09",
+  df: "09",
+  // "D.F.": los puntos quedan como espacios.
+  "d f": "09",
+  "queretaro de arteaga": "22",
+};
+
+/** "México" sin más puede ser el Estado de México o la Ciudad de México; el país no es un estado. */
+const MEXICO = "mexico";
+
+type Resolucion =
+  | { estado: Estado }
+  | { varios: readonly Estado[] }
+  | { mexico: true }
+  | { ninguno: true };
 
 /**
- * El estado de un nombre: el de nombre o abreviatura iguales al texto (sin mayúsculas, acentos ni
- * signos) o, si no hay, el único cuyo nombre empieza con esas palabras ("coahuila" es "Coahuila de
- * Zaragoza"). "Estado de" al inicio no cuenta. Si el comienzo es de varios, los da todos.
+ * El estado de un nombre (sin mayúsculas, acentos ni signos): uno de OTROS_NOMBRES; el de nombre
+ * o abreviatura iguales al texto; o, si no hay, el único cuyo nombre empieza con esas palabras
+ * ("coahuila" es "Coahuila de Zaragoza"). "Estado de" al inicio no cuenta. "México" sin más es
+ * ambiguo. Si el comienzo es de varios, los da todos.
  */
 function resolverEstado(texto: string): Resolucion {
   const n = normalizar(texto);
+  const otro = Object.hasOwn(OTROS_NOMBRES, n) ? estado(OTROS_NOMBRES[n] as string) : undefined;
+  if (otro !== undefined) return { estado: otro };
   const buscado = n.startsWith("estado de ") ? n.slice("estado de ".length) : n;
+  if (buscado === MEXICO) return { mexico: true };
   const todos = estados();
   const igual =
     todos.find((e) => normalizar(e.nombre) === buscado) ??
@@ -162,6 +190,16 @@ function resolverEstado(texto: string): Resolucion {
   if (empiezan.length === 1) return { estado: empiezan[0] as Estado };
   return empiezan.length > 1 ? { varios: empiezan } : { ninguno: true };
 }
+
+/** El nombre del estado en un texto: el 15 del catálogo es "México", como el país. */
+const nombreEnTexto = (e: Estado): string =>
+  e.cve_ent === "15" ? `${aUnaLinea(e.nombre)} (Estado de México)` : aUnaLinea(e.nombre);
+
+/** "15 México (Estado de México)", para nombrar un estado con su clave en un texto. */
+const conClave = (cve_ent: string): string => {
+  const e = estado(cve_ent);
+  return e === undefined ? cve_ent : `${cve_ent} ${nombreEnTexto(e)}`;
+};
 
 export function estadosHerramienta(): Herramienta {
   return {
@@ -240,8 +278,14 @@ export function municipiosDeEstadoHerramienta(): Herramienta {
         }
         const r = resolverEstado(nombre);
         const pedido = aUnaLinea(nombre).trim();
+        if ("mexico" in r) {
+          return resultadoError(
+            "parametro-invalido",
+            `"${pedido}" puede ser ${conClave("15")} o ${conClave("09")}; el país no es un estado. Indica cve_ent.`,
+          );
+        }
         if ("varios" in r) {
-          const cuales = r.varios.map((e) => `${e.cve_ent} ${aUnaLinea(e.nombre)}`).join(", ");
+          const cuales = r.varios.map((e) => conClave(e.cve_ent)).join(", ");
           return resultadoError(
             "parametro-invalido",
             `"${pedido}" corresponde a más de un estado: ${cuales}. Indica cve_ent.`,
@@ -265,7 +309,7 @@ export function municipiosDeEstadoHerramienta(): Herramienta {
       // Las demarcaciones de la Ciudad de México son alcaldías, no municipios.
       const que = elegido.cve_ent === "09" ? "alcaldías" : "municipios";
       const lineas = [
-        `${aUnaLinea(elegido.nombre)} (cve_ent ${elegido.cve_ent}) tiene ${total} ${que}:`,
+        `${nombreEnTexto(elegido)} (cve_ent ${elegido.cve_ent}) tiene ${total} ${que}:`,
         ...datos.map((m) => `- ${m.cvegeo} ${aUnaLinea(m.nombre)}`),
       ];
       const p = procedencia({ meta: meta.municipios, origen: "paquete" });
