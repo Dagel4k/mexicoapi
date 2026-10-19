@@ -1,7 +1,7 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
 // (as_of, fuente, origen y advertencias), sus esquemas, el texto legible y cómo se traducen los
 // errores esperables del paquete y de la API.
-import { aUnaLinea, esFechaIsoValida } from "mexicoapi";
+import { AVISO_SIN_API, aUnaLinea, esFechaIsoValida } from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -50,10 +50,10 @@ export interface Procedencia {
 
 /**
  * Advertencia, sin red (MEXICOAPI_SIN_RED=1), de una respuesta del paquete que puede no estar al
- * día: el FIX más reciente o una fecha cerca del final de su serie (ver indicadores.ts).
+ * día: el FIX más reciente o una fecha cerca del final de su serie (ver indicadores.ts). Es la del
+ * cliente de mexicoapi en el último FIX del paquete: en una respuesta sale una sola vez.
  */
-export const AVISO_SIN_API =
-  "Respuesta con los datos del paquete mexicoapi, sin consultar la API (MEXICOAPI_SIN_RED=1): pueden faltar publicaciones recientes.";
+export { AVISO_SIN_API };
 
 /** Cierre de la descripción de las herramientas de datos que caducan. */
 export const RESPALDO_API =

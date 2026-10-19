@@ -213,9 +213,11 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
     },
   },
   "/v1/tipo-cambio/fix/ultimo": {
-    responder: async (c) => {
+    responder: async (c, n) => {
       const s = await import("../datos/fix.js");
       antiguedad(c, s);
+      // La más reciente del paquete puede no ser la última publicada: lo avisa siempre, como el MCP.
+      c.advertencias.push(n.AVISO_SIN_API);
       return { data: s.serie.at(-1), meta: conDocs(s.meta, "tipo-de-cambio-fix") };
     },
   },

@@ -72,6 +72,13 @@ describe("tipo_de_cambio_fix sin API", () => {
     expect(await avisa({ publicado: "2025-01-15" })).toBe(false);
   });
 
+  it("el aviso de la publicación más reciente sale una vez, aunque el cliente también lo dé", async () => {
+    const r = await sinRed("tipo_de_cambio_fix", {});
+    const advertencias = contenido(r).advertencias as string[];
+    expect(advertencias.filter((a) => a === AVISO_SIN_API)).toHaveLength(1);
+    expect(texto(r).split(AVISO_SIN_API)).toHaveLength(2);
+  });
+
   it("con operacion aplica el CFF, artículo 20, y cita el fundamento", async () => {
     const r = await sinRed("tipo_de_cambio_fix", { operacion: "2026-10-13" });
     const c = contenido(r);
