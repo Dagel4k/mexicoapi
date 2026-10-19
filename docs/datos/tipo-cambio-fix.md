@@ -5,7 +5,7 @@ El tipo de cambio FIX, que el Banco de México determina y publica en el Diario 
 - Identificador: `tipo-cambio.fix`
 - Registros: uno por cada día con publicación en el DOF; el total está en `records` del manifiesto y de `/v1/status`, y la primera y la última fecha, en `cobertura` (`desde` y `hasta`) de `/v1/status`
 - Clave: `fecha_publicacion`
-- Se actualiza: a diario
+- Se actualiza: a diario, a las 13:30 de la Ciudad de México. En `/v1/status` cuenta como desactualizado si pasan 72 horas sin una revisión correcta
 - Datos en el repositorio: `data/tipo-cambio-fix/`
 
 ## Campos

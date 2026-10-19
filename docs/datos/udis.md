@@ -5,7 +5,7 @@ El valor diario de la Unidad de Inversión (UDI) que el Banco de México publica
 - Identificador: `udis`
 - Registros: uno por cada día del calendario; el total está en `records` del manifiesto y de `/v1/status`, y la primera y la última fecha, en `cobertura` (`desde` y `hasta`) de `/v1/status`
 - Clave: `fecha`
-- Se actualiza: a diario
+- Se actualiza: a diario, a las 14:30 de la Ciudad de México. En `/v1/status` cuenta como desactualizado si pasan 72 horas sin una revisión correcta
 - Datos en el repositorio: `data/udis/`
 
 ## Campos

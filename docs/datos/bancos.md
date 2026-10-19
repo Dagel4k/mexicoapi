@@ -5,7 +5,7 @@ Instituciones financieras con su código de CLABE, su código SPEI, razón socia
 - Identificador: `bancos`
 - Registros: instituciones activas e inactivas; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `codigo`
-- Se actualiza: todos los días; las altas y bajas de instituciones pasan por revisión humana
+- Se actualiza: todos los días; las altas y bajas de instituciones pasan por revisión humana. En `/v1/status` cuenta como desactualizado si pasan 72 horas sin una revisión correcta
 - Datos en el repositorio: `data/bancos/`
 
 ## Campos

@@ -5,7 +5,7 @@ Los 32 estados con su clave, nombre y abreviatura, del Catálogo Único de Clave
 - Identificador: `inegi.estados`
 - Registros: uno por estado; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `cve_ent`
-- Se actualiza: cada semana (lunes)
+- Se actualiza: cada semana (lunes). En `/v1/status` cuenta como desactualizado si pasan 216 horas sin una revisión correcta
 - Datos en el repositorio: `data/inegi-estados/`
 
 ## Campos

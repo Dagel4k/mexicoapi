@@ -19,6 +19,8 @@ Los días del primer párrafo del artículo 12 los fija la ley, no una publicaci
 | `tipo` | texto | `"vacaciones"` | `descanso` o `vacaciones`, ver abajo |
 | `fuente` | objeto | ver abajo | Publicación que establece el día |
 
+En la API, cada día de `/v1/dias-inhabiles` trae `fecha`, `motivo`, `tipo` y `fuente`; `autoridad` solo va en los archivos de `data/` y en las descargas.
+
 Los sábados y domingos también son inhábiles (artículo 12 del CFF), pero no se listan: el calendario los agrega solo.
 
 ## Tipos de día
