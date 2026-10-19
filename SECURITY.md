@@ -2,11 +2,11 @@
 
 ## Versiones soportadas
 
-La API desplegada es siempre la de `main`: las correcciones llegan con el siguiente despliegue. Los paquetes de npm (`mexicoapi` y `mexicoapi-mcp`, que todavía no tienen versión publicada) reciben correcciones de seguridad solo en su última versión.
+La API desplegada es siempre la de `main`: las correcciones llegan con el siguiente despliegue. Los paquetes de npm `mexicoapi` y `mexicoapi-mcp` reciben correcciones de seguridad solo en su última versión.
 
 ## Cómo reportar una vulnerabilidad
 
-No abras un issue público. Usa el formulario privado de GitHub: en la pestaña Security del repositorio, elige "Report a vulnerability".
+No abras un issue público. Usa el formulario privado de GitHub: <https://github.com/Dagel4k/mexicoapi/security/advisories/new> (en la pestaña Security del repositorio, "Report a vulnerability").
 
 Incluye qué encontraste, cómo reproducirlo y qué impacto crees que tiene.
 
