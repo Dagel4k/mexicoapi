@@ -49,6 +49,15 @@ validarNss("12345678903").valido; // true
 
 Cada validador devuelve `{ valor, valido, formato_valido, digito_verificador_valido, errores, nota, detalle }`. `errores` dice qué falló (`longitud`, `caracteres`, `digito_verificador`...). Revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan ante el banco, el SAT, RENAPO o el IMSS.
 
+En el RFC, un dígito verificador que no coincide aparece en `errores` como `digito_verificador`, pero no invalida el resultado: `valido` es igual a `formato_valido`, porque cerca del 1.5 % de los RFC en uso tienen un dígito inválido y rechazar uno real es peor. Si necesitas exigirlo, revisa `digito_verificador_valido`:
+
+```ts
+validarRfc("XAXX010101001");
+// { valido: true, formato_valido: true, digito_verificador_valido: false, errores: ["digito_verificador"], ... }
+```
+
+En la CLABE, la CURP y el NSS, un dígito que no coincide sí hace `valido: false`.
+
 Para que la CLABE diga su banco, pásale el catálogo del paquete:
 
 ```ts
@@ -270,15 +279,28 @@ Inhábiles saltados:
 Origen: API
 ```
 
-`dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` todo sale del paquete, sin red; `--base` gana a esa variable. `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error y `mexicoapi <comando> --help` explica cada comando. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control.
+`dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` todo sale del paquete, sin red; `--base` gana a esa variable. `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error, `-v` la versión y `mexicoapi --help` lista todos los comandos, también `curp`, `nss`, `salario-minimo`, `uma --fecha`, `sepomex importar` y `sepomex resumen`; `mexicoapi <comando> --help` explica cada uno. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control.
 
 Códigos de salida:
 
 | Código | Cuándo |
 | --- | --- |
 | 0 | Todo bien |
-| 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar |
+| 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar. En el RFC, un mal dígito verificador solo se avisa y sale con 0 |
 | 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`) |
+
+## Otras exportaciones
+
+De `mexicoapi`:
+
+- `digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp` y `digitoVerificadorNss` calculan el dígito verificador a partir de los primeros caracteres (17 en la CLABE y la CURP, 11 o 12 en el RFC, 10 en el NSS). Lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados.
+- `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTA_VALIDACION` (la nota de cada resultado).
+- `esFechaIsoValida`: si un texto es una fecha real `AAAA-MM-DD`.
+- `diasDescansoLft(anio)`: los días de descanso obligatorio del artículo 74 de un año, de 2007 a 2100, con su cita. `COBERTURA_LFT` es ese rango y `VIGENCIA_LFT`, la fecha de la última reforma de la LFT que se tomó en cuenta.
+- `crearCalendario`: arma un `Calendario` para `sumarDiasHabiles` con tus propios días inhábiles, su cobertura y la fuente de los fines de semana.
+- `FUENTE_LFT_74`, `FUENTE_LFT_715` y `FUENTE_CFF_20`: nombre, URL y fragmento citado de esos artículos.
+
+De las entradas de datos: `umas()`, `salariosMinimos()`, `tarifasIsr()` (las listas completas) y `anios` (los años que trae el paquete de cada constante) en `mexicoapi/datos/constantes`; `estados()` en `mexicoapi/datos`; y `meta` (fuente, licencia y `as_of`) en cada una: `mexicoapi/datos`, `mexicoapi/datos/fix`, `mexicoapi/datos/udis`, `mexicoapi/datos/calendarios` y `mexicoapi/datos/constantes`.
 
 ## Nombres
 
