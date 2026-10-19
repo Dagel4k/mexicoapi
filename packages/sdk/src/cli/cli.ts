@@ -51,6 +51,26 @@ export interface Entorno {
 /** Uso incorrecto: sale con código 2 y un recordatorio de `--help`. */
 class ErrorUso extends Error {}
 
+/** Una variable de entorno con un valor que no se reconoce: sale con código 2, sin `--help`. */
+class ErrorEntorno extends Error {}
+
+const SI = new Set(["1", "true", "yes", "si", "sí", "on"]);
+const NO = new Set(["0", "false", "no", "off", ""]);
+
+/**
+ * Si MEXICOAPI_SIN_RED pide no usar la red, como la lee el servidor MCP: los valores verdaderos y
+ * falsos comunes sin distinguir mayúsculas (sin la variable, o vacía, es false). Otro valor es un
+ * error en vez de dejar la red encendida en silencio; el mensaje no repite el valor.
+ */
+function sinRedPedido(valor: string | undefined): boolean {
+  const texto = (valor ?? "").normalize("NFC").trim().toLowerCase();
+  if (SI.has(texto)) return true;
+  if (NO.has(texto)) return false;
+  throw new ErrorEntorno(
+    "MEXICOAPI_SIN_RED no es válida: usa 1, true, yes, si u on para responder sin red, o 0, false, no, off o nada para consultar la API.",
+  );
+}
+
 const OPCIONES = {
   json: { type: "boolean" },
   help: { type: "boolean", short: "h" },
@@ -168,16 +188,19 @@ function sinArgumentos(posiciones: readonly string[], comando: string): void {
 }
 
 /**
- * El cliente de la CLI. La API, en este orden: --base; ninguna con MEXICOAPI_SIN_RED=1 (todo sale
- * del paquete); MEXICOAPI_BASE; y si no, la API pública (URL_API). Solo los datos que caducan
- * (dias-habiles, uma, salario-minimo, isr) se piden a la API; banco y municipio son estables y
- * salen del paquete igual (la base solo se valida), y los validadores no usan el cliente.
+ * El cliente de la CLI. La API, en este orden: --base; ninguna con MEXICOAPI_SIN_RED=1 (o true,
+ * yes, si, on: todo sale del paquete); MEXICOAPI_BASE; y si no, la API pública (URL_API). Solo los
+ * datos que caducan (dias-habiles, fix, udi, uma, salario-minimo, isr) se piden a la API; banco,
+ * estados y municipios son estables y salen del paquete igual (la base solo se valida), y los
+ * validadores no usan el cliente. Un MEXICOAPI_SIN_RED que no se reconoce es un error aunque haya
+ * --base.
  */
 async function crearClienteCli(e: Entorno, opciones: Opciones) {
+  const sinRed = sinRedPedido(e.env.MEXICOAPI_SIN_RED);
   const { crearCliente } = await import("../cliente/index.js");
   const { fetch } = e;
   if (opciones.base !== undefined) return crearCliente({ base: opciones.base, fetch });
-  if (e.env.MEXICOAPI_SIN_RED === "1") return crearCliente({ offline: true });
+  if (sinRed) return crearCliente({ offline: true });
   const base = e.env.MEXICOAPI_BASE;
   return crearCliente({ base: base === undefined || base === "" ? undefined : base, fetch });
 }
@@ -472,6 +495,10 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
         return await sepomex(resto, e, opciones);
     }
   } catch (error) {
+    if (error instanceof ErrorEntorno) {
+      imprimirError(e, error.message, enJson);
+      return 2;
+    }
     if (error instanceof ErrorUso) {
       imprimirError(e, error.message, enJson);
       if (!enJson) e.errores("Usa mexicoapi --help para ver los comandos.\n");
