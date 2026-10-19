@@ -961,17 +961,50 @@ describe("revisar", () => {
   });
   const udi = (fecha: string, valor: string): Udi => ({ fecha, valor });
   // Sin data/curado en la raíz de prueba: no hay calendario de la CNBV, salvo donde se escribe.
-  const revisarFix = async (antes: TipoCambioFix[], despues: TipoCambioFix[]) =>
-    tipoCambioFix.revisar(diferenciar(antes, despues, tipoCambioFix.clave), antes, ctx());
-  const revisarUdis = async (antes: Udi[], despues: Udi[]) =>
-    udis.revisar(diferenciar(antes, despues, udis.clave), antes, ctx());
+  // La fecha de la corrida, lejana salvo donde la prueba da la suya (las de horizonte).
+  const LEJOS = "2027-12-31";
+  const revisarFix = async (antes: TipoCambioFix[], despues: TipoCambioFix[], fecha = LEJOS) =>
+    tipoCambioFix.revisar(diferenciar(antes, despues, tipoCambioFix.clave), antes, ctx(fecha));
+  const revisarUdis = async (antes: Udi[], despues: Udi[], fecha = LEJOS) =>
+    udis.revisar(diferenciar(antes, despues, udis.clave), antes, ctx(fecha));
 
   it("la publicación de cada día no pide revisión", async () => {
     const r = await serieFix("158-2026.json");
-    expect(await revisarFix(r.slice(0, -1), r)).toEqual({ requiereRevision: false, motivos: [] });
+    const sin = { requiereRevision: false, motivos: [] };
+    expect(await revisarFix(r.slice(0, -1), r, "2026-10-16")).toEqual(sin);
     const u = await serieUdis();
-    // El día 10 y el 25 de cada mes se publican de golpe unos 15 días por adelantado.
-    expect(await revisarUdis(u.slice(0, -16), u)).toEqual({ requiereRevision: false, motivos: [] });
+    // El día 10 y el 25 de cada mes se publican de golpe unos 15 días por adelantado: el 9 de
+    // octubre, del 11 al 25.
+    expect(await revisarUdis(u.slice(0, -15), u, "2026-10-09")).toEqual(sin);
+  });
+
+  it("un FIX con fecha posterior a la corrida pide revisión", async () => {
+    const antes = [fix("2026-10-15", "18.4888")];
+    const con = [...antes, fix("2026-10-16", "18.4250")];
+    expect(await revisarFix(antes, con, "2026-10-16")).toEqual({
+      requiereRevision: false,
+      motivos: [],
+    });
+    expect((await revisarFix(antes, con, "2026-10-15")).motivos).toEqual([
+      "el FIX de 2026-10-16 es posterior a la fecha de la corrida (2026-10-15)",
+    ]);
+    const lejano = [...antes, fix("2031-03-04", "19.0000")];
+    expect((await revisarFix(antes, lejano, "2026-10-16")).motivos).toContain(
+      "el FIX de 2031-03-04 es posterior a la fecha de la corrida (2026-10-16)",
+    );
+  });
+
+  it("una UDI más de 25 días después de la corrida pide revisión", async () => {
+    const antes = [udi("2026-11-10", "8.000000")];
+    const hasta12 = [...antes, udi("2026-11-11", "8.000100"), udi("2026-11-12", "8.000200")];
+    expect(await revisarUdis(antes, hasta12, "2026-10-18")).toEqual({
+      requiereRevision: false,
+      motivos: [],
+    });
+    const hasta13 = [...hasta12, udi("2026-11-13", "8.000300")];
+    expect((await revisarUdis(antes, hasta13, "2026-10-18")).motivos).toEqual([
+      "la UDI de 2026-11-13 pasa de 2026-11-12, 25 días después de la corrida (2026-10-18)",
+    ]);
   });
 
   it("un valor ya publicado que cambia o desaparece pide revisión y lo dice", async () => {
@@ -999,18 +1032,31 @@ describe("revisar", () => {
   });
 
   it("más de 31 altas en el FIX o más de 45 en UDIS piden revisión", async () => {
-    const r = await serieFix("158-2026.json");
-    expect(await revisarFix(r.slice(0, -31), r)).toEqual({ requiereRevision: false, motivos: [] });
-    expect(await revisarFix(r.slice(0, -32), r)).toEqual({
-      requiereRevision: true,
-      motivos: ["32 altas, más de 31: arranque o hueco recuperado"],
-    });
+    // Con valores iguales, para que solo cuente el número de altas (un hueco recuperado de
+    // semanas también puede pasar del umbral contra la última publicación).
+    const plano = (await serieFix("158-2026.json")).map((x) => ({ ...x, valor: "18.0000" }));
+    const altas = (m: string[]) => m.filter((x) => x.includes("altas, más de"));
+    expect((await revisarFix(plano.slice(0, -31), plano)).motivos).toEqual([]);
+    expect(altas((await revisarFix(plano.slice(0, -32), plano)).motivos)).toEqual([
+      "32 altas, más de 31: arranque o hueco recuperado",
+    ]);
     const u = await serieUdis();
     expect(await revisarUdis(u.slice(0, -45), u)).toEqual({ requiereRevision: false, motivos: [] });
     expect(await revisarUdis(u.slice(0, -46), u)).toEqual({
       requiereRevision: true,
       motivos: ["46 altas, más de 45: arranque o hueco recuperado"],
     });
+  });
+
+  it("un hueco de semanas en el FIX que se recupera de golpe se compara con lo publicado", async () => {
+    // Del 2 de septiembre al 16 de octubre de 2026 el peso se movió más de 5 %: con 31 altas de
+    // golpe, las que pasan de 5 % contra el 2 de septiembre piden revisión.
+    const r = await serieFix("158-2026.json");
+    const { motivos } = await revisarFix(r.slice(0, -31), r);
+    expect(motivos.length).toBeGreaterThan(0);
+    expect(motivos.every((m) => m.endsWith("de la última publicación (2026-09-02: 16.9755)"))).toBe(
+      true,
+    );
   });
 
   it("un FIX nuevo que se aleja más de 5 % de la publicación anterior pide revisión", async () => {
@@ -1021,28 +1067,37 @@ describe("revisar", () => {
     expect(await con("21.0001")).toEqual({
       requiereRevision: true,
       motivos: [
-        "el FIX de 2026-10-16 (21.0001) se aleja más de 5 % de la publicación anterior (2026-10-15: 20.0000)",
+        "el FIX de 2026-10-16 (21.0001) se aleja más de 5 % de la última publicación (2026-10-15: 20.0000)",
       ],
     });
     expect((await con("18.9999")).motivos).toEqual([
-      "el FIX de 2026-10-16 (18.9999) se aleja más de 5 % de la publicación anterior (2026-10-15: 20.0000)",
+      "el FIX de 2026-10-16 (18.9999) se aleja más de 5 % de la última publicación (2026-10-15: 20.0000)",
     ]);
     // La publicación anterior puede ser de varios días antes (fin de semana o feriado).
     const viernes = [fix("2026-10-09", "19.0000")];
     const lunes = await revisarFix(viernes, [...viernes, fix("2026-10-12", "21.0000")]);
     expect(lunes.motivos).toEqual([
-      "el FIX de 2026-10-12 (21.0000) se aleja más de 5 % de la publicación anterior (2026-10-09: 19.0000)",
+      "el FIX de 2026-10-12 (21.0000) se aleja más de 5 % de la última publicación (2026-10-09: 19.0000)",
     ]);
   });
 
-  it("el FIX nuevo se compara con la publicación anterior aunque también sea nueva", async () => {
+  it("cada FIX nuevo se compara con la última publicación, no con otro nuevo", async () => {
     const antes = [fix("2026-10-14", "20.0000")];
-    const exacto = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "22.0500")];
-    expect(await revisarFix(antes, exacto)).toEqual({ requiereRevision: false, motivos: [] });
-    const fuera = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "22.0501")];
-    expect((await revisarFix(antes, fuera)).motivos).toEqual([
-      "el FIX de 2026-10-16 (22.0501) se aleja más de 5 % de la publicación anterior (2026-10-15: 21.0000)",
+    const dentro = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "19.0000")];
+    expect(await revisarFix(antes, dentro)).toEqual({ requiereRevision: false, motivos: [] });
+    // 21 y 22.05 están a 5 % uno del otro, pero 22.05 está a 10.25 % de lo publicado.
+    const encadenado = [...antes, fix("2026-10-15", "21.0000"), fix("2026-10-16", "22.0500")];
+    expect((await revisarFix(antes, encadenado)).motivos).toEqual([
+      "el FIX de 2026-10-16 (22.0500) se aleja más de 5 % de la última publicación (2026-10-14: 20.0000)",
     ]);
+    // Cinco pasos de 4.9 %: desde el segundo, todos.
+    let valor = 20;
+    const pasos = [...antes];
+    for (const fecha of ["2026-10-15", "2026-10-16", "2026-10-19", "2026-10-20", "2026-10-21"]) {
+      valor *= 1.049;
+      pasos.push(fix(fecha, valor.toFixed(4)));
+    }
+    expect((await revisarFix(antes, pasos)).motivos).toHaveLength(4);
     // Sin publicación anterior no hay con qué comparar: solo cuenta como relleno.
     expect(await revisarFix(antes, [fix("2026-10-13", "30.0000"), ...antes])).toEqual({
       requiereRevision: true,
@@ -1105,20 +1160,42 @@ describe("revisar", () => {
     ]);
   });
 
-  it("una UDI nueva que se aleja más de 0.5 % del día anterior pide revisión", async () => {
+  it("una UDI nueva que se aleja más de 0.1 % por día de la última publicada pide revisión", async () => {
     const antes = [udi("2026-10-14", "7.990000"), udi("2026-10-15", "8.000000")];
     const con = (valor: string) => revisarUdis(antes, [...antes, udi("2026-10-16", valor)]);
-    expect(await con("8.040000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(await con("7.960000")).toEqual({ requiereRevision: false, motivos: [] });
-    expect(await con("8.040001")).toEqual({
+    expect(await con("8.008000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("7.992000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect(await con("8.008001")).toEqual({
       requiereRevision: true,
       motivos: [
-        "la UDI de 2026-10-16 (8.040001) se aleja más de 0.5 % del día anterior (2026-10-15: 8.000000)",
+        "la UDI de 2026-10-16 (8.008001) se aleja más de 0.1 % por día de la última publicada (2026-10-15: 8.000000)",
       ],
     });
-    expect((await con("7.959999")).motivos).toEqual([
-      "la UDI de 2026-10-16 (7.959999) se aleja más de 0.5 % del día anterior (2026-10-15: 8.000000)",
+    expect((await con("7.991999")).motivos).toEqual([
+      "la UDI de 2026-10-16 (7.991999) se aleja más de 0.1 % por día de la última publicada (2026-10-15: 8.000000)",
     ]);
+    // Dos días después, el doble; contra la última publicada, no contra la nueva del día 16.
+    const dos = (valor: string) =>
+      revisarUdis(antes, [...antes, udi("2026-10-16", "8.008000"), udi("2026-10-17", valor)]);
+    expect(await dos("8.016000")).toEqual({ requiereRevision: false, motivos: [] });
+    expect((await dos("8.016001")).motivos).toEqual([
+      "la UDI de 2026-10-17 (8.016001) se aleja más de 0.1 % por día de la última publicada (2026-10-15: 8.000000)",
+    ]);
+  });
+
+  it("una deriva de 0.49 % diario en 45 UDIS pide revisión desde el primer día", async () => {
+    const antes = [udi("2026-10-25", "8.861350")];
+    let valor = 8.86135;
+    const despues = [...antes];
+    for (let i = 1; i <= 45; i++) {
+      valor *= 1.0049;
+      despues.push(udi(sumarDias("2026-10-25", i), valor.toFixed(6)));
+    }
+    const { requiereRevision, motivos } = await revisarUdis(antes, despues, "2026-10-18");
+    expect(requiereRevision).toBe(true);
+    expect(motivos.filter((m) => m.includes("se aleja"))).toHaveLength(45);
+    // Del 26 de octubre al 9 de diciembre; el límite es el 12 de noviembre.
+    expect(motivos.filter((m) => m.includes("después de la corrida"))).toHaveLength(27);
   });
 
   it("los umbrales se comparan sin redondeo de punto flotante", async () => {
@@ -1134,8 +1211,8 @@ describe("revisar", () => {
     const grandes = [udi("2026-10-15", "9007199254.740993")];
     const conGrande = async (valor: string) =>
       (await revisarUdis(grandes, [...grandes, udi("2026-10-16", valor)])).requiereRevision;
-    expect(await conGrande("9052235251.014697")).toBe(false);
-    expect(await conGrande("9052235251.014698")).toBe(true);
+    expect(await conGrande("9016206453.995733")).toBe(false);
+    expect(await conGrande("9016206453.995734")).toBe(true);
   });
 
   describe("días inhábiles bancarios", () => {

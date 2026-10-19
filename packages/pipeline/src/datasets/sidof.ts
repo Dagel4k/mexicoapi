@@ -193,6 +193,10 @@ function aEntero(valor: string, decimales: number): bigint {
   return BigInt(entero + fraccion.padEnd(decimales, "0"));
 }
 
+/** Días de `desde` a `hasta` (fechas ISO válidas). */
+const diasEntre = (desde: FechaISO, hasta: FechaISO): number =>
+  Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000);
+
 const esPositivo = (valor: string): boolean => /^\d+\.\d+$/.test(valor) && /[1-9]/.test(valor);
 
 const repetidos = (valores: readonly string[]): string[] => {
@@ -263,9 +267,18 @@ interface ConfigSidof<T extends { valor: string }> {
    * su calendario), el motivo para un alta entre semana en uno de ellos; null si no aplica.
    */
   diaInhabilBancario: string | null;
-  /** Variación máxima contra el registro anterior: `numerador / denominador`. */
-  umbral: { numerador: bigint; denominador: bigint; texto: string };
-  /** Cómo se nombra un registro y su anterior en los motivos. */
+  /**
+   * Variación máxima de cada alta contra el último valor ya publicado antes de su fecha (no
+   * contra otra alta de la misma corrida: así una deriva en pasos chicos no se encadena):
+   * `numerador / denominador`, o eso por cada día entre los dos con `porDia`.
+   */
+  umbral: { numerador: bigint; denominador: bigint; porDia: boolean; texto: string };
+  /**
+   * Cuántos días después de la fecha de la corrida puede ir un alta: 0 si la fuente solo publica
+   * el valor del día; más si publica por adelantado.
+   */
+  horizonteDias: number;
+  /** Cómo se nombra un registro y su último publicado en los motivos. */
   nombre: string;
   anterior: string;
 }
@@ -278,12 +291,13 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
     crudos,
   });
 
-  /** Se aleja del anterior más que el umbral, con aritmética entera. */
-  const seAleja = (anterior: string, nuevo: string): boolean => {
+  /** Se aleja del publicado `dias` antes más que el umbral, con aritmética entera. */
+  const seAleja = (anterior: string, nuevo: string, dias: number): boolean => {
     const a = aEntero(anterior, c.decimales);
     const n = aEntero(nuevo, c.decimales);
     const diferencia = n > a ? n - a : a - n;
-    return diferencia * c.umbral.denominador > a * c.umbral.numerador;
+    const veces = c.umbral.porDia ? BigInt(Math.max(1, dias)) : 1n;
+    return diferencia * c.umbral.denominador > a * c.umbral.numerador * veces;
   };
 
   return {
@@ -424,10 +438,20 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
         c.diaInhabilBancario !== null && diferencias.altas.length > 0
           ? await diasInhabilesBancarios(ctx.raizDatos, c.id)
           : () => false;
+      // Ninguna fuente publica antes de tiempo: el FIX, el del día; las UDIS, hasta unos 19 días
+      // por adelantado (ver horizonteDias en udis).
+      const limite = sumarDias(ctx.fecha, c.horizonteDias);
       for (const a of diferencias.altas) {
         const fecha = c.fechaDe(a);
         if (fecha < ultimaPublicada) {
           motivos.push(`alta dentro de la serie ya publicada: ${fecha} ${a.valor}`);
+        }
+        if (fecha > limite) {
+          motivos.push(
+            c.horizonteDias === 0
+              ? `${c.nombre} de ${fecha} es posterior a la fecha de la corrida (${ctx.fecha})`
+              : `${c.nombre} de ${fecha} pasa de ${limite}, ${c.horizonteDias} días después de la corrida (${ctx.fecha})`,
+          );
         }
         const dia = diaDeLaSemana(fecha);
         if (c.finDeSemana !== null && (dia === 0 || dia === 6)) {
@@ -437,19 +461,15 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
         }
       }
 
-      // Cada alta se compara con el registro anterior de la serie nueva (también puede ser alta).
-      const serie = new Map(anterior.map((r) => [c.fechaDe(r), r]));
-      for (const b of diferencias.bajas) serie.delete(c.fechaDe(b));
-      for (const x of diferencias.cambios) serie.set(x.clave, x.despues);
-      for (const a of diferencias.altas) serie.set(c.fechaDe(a), a);
-      const fechas = [...serie.keys()].sort(porTexto);
-      const posicion = new Map(fechas.map((f, i) => [f, i]));
+      // Cada alta se compara con el último valor ya publicado antes de su fecha (de la serie
+      // anterior, no con otra alta): cinco pasos de 4.9 % no pasan como cinco cambios chicos.
+      const publicados = [...anterior].sort((x, y) => porTexto(c.fechaDe(x), c.fechaDe(y)));
       for (const a of diferencias.altas) {
         const fecha = c.fechaDe(a);
-        const previa = fechas[(posicion.get(fecha) as number) - 1];
-        if (previa === undefined) continue;
-        const p = serie.get(previa) as T;
-        if (seAleja(p.valor, a.valor)) {
+        const p = publicados.findLast((r) => c.fechaDe(r) < fecha);
+        if (p === undefined) continue;
+        const previa = c.fechaDe(p);
+        if (seAleja(p.valor, a.valor, diasEntre(previa, fecha))) {
           motivos.push(
             `${c.nombre} de ${fecha} (${a.valor}) se aleja más de ${c.umbral.texto} ${c.anterior} (${previa}: ${p.valor})`,
           );
@@ -477,9 +497,10 @@ export const tipoCambioFix: DefinicionDataset<TipoCambioFix> = crearDatasetSidof
   finDeSemana: "FIX publicado en fin de semana",
   diaInhabilBancario: "FIX publicado en día inhábil bancario",
   maximoAltas: 31,
-  umbral: { numerador: 5n, denominador: 100n, texto: "5 %" },
+  umbral: { numerador: 5n, denominador: 100n, porDia: false, texto: "5 %" },
+  horizonteDias: 0,
   nombre: "el FIX",
-  anterior: "de la publicación anterior",
+  anterior: "de la última publicación",
 });
 
 export const udis: DefinicionDataset<Udi> = crearDatasetSidof({
@@ -499,7 +520,13 @@ export const udis: DefinicionDataset<Udi> = crearDatasetSidof({
   finDeSemana: null,
   diaInhabilBancario: null,
   maximoAltas: 45,
-  umbral: { numerador: 5n, denominador: 1000n, texto: "0.5 %" },
+  // La UDI sube o baja con la inflación: de 2020 a 2026 nunca cambió más de 0.052 % en un día.
+  // El umbral dobla eso por cada día desde la última publicada.
+  umbral: { numerador: 1n, denominador: 1000n, porDia: true, texto: "0.1 % por día" },
+  // Banxico publica en el DOF hacia el 10 y el 25 de cada mes los valores hasta el 25 o el 10
+  // siguientes. En los crudos de 2020 a 2026 el lote más adelantado llegó 19 días después de su
+  // publicación; 25 deja margen sin admitir el lote que todavía no se publica.
+  horizonteDias: 25,
   nombre: "la UDI",
-  anterior: "del día anterior",
+  anterior: "de la última publicada",
 });
