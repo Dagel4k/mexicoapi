@@ -261,11 +261,20 @@ describe("publicar de datos.yml", () => {
     const publicar = paso(datos, "publicar", "Publicar resultado");
     expect(publicar.env?.PARCHE_GRANDE).toBe(expresion("steps.aplicar.outputs.grande"));
     expect(publicar.run).toContain(
-      `if [ "\${CODIGO}" = "3" ] || [ "\${PARCHE_GRANDE}" = "si" ]; then`,
+      `if [ "\${CODIGO}" = "3" ] || [ "\${PARCHE_GRANDE}" = "si" ] || [ -n "\${PARCHE_BINARIOS}" ]; then`,
     );
+    expect(publicar.env?.PARCHE_BINARIOS).toBe(expresion("steps.aplicar.outputs.binarios"));
     expect(datos.jobs.publicar?.outputs?.publicado).toContain(
-      "steps.aplicar.outputs.grande != 'si'",
+      "steps.aplicar.outputs.grande != 'si' && steps.aplicar.outputs.binarios == ''",
     );
+    // Las líneas se cuentan en el índice, después de aplicar: un texto enviado como parche
+    // binario cuenta igual. Solo el PDF de participantes puede ser binario sin pedir revisión.
+    const run = aplicar.run ?? "";
+    const aplicado = run.indexOf("git_o_falla apply --index");
+    const conteo = run.indexOf("git -c core.attributesFile=/dev/null diff --cached --numstat -z");
+    expect(aplicado).toBeGreaterThan(-1);
+    expect(conteo).toBeGreaterThan(aplicado);
+    expect(run).toContain(String.raw`^data/bancos/raw/[A-Za-z0-9._-]+\.pdf$`);
   });
 
   it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {
