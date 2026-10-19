@@ -109,6 +109,21 @@ describe("validarCurp", () => {
     expect(r.detalle?.fecha).toBe("2000-02-29");
     expect(r.detalle?.diferenciador).toBe("A");
   });
+  // Instructivo Normativo (DOF 18-06-2018), posición 17: 0-9 hasta 1999 y A-J desde 2000.
+  it("acepta J como último diferenciador de letra", () => {
+    const r = validarCurp(conDigito("GODE000101HDFRRNJ"));
+    expect(r.valor).toBe("GODE000101HDFRRNJ3");
+    expect(r.valido).toBe(true);
+    expect(r.detalle?.diferenciador).toBe("J");
+  });
+  it.each(["K", "Z"])("rechaza %s como diferenciador aunque el dígito cuadre", (letra) => {
+    const r = validarCurp(conDigito(`GODE000101HDFRRN${letra}`));
+    expect(r.errores).toEqual(["estructura"]);
+    expect(r.valido).toBe(false);
+    expect(r.formato_valido).toBe(false);
+    expect(r.digito_verificador_valido).toBeNull();
+    expect(r.detalle).toBeNull();
+  });
   it("con diferenciador de dígito, 00-02-29 cae en 1900 y no existe", () => {
     expect(validarCurp(conDigito("BOXW000229HNERXN0")).errores).toEqual(["fecha"]);
   });
