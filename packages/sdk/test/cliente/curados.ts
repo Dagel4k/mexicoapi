@@ -118,6 +118,18 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
         api.diasHabiles({ autoridad, tipoPlazo: "general", desde: "2026-07-17", dias: 3 }),
       ).rejects.toThrow(new TypeError("tipoPlazo solo se acepta con autoridad=sat."));
     }
+    // Un valor que no es un tipo de plazo, también antes y con su nombre (con cualquier autoridad
+    // que exista: la regla del valor va antes que la combinación, como en la API).
+    for (const autoridad of ["sat", "lft"] as const) {
+      await expect(
+        api.diasHabiles({
+          autoridad,
+          tipoPlazo: "anual",
+          desde: "2026-07-17",
+          dias: 3,
+        } as unknown as ConsultaDiasHabiles),
+      ).rejects.toThrow(new TypeError("tipoPlazo debe ser general o declaraciones_pagos."));
+    }
     const consultar = api.consultar as unknown as (
       ruta: string,
       parametros: Record<string, unknown>,

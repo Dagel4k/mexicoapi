@@ -69,16 +69,37 @@ export function revisarTipoPlazoCon(
 }
 
 /**
- * `revisarTipoPlazoCon` solo con una autoridad que existe: una que no existe la rechaza antes su
- * propia regla, como en la API, y aquí da null. Es interno: lo usa el cliente del paquete.
+ * La regla del valor de `tipo_plazo` en la query de la API (uno de `TIPOS_PLAZO`), con los nombres
+ * de otra superficie: null si no viene o si es válido. Es interno: lo usan la CLI y el cliente.
+ */
+export function revisarValorTipoPlazo(
+  tipoPlazo: string | undefined,
+  nombres: NombresTipoPlazo,
+): ProblemaConsulta | null {
+  if (tipoPlazo === undefined || (TIPOS_PLAZO as readonly string[]).includes(tipoPlazo)) {
+    return null;
+  }
+  const inicio = nombres.tipoPlazoAlInicio ?? conMayuscula(nombres.tipoPlazo);
+  const detalle = `${inicio} debe ser ${TIPOS_PLAZO.join(" o ")}.`;
+  return { tipo: "parametro-invalido", detalle, extras: { parametro: "tipo_plazo" } };
+}
+
+/**
+ * Las reglas del tipo de plazo en el orden de la API, con los nombres de otra superficie: el valor
+ * (`revisarValorTipoPlazo`) y la combinación con la autoridad (`revisarTipoPlazoCon`). Con una
+ * autoridad que no existe da null: la rechaza antes su propia regla, como en la API. Es interno:
+ * lo usa el cliente del paquete.
  */
 export function revisarTipoPlazoConocida(
   autoridad: string,
-  tipoPlazo: TipoPlazo | undefined,
+  tipoPlazo: string | undefined,
   nombres: NombresTipoPlazo,
 ): ProblemaConsulta | null {
   if (!(AUTORIDADES as readonly string[]).includes(autoridad)) return null;
-  return revisarTipoPlazoCon(autoridad as Autoridad, tipoPlazo, nombres);
+  return (
+    revisarValorTipoPlazo(tipoPlazo, nombres) ??
+    revisarTipoPlazoCon(autoridad as Autoridad, tipoPlazo as TipoPlazo | undefined, nombres)
+  );
 }
 
 /**

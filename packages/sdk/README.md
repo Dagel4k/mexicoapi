@@ -346,7 +346,7 @@ De las entradas de datos: `umas()`, `salariosMinimos()`, `tarifasIsr()` (las lis
 - Los datos (`data`, `meta`, los registros de `mexicoapi/datos`), `consultar` y los problemas usan los nombres de la API: `cve_ent`, `nombre_corto`, `tipo_plazo`, `permitir_incompleto`, `inhabiles_saltados`. El servidor MCP (`mexicoapi-mcp`) también.
 - La CLI usa los de la API con guiones: `--tipo-plazo`, `--permitir-incompleto`.
 - Las reglas y sus textos son los mismos en todas; solo cambia cómo se nombra cada parámetro. `revisarTipoPlazo` da los de la API.
-- `diasHabiles` revisa `tipoPlazo` antes de ir a la red o al paquete: con el SAT sin él, o con otra autoridad y con él, lanza `TypeError` con el nombre del método (`Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.`). `consultar` da el `MexicoApiError` de la API, con `tipo_plazo`.
+- `diasHabiles` revisa `tipoPlazo` antes de ir a la red o al paquete: con un valor que no es `general` ni `declaraciones_pagos`, con el SAT sin él, o con otra autoridad y con él, lanza `TypeError` con el nombre del método (`Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.`). La CLI dice `--tipo-plazo`. `consultar` da el `MexicoApiError` de la API, con `tipo_plazo`.
 
 ## Privacidad
 

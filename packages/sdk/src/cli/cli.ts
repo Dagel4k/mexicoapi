@@ -6,7 +6,11 @@
 // u opción, como --tipo-plazo con el SAT, sobra una, como --tipo-plazo con la LFT, o uno mal
 // formado, como un código postal de 4 dígitos).
 import { parseArgs } from "node:util";
-import { type NombresTipoPlazo, revisarTipoPlazoCon } from "@mexicoapi/core/combinaciones";
+import {
+  type NombresTipoPlazo,
+  revisarTipoPlazoCon,
+  revisarValorTipoPlazo,
+} from "@mexicoapi/core/combinaciones";
 import type { ConsultaDiasHabiles, FetchCompatible } from "../cliente/index.js";
 import {
   AUTORIDADES,
@@ -217,6 +221,9 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
   // autoridad que no existe la rechaza antes su propia regla, como en la API.
   const conocida = autoridad ?? "lft";
   if ((AUTORIDADES as readonly string[]).includes(conocida)) {
+    // Un valor que no es un tipo de plazo, como lo rechaza la API (sale con 1), con su nombre.
+    const valor = revisarValorTipoPlazo(tipoPlazo, NOMBRES_CLI);
+    if (valor !== null) throw new TypeError(valor.detalle);
     const combinacion = revisarTipoPlazoCon(conocida as Autoridad, tipoPlazo, NOMBRES_CLI);
     if (combinacion !== null) throw new ErrorUso(combinacion.detalle);
   }
