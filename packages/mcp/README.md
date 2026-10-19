@@ -25,7 +25,43 @@ En la configuración de servidores MCP de tu cliente:
 }
 ```
 
-Cada cliente guarda este bloque en su propio archivo; revisa su documentación para saber cuál. En Windows, si el cliente no encuentra `npx`, usa `"command": "cmd"` y `"args": ["/c", "npx", "-y", "mexicoapi-mcp"]`.
+Dónde va según el cliente:
+
+| Cliente | Dónde | Clave raíz |
+| --- | --- | --- |
+| Claude Desktop | `claude_desktop_config.json` (Settings > Developer > Edit Config): `%APPDATA%\Claude\` en Windows, `~/Library/Application Support/Claude/` en macOS | `mcpServers` |
+| Claude Code | `claude mcp add mexicoapi -- npx -y mexicoapi-mcp`; con `--scope project` queda en `.mcp.json`, en la raíz del proyecto | `mcpServers` |
+| Cursor | `.cursor/mcp.json` en el proyecto, o `~/.cursor/mcp.json` para todos | `mcpServers` |
+| VS Code | `.vscode/mcp.json` en el proyecto | `servers`, no `mcpServers` |
+
+VS Code usa otra clave raíz y pide el tipo de servidor:
+
+```json
+{
+  "servers": {
+    "mexicoapi": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mexicoapi-mcp"]
+    }
+  }
+}
+```
+
+En Windows, si el cliente no encuentra `npx`, usa `"command": "cmd"` y `"args": ["/c", "npx", "-y", "mexicoapi-mcp"]`; en Claude Code, `claude mcp add mexicoapi -- cmd /c npx -y mexicoapi-mcp`.
+
+Sin npx, con el paquete instalado (`npm install mexicoapi-mcp`) o armado desde el repositorio (`pnpm -r build` deja `packages/mcp/dist/index.js`), apunta `node` al archivo del servidor con su ruta absoluta (en Windows, como `C:/ruta/a/...`):
+
+```json
+{
+  "mcpServers": {
+    "mexicoapi": {
+      "command": "node",
+      "args": ["/ruta/a/node_modules/mexicoapi-mcp/dist/index.js"]
+    }
+  }
+}
+```
 
 ### La API: MEXICOAPI_BASE y MEXICOAPI_SIN_RED (opcionales)
 
