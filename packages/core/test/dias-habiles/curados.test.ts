@@ -62,6 +62,10 @@ const DETALLE_GENERAL = (fecha: string) =>
 const PRORROGA = (fecha: string, hechos: string) =>
   `El resultado (${fecha}) es ${hechos}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
 
+/** El aviso de un resultado de declaraciones_pagos después de las vacaciones publicadas. */
+const VACACIONES_SIN_PUBLICAR = (hasta: string, fecha: string) =>
+  `Las vacaciones del SAT posteriores al ${hasta} no están publicadas: si el ${fecha} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
+
 /** Lo que nombra el SAT fuera de la cobertura, con o sin sus vacaciones. */
 const FALTA_ART_12 =
   "Pueden faltar días del art. 12 del CFF, como el 25 de diciembre y el 1 de enero.";
@@ -592,15 +596,19 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
   ] as const)("%s: %s más 1 día hábil es %s", (tipo, desde, resultado) => {
     const r = sat(tipo, desde, 1);
     expect(r.resultado).toBe(resultado);
-    // Nuevo: en declaraciones_pagos, un resultado en vacaciones del SAT avisa de la prórroga.
-    const vacaciones =
-      tipo === "declaraciones_pagos" && ["2026-07-20", "2026-04-02"].includes(resultado);
+    // Nuevo: en declaraciones_pagos, un resultado en vacaciones del SAT avisa de la prórroga y,
+    // después de las vacaciones publicadas (2026-11-30), que puede caer en unas sin publicar.
+    const declaraciones = tipo === "declaraciones_pagos";
+    const vacaciones = declaraciones && ["2026-07-20", "2026-04-02"].includes(resultado);
+    const sinPublicar = declaraciones && resultado > "2026-11-30";
     const nucleo = delNucleo(SHARD_SAT, tipo, desde, 1);
-    expect(r).toEqual(
-      vacaciones
-        ? { ...nucleo, advertencias: [PRORROGA(resultado, "día de vacaciones del SAT")] }
-        : nucleo,
-    );
+    expect(r).toEqual({
+      ...nucleo,
+      advertencias: [
+        ...(vacaciones ? [PRORROGA(resultado, "día de vacaciones del SAT")] : []),
+        ...(sinPublicar ? [VACACIONES_SIN_PUBLICAR("2026-11-30", resultado)] : []),
+      ],
+    });
   });
 
   describe("declaraciones_pagos y la prórroga del quinto párrafo del art. 12", () => {
@@ -643,13 +651,36 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       ]);
     });
 
-    it("no conoce las vacaciones que no se han publicado: un resultado ahí no avisa", () => {
-      // El segundo periodo de 2026 no está publicado: el 16 de diciembre no se sabe si es de
-      // vacaciones, y no se avisa. El resultado es el mismo (lado seguro).
+    it("después de las vacaciones publicadas avisa que el resultado puede caer en unas", () => {
+      // Cambio: el segundo periodo de 2026 no está publicado y el 16 de diciembre no se sabe si es
+      // de vacaciones. Antes no se avisaba; ahora sí. El resultado es el mismo (lado seguro).
       expect(decl("2026-12-15", bancario)).toMatchObject({
         resultado: "2026-12-16",
+        advertencias: [VACACIONES_SIN_PUBLICAR("2026-11-30", "2026-12-16")],
+      });
+      expect(decl("2026-12-15").advertencias).toEqual([
+        VACACIONES_SIN_PUBLICAR("2026-11-30", "2026-12-16"),
+      ]);
+    });
+
+    it("un viernes después de las vacaciones publicadas: primero la prórroga, luego el aviso", () => {
+      expect(decl("2026-12-17", bancario)).toMatchObject({
+        resultado: "2026-12-18",
+        advertencias: [
+          PRORROGA("2026-12-18", "viernes"),
+          VACACIONES_SIN_PUBLICAR("2026-11-30", "2026-12-18"),
+        ],
+      });
+    });
+
+    it("hasta el fin de las vacaciones publicadas no avisa, ni con general", () => {
+      // 2026-11-30 es lunes: es el último día con las vacaciones publicadas.
+      expect(decl("2026-11-27", bancario)).toMatchObject({
+        resultado: "2026-11-30",
         advertencias: [],
       });
+      const general = sat("general", "2026-12-15", 1, true);
+      expect(general.advertencias).toEqual([AVISO_GENERAL]);
     });
 
     it("un día hábil común no avisa, ni general aunque sea viernes", () => {
@@ -671,9 +702,11 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
         dias: 4,
       });
       expect(r.resultado).toBe("2030-10-04");
+      // Cambio: al final, que las vacaciones de 2030 no están publicadas.
       expect(r.advertencias).toEqual([
         avisoTransmisionCff(2030),
         PRORROGA("2030-10-04", "viernes"),
+        VACACIONES_SIN_PUBLICAR("2026-11-30", "2030-10-04"),
       ]);
     });
   });
@@ -755,9 +788,11 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
   });
 
   it("declaraciones_pagos cruza a 2027 con los días del art. 12 y para en 2100", () => {
+    // Cambio: después de las vacaciones publicadas (2026-11-30) avisa que el resultado puede caer
+    // en unas sin publicar; antes no había advertencias. El resultado es el mismo.
     expect(sat("declaraciones_pagos", "2026-11-27", 2)).toMatchObject({
       resultado: "2026-12-01",
-      advertencias: [],
+      advertencias: [VACACIONES_SIN_PUBLICAR("2026-11-30", "2026-12-01")],
     });
     // Plazos que cruzan el 1 de enero de 2027: antes, 422 desde esa fecha, y con permitirIncompleto un
     // vencimiento en el 1 de enero. Ahora, el resultado legal.
@@ -768,9 +803,13 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       ["2026-12-31", 1, "2027-01-04"],
     ] as const) {
       const r = sat("declaraciones_pagos", desde, dias);
-      expect(r, desde).toMatchObject({ resultado, advertencias: [] });
+      const advertencias = [VACACIONES_SIN_PUBLICAR("2026-11-30", resultado)];
+      expect(r, desde).toMatchObject({ resultado, advertencias });
       expect(fechas(r.inhabiles_saltados)).toContain("2027-01-01");
-      expect(r).toEqual(delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias));
+      expect(r).toEqual({
+        ...delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias),
+        advertencias,
+      });
     }
     const error = incompleto(() => sat("declaraciones_pagos", "2100-12-31", 1));
     expect(error).toMatchObject({ fecha: "2101-01-01", cobertura: COBERTURA_DECLARACIONES });
@@ -780,6 +819,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     // Sin respaldo: con permitirIncompleto solo descuenta fines de semana después de 2100.
     expect(sat("declaraciones_pagos", "2100-12-31", 1, true).advertencias).toEqual([
       `Calendario incompleto: SAT 2101; solo se descontaron fines de semana. ${FALTA_ART_12}`,
+      VACACIONES_SIN_PUBLICAR("2026-11-30", "2101-01-03"),
     ]);
   });
 
@@ -844,15 +884,19 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
   it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre de 2030", () => {
     const aviso = avisoTransmisionCff(2030);
     // El 1o. de octubre de 2030 (martes) cuenta como hábil: es el lado seguro, y se avisa.
+    // Cambio: al final, que las vacaciones de 2030 no están publicadas.
+    const sinPublicar = (fecha: string) => VACACIONES_SIN_PUBLICAR("2026-11-30", fecha);
     expect(sat("declaraciones_pagos", "2030-09-30", 1)).toMatchObject({
       resultado: "2030-10-01",
-      advertencias: [aviso],
+      advertencias: [aviso, sinPublicar("2030-10-01")],
     });
     expect(sat("declaraciones_pagos", "2030-11-29", 1)).toMatchObject({
       resultado: "2030-12-02",
-      advertencias: [aviso],
+      advertencias: [aviso, sinPublicar("2030-12-02")],
     });
-    expect(sat("declaraciones_pagos", "2030-10-01", 1).advertencias).toEqual([]);
+    expect(sat("declaraciones_pagos", "2030-10-01", 1).advertencias).toEqual([
+      sinPublicar("2030-10-02"),
+    ]);
     // Con general, después de las advertencias de cobertura.
     expect(sat("general", "2030-09-30", 1, true).advertencias).toEqual([AVISO_GENERAL, aviso]);
   });

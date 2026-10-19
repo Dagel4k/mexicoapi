@@ -632,8 +632,8 @@ const enLista = (partes: readonly string[]): string =>
  * resultado no la aplica (es el lado seguro); undefined si no hay nada que avisar.
  *
  * Solo conoce las vacaciones publicadas y los cierres de la CNBV de su cobertura: un resultado
- * dentro de un periodo de vacaciones que todavía no se publica (diciembre de 2026, mientras falte
- * el segundo periodo) no avisa por eso. El resultado sigue siendo el lado seguro.
+ * después de las vacaciones publicadas (diciembre de 2026, mientras falte el segundo periodo) lo
+ * avisa `avisoVacacionesSinPublicar`. El resultado sigue siendo el lado seguro.
  */
 function avisoProrroga(
   calendario: CalendarioCurado,
@@ -651,13 +651,23 @@ function avisoProrroga(
 }
 
 /**
+ * El aviso de un resultado de `declaraciones_pagos` posterior a `hasta`, el último día con las
+ * vacaciones del SAT publicadas: si ese día resulta ser de vacaciones, el quinto párrafo del
+ * art. 12 del CFF puede prorrogar el plazo. El resultado no la aplica (es el lado seguro).
+ */
+export function avisoVacacionesSinPublicar(hasta: FechaISO, resultado: FechaISO): string {
+  return `Las vacaciones del SAT posteriores al ${hasta} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
+}
+
+/**
  * Suma días hábiles con un tipo de plazo del calendario, como la API. Fuera de la cobertura del
  * plazo lanza CalendarioIncompletoError con un `detalle` que dice por qué no la cubre. Con
  * `permitirIncompleto`, un plazo con respaldo descuenta también los días publicados fuera de su
  * cobertura y, si el cálculo pasa por ahí, lo advierte antes que las advertencias del núcleo
  * (lo hace `sumarDiasHabiles` con el calendario del plazo, que lleva su respaldo). En el SAT con
  * `declaraciones_pagos`, al final avisa de la prórroga del quinto párrafo del art. 12 si el
- * resultado cae en viernes, en vacaciones del SAT o en un cierre bancario.
+ * resultado cae en viernes, en vacaciones del SAT o en un cierre bancario y, después, si cae
+ * después de las vacaciones publicadas (la cobertura de `general`), que puede caer en unas.
  * Lanza RangeError si el calendario no tiene ese plazo o los parámetros no son válidos, y
  * FechaFueraDeRangoError si el resultado pasaría de 9999.
  */
@@ -676,12 +686,17 @@ export function sumarDiasHabilesCurado(
     const detalle = detalleCurado(calendario, tipoPlazo, plazo, error);
     throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);
   }
-  const prorroga =
-    calendario.autoridad === "sat" && tipoPlazo === "declaraciones_pagos"
-      ? avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario)
-      : undefined;
-  if (prorroga === undefined) return resultado;
-  return { ...resultado, advertencias: [...resultado.advertencias, prorroga] };
+  if (calendario.autoridad !== "sat" || tipoPlazo !== "declaraciones_pagos") return resultado;
+  const despues: string[] = [];
+  const prorroga = avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario);
+  if (prorroga !== undefined) despues.push(prorroga);
+  // General cuenta las vacaciones: su cobertura llega hasta donde están publicadas.
+  const { hasta } = calendario.general.cobertura;
+  if (resultado.resultado > hasta) {
+    despues.push(avisoVacacionesSinPublicar(hasta, resultado.resultado));
+  }
+  if (despues.length === 0) return resultado;
+  return { ...resultado, advertencias: [...resultado.advertencias, ...despues] };
 }
 
 /** El año con 4 cifras (`"0001"`); lanza RangeError si no es un entero de 1 a 9999. */
