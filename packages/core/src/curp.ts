@@ -57,7 +57,9 @@ export interface DetalleCurp {
 
 // El & ocupa el índice 24, así que desplaza una posición a las letras desde la O.
 const TABLA = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ";
-const ESTRUCTURA = /^[A-Z][AEIOUX][A-Z]{2}\d{6}[HMX][A-Z]{2}[B-DF-HJ-NP-TV-Z]{3}[0-9A-Z]\d$/;
+// Posición 17 (diferenciador): 0-9 para nacidos hasta 1999 y A-J desde 2000 (Instructivo
+// Normativo para la asignación de la CURP, DOF 18-06-2018).
+const ESTRUCTURA = /^[A-Z][AEIOUX][A-Z]{2}\d{6}[HMX][A-Z]{2}[B-DF-HJ-NP-TV-Z]{3}[0-9A-J]\d$/;
 
 /** Calcula el dígito verificador de los primeros 17 caracteres. Lanza RangeError si no cumple. */
 export function digitoVerificadorCurp(primeros17: string): string {
