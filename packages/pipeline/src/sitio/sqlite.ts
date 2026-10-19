@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type {
   Banco,
-  DiaInhabilCurado,
   Estado,
   FuenteDof,
   Municipio,
@@ -15,7 +14,7 @@ import type {
   Uma,
 } from "@mexicoapi/core";
 import { borrarSiPuede } from "../escritura.js";
-import type { CoberturaCalendario } from "./calendarios.js";
+import type { CoberturaCalendario, DiaDescargable } from "./calendarios.js";
 
 export interface FilaDataset {
   dataset: string;
@@ -31,7 +30,8 @@ export interface DatosSqlite {
   bancos: readonly Banco[];
   tipoCambioFix: readonly TipoCambioFix[];
   udis: readonly Udi[];
-  diasInhabiles: readonly DiaInhabilCurado[];
+  /** Los de la LFT, la CNBV y el SAT. */
+  diasInhabiles: readonly DiaDescargable[];
   coberturasCalendario: readonly CoberturaCalendario[];
   uma: readonly Uma[];
   salarioMinimo: readonly SalarioMinimo[];
@@ -69,9 +69,12 @@ CREATE TABLE dias_inhabiles (
   PRIMARY KEY (autoridad, fecha)
 ) STRICT;
 CREATE TABLE coberturas_calendario (
-  autoridad TEXT NOT NULL, tipo_plazo TEXT NOT NULL, desde TEXT NOT NULL, hasta TEXT NOT NULL,
-  PRIMARY KEY (autoridad, tipo_plazo)
+  autoridad TEXT NOT NULL, tipo_plazo TEXT, desde TEXT NOT NULL, hasta TEXT NOT NULL
 ) STRICT;
+-- tipo_plazo es NULL en la LFT y la CNBV, que no lo aceptan; en una tabla STRICT una llave
+-- primaria no admite NULL, así que la unicidad la da este índice.
+CREATE UNIQUE INDEX coberturas_calendario_llave
+  ON coberturas_calendario (autoridad, ifnull(tipo_plazo, ''));
 CREATE TABLE uma (
   anio INTEGER PRIMARY KEY, diaria TEXT NOT NULL, mensual TEXT NOT NULL, anual TEXT NOT NULL,
   vigencia_desde TEXT NOT NULL, ${FUENTE}

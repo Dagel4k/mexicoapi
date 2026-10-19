@@ -4,13 +4,18 @@ import {
   type Calendario,
   CalendarioIncompletoError,
   COBERTURA_CFF,
+  COBERTURA_LFT,
   type DiaInhabilCurado,
   diasDescansoCff,
+  diasDescansoLft,
   FUENTE_CFF_12,
+  FUENTE_LFT_74,
   type FuenteDof,
+  revisarTipoPlazo,
   sumarDias,
   sumarDiasHabiles,
   type TipoPlazo,
+  VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import { crearCalendarioCurado } from "@mexicoapi/core/curados";
 import { describe, expect, it } from "vitest";
@@ -24,7 +29,7 @@ import type { DocumentoCurado } from "../../src/curado/leer.js";
 import { interpretarCurado, leerCurado } from "../../src/curado/leer.js";
 import { curadoDiasCnbv, curadoDiasSat, type DefinicionCurado } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
-import { coberturasDe } from "../../src/sitio/calendarios.js";
+import { COBERTURA_LISTA_LFT, coberturasDe, diasLft } from "../../src/sitio/calendarios.js";
 import { YAML_CNBV, YAML_SAT } from "../curado/ejemplos.js";
 
 function documento(
@@ -35,6 +40,9 @@ function documento(
   if (lectura.documento === null) throw new Error(lectura.problemas.join("; "));
   return lectura.documento;
 }
+
+/** Los años de la regla de la LFT. */
+const COBERTURA_LFT_ANIOS = [2007, 2100] as const;
 
 const shardDe = (autoridad: AutoridadCurada, d: DocumentoCurado<DiaInhabilCurado>) =>
   shardCalendario(autoridad, d.registros, d.cobertura);
@@ -391,5 +399,62 @@ describe("calendarios reales de data/curado con crearCalendario y sumarDiasHabil
     for (const fuente of Object.values(cnbv.fuentes_fin_de_semana)) {
       expect(fuente.fragmento).toContain("IX. Los sábados y domingos.");
     }
+  });
+});
+
+describe("calendarios de las descargas", () => {
+  // La API rechaza tipo_plazo con la CNBV: la descarga no nombra un plazo que no se puede pedir.
+  it("coberturasDe deja tipo_plazo en null en las autoridades que no lo aceptan", () => {
+    expect(revisarTipoPlazo("cnbv", "general")).not.toBeNull();
+    expect(revisarTipoPlazo("cnbv", undefined)).toBeNull();
+    const cnbv = documento(curadoDiasCnbv, YAML_CNBV);
+    expect(coberturasDe(shardDe("cnbv", cnbv))).toEqual([
+      { autoridad: "cnbv", tipo_plazo: null, desde: "2026-01-01", hasta: "2026-12-31" },
+    ]);
+    // En el SAT se pide: sale con su nombre.
+    expect(
+      coberturasDe(shardDe("sat", documento(curadoDiasSat, YAML_SAT))).map((c) => c.tipo_plazo),
+    ).toEqual(["general", "declaraciones_pagos"]);
+  });
+
+  it("diasLft son los del art. 74 de 2007 a 2100, los mismos que lista la API", () => {
+    const dias = diasLft();
+    expect(dias).toHaveLength(673);
+    expect(dias[0]).toEqual({
+      fecha: "2007-01-01",
+      autoridad: "lft",
+      motivo: "1 de enero",
+      tipo: "descanso",
+      fuente: { ...FUENTE_LFT_74, fecha_publicacion: VIGENCIA_LFT },
+    });
+    expect(dias.at(-1)?.fecha).toBe("2100-12-25");
+    for (let anio = COBERTURA_LFT_ANIOS[0]; anio <= COBERTURA_LFT_ANIOS[1]; anio++) {
+      const delAnio = dias
+        .filter((d) => d.fecha.startsWith(`${anio}-`))
+        .map(({ autoridad, fuente: { fecha_publicacion, ...fuente }, ...resto }) => {
+          expect(autoridad).toBe("lft");
+          expect(fecha_publicacion).toBe(VIGENCIA_LFT);
+          return { ...resto, fuente };
+        });
+      expect(delAnio, String(anio)).toEqual(diasDescansoLft(anio));
+    }
+    // En orden de fecha y con la fuente en el orden de las de los curados.
+    expect(dias.map((d) => d.fecha)).toEqual(dias.map((d) => d.fecha).sort());
+    expect(Object.keys(dias[0]?.fuente ?? {})).toEqual([
+      "nombre",
+      "url",
+      "fecha_publicacion",
+      "fragmento",
+    ]);
+  });
+
+  it("la cobertura de la lista de la LFT es la de su calendario, sin tipo de plazo", () => {
+    expect(COBERTURA_LISTA_LFT).toEqual({
+      autoridad: "lft",
+      tipo_plazo: null,
+      desde: COBERTURA_LFT.desde,
+      hasta: COBERTURA_LFT.hasta,
+    });
+    expect(COBERTURA_LFT).toEqual({ desde: "2007-01-01", hasta: "2100-12-31" });
   });
 });

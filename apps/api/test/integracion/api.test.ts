@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { AVISO_LFT_715, diaDeLaSemana, diasDescansoCff, sumarDias } from "@mexicoapi/core";
+import {
+  AVISO_LFT_715,
+  diaDeLaSemana,
+  diasDescansoCff,
+  sumarDias,
+  VIGENCIA_LFT,
+} from "@mexicoapi/core";
 import { describe, expect, inject, it } from "vitest";
 import { probarHumo } from "../../scripts/humo.ts";
 import {
@@ -731,18 +737,42 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       ...COBERTURA_SAT,
       declaraciones_pagos: { desde: declaraciones.desde, hasta: finDeLaLista },
     };
-    expect(descarga).toEqual(
-      [
+    // La LFT y la CNBV no aceptan tipo_plazo: su renglón lo lleva en null, y la de la LFT es la
+    // de su calendario, que se calcula por regla.
+    expect(descarga).toEqual([
+      { autoridad: "lft", tipo_plazo: null, desde: "2007-01-01", hasta: "2100-12-31" },
+      ...[
         ["cnbv", COBERTURA_CNBV],
         ["sat", deLaLista],
       ].flatMap(([autoridad, plazos]) =>
         Object.entries(plazos as Record<string, Rango>).map(([tipo_plazo, r]) => ({
           autoridad,
-          tipo_plazo,
+          tipo_plazo: autoridad === "sat" ? tipo_plazo : null,
           ...r,
         })),
       ),
-    );
+    ]);
+  });
+
+  it("la descarga de la LFT trae los mismos días que /v1/dias-inhabiles?autoridad=lft", async () => {
+    const descarga = JSON.parse(
+      (await leerPublico("descargas/dias-inhabiles-lft.json")).toString("utf8"),
+    ) as { fecha: string; autoridad: string; fuente: Record<string, string> }[];
+    expect(descarga).toHaveLength(673);
+    for (const anio of [2007, 2024, 2026, 2100]) {
+      const { data } = (await (
+        await pedir(`/v1/dias-inhabiles?autoridad=lft&anio=${anio}`)
+      ).json()) as { data: unknown[] };
+      // La descarga agrega la autoridad y la fecha de la versión del texto citado.
+      const delAnio = descarga
+        .filter((d) => d.fecha.startsWith(`${anio}-`))
+        .map(({ autoridad, fuente: { fecha_publicacion, ...fuente }, ...resto }) => {
+          expect(autoridad).toBe("lft");
+          expect(fecha_publicacion).toBe(VIGENCIA_LFT);
+          return { ...resto, fuente };
+        });
+      expect(delAnio, String(anio)).toEqual(data);
+    }
   });
 
   it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni calendario incompleto", async () => {
