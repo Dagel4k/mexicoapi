@@ -65,7 +65,7 @@ Los datos curados (`data/curado/` y las carpetas que arma `curar`) nunca pasan p
 
 `generar` no usa la caché de pnpm. Eso no basta para aislarla: un `generar` comprometido podría escribir en la caché de Actions de `main` con el token del runner. Por eso `despliegue.yml`, que tiene el token de Cloudflare, tampoco la usa, ni los jobs de `ci.yml`: no tienen secretos, pero su resultado decide `verify`, y un paquete alterado en la caché podría dejarlo en verde.
 
-Los textos que vienen de las fuentes (motivos, registros, claves y mensajes de error) llegan a los PRs, comentarios e issues como código, en línea o en bloque, y las `@` llevan un espacio de ancho cero: no se vuelven menciones, enlaces ni encabezados.
+Los textos que vienen de las fuentes (motivos, registros, claves y mensajes de error) llegan a los PRs, comentarios e issues como código, en línea o en bloque, y las `@` llevan un espacio de ancho cero: no se vuelven menciones, enlaces ni encabezados. El resumen que escribe `generar` (`resumen.md`) va entero en un bloque de código cuya cerca es más larga que cualquier racha de backticks del texto, así que nada lo cierra; un `#` seguido de un número también lleva el espacio de ancho cero, para que no quede como referencia ni como `Closes #N`. Si pasa de 60 000 bytes no se copia y queda en el artefacto. `publicar` y `estado-kv` solo leen el parche, el resumen y `resumen.json` si son archivos comunes, no enlaces simbólicos.
 
 El cliente HTTP del pipeline solo pide por `https` a los hosts de cada dataset (la lista está en la definición del dataset y una prueba la compara con las URL de `data/*/manifest.json`). No pide una URL con usuario o contraseña. Sigue hasta 5 redirecciones y revisa cada salto como la URL original: esquema, credenciales, host, `robots.txt` e intervalo por host. Lee el cuerpo por partes con un tope de 50 MB (la fuente más grande, el PDF de Banxico, ronda los 400 KB) y cierra los cuerpos que no usa.
 
@@ -75,12 +75,23 @@ El cliente HTTP del pipeline solo pide por `https` a los hosts de cada dataset (
 
 Lo que `revision-datos` no puede repetir son los avisos que `generar` saca de las fuentes y no quedan en los datos, como un banco del PDF de participantes que no aparece en el CEP.
 
+`publicar` agrega otra barrera que no corre nada del repositorio: al revisar el parche cuenta las líneas que cambia en archivos de texto (`git apply --numstat`; los binarios no suman). Si pasan del umbral del grupo, abre el PR con la etiqueta `revisar` y sin auto-merge, y el issue de revisión lleva ese motivo primero, aunque `generar` haya terminado con el código 0. Los umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su manifiesto y sus crudos:
+
+| Grupo | Umbral | Corrida grande sin revisión |
+| --- | --- | --- |
+| `inegi` | 400 líneas | 12 municipios nuevos (el 0.5 %): unas 220 |
+| `bancos` | 300 líneas | 3 bancos con cambios: unas 50 |
+| `fix` | 300 líneas | 31 FIX nuevos: unas 140 |
+| `udis` | 400 líneas | 45 UDIS nuevas: unas 200 |
+
+Es una barrera gruesa: un cambio chico pasa por debajo, y para eso está `revision-datos`. Los umbrales están en el paso "Revisar y aplicar el parche" de `datos.yml`; una prueba del pipeline revisa que cada grupo tenga el suyo.
+
 ## Qué hace el bot
 
 - Descarga y valida los datos con el CLI del pipeline.
 - Si no hay cambios, no hace nada.
 - Si hay cambios dentro de los umbrales, abre un PR desde la rama `datos/<grupo>-<fecha>` con el resumen y activa el auto-merge. El PR se fusiona cuando pasa el check `verify`, que exige los jobs `verificacion`, `paquete`, `paquete-node`, `paquete-runtimes`, `paquete-mcp`, `solo-datos` y `revision-datos` de `ci.yml`.
-- Si los cambios piden revisión humana, abre el PR con la etiqueta `revisar`, sin auto-merge, y un issue `Revisar datos: <grupo> <fecha>` con los motivos.
+- Si los cambios piden revisión humana, o el parche pasa del umbral de líneas del grupo, abre el PR con la etiqueta `revisar`, sin auto-merge, y un issue `Revisar datos: <grupo> <fecha>` con los motivos.
 - Si el pipeline pide revisión pero no hay cambios en `data/`, abre (o comenta en) un issue `Revisar datos: <grupo>`.
 - Si el bot ya tiene un PR abierto para el grupo (una rama `datos/<grupo>-…` del propio repo, con o sin etiqueta), no abre otro: comenta en ese PR con el resumen nuevo y el enlace a la corrida. Si además los cambios piden revisión, abre (o comenta en) el issue `Revisar datos: <grupo>` con los motivos. Cuando ese PR lleva más de 48 horas abierto o tiene algún check en rojo, abre (o comenta en) el issue `PR de datos atascado: <grupo>`. Si esa consulta a GitHub falla, la corrida deja un aviso y sigue, así que el issue de revisión se abre igual.
 - Si el pipeline falla, o falla la instalación, la revisión del parche o la publicación, abre (o comenta en) un issue `Falla en datos: <grupo>` y la corrida queda en rojo.

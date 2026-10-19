@@ -245,6 +245,45 @@ describe("revision-datos de ci.yml", () => {
   });
 });
 
+describe("publicar de datos.yml", () => {
+  it("cada grupo tiene umbral de líneas y uno sobre el umbral no se fusiona solo", async () => {
+    const datos = await workflow("datos.yml");
+    const grupos = [
+      ...(paso(datos, "preparar", "Resolver grupo de datos").run ?? "").matchAll(
+        /^\s*([a-z]+)\) ids="/gm,
+      ),
+    ].map((g) => g[1]);
+    const aplicar = paso(datos, "publicar", "Revisar y aplicar el parche");
+    expect(aplicar.id).toBe("aplicar");
+    const umbrales = [...(aplicar.run ?? "").matchAll(/^\s*([a-z]+)\) limite=(\d+) ;;$/gm)];
+    expect(umbrales.map((u) => u[1])).toEqual(grupos);
+    for (const [, , limite] of umbrales) expect(Number(limite)).toBeGreaterThan(0);
+    const publicar = paso(datos, "publicar", "Publicar resultado");
+    expect(publicar.env?.PARCHE_GRANDE).toBe(expresion("steps.aplicar.outputs.grande"));
+    expect(publicar.run).toContain(
+      `if [ "\${CODIGO}" = "3" ] || [ "\${PARCHE_GRANDE}" = "si" ]; then`,
+    );
+    expect(datos.jobs.publicar?.outputs?.publicado).toContain(
+      "steps.aplicar.outputs.grande != 'si'",
+    );
+  });
+
+  it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {
+    const datos = await workflow("datos.yml");
+    const run = paso(datos, "publicar", "Publicar resultado").run ?? "";
+    expect(funcion(run, "es_archivo")).toBe('es_archivo() {\n[ -f "$1" ] && [ ! -L "$1" ]\n}');
+    expect(funcion(run, "resumen")).toContain(`if ! es_archivo "\${resumen_md}"; then`);
+    expect(funcion(run, "resumen")).toContain(`echo "\${cerca}text"`);
+    expect(funcion(run, "motivos")).toContain(`if es_archivo "\${resumen_json}"; then`);
+    expect(paso(datos, "publicar", "Revisar y aplicar el parche").run).toContain(
+      `if [ ! -f "\${PARCHE}" ] || [ -L "\${PARCHE}" ]; then`,
+    );
+    expect(paso(datos, "estado-kv", "Escribir estado en KV").run).toContain(
+      `if [ ! -f "\${RESUMEN}" ] || [ -L "\${RESUMEN}" ]; then`,
+    );
+  });
+});
+
 describe("issues de alerta", () => {
   it("cada búsqueda de un issue filtra por la cuenta que lo abre", async () => {
     const casos: [string, string][] = [
