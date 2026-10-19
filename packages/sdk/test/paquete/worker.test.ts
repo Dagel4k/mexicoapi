@@ -4,6 +4,8 @@
 // importe módulos de Node lo revisa paquete.test.ts en el grafo de módulos: workerd acepta algunos
 // `node:` aun sin esa bandera, así que esta prueba no lo detectaría.
 import { copyFile, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
@@ -14,8 +16,26 @@ const { dir } = inject("paqueteInstalado");
 
 let worker: Awaited<ReturnType<typeof unstable_startWorker>> | undefined;
 let base: string;
+// Una API falsa en 127.0.0.1: /v1/estados responde datos y /redirige/v1/estados redirige.
+let api: Server | undefined;
+let baseApi: string;
 
 beforeAll(async () => {
+  api = createServer((peticion, respuesta) => {
+    if (peticion.url === "/v1/estados") {
+      respuesta.writeHead(200, { "Content-Type": "application/json" });
+      respuesta.end(
+        JSON.stringify({
+          data: [{ cve_ent: "25", nombre: "Sinaloa", abreviatura: "Sin.", cvegeo: "25" }],
+          meta: { dataset: "inegi.estados", as_of: "2026-10-17", sources: [], docs: "" },
+        }),
+      );
+    } else {
+      respuesta.writeHead(301, { Location: "/v1/estados" }).end();
+    }
+  });
+  await new Promise<void>((listo) => api?.listen(0, "127.0.0.1", listo));
+  baseApi = `http://127.0.0.1:${(api.address() as AddressInfo).port}`;
   await copyFile(WORKER, join(dir, "worker.js"));
   const config = {
     name: "consumidor-mexicoapi",
@@ -44,6 +64,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await worker?.dispose();
+  await new Promise((listo) => (api === undefined ? listo(undefined) : api.close(listo)));
 });
 
 async function pedir(ruta: string): Promise<unknown> {
@@ -92,6 +113,18 @@ describe("mexicoapi en un Worker (workerd)", () => {
       fix: { tipo: "encontrado" },
       udi: { tipo: "encontrado" },
       uma: { anio: 2026, diaria: "117.31" },
+    });
+  });
+
+  it("consulta una API con la red de workerd y no sigue una redirección", async () => {
+    const query = (b: string) => `/cliente/api?${new URLSearchParams({ base: b })}`;
+    expect(await pedir(query(baseApi))).toEqual({ origen: "api", estados: 1 });
+    expect(await pedir(query(`${baseApi}/redirige`))).toEqual({
+      error: {
+        status: 301,
+        title: "Respuesta inesperada de la API",
+        detail: "La API respondió con una redirección.",
+      },
     });
   });
 
