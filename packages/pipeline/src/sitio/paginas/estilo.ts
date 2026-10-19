@@ -101,9 +101,10 @@ pre {
   margin: 0 0 1rem;
   overflow-x: auto;
   line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 pre code { font-size: 1em; }
-.bloque pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .aviso {
   background: var(--aviso);
   border-left: 4px solid var(--aviso-borde);
@@ -171,7 +172,7 @@ tbody th { font-weight: 600; }
 /* cada renglon como tarjeta; la etiqueta de cada celda sale de data-etiqueta */
 @media (width < 40rem) {
   .tarjetas thead { display: none; }
-  .tarjetas table, .tarjetas tbody, .tarjetas tr, .tarjetas th, .tarjetas td { display: block; }
+  .tarjetas table, .tarjetas caption, .tarjetas tbody, .tarjetas tr, .tarjetas th, .tarjetas td { display: block; }
   .tarjetas tr { border-top: 1px solid var(--borde); padding: 0.5rem 0; }
   .tarjetas th, .tarjetas td { border: 0; padding: 0.25rem 1rem; text-align: left; min-width: 0; }
   .tarjetas td::before { content: attr(data-etiqueta); display: block; font-size: 0.8125rem; color: var(--tenue); }
