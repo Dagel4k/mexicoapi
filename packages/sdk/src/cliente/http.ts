@@ -321,6 +321,11 @@ function retryAfter(valor: string | null): number | undefined {
   return Number.isNaN(ms) ? undefined : Math.max(0, ms);
 }
 
+/**
+ * Guarda la respuesta según su Cache-Control. `no-cache` exige revalidar antes de cada uso: como
+ * `no-store`, no se guarda (ni para stale-if-error). La frescura y la ventana de stale-if-error
+ * descuentan la edad con la que llega (`Age`, RFC 9111 §4.2.3).
+ */
 function guardar(
   c: ConfigHttp,
   url: string,
@@ -329,20 +334,30 @@ function guardar(
   etag: string | null,
 ): void {
   const control = r.encabezado("Cache-Control") ?? "";
-  if (c.cache === undefined || /no-store/i.test(control)) return;
+  if (c.cache === undefined || /no-store|no-cache/i.test(control)) return;
   const segundos = (directiva: string): number | undefined => {
     const valor = new RegExp(`(?:^|[\\s,])${directiva}=(\\d+)`, "i").exec(control)?.[1];
     return valor === undefined ? undefined : Number(valor) * 1000;
   };
   const maxAge = segundos("max-age");
+  const edad = edadMs(r.encabezado("Age"));
+  // Lo que ya lleva caducada al llegar sale de su ventana de stale-if-error.
+  const caducada = maxAge === undefined ? 0 : Math.max(0, edad - maxAge);
   const ahora = Date.now();
   c.cache.guardar(url, {
     respuesta,
     etag,
     guardadoEn: ahora,
-    expira: ahora + (maxAge === undefined ? c.ttlMs : Math.min(c.ttlMs, maxAge)),
-    rancioMs: segundos("stale-if-error") ?? 0,
+    expira:
+      ahora + (maxAge === undefined ? c.ttlMs : Math.max(0, Math.min(c.ttlMs, maxAge - edad))),
+    rancioMs: Math.max(0, (segundos("stale-if-error") ?? 0) - caducada),
   });
+}
+
+/** La edad que trae la respuesta (`Age`), en milisegundos; 0 si no la trae o no es un número. */
+function edadMs(valor: string | null): number {
+  const segundos = valor === null ? undefined : /^\s*(\d+)\s*(?:,|$)/.exec(valor)?.[1];
+  return segundos === undefined ? 0 : Number(segundos) * 1000;
 }
 
 /** 45 s, 3 min, 5 h, 2 días. */
