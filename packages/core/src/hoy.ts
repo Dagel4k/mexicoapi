@@ -19,12 +19,14 @@ export function hoyEnMexico(ahora: Date | number = Date.now()): FechaISO {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    // Antes de la era común Intl da el año contado hacia atrás (1 a. C. es "1"): la era lo dice.
+    era: "short",
   });
   const partes = formato.formatToParts(ms);
   const parte = (tipo: Intl.DateTimeFormatPartTypes): string =>
     partes.find((p) => p.type === tipo)?.value ?? "";
   const fecha = `${parte("year").padStart(4, "0")}-${parte("month")}-${parte("day")}`;
-  if (!esFechaIsoValida(fecha)) {
+  if (parte("era") !== "AD" || !esFechaIsoValida(fecha)) {
     throw new RangeError("ahora cae fuera de los años 0001 a 9999 en la Ciudad de México.");
   }
   return fecha;
