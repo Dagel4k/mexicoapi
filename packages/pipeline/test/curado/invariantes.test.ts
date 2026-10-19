@@ -74,6 +74,22 @@ describe("UMA", () => {
     expect(invariantesUma([uma])).toEqual([
       "2026: el fragmento de la fuente no contiene la diaria 117.31",
     ]);
+    for (const otro of ["$117.315", "$1,117.31", "$0.117.31"]) {
+      const contenido = uma2026();
+      contenido.fuente.fragmento = contenido.fuente.fragmento.replace("$117.31", otro);
+      expect(invariantesUma([contenido]), otro).toEqual([
+        "2026: el fragmento de la fuente no contiene la diaria 117.31",
+      ]);
+    }
+  });
+
+  it("encuentra el monto aunque antes aparezca dentro de otro número, o al cerrar una frase", () => {
+    const repetido = uma2026();
+    repetido.fuente.fragmento = repetido.fuente.fragmento.replace("$117.31", "$1117.31 y $117.31");
+    expect(invariantesUma([repetido])).toEqual([]);
+    const alFinal = uma2026();
+    alFinal.fuente.fragmento = `${alFinal.fuente.fragmento.replace("$117.31", "")} 117.31.`;
+    expect(invariantesUma([alFinal])).toEqual([]);
   });
 });
 

@@ -24,8 +24,14 @@ export const TOLERANCIA_CUOTA_FIJA = 1n;
 
 /** `fragmento` contiene `monto` con comas de miles, sin que forme parte de otro número. */
 function citaMonto(fuente: FuenteDof, monto: string): boolean {
-  const escapado = conMiles(monto).replace(/[.,]/g, "\\$&");
-  return new RegExp(`(?<![\\d.,])${escapado}(?!\\d)`).test(fuente.fragmento);
+  const buscado = conMiles(monto);
+  const texto = fuente.fragmento;
+  for (let i = texto.indexOf(buscado); i !== -1; i = texto.indexOf(buscado, i + 1)) {
+    const antes = texto[i - 1] ?? "";
+    const despues = texto[i + buscado.length] ?? "";
+    if (!/[\d.,]/.test(antes) && !/\d/.test(despues)) return true;
+  }
+  return false;
 }
 
 function publicadaAntes(fuente: FuenteDof, vigencia: string): string | null {
