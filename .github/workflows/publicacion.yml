@@ -201,7 +201,7 @@ jobs:
       # Publica el .tgz que revisó preparar: mismo sha256, solo archivos comunes de la lista de
       # files (dist, README.md, CHANGELOG.md, LICENSE) y el package.json, y en este el paquete y la
       # versión del Release, sin scripts ni publishConfig (que podría cambiar el registro o la
-      # etiqueta de npm).
+      # etiqueta de npm), sin dependencias empaquetadas y con cada dependencia como rango de semver.
       - name: Publicar en npm con procedencia
         id: publicar
         env:
@@ -241,10 +241,26 @@ jobs:
           fi
           paquete="$(tar -xzOf "${tgz}" package/package.json | node -e '
             const m = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
-            for (const campo of ["scripts", "publishConfig"]) {
-              if (m[campo] !== undefined) {
-                console.error("::error::El package.json del .tgz trae " + campo + " y no se publica.");
-                process.exit(1);
+            const falla = (texto) => {
+              console.error("::error::El package.json del .tgz " + texto + " y no se publica.");
+              process.exit(1);
+            };
+            for (const campo of ["scripts", "publishConfig", "bundleDependencies", "bundledDependencies"]) {
+              if (m[campo] !== undefined) falla("trae " + campo);
+            }
+            // Cada dependencia, un rango de semver: nada de URL, git:, npm:, file:, link:,
+            // workspace: ni etiquetas (latest, next).
+            const version = /^(?:[~^]|[<>]=?|=)?v?(?:0|[1-9][0-9]*|[xX*])(?:\.(?:0|[1-9][0-9]*|[xX*])){0,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+            const esRango = (r) => typeof r === "string" && r.split("||").every((parte) => {
+              const piezas = parte.trim().split(/\s+/);
+              return piezas[0] !== "" && piezas.every((x, i) => version.test(x) || (x === "-" && i === 1 && piezas.length === 3));
+            });
+            for (const campo of ["dependencies", "peerDependencies", "optionalDependencies", "devDependencies"]) {
+              const deps = m[campo];
+              if (deps === undefined) continue;
+              if (typeof deps !== "object" || deps === null || Array.isArray(deps)) falla("trae " + campo + " que no es un objeto");
+              for (const [nombre, rango] of Object.entries(deps)) {
+                if (!esRango(rango)) falla("trae en " + campo + " una dependencia que no es un rango de semver (" + nombre + ")");
               }
             }
             console.log(m.name + "@" + m.version);
