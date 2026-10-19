@@ -12,6 +12,10 @@ concurrency:
   group: frescura
   cancel-in-progress: false
 
+env:
+  # Una cobertura de los datos curados se avisa cuando termina en estos días o menos.
+  DIAS_AVISO: "30"
+
 jobs:
   revisar:
     runs-on: ubuntu-latest
@@ -151,7 +155,9 @@ jobs:
   # de la última UMA y el último año del salario mínimo y de las tarifas de ISR) que terminan en
   # DIAS_AVISO días o menos, o que ya terminaron. Va en dos jobs: el que instala y corre el
   # pipeline no puede escribir, y el que abre los issues no instala ni corre nada del repositorio.
+  # Solo desde main: una corrida a mano en otra rama abriría issues con los data/ de esa rama.
   coberturas:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -179,8 +185,6 @@ jobs:
 
       - name: Calcular coberturas por vencer
         id: calcular
-        env:
-          DIAS_AVISO: "30"
         run: |
           set -euo pipefail
           resumen="${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -201,7 +205,7 @@ jobs:
 
   avisar-coberturas:
     needs: coberturas
-    if: needs.coberturas.outputs.lista != '[]'
+    if: github.ref == 'refs/heads/main' && needs.coberturas.outputs.lista != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -229,6 +233,12 @@ jobs:
           # Un issue por cobertura, con el título exacto. Si ya hay uno abierto, se reescribe su
           # descripción con los días que faltan, sin un comentario por día. Ninguno se cierra
           # solo: lo cierra quien integra la publicación nueva.
+          # Una falla de jq dentro de `< <(…)` no detiene el script: la forma se revisa antes.
+          if ! jq -e 'type == "array" and all(.[]; type == "object" and ([.id, .titulo, .resumen, .detalle] | all(type == "string")))' <<< "${LISTA}" > /dev/null; then
+            echo "::error::La lista de coberturas no es un arreglo JSON con id, titulo, resumen y detalle."
+            exit 1
+          fi
+
           patron='^Cobertura por vencer: [a-z0-9.-]+( [a-z_]+)?$'
           fallos=0
           while IFS=$'\t' read -r id titulo texto detalle <&3; do
@@ -244,7 +254,7 @@ jobs:
               echo
               echo "Procedimiento: ${procedimiento}"
               echo
-              echo "Este issue se actualiza cada día mientras la cobertura no cambie y no se cierra solo: ciérralo al integrar la publicación nueva."
+              echo "Este issue se actualiza cada día mientras la cobertura termine en ${DIAS_AVISO} días o menos y no se cierra solo: ciérralo al integrar la publicación nueva."
               echo
               echo "Corrida: ${url_corrida}"
             } > "${cuerpo}"

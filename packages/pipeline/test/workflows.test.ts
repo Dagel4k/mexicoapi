@@ -30,6 +30,7 @@ interface Job {
 
 interface Workflow {
   on: { workflow_dispatch: { inputs: { dataset: { options: string[] } } } };
+  env?: Record<string, string>;
   jobs: Record<string, Job>;
 }
 
@@ -128,6 +129,9 @@ describe("alerta de coberturas en frescura.yml", () => {
     const datos = await workflow("datos.yml");
     const job = frescura.jobs.coberturas as Job;
     expect(job.permissions).toEqual({ contents: "read" });
+    // Una corrida a mano en otra rama no abre issues con los data/ de esa rama.
+    expect(job.if).toBe("github.ref == 'refs/heads/main'");
+    expect(frescura.env).toEqual({ DIAS_AVISO: "30" });
     expect(job.outputs).toEqual({ lista: expresion("steps.calcular.outputs.lista") });
     // Las mismas versiones fijadas por SHA que el bot de datos.
     const usos = (j: Job | undefined) => (j?.steps ?? []).flatMap((p) => p.uses ?? []);
@@ -139,7 +143,7 @@ describe("alerta de coberturas en frescura.yml", () => {
     expect(usos(datos.jobs.generar)).toEqual(expect.arrayContaining(usos(job)));
     expect(job.steps[0]?.with).toMatchObject({ "persist-credentials": false });
     const calcular = job.steps.find((p) => p.id === "calcular");
-    expect(calcular?.env).toEqual({ DIAS_AVISO: "30" });
+    expect(calcular?.env).toBeUndefined();
     expect(calcular?.run).toContain(
       `node packages/pipeline/dist/bin.js coberturas --dias "\${DIAS_AVISO}" --json`,
     );
@@ -149,7 +153,9 @@ describe("alerta de coberturas en frescura.yml", () => {
     const frescura = await workflow("frescura.yml");
     const job = frescura.jobs["avisar-coberturas"] as Job;
     expect(job.needs).toBe("coberturas");
-    expect(job.if).toBe("needs.coberturas.outputs.lista != '[]'");
+    expect(job.if).toBe(
+      "github.ref == 'refs/heads/main' && needs.coberturas.outputs.lista != '[]'",
+    );
     expect(job.permissions).toEqual({ issues: "write" });
     expect(job.steps.flatMap((p) => p.uses ?? [])).toEqual([]);
     const [unico] = job.steps;
@@ -169,6 +175,11 @@ describe("alerta de coberturas en frescura.yml", () => {
     const revisar = paso(frescura, "revisar", "Revisar frescura de los datos").run ?? "";
     expect(funcion(unico?.run ?? "", "buscar_abierto")).toBe(funcion(revisar, "buscar_abierto"));
     expect(unico?.run).toContain("blob/main/docs/operacion/datos-curados.md");
+    expect(unico?.run).toContain(`mientras la cobertura termine en \${DIAS_AVISO} días o menos`);
+    // La forma de la lista se revisa antes del bucle: una falla de jq ahí no se vería.
+    const guardia = unico?.run?.indexOf('jq -e \'type == "array"') ?? -1;
+    expect(guardia).toBeGreaterThan(-1);
+    expect(guardia).toBeLessThan(unico?.run?.indexOf("while IFS=") ?? -1);
     expect(unico?.run).not.toMatch(/gh issue (close|comment)/);
   });
 
