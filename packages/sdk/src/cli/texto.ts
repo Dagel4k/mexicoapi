@@ -61,7 +61,53 @@ export function validacionTexto(
 export const conNombresCli = (texto: string): string =>
   texto
     .replace(/\bpermitir_incompleto=true\b/g, "--permitir-incompleto")
-    .replace(/\btipo_plazo=(\w+)/g, "--tipo-plazo $1");
+    .replace(/\btipo_plazo=(\w+)/g, "--tipo-plazo $1")
+    .replace(/\b(operacion|publicado)=(\d{4}-\d{2}-\d{2})\b/g, "--$1 $2");
+
+/** La línea de la fuente de un dataset, la primera de su `meta`, si la trae. */
+function fuenteDeMeta(meta: { sources?: unknown } | undefined): string[] {
+  const primera: unknown = Array.isArray(meta?.sources) ? meta.sources[0] : undefined;
+  const { name, url } = (primera ?? {}) as { name?: unknown; url?: unknown };
+  if (typeof name !== "string") return [];
+  return [`Fuente: ${aUnaLinea(name)}${typeof url === "string" ? ` (${aUnaLinea(url)})` : ""}`];
+}
+
+/** Cómo se pidió el FIX: el publicado un día, el de una operación o el más reciente. */
+export type ConsultaFix =
+  | { publicado: string }
+  | { operacion: string }
+  | { ultimo: true; origen: "api" | "paquete" };
+
+export function fixTexto(
+  r: {
+    data: { fecha_publicacion: string; valor: string; fundamento?: { nombre: string } };
+    meta?: { sources?: unknown };
+  },
+  consulta: ConsultaFix,
+): string {
+  const valor = aUnaLinea(r.data.valor);
+  const publicado = aUnaLinea(r.data.fecha_publicacion);
+  const linea =
+    "publicado" in consulta
+      ? `FIX publicado en el DOF el ${publicado}: ${valor} pesos por dólar`
+      : "operacion" in consulta
+        ? `FIX para una operación del ${consulta.operacion}: ${valor} pesos por dólar, el publicado en el DOF el ${publicado} (CFF, artículo 20)`
+        : `${consulta.origen === "paquete" ? "Publicación más reciente del FIX en los datos del paquete" : "Última publicación del FIX"}: ${valor} pesos por dólar, en el DOF del ${publicado}`;
+  const fundamento = r.data.fundamento?.nombre;
+  return [
+    linea,
+    ...fuenteDeMeta(r.meta),
+    ...(typeof fundamento === "string" ? [`Fundamento: ${aUnaLinea(fundamento)}`] : []),
+  ].join("\n");
+}
+
+export function udiTexto(r: {
+  data: { fecha: string; valor: string };
+  meta?: { sources?: unknown };
+}): string {
+  const linea = `UDI del ${aUnaLinea(r.data.fecha)}: ${aUnaLinea(r.data.valor)} pesos`;
+  return [linea, ...fuenteDeMeta(r.meta)].join("\n");
+}
 
 /**
  * De dónde salió la respuesta. "La API no respondió" solo si el cliente avisó que usó el paquete

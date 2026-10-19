@@ -22,14 +22,17 @@ import {
 import { AYUDA, ayudaDe, recordatorioDeAyuda } from "./ayuda.js";
 import {
   bancoTexto,
+  type ConsultaFix,
   conNombresCli,
   diasHabilesTexto,
+  fixTexto,
   municipiosTexto,
   municipioTexto,
   pieTexto,
   resumenSepomexTexto,
   salarioMinimoTexto,
   tarifaIsrTexto,
+  udiTexto,
   umaTexto,
   validacionTexto,
 } from "./texto.js";
@@ -83,6 +86,8 @@ const OPCIONES = {
   "tipo-plazo": { type: "string" },
   "permitir-incompleto": { type: "boolean" },
   fecha: { type: "string" },
+  operacion: { type: "string" },
+  publicado: { type: "string" },
 } as const;
 
 type Opciones = {
@@ -97,6 +102,8 @@ type Opciones = {
   "tipo-plazo"?: string | undefined;
   "permitir-incompleto"?: boolean | undefined;
   fecha?: string | undefined;
+  operacion?: string | undefined;
+  publicado?: string | undefined;
 };
 
 /** Opciones que solo aplican a algunos comandos. */
@@ -108,6 +115,8 @@ const DE_COMANDO = [
   "tipo-plazo",
   "permitir-incompleto",
   "fecha",
+  "operacion",
+  "publicado",
 ] as const;
 
 /** Opciones propias de cada comando, además de --json, --help, --version y --depurar. */
@@ -118,6 +127,8 @@ const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
   uma: ["base", "fecha"],
   "salario-minimo": ["base"],
   isr: ["base"],
+  fix: ["base", "operacion", "publicado"],
+  udi: ["base"],
 };
 
 const VALIDADORES = ["clabe", "rfc", "curp", "nss"] as const;
@@ -338,6 +349,51 @@ async function isr(posiciones: readonly string[], e: Entorno, opciones: Opciones
   return 0;
 }
 
+/** Una fecha bien formada, o un error de uso con el nombre de la opción o del comando. */
+function fechaDe(valor: string, nombre: string): string {
+  if (!esFechaIsoValida(valor)) {
+    throw new ErrorUso(`${nombre} debe ser una fecha válida AAAA-MM-DD, no "${valor}".`);
+  }
+  return valor;
+}
+
+async function fix(posiciones: readonly string[], e: Entorno, opciones: Opciones): Promise<number> {
+  sinArgumentos(posiciones, "fix");
+  const { operacion, publicado } = opciones;
+  if (operacion !== undefined && publicado !== undefined) {
+    throw new ErrorUso("Indica solo una de --operacion o --publicado.");
+  }
+  if (operacion !== undefined) fechaDe(operacion, "--operacion");
+  if (publicado !== undefined) fechaDe(publicado, "--publicado");
+  const cliente = await crearClienteCli(e, opciones);
+  const respuesta =
+    publicado !== undefined
+      ? await cliente.fixPublicado(publicado)
+      : operacion !== undefined
+        ? await cliente.fixParaOperacion(operacion)
+        : await cliente.fixUltimo();
+  if (opciones.json) json(e, respuesta);
+  else {
+    const consulta: ConsultaFix =
+      publicado !== undefined
+        ? { publicado }
+        : operacion !== undefined
+          ? { operacion }
+          : { ultimo: true, origen: respuesta.origen };
+    imprimir(e, fixTexto(respuesta, consulta) + pieTexto(respuesta));
+  }
+  return 0;
+}
+
+async function udi(fecha: string, e: Entorno, opciones: Opciones): Promise<number> {
+  fechaDe(fecha, 'La fecha de "udi"');
+  const cliente = await crearClienteCli(e, opciones);
+  const respuesta = await cliente.udi(fecha);
+  if (opciones.json) json(e, respuesta);
+  else imprimir(e, udiTexto(respuesta) + pieTexto(respuesta));
+  return 0;
+}
+
 async function municipio(valor: string, e: Entorno, opciones: Opciones): Promise<number> {
   const datos = await import("../datos/index.js");
   if (CINCO_DIGITOS.test(valor)) {
@@ -513,6 +569,10 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
         return await salarioMinimo(unValor(resto, "el año", comando), e, opciones);
       case "isr":
         return await isr(resto, e, opciones);
+      case "fix":
+        return await fix(resto, e, opciones);
+      case "udi":
+        return await udi(unValor(resto, "la fecha AAAA-MM-DD", comando), e, opciones);
       default:
         return await sepomex(resto, e, opciones);
     }

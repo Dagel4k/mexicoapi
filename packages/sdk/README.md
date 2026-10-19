@@ -319,6 +319,8 @@ npx mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-
 npx mexicoapi dias-habiles --autoridad cnbv --desde 2026-12-28 --dias 5 --permitir-incompleto
 npx mexicoapi municipio culiacan
 npx mexicoapi banco 002
+npx mexicoapi fix --operacion 2026-10-13
+npx mexicoapi udi 2026-10-01
 npx mexicoapi uma 2026
 npx mexicoapi isr mensual 2026
 npx mexicoapi sepomex sync
@@ -334,7 +336,7 @@ Inhábiles saltados:
 Origen: API
 ```
 
-`dias-habiles`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` (o `true`, `yes`, `si`, `on`, sin distinguir mayúsculas) todo sale del paquete, sin red; `--base` gana a esa variable. Con `0`, `false`, `no`, `off` o vacía se consulta la API, y otro valor es un error de uso (sale con 2), como en el servidor MCP. `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error, `-v` la versión y `mexicoapi --help` lista todos los comandos, también `curp`, `nss`, `salario-minimo`, `uma --fecha`, `sepomex importar` y `sepomex resumen`; `mexicoapi <comando> --help` explica cada uno, y un error de uso remite a esa ayuda. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control. Un error de la API nombra las opciones de la CLI (`--tipo-plazo general`, `--permitir-incompleto`) en lugar de sus parámetros; con `--json`, el problema va tal cual.
+`fix` da el FIX que aplica a una operación (`--operacion`), el publicado un día (`--publicado`) o, sin opciones, la publicación más reciente; `udi <fecha>`, la UDI de un día. `dias-habiles`, `fix`, `udi`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` (o `true`, `yes`, `si`, `on`, sin distinguir mayúsculas) todo sale del paquete, sin red; `--base` gana a esa variable. Con `0`, `false`, `no`, `off` o vacía se consulta la API, y otro valor es un error de uso (sale con 2), como en el servidor MCP. `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error, `-v` la versión y `mexicoapi --help` lista todos los comandos, también `curp`, `nss`, `salario-minimo`, `uma --fecha`, `sepomex importar` y `sepomex resumen`; `mexicoapi <comando> --help` explica cada uno, y un error de uso remite a esa ayuda. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control. Un error de la API nombra las opciones de la CLI (`--tipo-plazo general`, `--permitir-incompleto`, `--operacion 2026-10-10`) en lugar de sus parámetros; con `--json`, el problema va tal cual.
 
 Códigos de salida:
 

@@ -29,6 +29,8 @@ const COMANDOS = [
   "uma",
   "salario-minimo",
   "isr",
+  "fix",
+  "udi",
   "sepomex",
 ];
 const SUBCOMANDOS = ["sync", "importar", "cp", "resumen"];
@@ -199,6 +201,21 @@ export function probarCli(correr: Correr, version: string): void {
       ],
       [["sepomex", "cp", "8000"], /El código postal debe tener 5 dígitos, como 01000; no "8000"/],
       [["sepomex", "cp", "8"], /5 dígitos/],
+      [["fix", "2026-10-12"], /"fix" no recibe argumentos: 2026-10-12/],
+      [
+        ["fix", "--operacion", "2026-10-13", "--publicado", "2026-10-12"],
+        /Indica solo una de --operacion o --publicado\./,
+      ],
+      [
+        ["fix", "--operacion", "13/10/2026"],
+        /--operacion debe ser una fecha válida AAAA-MM-DD, no "13\/10\/2026"/,
+      ],
+      [["fix", "--publicado", "2026-02-30"], /--publicado debe ser una fecha válida AAAA-MM-DD/],
+      [["fix", "--fecha", "2026-10-12"], /--fecha no aplica a "fix"/],
+      [["banco", "002", "--operacion", "2026-10-13"], /--operacion no aplica a "banco"/],
+      [["udi"], /Falta la fecha AAAA-MM-DD en "udi"/],
+      [["udi", "2026-10-01", "x"], /Sobran argumentos en "udi": x/],
+      [["udi", "ayer"], /La fecha de "udi" debe ser una fecha válida AAAA-MM-DD, no "ayer"/],
     ];
     for (const [argv, mensaje] of casos) {
       const c = await correr(argv);
@@ -543,6 +560,96 @@ export function probarCli(correr: Correr, version: string): void {
     const noExiste = await correr(["municipio", "99999"]);
     expect(noExiste.codigo).toBe(1);
     expect(noExiste.errores).toMatch(/^mexicoapi: 404/);
+  });
+
+  it("fix: el publicado un día, el de una operación y el más reciente, con su fuente", async () => {
+    const publicado = await correr(["fix", "--publicado", "2026-10-12"]);
+    expect(publicado.codigo).toBe(0);
+    expect(publicado.errores).toBe("");
+    expect(publicado.salida).toContain(
+      "FIX publicado en el DOF el 2026-10-12: 18.4163 pesos por dólar\nFuente: Diario Oficial de la Federación (SIDOF): tipo de cambio para solventar obligaciones denominadas en moneda extranjera (FIX) (https://sidof.segob.gob.mx/)\n",
+    );
+    expect(publicado.salida).toContain("Origen: datos del paquete, sin red");
+    const operacion = await correr(["fix", "--operacion", "2026-10-13"]);
+    expect(operacion.codigo).toBe(0);
+    expect(operacion.salida).toContain(
+      "FIX para una operación del 2026-10-13: 18.4163 pesos por dólar, el publicado en el DOF el 2026-10-12 (CFF, artículo 20)\n",
+    );
+    expect(operacion.salida).toContain(
+      "Fundamento: Código Fiscal de la Federación, artículo 20, tercer párrafo",
+    );
+    const ultimo = await correr(["fix"]);
+    expect(ultimo.codigo).toBe(0);
+    expect(ultimo.salida).toMatch(
+      /^Publicación más reciente del FIX en los datos del paquete: \d+\.\d{4} pesos por dólar, en el DOF del \d{4}-\d{2}-\d{2}\n/,
+    );
+    // Del paquete, la publicación más reciente siempre avisa que pueden faltar las últimas.
+    expect(ultimo.salida).toContain(
+      "Aviso: Respuesta con los datos del paquete mexicoapi, no de la API: pueden faltar publicaciones recientes.",
+    );
+  });
+
+  it("fix --json imprime la respuesta del cliente, con los códigos de los avisos", async () => {
+    const r = json(await correr(["fix", "--json"])) as {
+      data: { valor: string };
+      origen: string;
+      meta: { dataset: string };
+      advertencias: string[];
+      avisos: { codigo: string; texto: string }[];
+    };
+    expect(r.origen).toBe("paquete");
+    expect(r.meta.dataset).toBe("tipo-cambio.fix");
+    expect(r.avisos.map((a) => a.codigo)).toContain("datos-del-paquete");
+    expect(r.avisos.map((a) => a.texto)).toEqual(r.advertencias);
+    const operacion = json(await correr(["fix", "--operacion", "2026-10-13", "--json"])) as {
+      data: { fecha_publicacion: string; fundamento: { nombre: string } };
+    };
+    expect(operacion.data.fecha_publicacion).toBe("2026-10-12");
+  });
+
+  it("fix sin dato sale con 1 y nombra las opciones de la CLI", async () => {
+    // 2026-10-10 es sábado: no hubo publicación; el texto de la API sugiere operacion=.
+    const sabado = await correr(["fix", "--publicado", "2026-10-10"]);
+    expect(sabado.codigo).toBe(1);
+    expect(sabado.salida).toBe("");
+    expect(sabado.errores).toContain("usa --operacion 2026-10-10.");
+    expect(sabado.errores).not.toContain("operacion=");
+    const enJson = await correr(["fix", "--publicado", "2026-10-10", "--json"]);
+    expect(JSON.parse(enJson.errores)).toMatchObject({
+      error: { status: 404, detail: expect.stringContaining("operacion=2026-10-10") },
+    });
+    const lejos = await correr(["fix", "--publicado", "2099-01-05"]);
+    expect(lejos.codigo).toBe(1);
+    expect(lejos.errores).toMatch(/^mexicoapi: 404 /);
+  });
+
+  it("udi de un día, en texto y en JSON, y un día sin dato", async () => {
+    const c = await correr(["udi", "2026-10-01"]);
+    expect(c.codigo).toBe(0);
+    expect(c.salida).toContain(
+      "UDI del 2026-10-01: 8.836029 pesos\nFuente: Diario Oficial de la Federación (SIDOF): valor de la unidad de inversión (UDIS) (https://sidof.segob.gob.mx/)\n",
+    );
+    expect(c.salida).toContain("Origen: datos del paquete, sin red");
+    const r = json(await correr(["udi", "2026-10-01", "--json"])) as {
+      data: { fecha: string; valor: string };
+      avisos: unknown[];
+    };
+    expect(r.data).toEqual({ fecha: "2026-10-01", valor: "8.836029" });
+    expect(Array.isArray(r.avisos)).toBe(true);
+    const antes = await correr(["udi", "1990-01-01"]);
+    expect(antes.codigo).toBe(1);
+    expect(antes.errores).toMatch(/^mexicoapi: 404 /);
+  });
+
+  it("con una API que no responde, fix y udi caen al paquete y lo avisan", async () => {
+    for (const argv of [
+      ["fix", "--publicado", "2026-10-12"],
+      ["udi", "2026-10-01"],
+    ]) {
+      const c = await correr([...argv, "--base", "http://127.0.0.1:1"]);
+      expect(c.codigo, argv.join(" ")).toBe(0);
+      expect(c.salida, argv.join(" ")).toContain("Origen: datos del paquete (la API no respondió)");
+    }
   });
 
   it("banco por código, inexistente y en JSON", async () => {
