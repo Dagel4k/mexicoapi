@@ -1,6 +1,6 @@
 {
   "name": "mexicoapi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Validadores, datos oficiales y cliente HTTP de MéxicoAPI: CLABE, RFC, CURP, NSS, días hábiles, FIX, UDIS, UMA, salario mínimo e ISR. Con CLI y descarga local de los códigos postales de SEPOMEX. Sin dependencias.",
   "keywords": [
     "méxico",
