@@ -1,4 +1,4 @@
-import { avisosDe } from "@mexicoapi/core/avisos";
+import { type Aviso, CODIGOS_AVISO, type CodigoAviso, codigoAviso } from "@mexicoapi/core/avisos";
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
@@ -265,21 +265,48 @@ function conAdvertenciasDelCalculo(r: RespuestaPrevia): RespuestaPrevia {
   return congelar({ ...r, advertencias: todas });
 }
 
+const CONOCIDOS: ReadonlySet<string> = new Set(CODIGOS_AVISO);
+
+/**
+ * Los códigos de las listas de avisos que llegan (de la API, o los del núcleo en `data`), por el
+ * texto de cada uno: solo los del catálogo, el primero de cada texto. Lo que no tiene esa forma
+ * no cuenta.
+ */
+function codigosPorTexto(listas: readonly unknown[]): Map<string, CodigoAviso> {
+  const codigos = new Map<string, CodigoAviso>();
+  for (const lista of listas) {
+    if (!Array.isArray(lista)) continue;
+    for (const a of lista) {
+      if (!esObjeto(a) || typeof a.texto !== "string" || typeof a.codigo !== "string") continue;
+      if (CONOCIDOS.has(a.codigo) && !codigos.has(a.texto)) {
+        codigos.set(a.texto, a.codigo as CodigoAviso);
+      }
+    }
+  }
+  return codigos;
+}
+
 /**
  * `r` con `avisos`: sus advertencias con su código, en el mismo orden. Si `data` trae advertencias
- * (`/v1/dias-habiles`), también `data.avisos` con las suyas, solo los textos. Los códigos salen
- * del catálogo del cliente aunque la API ya los traiga (una API anterior no los trae y una nueva
- * puede tener códigos que esta versión no conoce): así siempre son de `CodigoAviso`.
+ * (`/v1/dias-habiles`), también `data.avisos` con las suyas, solo los textos. El código de cada
+ * texto es el que mandó la API (en los avisos de primer nivel o en `data.avisos`) si es del
+ * catálogo, aunque el texto tenga otra redacción; si no lo mandó (una API anterior) o no es del
+ * catálogo (una API más nueva), sale del texto con `codigoAviso`. Siempre es un `CodigoAviso`.
  */
 function conAvisos(r: RespuestaPrevia): RespuestaSinMeta<unknown> {
-  const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
+  const datos = esObjeto(r.data) ? r.data : undefined;
+  const codigos = codigosPorTexto([r.avisos, datos?.avisos]);
+  const conCodigo = (textos: readonly string[]): Aviso[] =>
+    textos.map((texto) => ({ codigo: codigos.get(texto) ?? codigoAviso(texto), texto }));
+  const delCalculo = datos?.advertencias;
   const data = Array.isArray(delCalculo)
     ? {
-        ...(r.data as Objeto),
-        avisos: avisosDe(delCalculo.filter((a): a is string => typeof a === "string")),
+        ...(datos as Objeto),
+        avisos: conCodigo(delCalculo.filter((a): a is string => typeof a === "string")),
       }
     : r.data;
-  return congelar({ ...r, data, avisos: avisosDe(r.advertencias) });
+  const { avisos: _deLaApi, ...resto } = r;
+  return congelar({ ...resto, data, avisos: conCodigo(r.advertencias) });
 }
 
 /**

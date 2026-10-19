@@ -12,6 +12,11 @@ export interface RespuestaPrevia {
   readonly meta?: unknown;
   readonly origen: Origen;
   readonly advertencias: readonly string[];
+  /**
+   * Los avisos de primer nivel que mandó la API, tal como llegaron: el cliente conserva sus
+   * códigos (los del catálogo) por el texto de cada advertencia.
+   */
+  readonly avisos?: unknown;
 }
 
 /** Comienzo de la advertencia de una respuesta del paquete porque la API falló (la CLI la busca). */

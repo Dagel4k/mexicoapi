@@ -1,7 +1,14 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
 // (as_of, fuente, origen y advertencias con sus avisos), sus esquemas, el texto legible y cómo se
 // traducen los errores esperables del paquete y de la API.
-import { AVISO_SIN_API, aUnaLinea, CODIGOS_AVISO, codigoAviso, esFechaIsoValida } from "mexicoapi";
+import {
+  AVISO_SIN_API,
+  type Aviso,
+  aUnaLinea,
+  CODIGOS_AVISO,
+  codigoAviso,
+  esFechaIsoValida,
+} from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -46,6 +53,8 @@ export interface Procedencia {
   fuentes: Fuente[];
   origen: Origen;
   advertencias: string[];
+  /** Las mismas advertencias, en el mismo orden, con su código. */
+  avisos: Aviso[];
 }
 
 /**
@@ -120,10 +129,6 @@ export const ESQUEMA_AVISOS = {
   description:
     "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
 } as const;
-
-/** Los avisos de unas advertencias, con el código del catálogo de mexicoapi. */
-const avisosDe = (advertencias: readonly string[]) =>
-  advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto }));
 
 const DESCRIPCION_AS_OF =
   "Fecha de corte del dataset: la de la última actualización que lo cambió (en los datos curados, la publicación más reciente de sus fuentes). No es la fecha del valor, que va en datos.";
@@ -230,30 +235,56 @@ interface OpcionesProcedencia {
   fuentes?: readonly Fuente[] | undefined;
   /** Advertencias de la herramienta, después de las del cliente. */
   advertencias?: readonly string[] | undefined;
+  /** Los avisos de esas advertencias, con su código (los de un cálculo: `data.avisos`). */
+  avisos?: readonly Aviso[] | undefined;
   /** Si el dato caduca y el servidor no consulta la API: agrega AVISO_SIN_API. */
   sinApi?: boolean | undefined;
 }
 
-/** La procedencia de una respuesta del cliente (o de un `meta` del paquete). */
+/**
+ * Los avisos de unas advertencias: el código de `avisos` para el mismo texto (los que dio el
+ * cliente, que conserva los de la API) o, si no viene, el del texto con `codigoAviso`.
+ */
+function conCodigo(advertencias: readonly string[], avisos: readonly Aviso[] | undefined): Aviso[] {
+  return advertencias.map((texto) => ({
+    codigo: avisos?.find((a) => a.texto === texto)?.codigo ?? codigoAviso(texto),
+    texto,
+  }));
+}
+
+/**
+ * La procedencia de una respuesta del cliente (o de un `meta` del paquete). Las advertencias van
+ * sin repetir: primero AVISO_SIN_API, después las del cliente y al final las de la herramienta,
+ * cada una con su código en `avisos`.
+ */
 export function procedencia(
-  r: { meta: Meta; origen: "api" | "paquete"; advertencias?: readonly string[] | undefined },
+  r: {
+    meta: Meta;
+    origen: "api" | "paquete";
+    advertencias?: readonly string[] | undefined;
+    avisos?: readonly Aviso[] | undefined;
+  },
   opciones: OpcionesProcedencia = {},
 ): Procedencia {
   const fuentes =
     opciones.fuentes !== undefined && opciones.fuentes.length > 0
       ? unicas(opciones.fuentes)
       : fuentesDeMeta(r.meta);
-  const advertencias = [
-    ...(opciones.sinApi === true && r.origen === "paquete" ? [AVISO_SIN_API] : []),
-    ...(r.advertencias ?? []),
-    ...(opciones.advertencias ?? []),
+  const todos: Aviso[] = [
+    ...(opciones.sinApi === true && r.origen === "paquete"
+      ? [{ codigo: "datos-del-paquete" as const, texto: AVISO_SIN_API }]
+      : []),
+    ...conCodigo(r.advertencias ?? [], r.avisos),
+    ...conCodigo(opciones.advertencias ?? [], opciones.avisos),
   ];
+  const avisos = todos.filter((a, i) => todos.findIndex((b) => b.texto === a.texto) === i);
   return {
     as_of: asOfDe(r.meta),
     fuente: fuentes[0] as Fuente,
     fuentes,
     origen: r.origen,
-    advertencias: [...new Set(advertencias)],
+    advertencias: avisos.map((a) => a.texto),
+    avisos,
   };
 }
 
@@ -278,7 +309,7 @@ function pie(p: Procedencia, sinFecha: string): string[] {
 
 /**
  * Un resultado: el texto (las líneas propias y el pie de procedencia) y `structuredContent` con
- * `datos`, los campos propios, la procedencia y, al final, `avisos`: las advertencias con su
+ * `datos`, los campos propios y la procedencia, que termina con `avisos`: las advertencias con su
  * código. El texto solo trae las advertencias.
  */
 export function resultado(
@@ -290,7 +321,7 @@ export function resultado(
   const texto = [...lineas, ...pie(p, opciones.sinFecha ?? "sin fecha")].join("\n");
   return {
     content: [{ type: "text", text: texto }],
-    structuredContent: { datos, ...opciones.extra, ...p, avisos: avisosDe(p.advertencias) },
+    structuredContent: { datos, ...opciones.extra, ...p },
   };
 }
 

@@ -232,7 +232,7 @@ if (avisos.some((a) => a.codigo === "lft-art-715")) {
 }
 ```
 
-Los códigos los pone el cliente con su catálogo (`CODIGOS_AVISO` de `mexicoapi`); un texto que esta versión no conoce sale como `otro`. La lista con qué significa cada código está en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
+Si la API manda el código de un aviso, el cliente lo conserva aunque el texto tenga otra redacción. Si no lo manda (una API anterior) o manda uno que esta versión no conoce, el cliente lo saca del texto con su catálogo (`CODIGOS_AVISO` y `codigoAviso` de `mexicoapi`), y un texto que no conoce sale como `otro`. La lista con qué significa cada código está en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
 
 Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `http://127.0.0.1:8787` (`wrangler dev`) o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
 

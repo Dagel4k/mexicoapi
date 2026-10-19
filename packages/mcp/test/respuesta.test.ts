@@ -40,7 +40,29 @@ describe("procedencia", () => {
       ],
       origen: "api",
       advertencias: [],
+      avisos: [],
     });
+  });
+
+  it("conserva el código de los avisos del cliente y de la herramienta, por su texto", () => {
+    const p = procedencia(
+      {
+        meta: META,
+        origen: "api",
+        advertencias: ["de la API", "sin código"],
+        avisos: [{ codigo: "lista-incompleta", texto: "de la API" }],
+      },
+      {
+        advertencias: ["del cálculo", "de la API"],
+        avisos: [{ codigo: "prorroga-art-12", texto: "del cálculo" }],
+      },
+    );
+    expect(p.advertencias).toEqual(["de la API", "sin código", "del cálculo"]);
+    expect(p.avisos).toEqual([
+      { codigo: "lista-incompleta", texto: "de la API" },
+      { codigo: "otro", texto: "sin código" },
+      { codigo: "prorroga-art-12", texto: "del cálculo" },
+    ]);
   });
 
   it("prefiere las fuentes del registro y junta las advertencias sin repetir", () => {

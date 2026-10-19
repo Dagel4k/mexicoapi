@@ -69,6 +69,7 @@ const PROCEDENCIA: Procedencia = {
   fuentes: [FUENTE_VALIDADORES],
   origen: "paquete",
   advertencias: [],
+  avisos: [],
 };
 
 const SIN_FECHA = "no aplica (validación por algoritmo, sin datos publicados)";
