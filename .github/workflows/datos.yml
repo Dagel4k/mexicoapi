@@ -200,8 +200,9 @@ jobs:
       contents: read
     outputs:
       # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
-      # Con el código 3 el PR lleva la etiqueta revisar y no se fusiona solo: no cuenta.
-      publicado: ${{ steps.publicar.outcome == 'success' && needs.generar.outputs.codigo == '0' && 'si' || 'no' }}
+      # Con el código 3, o con un parche sobre el umbral del grupo, el PR lleva la etiqueta revisar
+      # y no se fusiona solo: no cuenta.
+      publicado: ${{ steps.publicar.outcome == 'success' && needs.generar.outputs.codigo == '0' && steps.aplicar.outputs.grande != 'si' && 'si' || 'no' }}
     steps:
       # El mismo commit de main que usó generar, que armó el parche sobre él. Sin dependencias:
       # este job solo usa git, gh y jq del runner.
@@ -222,13 +223,22 @@ jobs:
       # comunes de las carpetas del grupo (las de preparar, que no corre código del repo ni de las
       # fuentes). Cualquier otra cosa detiene la corrida y el paso de fallas abre el issue. Con el
       # código 1 no se publica nada, así que tampoco se aplica.
+      #
+      # Además cuenta las líneas que cambia en archivos de texto (--numstat, solo git del runner) y,
+      # si pasan del umbral del grupo, publicar abre el PR con la etiqueta revisar y sin auto-merge
+      # aunque generar diga que no hace falta: generar procesó datos externos y no decide solo. Los
+      # umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su
+      # manifiesto y sus crudos: 31 FIX nuevos son unas 140 líneas; 45 UDIS, 200; 12 municipios
+      # (el 0.5 %), 220, y 3 cambios en bancos, unas 50.
       - name: Revisar y aplicar el parche
+        id: aplicar
         if: >-
           needs.generar.result == 'success' && needs.generar.outputs.cambios == 'si'
           && needs.generar.outputs.codigo != '1'
         env:
           PARCHE: ${{ runner.temp }}/corrida/datos.patch
           CARPETAS: ${{ needs.preparar.outputs.carpetas }}
+          GRUPO: ${{ needs.preparar.outputs.grupo }}
         run: |
           set -euo pipefail
           export LC_ALL=C
@@ -237,6 +247,13 @@ jobs:
             echo "::error::Falta la lista de carpetas del grupo."
             exit 1
           fi
+          case "${GRUPO}" in
+            inegi) limite=400 ;;
+            bancos) limite=300 ;;
+            fix) limite=300 ;;
+            udis) limite=400 ;;
+            *) echo "::error::El grupo no tiene umbral de líneas."; exit 1 ;;
+          esac
           # Una ruta vale si está en una carpeta del grupo, solo lleva letras ASCII, dígitos y
           # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
           # vacío ni empieza con punto (., .., .git, archivos ocultos). La misma regla está en
@@ -261,6 +278,11 @@ jobs:
               exit 1
             fi
           }
+          # Un artefacto puede traer un enlace simbólico: solo se lee un archivo común.
+          if [ ! -f "${PARCHE}" ] || [ -L "${PARCHE}" ]; then
+            echo "::error::El parche no es un archivo común."
+            exit 1
+          fi
           if [ ! -s "${PARCHE}" ]; then
             echo "::error::generar marcó cambios, pero el parche está vacío."
             exit 1
@@ -273,13 +295,20 @@ jobs:
           rutas="${RUNNER_TEMP}/rutas-parche"
           git_o_falla apply --numstat -z "${PARCHE}" > "${rutas}"
           n=0
+          lineas=0
           while IFS= read -r -d '' registro; do
             n=$((n + 1))
+            agregadas="${registro%%$'\t'*}"
             ruta="${registro#*$'\t'}"
+            quitadas="${ruta%%$'\t'*}"
             ruta="${ruta#*$'\t'}"
             if ! ruta_valida "${ruta}"; then
               printf '::error::Ruta no permitida en el parche: %q\n' "${ruta}"
               mal=1
+            fi
+            # Un binario (el PDF de Banxico) trae - en vez de números y no suma.
+            if [[ "${agregadas}" =~ ^[0-9]+$ && "${quitadas}" =~ ^[0-9]+$ ]]; then
+              lineas=$((lineas + agregadas + quitadas))
             fi
           done < "${rutas}"
           if [ "${n}" -eq 0 ]; then
@@ -300,6 +329,18 @@ jobs:
           if [ "${mal}" -ne 0 ]; then
             exit 1
           fi
+          grande=no
+          if [ "${lineas}" -gt "${limite}" ]; then
+            grande=si
+            echo "::warning::El parche cambia ${lineas} líneas de data/, más que el umbral de ${limite} de ${GRUPO}: el PR pide revisión."
+          else
+            echo "El parche cambia ${lineas} líneas de data/ (umbral de ${GRUPO}: ${limite})."
+          fi
+          {
+            echo "grande=${grande}"
+            echo "lineas=${lineas}"
+            echo "limite=${limite}"
+          } >> "${GITHUB_OUTPUT}"
           # nowarn: los avisos de espacios repiten líneas del parche.
           git_o_falla apply --check --whitespace=nowarn "${PARCHE}"
           git_o_falla apply --index --whitespace=nowarn "${PARCHE}"
@@ -340,6 +381,9 @@ jobs:
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
           GRUPO: ${{ needs.preparar.outputs.grupo }}
           CODIGO: ${{ needs.generar.outputs.codigo }}
+          PARCHE_GRANDE: ${{ steps.aplicar.outputs.grande }}
+          PARCHE_LINEAS: ${{ steps.aplicar.outputs.lineas }}
+          PARCHE_LIMITE: ${{ steps.aplicar.outputs.limite }}
           GH_REPO: ${{ github.repository }}
           CORRIDA: ${{ runner.temp }}/corrida
         run: |
@@ -355,6 +399,11 @@ jobs:
           resumen_json="${CORRIDA}/resumen.json"
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           fecha="$(TZ=America/Mexico_City date +%F)"
+
+          # Un artefacto puede traer un enlace simbólico: solo se leen archivos comunes.
+          es_archivo() {
+            [ -f "$1" ] && [ ! -L "$1" ]
+          }
 
           # Abre un issue con el título exacto o, si ya hay uno abierto de la App, comenta en él (un
           # issue con ese título abierto por otra cuenta no cuenta). Si la búsqueda falla, devuelve
@@ -373,23 +422,53 @@ jobs:
             fi
           }
 
-          # El resumen en Markdown que armó generar. Ya trae los textos de las fuentes en código;
-          # por si acaso, ninguna @ queda como mención (se le agrega un espacio de ancho cero).
+          # El resumen en Markdown que armó generar, dentro de un bloque de código: lo escribió un
+          # job que procesa datos externos, así que nada de su texto se interpreta (encabezados,
+          # enlaces, imágenes, `Closes #N`). La cerca es más larga que cualquier racha de backticks
+          # del texto, así que ninguna línea la cierra; además ninguna @ queda como mención ni un #
+          # seguido de un número como referencia (se les agrega un espacio de ancho cero). Si pasa
+          # de 60 000 bytes (el cuerpo de un PR admite 65 536 caracteres), queda solo el aviso.
           resumen() {
-            if [ -f "${resumen_md}" ]; then
-              sed 's/@/@\xe2\x80\x8b/g' "${resumen_md}"
+            local bytes largo cerca
+            if ! es_archivo "${resumen_md}"; then
+              echo "La corrida no dejó resumen."
+              return 0
             fi
+            bytes="$(wc -c < "${resumen_md}")"
+            if [ "${bytes}" -gt 60000 ]; then
+              echo "El resumen de la corrida pasa de 60 000 bytes (${bytes}): no se copia aquí."
+              return 0
+            fi
+            largo="$(awk '{ while (match($0, /`+/)) { if (RLENGTH > n) n = RLENGTH; $0 = substr($0, RSTART + RLENGTH) } } END { print n + 1 }' "${resumen_md}")"
+            if [ "${largo}" -lt 3 ]; then
+              largo=3
+            fi
+            cerca="$(printf '%*s' "${largo}" '' | tr ' ' '`')"
+            echo "${cerca}text"
+            sed -e 's/@/@\xe2\x80\x8b/g' -e 's/#\([0-9]\)/#\xe2\x80\x8b\1/g' "${resumen_md}"
+            if [ -n "$(tail -c 1 "${resumen_md}")" ]; then
+              echo
+            fi
+            echo "${cerca}"
           }
 
           # Motivos y errores del resumen JSON, en un bloque de código y una línea por elemento:
           # los saltos y controles pasan a espacio (ninguna línea puede cerrar el bloque) y las @
-          # no mencionan a nadie.
+          # no mencionan a nadie. Con un parche sobre el umbral, ese motivo va primero.
           motivos() {
-            if [ -f "${resumen_json}" ]; then
-              echo '```text'
+            local lista="${RUNNER_TEMP}/motivos.txt"
+            : > "${lista}"
+            if [ "${PARCHE_GRANDE}" = "si" ]; then
+              echo "- el parche cambia ${PARCHE_LINEAS} líneas de data/, más que el umbral de ${PARCHE_LIMITE} del grupo" >> "${lista}"
+            fi
+            if es_archivo "${resumen_json}"; then
               jq -r 'def linea: tostring | gsub("[[:cntrl:]\u2028\u2029]+"; " ") | gsub("@"; "@\u200b");
                 (.resultados[]?.motivos[]? | "- " + linea),
-                (.errores[]? | "- \(.dataset | linea): \(.mensaje | linea)")' "${resumen_json}"
+                (.errores[]? | "- \(.dataset | linea): \(.mensaje | linea)")' "${resumen_json}" >> "${lista}"
+            fi
+            if [ -s "${lista}" ]; then
+              echo '```text'
+              cat "${lista}"
               echo '```'
             fi
           }
@@ -411,6 +490,13 @@ jobs:
           if [ "${CODIGO}" != "0" ] && [ "${CODIGO}" != "3" ]; then
             echo "::error::Código de salida inesperado: ${CODIGO}"
             exit 1
+          fi
+
+          # Con el código 3, o con un parche sobre el umbral del grupo (paso anterior), el PR lleva
+          # la etiqueta revisar y no se fusiona solo.
+          pide_revision=no
+          if [ "${CODIGO}" = "3" ] || [ "${PARCHE_GRANDE}" = "si" ]; then
+            pide_revision=si
           fi
 
           # El paso anterior dejó en el índice los cambios del parche, si los había.
@@ -471,7 +557,7 @@ jobs:
             else
               echo "::warning::No se pudo revisar si el PR ${pr_pendiente} está atascado."
             fi
-            if [ "${CODIGO}" = "3" ]; then
+            if [ "${pide_revision}" = "si" ]; then
               cuerpo="${RUNNER_TEMP}/issue-pendiente.md"
               {
                 echo "Hay cambios nuevos en \`${GRUPO}\` que piden revisión humana, pero el PR ${pr_pendiente} sigue abierto, así que no se abrió otro."
@@ -514,7 +600,7 @@ jobs:
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo_pr}"
 
-          if [ "${CODIGO}" = "3" ]; then
+          if [ "${pide_revision}" = "si" ]; then
             url_pr="$(gh pr create --base main --head "${rama}" --title "datos(${GRUPO}): ${fecha}" \
               --body-file "${cuerpo_pr}" --label revisar)"
             cuerpo="${RUNNER_TEMP}/issue-revisar.md"
@@ -630,6 +716,11 @@ jobs:
           RESUMEN: ${{ runner.temp }}/resumen/resumen.json
         run: |
           set -euo pipefail
+          # Un artefacto puede traer un enlace simbólico: solo se lee un archivo común.
+          if [ ! -f "${RESUMEN}" ] || [ -L "${RESUMEN}" ]; then
+            echo "::error::resumen.json no es un archivo común."
+            exit 1
+          fi
           node apps/api/scripts/cloudflare.ts estado --resumen "${RESUMEN}" --codigo "${CODIGO}" --publicado "${PUBLICADO}"
 
       - name: Avisar si no se escribió el estado
