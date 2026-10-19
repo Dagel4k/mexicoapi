@@ -54,13 +54,13 @@ describe("CODIGOS_AVISO", () => {
       "transmision-poder-ejecutivo",
       "prorroga-art-12",
       "vacaciones-sin-publicar",
-      "api-sin-respuesta",
+      "api-fallo",
       "respuesta-guardada",
       "datos-viejos",
       "datos-del-paquete",
       "municipio-sin-inegi",
       "cp-varios-municipios",
-      "aviso-sepomex-distinto",
+      "aviso-de-uso-sepomex-distinto",
       "otro",
     ]);
   });

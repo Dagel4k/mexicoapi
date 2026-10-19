@@ -237,7 +237,7 @@ async function desdePaquete(
   const contexto: Contexto = { ...pedido, causa };
   if (causa !== undefined) {
     contexto.avisos.push({
-      codigo: "api-sin-respuesta",
+      codigo: "api-fallo",
       texto: `${AVISO_RESPALDO}: ${causa.message}`,
     });
   }

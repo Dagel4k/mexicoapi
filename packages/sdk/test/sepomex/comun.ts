@@ -266,7 +266,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     const estado = await m.importar(await archivo("cp.txt", txt(lineas)), { dir, aviso });
     expect(estado.aviso).toBe("Nuevo aviso de uso de Correos de México.");
     expect(estado.advertencias[0]).toMatch(/aviso de uso del archivo es distinto/);
-    expect(estado.avisos.map((a) => a.codigo)).toEqual(["aviso-sepomex-distinto"]);
+    expect(estado.avisos.map((a) => a.codigo)).toEqual(["aviso-de-uso-sepomex-distinto"]);
   });
 
   /** Una caché buena y su contenido, para revisar que un fallo no la toca. */

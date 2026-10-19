@@ -301,7 +301,7 @@ await sepomex.colonias("80000");
 await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, dónde quedó
 ```
 
-`resumen()` trae `advertencias` y `avisos` con lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI (`municipio-sin-inegi`), que aparecen en más de un municipio (`cp-varios-municipios`) o un aviso de uso distinto del conocido (`aviso-sepomex-distinto`).
+`resumen()` trae `advertencias` y `avisos` con lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI (`municipio-sin-inegi`), que aparecen en más de un municipio (`cp-varios-municipios`) o un aviso de uso distinto del conocido (`aviso-de-uso-sepomex-distinto`).
 
 - Si el sitio bloquea la descarga automática (un 403, un 429 o un CAPTCHA), no se intenta evadir: el error dice cómo bajar el archivo a mano (estado "Todos", formato TXT) y cargarlo con `sepomex.importar("CPdescarga.zip")`, que acepta el ZIP o el TXT.
 - La caché queda en `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y en `$XDG_CACHE_HOME/mexicoapi/sepomex` (o `~/.cache/mexicoapi/sepomex`) en los demás; la opción `dir` la cambia. Si algo falla, la caché anterior queda igual.
