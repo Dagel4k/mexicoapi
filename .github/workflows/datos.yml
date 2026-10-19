@@ -460,27 +460,29 @@ jobs:
           # job que procesa datos externos, así que nada de su texto se interpreta (encabezados,
           # enlaces, imágenes, `Closes #N`). La cerca es más larga que cualquier racha de backticks
           # del texto, así que ninguna línea la cierra; además ninguna @ queda como mención ni un #
-          # seguido de un número como referencia (se les agrega un espacio de ancho cero). Si pasa
-          # de 60 000 bytes (el cuerpo de un PR admite 65 536 caracteres), queda solo el aviso.
+          # seguido de un número como referencia (se les agrega un espacio de ancho cero). Si ya
+          # con esos espacios pasa de 60 000 bytes (el cuerpo de un PR admite 65 536 caracteres),
+          # queda solo el aviso.
           resumen() {
-            local bytes largo cerca
+            local bytes largo cerca seguro="${RUNNER_TEMP}/resumen-seguro.md"
             if ! es_archivo "${resumen_md}"; then
               echo "La corrida no dejó resumen."
               return 0
             fi
-            bytes="$(wc -c < "${resumen_md}")"
+            sed -e 's/@/@\xe2\x80\x8b/g' -e 's/#\([0-9]\)/#\xe2\x80\x8b\1/g' "${resumen_md}" > "${seguro}"
+            bytes="$(wc -c < "${seguro}")"
             if [ "${bytes}" -gt 60000 ]; then
               echo "El resumen de la corrida pasa de 60 000 bytes (${bytes}): no se copia aquí."
               return 0
             fi
-            largo="$(awk '{ while (match($0, /`+/)) { if (RLENGTH > n) n = RLENGTH; $0 = substr($0, RSTART + RLENGTH) } } END { print n + 1 }' "${resumen_md}")"
+            largo="$(awk '{ while (match($0, /`+/)) { if (RLENGTH > n) n = RLENGTH; $0 = substr($0, RSTART + RLENGTH) } } END { print n + 1 }' "${seguro}")"
             if [ "${largo}" -lt 3 ]; then
               largo=3
             fi
             cerca="$(printf '%*s' "${largo}" '' | tr ' ' '`')"
             echo "${cerca}text"
-            sed -e 's/@/@\xe2\x80\x8b/g' -e 's/#\([0-9]\)/#\xe2\x80\x8b\1/g' "${resumen_md}"
-            if [ -n "$(tail -c 1 "${resumen_md}")" ]; then
+            cat "${seguro}"
+            if [ -n "$(tail -c 1 "${seguro}")" ]; then
               echo
             fi
             echo "${cerca}"
