@@ -68,11 +68,13 @@ const NOMBRE_PARTICIPANTES = "Banco de México, Participantes directos en el SPE
 export const citaParticipantes = (url: string): string =>
   `Banco de México. Participantes directos en el SPEI. ${url}`;
 /**
- * La URL del PDF de participantes cambia con cada versión; Banxico lo publica en
- * www.banxico.org.mx/servicios/d/ (hoy, `/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf`).
+ * La URL del PDF de participantes cambia con cada versión, siempre con la misma forma: un GUID
+ * entre llaves en www.banxico.org.mx/servicios/d/ (hoy,
+ * `/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf`). Nada de otras rutas, `..` ni
+ * caracteres codificados.
  */
 const URL_PARTICIPANTES =
-  /^https:\/\/www\.banxico\.org\.mx\/servicios\/d\/[A-Za-z0-9{}%._-]+\.pdf$/;
+  /^https:\/\/www\.banxico\.org\.mx\/servicios\/d\/\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}\.pdf$/;
 
 async function pedir(ctx: Contexto, file: string, url: string): Promise<CrudoCapturado> {
   const r = await ctx.cliente.obtener(url);

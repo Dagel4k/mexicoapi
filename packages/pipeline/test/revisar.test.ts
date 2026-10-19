@@ -210,6 +210,18 @@ describe("revisar", { timeout: PRUEBA_LENTA }, () => {
       ["https://www.banxico.org.mx/otra/x.pdf", "url"],
       ["https://www.banxico.org.mx/servicios/d/x.pdf?y=1", "url"],
       ["http://www.banxico.org.mx/servicios/d/x.pdf", "url"],
+      // Solo la forma de Banxico: /servicios/d/{GUID}.pdf, sin rutas ni codificaciones.
+      ["https://www.banxico.org.mx/servicios/d/x.pdf", "url"],
+      ["https://www.banxico.org.mx/servicios/d/%2F..%2Fotra%2Fx.pdf", "url"],
+      [
+        "https://www.banxico.org.mx/servicios/d/..%2F{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf",
+        "url",
+      ],
+      [
+        "https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf/../x.pdf",
+        "url",
+      ],
+      ["https://www.banxico.org.mx/servicios/d/{C24C7DBC-9ABF-6F41-DA38}.pdf", "url"],
     ];
     for (const [url, campo] of casos) {
       await manifiesto("bancos", (m) => {
