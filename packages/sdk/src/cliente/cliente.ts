@@ -12,6 +12,7 @@ import type {
   OpcionesConsulta,
   RespuestaSinMeta,
   RutaApi,
+  RutasApi,
 } from "./tipos.js";
 
 interface Config extends ConfigHttp {
@@ -52,6 +53,39 @@ export type RutaDelPaquete = {
 
 const modoDe = (plantilla: string): (typeof RUTAS)[RutaApi] | undefined =>
   Object.hasOwn(RUTAS, plantilla) ? RUTAS[plantilla as RutaApi] : undefined;
+
+/** `lista` si la ruta responde un arreglo en `data`; `objeto` si responde otra cosa. */
+type FormaDe<R extends RutaApi> = RutasApi[R]["respuesta"]["data"] extends readonly unknown[]
+  ? "lista"
+  : "objeto";
+
+/**
+ * Qué trae `data` en cada ruta que el cliente conoce; una respuesta de la API con otra forma es
+ * una respuesta inesperada. El tipo de cada valor sale de `RutasApi`.
+ */
+export const FORMAS = {
+  "/v1/estados": "lista",
+  "/v1/estados/{cve_ent}": "objeto",
+  "/v1/estados/{cve_ent}/municipios": "lista",
+  "/v1/municipios": "lista",
+  "/v1/municipios/{cvegeo}": "objeto",
+  "/v1/bancos": "lista",
+  "/v1/bancos/{codigo}": "objeto",
+  "/v1/clabe/{clabe}": "objeto",
+  "/v1/dias-habiles": "objeto",
+  "/v1/dias-inhabiles": "lista",
+  "/v1/tipo-cambio/fix": "objeto",
+  "/v1/tipo-cambio/fix/ultimo": "objeto",
+  "/v1/udis": "objeto",
+  "/v1/constantes/uma": "objeto",
+  "/v1/constantes/uma/{anio}": "objeto",
+  "/v1/constantes/salario-minimo/{anio}": "lista",
+  "/v1/isr/tarifa/{periodo}/{anio}": "objeto",
+  "/v1/status": "lista",
+} as const satisfies { [R in RutaApi]: FormaDe<R> };
+
+const formaDe = (plantilla: string): "lista" | "objeto" | undefined =>
+  Object.hasOwn(FORMAS, plantilla) ? FORMAS[plantilla as RutaApi] : undefined;
 
 function baseDe(base: string | { readonly href: string }): string {
   const texto = typeof base === "string" ? base : base.href;
@@ -174,6 +208,7 @@ function armar(
     ocultar: (texto) => texto.replace(patron, (v) => `{${ocultos.get(v)}}`),
     // /v1/status no trae meta; una ruta que el cliente no conoce, solo si llega.
     conMeta: modo === "estable" || modo === "caduca",
+    forma: formaDe(plantilla),
     signal,
     valores,
     query,

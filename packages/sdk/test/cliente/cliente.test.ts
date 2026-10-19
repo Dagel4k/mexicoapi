@@ -1,6 +1,9 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { inspect } from "node:util";
 import { problemaDeError } from "@mexicoapi/core/rutas";
 import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
+import { TOPE_CUERPO_BYTES } from "../../src/cliente/http.js";
 import * as cliente from "../../src/cliente/index.js";
 import {
   type Cliente,
@@ -501,6 +504,39 @@ describe("consulta a la API", () => {
     }
   });
 
+  it("revisa que data sea una lista o un objeto, según la ruta", async () => {
+    const { fetch } = fetchFalso(
+      respuestaDatos({ cve_ent: "25" }),
+      respuestaDatos([SINALOA]),
+      respuestaDatos(null),
+      json({ data: { dataset: "udis" } }),
+      respuestaDatos("18.4250"),
+    );
+    const api = conFetch(fetch);
+    const casos: [Promise<unknown>, string][] = [
+      [api.estados({ fuente: "api" }), "lista"],
+      [api.estado("25", { fuente: "api" }), "objeto"],
+      [api.estado("25", { fuente: "api" }), "objeto"],
+      [api.status(), "lista"],
+      [api.fixUltimo({ fuente: "api" }), "objeto"],
+    ];
+    for (const [consulta, forma] of casos) {
+      const error = (await rechazo(consulta)) as MexicoApiError;
+      expect(error).toBeInstanceOf(MexicoApiError);
+      expect(error.status).toBe(200);
+      expect(error.type).toBe("about:blank");
+      expect(error.title).toBe("Respuesta inesperada de la API");
+      expect(error.detail).toBe(`La respuesta no trae data como ${forma}.`);
+    }
+  });
+
+  it("una respuesta con otra forma en una ruta que caduca responde con el paquete", async () => {
+    const { fetch } = fetchFalso(respuestaDatos([FIX_API]));
+    const r = await conFetch(fetch).fixUltimo();
+    expect(r.origen).toBe("paquete");
+    expect(r.advertencias[0]).toContain("La respuesta no trae data como objeto.");
+  });
+
   it("una ruta que el cliente no conoce va a la API, con meta solo si llega", async () => {
     const { fetch, llamadas } = fetchFalso(
       json({ data: { valor: "117.31" } }),
@@ -526,6 +562,103 @@ describe("consulta a la API", () => {
     await expect(
       crearCliente({ offline: true }).consultar("/v1/otra" as "/v1/status"),
     ).rejects.toThrow("El paquete no trae /v1/otra");
+  });
+});
+
+/** Un cuerpo que entrega trozos de 1 MB sin fin y anota cuántos dio y si lo cancelaron. */
+function cuerpoSinFin() {
+  const vigia = { entregados: 0, cancelado: false };
+  const flujo = new ReadableStream<Uint8Array>(
+    {
+      pull(control) {
+        vigia.entregados++;
+        control.enqueue(new Uint8Array(1024 * 1024).fill(0x20));
+      },
+      cancel() {
+        vigia.cancelado = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { flujo, vigia };
+}
+
+describe("límites de la respuesta", () => {
+  it("pide sin seguir redirecciones", async () => {
+    const { fetch, llamadas } = fetchFalso(respuestaDatos([SINALOA]));
+    await conFetch(fetch).estados({ fuente: "api" });
+    expect(llamadas[0]?.init.redirect).toBe("error");
+  });
+
+  it("con el fetch de Node, una redirección es un fallo de conexión y no se sigue", async () => {
+    const pedidas: string[] = [];
+    const servidor = createServer((peticion, respuesta) => {
+      pedidas.push(peticion.url ?? "");
+      if (peticion.url === "/v1/estados") {
+        respuesta.writeHead(301, { Location: "/v1/estados/" }).end();
+      } else {
+        respuesta.writeHead(200, { "Content-Type": "application/json" });
+        respuesta.end(JSON.stringify({ data: [SINALOA], meta: META }));
+      }
+    });
+    await new Promise<void>((listo) => servidor.listen(0, "127.0.0.1", listo));
+    try {
+      const { port } = servidor.address() as AddressInfo;
+      const api = crearCliente({ base: `http://127.0.0.1:${port}`, reintentos: 0 });
+      const error = (await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError;
+      expect(error).toBeInstanceOf(MexicoApiError);
+      expect(error.status).toBe(0);
+      expect(error.title).toBe("Sin respuesta de la API");
+      expect(error.detail).toBe("No se pudo conectar con la API.");
+      expect(pedidas).toEqual(["/v1/estados"]);
+    } finally {
+      await new Promise((listo) => servidor.close(listo));
+    }
+  });
+
+  it("corta un cuerpo que pasa de 8 MB mientras llega y lo cancela", async () => {
+    const { flujo, vigia } = cuerpoSinFin();
+    const { fetch } = fetchFalso(new Response(flujo, { status: 200 }));
+    const error = (await rechazo(conFetch(fetch).estados({ fuente: "api" }))) as MexicoApiError;
+    expect(error).toBeInstanceOf(MexicoApiError);
+    expect(error.status).toBe(200);
+    expect(error.type).toBe("about:blank");
+    expect(error.title).toBe("Respuesta inesperada de la API");
+    expect(error.detail).toBe("La respuesta pasa de 8 MB.");
+    expect(vigia.cancelado).toBe(true);
+    expect(vigia.entregados).toBe(9);
+    expect(TOPE_CUERPO_BYTES).toBe(8 * 1024 * 1024);
+  });
+
+  it("no lee un cuerpo cuyo Content-Length pasa del tope", async () => {
+    const { flujo, vigia } = cuerpoSinFin();
+    const { fetch } = fetchFalso(
+      new Response(flujo, { status: 200, headers: { "Content-Length": "8388609" } }),
+    );
+    const error = (await rechazo(conFetch(fetch).estados({ fuente: "api" }))) as MexicoApiError;
+    expect(error.detail).toBe("La respuesta pasa de 8 MB.");
+    expect(vigia.entregados).toBe(0);
+    expect(vigia.cancelado).toBe(true);
+  });
+
+  it("acepta un cuerpo de justo 8 MB", async () => {
+    const base = JSON.stringify({ data: [SINALOA], meta: META, relleno: "" });
+    const relleno = "a".repeat(TOPE_CUERPO_BYTES - new TextEncoder().encode(base).byteLength);
+    const texto = JSON.stringify({ data: [SINALOA], meta: META, relleno });
+    expect(new TextEncoder().encode(texto).byteLength).toBe(TOPE_CUERPO_BYTES);
+    const { fetch } = fetchFalso(new Response(texto, { status: 200 }));
+    expect((await conFetch(fetch).estados({ fuente: "api" })).data).toEqual([SINALOA]);
+  });
+
+  it("con un fetch sin body, revisa el tope sobre el texto completo", async () => {
+    const grande = `{"data":[],"relleno":"${"a".repeat(TOPE_CUERPO_BYTES)}"}`;
+    const { fetch } = fetchFalso({
+      status: 200,
+      headers: { get: () => null },
+      text: async () => grande,
+    });
+    const error = (await rechazo(conFetch(fetch).estados({ fuente: "api" }))) as MexicoApiError;
+    expect(error.detail).toBe("La respuesta pasa de 8 MB.");
   });
 });
 
@@ -944,10 +1077,10 @@ describe("caché", () => {
 
   it("guarda por URL y saca la menos usada al pasar de maxEntradas", async () => {
     const { fetch, llamadas } = fetchFalso(
-      respuestaDatos("01"),
-      respuestaDatos("02"),
-      respuestaDatos("03"),
-      respuestaDatos("02"),
+      respuestaDatos({ cve_ent: "01" }),
+      respuestaDatos({ cve_ent: "02" }),
+      respuestaDatos({ cve_ent: "03" }),
+      respuestaDatos({ cve_ent: "02" }),
     );
     const api = conFetch(fetch, { cache: { maxEntradas: 2 } });
     await api.estado("01", { fuente: "api" });

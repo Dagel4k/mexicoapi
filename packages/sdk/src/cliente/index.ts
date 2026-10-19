@@ -1,6 +1,6 @@
 // Entrada `mexicoapi/cliente`: cliente HTTP de la API con errores tipados, reintentos, tiempo
 // límite, caché opcional y respaldo en los datos del paquete. Universal: usa solo fetch,
-// AbortController y temporizadores. Los datos y el núcleo se cargan al usarlos, aparte.
+// AbortController, TextDecoder y temporizadores. Los datos y el núcleo se cargan al usarlos, aparte.
 export {
   PROBLEMAS,
   type TipoProblema,
