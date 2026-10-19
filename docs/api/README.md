@@ -192,8 +192,9 @@ Valida una CLABE de 18 dígitos: formato, dígito verificador y banco contra el 
     "valido": true,
     "formato_valido": true,
     "digito_verificador_valido": true,
+    "banco_revisado": true,
     "errores": [],
-    "nota": "Valida formato y dígito verificador; no confirma que exista ante el SAT, RENAPO, el IMSS o un banco.",
+    "nota": "Valida formato, banco y dígito de control; no confirma que la cuenta exista.",
     "detalle": {
       "codigo_banco": "002",
       "codigo_plaza": "010",
@@ -211,6 +212,7 @@ Valida una CLABE de 18 dígitos: formato, dígito verificador y banco contra el 
 | `valido` | `true` solo si no hay errores |
 | `formato_valido` | 18 dígitos y un banco que existe en el catálogo |
 | `digito_verificador_valido` | Resultado del dígito de control; `null` si el formato no es válido |
+| `banco_revisado` | Si el código de banco se revisó contra el catálogo de bancos. En la API siempre es `true`. `validarClabe` del paquete `mexicoapi` da `false` si se llama sin el catálogo: entonces `valido` no garantiza que el banco exista |
 | `errores` | Lista de motivos: `digito_verificador`, `banco` |
 | `detalle` | Las partes de la CLABE; `null` si no se pudo descomponer |
 | `detalle.banco.activo` | `false` si el banco ya no aparece en el SPEI |
@@ -381,7 +383,35 @@ Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
 ```
 
-El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos, y un resultado dentro de un periodo de vacaciones que todavía no se publica (diciembre de 2026, mientras falte el segundo periodo) no la trae por eso. En esos casos el resultado sigue siendo el último día del cómputo, nunca posterior al vencimiento legal.
+El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos.
+
+Si el resultado cae fuera de las vacaciones del SAT publicadas (después de su fin o antes de su inicio), no se sabe si ese día es de vacaciones, y `advertencias` lo dice. Del 22 de diciembre de 2026, 5 días hábiles con `declaraciones_pagos` dan el 2026-12-30, mientras falte el segundo periodo de vacaciones:
+
+```bash
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-12-22&dias=5"
+```
+
+```json
+{
+  "autoridad": "sat",
+  "desde": "2026-12-22",
+  "dias": 5,
+  "resultado": "2026-12-30",
+  "inhabiles_saltados": [
+    {
+      "fecha": "2026-12-25",
+      "motivo": "25 de diciembre",
+      "tipo": "descanso",
+      "fuente": { "nombre": "Código Fiscal de la Federación, artículo 12", "…": "…" }
+    }
+  ],
+  "advertencias": [
+    "Las vacaciones del SAT posteriores al 2026-11-30 no están publicadas: si el 2026-12-30 resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga."
+  ]
+}
+```
+
+En esos casos el resultado sigue siendo el último día del cómputo, nunca posterior al vencimiento legal.
 
 ### Cobertura del calendario
 
@@ -431,7 +461,7 @@ La CNBV publica su calendario año con año y el SAT publica sus periodos de vac
 
 El plazo `general` del SAT termina el 30 de noviembre de 2026 porque el segundo periodo general de vacaciones de 2026 todavía no se publica, y sin él no se sabe qué días de diciembre son inhábiles. Los días de descanso del artículo 12 se calculan por regla, y por eso `declaraciones_pagos`, que no cuenta las vacaciones, llega a 2100. El calendario de la CNBV y las vacaciones del SAT se amplían cuando se captura la publicación correspondiente ([cómo se hace](../operacion/datos-curados.md)).
 
-Fuera de la cobertura responde 422 `calendario-incompleto`. Cuando otro `tipo_plazo` sí cubre la fecha, el `detail` lo dice:
+Fuera de la cobertura responde 422 `calendario-incompleto`. Cuando otro `tipo_plazo` sí cubre la fecha, el `detail` propone primero `permitir_incompleto=true` y el otro `tipo_plazo` solo para un plazo de declaraciones o pagos:
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=5"
@@ -442,7 +472,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_p
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#calendario-incompleto",
   "title": "Calendario incompleto",
   "status": 422,
-  "detail": "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.",
+  "detail": "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y cubre del 2026-01-01 al 2100-12-31.",
   "instance": "/v1/dias-habiles",
   "autoridad": "sat",
   "fecha": "2026-12-01",
@@ -507,7 +537,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=cnbv&ani
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
-Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
+Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`, y la LFT también en los días anteriores al 2024-10-01, que citan el texto de 2006: ver [dias-habiles](#dias-habiles)).
 
 | `autoridad` | Para 2026 devuelve |
 | --- | --- |
@@ -671,7 +701,7 @@ Hay dos 404 distintos, y conviene mirar el `type`, no solo el estado HTTP:
 | [`no-encontrado`](problemas.md#no-encontrado) | Ese día no hubo publicación (fin de semana o feriado bancario) o la fecha es anterior al inicio de la serie. Con `publicado`, también un fin de semana o día de descanso de la CNBV posterior a lo cargado si entre el último dato y esa fecha solo hay días así | No |
 | [`dato-no-disponible`](problemas.md#dato-no-disponible) | La fecha es posterior a lo cargado y falta cargar algún día entre semana que no es día de descanso de la CNBV hasta esa fecha, o falta la publicación de la víspera para `operacion` | Sí |
 
-Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
+Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`; el `detail` del 404 lo dice:
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10-10"
@@ -682,7 +712,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
   "title": "Recurso no encontrado",
   "status": 404,
-  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10.",
+  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10. Para el FIX que aplica a una operación de ese día, usa operacion=2026-10-10.",
   "instance": "/v1/tipo-cambio/fix",
   "fecha": "2026-10-10",
   "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }
@@ -1030,7 +1060,7 @@ Una dirección que no existe fuera de `/v1` (`/v2`, `/descargas/nada`) responde 
 
 ## Privacidad
 
-El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él), cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`) y cuando falla el límite de peticiones (la petición pasa). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` ([packages/sdk](../../packages/sdk/README.md)), que se publicará en npm.
+El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él), cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`) y cuando falla el límite de peticiones (la petición pasa). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` de npm ([packages/sdk](../../packages/sdk/README.md)).
 
 Los datos son públicos y la API no usa cookies.
 
