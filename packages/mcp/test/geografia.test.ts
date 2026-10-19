@@ -251,10 +251,21 @@ describe("municipios_de_estado", () => {
       ["nuevo leon", "19"],
       ["CDMX", "09"],
       ["ciudad de mexico", "09"],
-      ["México", "15"],
+      ["Distrito Federal", "09"],
+      ["DF", "09"],
+      ["D.F.", "09"],
       ["Estado de México", "15"],
+      ["Edomex", "15"],
+      ["Edo. Méx.", "15"],
+      ["Mex.", "15"],
       ["Baja California", "02"],
       ["baja california sur", "03"],
+      // Los nombres oficiales largos, tal como están en el catálogo, y el anterior de Querétaro.
+      ["Coahuila de Zaragoza", "05"],
+      ["Michoacán de Ocampo", "16"],
+      ["Veracruz de Ignacio de la Llave", "30"],
+      ["Querétaro de Arteaga", "22"],
+      ["Queretaro", "22"],
       // El comienzo del nombre de uno solo, como se dice a diario.
       ["Coahuila", "05"],
       ["Michoacán", "16"],
@@ -262,6 +273,24 @@ describe("municipios_de_estado", () => {
     ] as const) {
       expect(await claveDe(nombre), nombre).toBe(cve);
     }
+  });
+
+  // "México" puede ser el Estado de México o la Ciudad de México, y el país no es un estado: antes
+  // daba el 15 sin avisar.
+  it("México sin más es ambiguo y pide cve_ent", async () => {
+    for (const estado of ["México", "mexico", "MÉXICO"]) {
+      esError(
+        await llamar("municipios_de_estado", { estado }),
+        `[parametro-invalido] "${estado}" puede ser 15 México (Estado de México) o 09 Ciudad de México; el país no es un estado. Indica cve_ent.`,
+      );
+    }
+  });
+
+  it("el texto del 15 dice que es el Estado de México", async () => {
+    const r = await llamar("municipios_de_estado", { cve_ent: "15" });
+    expect(texto(r)).toContain("México (Estado de México) (cve_ent 15) tiene 125 municipios:");
+    // El dato no cambia: es el nombre del catálogo.
+    expect((contenido(r).estado as { nombre: string }).nombre).toBe("México");
   });
 
   it("un nombre que no es de un solo estado, o que no existe, es error claro", async () => {
