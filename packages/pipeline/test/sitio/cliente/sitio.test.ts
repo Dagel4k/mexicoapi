@@ -1,3 +1,4 @@
+import { URL_API } from "@mexicoapi/core/problemas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   actualizarEstado,
@@ -271,7 +272,7 @@ describe("filasDeEstado", () => {
 
 describe("rellenarOrigen", () => {
   it("pone el origen como texto de cada [data-origen]", () => {
-    const elementos = [{ textContent: "https://<base>" }, { textContent: null as string | null }];
+    const elementos = [{ textContent: URL_API }, { textContent: null as string | null }];
     const selectores: string[] = [];
     const raiz = {
       querySelectorAll(selector: string) {
@@ -720,7 +721,8 @@ describe("instalarEstado", () => {
 /** Un `document` hecho a mano con la página de estado, o sin ella. */
 function documentoFalso(conEstado: boolean) {
   const ejemplos = [new Nodo("span"), new Nodo("span")];
-  for (const e of ejemplos) e.textContent = "https://<base>";
+  // Lo que trae el HTML generado: la API pública (ver paginas/inicio.ts).
+  for (const e of ejemplos) e.textContent = URL_API;
   const { pagina } = crearPagina();
   const cuerpo = Object.assign(pagina.cuerpo, {
     dataset: { nombres: JSON.stringify(Object.fromEntries(NOMBRES)) },
@@ -758,7 +760,7 @@ describe("al cargarse en el navegador", () => {
     return { ...falso, pedidas };
   }
 
-  it("cambia https://<base> por el origen y en /estado/ pinta la tabla", async () => {
+  it("cambia la API pública por el origen y en /estado/ pinta la tabla", async () => {
     const { ejemplos, pagina, pedidas } = await cargar("https://mexicoapi.example", true);
     expect(ejemplos.map((e) => e.textContent)).toEqual([
       "https://mexicoapi.example",
@@ -784,7 +786,7 @@ describe("al cargarse en el navegador", () => {
   // Abierta desde un archivo, location.origin es "null": el ejemplo se queda como estaba.
   it("sin un origen http deja el ejemplo como está", async () => {
     const { ejemplos } = await cargar("null", false);
-    expect(ejemplos[0]?.textContent).toBe("https://<base>");
+    expect(ejemplos[0]?.textContent).toBe(URL_API);
   });
 
   it("sin document (en Node) no hace nada al importarse", async () => {
