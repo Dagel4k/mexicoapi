@@ -1,12 +1,15 @@
 // `revisar` compara los datos de un PR del bot con los de main y decide, con las mismas reglas que
 // `actualizar`, si piden revisión humana. El job revision-datos de ci.yml lo corre con el código
 // de main, así que la decisión no depende de lo que diga el job que procesó las fuentes.
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { principal } from "../src/cli.js";
+import type { DefinicionDataset } from "../src/marco.js";
+import { revisarDataset } from "../src/revision.js";
 import { crearEntorno, PRUEBA_LENTA } from "./ayudas.js";
 
 const REAL = fileURLToPath(new URL("../../../data", import.meta.url));
@@ -147,5 +150,53 @@ describe("revisar", { timeout: PRUEBA_LENTA }, () => {
     expect(entorno.errores.join("")).toContain("Falta --antes");
     expect(await principal(["revisar", "--antes", antes, "udis"], entorno)).toBe(1);
     expect(await principal(["revisar", "--antes", antes, "--seco"], entorno)).toBe(1);
+  });
+});
+
+describe("revisarDataset", () => {
+  interface Fila {
+    clave: string;
+    valor: number;
+  }
+  const definicion = (revisar: DefinicionDataset<Fila>["revisar"]): DefinicionDataset<Fila> => ({
+    id: "prueba",
+    hosts: [],
+    directorio: "prueba",
+    archivo: "prueba.json",
+    esquema: z.object({ clave: z.string(), valor: z.number() }),
+    clave: (f) => f.clave,
+    capturar: async () => [],
+    construir: async () => ({ registros: [], avisos: [] }),
+    invariantes: () => [],
+    revisar,
+  });
+
+  it("sin snapshot en ninguno de los dos lados no hay cambios", async () => {
+    const def = definicion(() => ({ requiereRevision: true, motivos: ["no debió llamarse"] }));
+    expect(await revisarDataset(def, antes, despues, "2026-10-18")).toEqual({
+      dataset: "prueba",
+      estado: "sin_cambios",
+      altas: 0,
+      bajas: 0,
+      cambios: 0,
+      motivos: [],
+    });
+  });
+
+  it("revisar del dataset no puede pedir nada a la red", async () => {
+    const def = definicion(async (_d, _a, ctx) => {
+      await ctx.cliente.obtener("https://ejemplo.invalid/");
+      return { requiereRevision: false, motivos: [] };
+    });
+    for (const [raiz, filas] of [
+      [antes, [{ clave: "a", valor: 1 }]],
+      [despues, [{ clave: "a", valor: 2 }]],
+    ] as const) {
+      await mkdir(join(raiz, "prueba"), { recursive: true });
+      await writeFile(join(raiz, "prueba", "prueba.json"), JSON.stringify(filas));
+    }
+    await expect(revisarDataset(def, antes, despues, "2026-10-18")).rejects.toThrow(
+      "revisar no pide nada a la red",
+    );
   });
 });
