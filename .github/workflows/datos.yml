@@ -200,9 +200,9 @@ jobs:
       contents: read
     outputs:
       # Si la corrida publicó sus cambios: last_success de un dataset actualizado solo avanza así.
-      # Con el código 3, o con un parche sobre el umbral del grupo, el PR lleva la etiqueta revisar
-      # y no se fusiona solo: no cuenta.
-      publicado: ${{ steps.publicar.outcome == 'success' && needs.generar.outputs.codigo == '0' && steps.aplicar.outputs.grande != 'si' && 'si' || 'no' }}
+      # Con el código 3, o con un parche sobre el umbral del grupo o con binarios que no son el PDF,
+      # el PR lleva la etiqueta revisar y no se fusiona solo: no cuenta.
+      publicado: ${{ steps.publicar.outcome == 'success' && needs.generar.outputs.codigo == '0' && steps.aplicar.outputs.grande != 'si' && steps.aplicar.outputs.binarios == '' && 'si' || 'no' }}
     steps:
       # El mismo commit de main que usó generar, que armó el parche sobre él. Sin dependencias:
       # este job solo usa git, gh y jq del runner.
@@ -224,12 +224,13 @@ jobs:
       # fuentes). Cualquier otra cosa detiene la corrida y el paso de fallas abre el issue. Con el
       # código 1 no se publica nada, así que tampoco se aplica.
       #
-      # Además cuenta las líneas que cambia en archivos de texto (--numstat, solo git del runner) y,
-      # si pasan del umbral del grupo, publicar abre el PR con la etiqueta revisar y sin auto-merge
-      # aunque generar diga que no hace falta: generar procesó datos externos y no decide solo. Los
-      # umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su
-      # manifiesto y sus crudos: 31 FIX nuevos son unas 140 líneas; 45 UDIS, 200; 12 municipios
-      # (el 0.5 %), 220, y 3 cambios en bancos, unas 50.
+      # Además, ya aplicado, cuenta las líneas que cambia en archivos de texto (--numstat del
+      # índice, solo git del runner: un texto enviado como parche binario cuenta igual) y, si pasan
+      # del umbral del grupo o hay un binario que no es el PDF de participantes, publicar abre el
+      # PR con la etiqueta revisar y sin auto-merge aunque generar diga que no hace falta: generar
+      # procesó datos externos y no decide solo. Los umbrales dejan margen sobre lo más que cambia
+      # una corrida que no pide revisión, con su manifiesto y sus crudos: 31 FIX nuevos son unas
+      # 140 líneas; 45 UDIS, 200; 12 municipios (el 0.5 %), 220, y 3 cambios en bancos, unas 50.
       - name: Revisar y aplicar el parche
         id: aplicar
         if: >-
@@ -294,21 +295,29 @@ jobs:
           # (generar arma el parche con --no-renames).
           rutas="${RUNNER_TEMP}/rutas-parche"
           git_o_falla apply --numstat -z "${PARCHE}" > "${rutas}"
+          # Solo el PDF de participantes de bancos llega como binario: un parche binario en otro
+          # archivo (generar arma el parche con git diff --binary, que solo lo usa en binarios)
+          # pide revisión.
+          binarios=""
+          es_pdf() {
+            [[ "$1" =~ ^data/bancos/raw/[A-Za-z0-9._-]+\.pdf$ ]]
+          }
+          anotar_binario() {
+            if ! es_pdf "$1" && [[ " ${binarios} " != *" $1 "* ]]; then
+              binarios="${binarios:+${binarios} }$1"
+            fi
+          }
           n=0
-          lineas=0
           while IFS= read -r -d '' registro; do
             n=$((n + 1))
             agregadas="${registro%%$'\t'*}"
             ruta="${registro#*$'\t'}"
-            quitadas="${ruta%%$'\t'*}"
             ruta="${ruta#*$'\t'}"
             if ! ruta_valida "${ruta}"; then
               printf '::error::Ruta no permitida en el parche: %q\n' "${ruta}"
               mal=1
-            fi
-            # Un binario (el PDF de Banxico) trae - en vez de números y no suma.
-            if [[ "${agregadas}" =~ ^[0-9]+$ && "${quitadas}" =~ ^[0-9]+$ ]]; then
-              lineas=$((lineas + agregadas + quitadas))
+            elif [ "${agregadas}" = "-" ]; then
+              anotar_binario "${ruta}"
             fi
           done < "${rutas}"
           if [ "${n}" -eq 0 ]; then
@@ -329,18 +338,6 @@ jobs:
           if [ "${mal}" -ne 0 ]; then
             exit 1
           fi
-          grande=no
-          if [ "${lineas}" -gt "${limite}" ]; then
-            grande=si
-            echo "::warning::El parche cambia ${lineas} líneas de data/, más que el umbral de ${limite} de ${GRUPO}: el PR pide revisión."
-          else
-            echo "El parche cambia ${lineas} líneas de data/ (umbral de ${GRUPO}: ${limite})."
-          fi
-          {
-            echo "grande=${grande}"
-            echo "lineas=${lineas}"
-            echo "limite=${limite}"
-          } >> "${GITHUB_OUTPUT}"
           # nowarn: los avisos de espacios repiten líneas del parche.
           git_o_falla apply --check --whitespace=nowarn "${PARCHE}"
           git_o_falla apply --index --whitespace=nowarn "${PARCHE}"
@@ -359,7 +356,43 @@ jobs:
               *) printf '::error::Modo no permitido (%s) en %q\n' "${modo}" "${ruta}"; mal=1 ;;
             esac
           done < "${indice}"
-          exit "${mal}"
+          if [ "${mal}" -ne 0 ]; then
+            exit 1
+          fi
+          # Las líneas, sobre lo que quedó en el índice y no sobre el parche: un archivo de texto
+          # enviado como parche binario cuenta sus líneas. Sin atributos ni filtros de diff: el
+          # contenido decide qué es binario. Un binario trae - y no suma.
+          cuenta="${RUNNER_TEMP}/lineas-parche"
+          git -c core.attributesFile=/dev/null diff --cached --numstat -z --no-renames \
+            --no-textconv --no-ext-diff > "${cuenta}"
+          lineas=0
+          while IFS= read -r -d '' registro; do
+            agregadas="${registro%%$'\t'*}"
+            ruta="${registro#*$'\t'}"
+            quitadas="${ruta%%$'\t'*}"
+            ruta="${ruta#*$'\t'}"
+            if [[ "${agregadas}" =~ ^[0-9]+$ && "${quitadas}" =~ ^[0-9]+$ ]]; then
+              lineas=$((lineas + agregadas + quitadas))
+            else
+              anotar_binario "${ruta}"
+            fi
+          done < "${cuenta}"
+          grande=no
+          if [ "${lineas}" -gt "${limite}" ]; then
+            grande=si
+            echo "::warning::El parche cambia ${lineas} líneas de data/, más que el umbral de ${limite} de ${GRUPO}: el PR pide revisión."
+          else
+            echo "El parche cambia ${lineas} líneas de data/ (umbral de ${GRUPO}: ${limite})."
+          fi
+          if [ -n "${binarios}" ]; then
+            echo "::warning::El parche trae cambios binarios fuera del PDF de participantes (${binarios}): el PR pide revisión."
+          fi
+          {
+            echo "grande=${grande}"
+            echo "lineas=${lineas}"
+            echo "limite=${limite}"
+            echo "binarios=${binarios}"
+          } >> "${GITHUB_OUTPUT}"
 
       # Se crea aunque un paso anterior haya fallado: el paso de fallas lo usa para abrir el issue.
       - name: Token de la GitHub App
@@ -384,6 +417,7 @@ jobs:
           PARCHE_GRANDE: ${{ steps.aplicar.outputs.grande }}
           PARCHE_LINEAS: ${{ steps.aplicar.outputs.lineas }}
           PARCHE_LIMITE: ${{ steps.aplicar.outputs.limite }}
+          PARCHE_BINARIOS: ${{ steps.aplicar.outputs.binarios }}
           GH_REPO: ${{ github.repository }}
           CORRIDA: ${{ runner.temp }}/corrida
         run: |
@@ -461,6 +495,9 @@ jobs:
             if [ "${PARCHE_GRANDE}" = "si" ]; then
               echo "- el parche cambia ${PARCHE_LINEAS} líneas de data/, más que el umbral de ${PARCHE_LIMITE} del grupo" >> "${lista}"
             fi
+            if [ -n "${PARCHE_BINARIOS}" ]; then
+              echo "- el parche trae cambios binarios fuera del PDF de participantes: ${PARCHE_BINARIOS}" >> "${lista}"
+            fi
             if es_archivo "${resumen_json}"; then
               jq -r 'def linea: tostring | gsub("[[:cntrl:]\u2028\u2029]+"; " ") | gsub("@"; "@\u200b");
                 (.resultados[]?.motivos[]? | "- " + linea),
@@ -492,10 +529,10 @@ jobs:
             exit 1
           fi
 
-          # Con el código 3, o con un parche sobre el umbral del grupo (paso anterior), el PR lleva
-          # la etiqueta revisar y no se fusiona solo.
+          # Con el código 3, o con un parche sobre el umbral del grupo o con binarios que no son el
+          # PDF (paso anterior), el PR lleva la etiqueta revisar y no se fusiona solo.
           pide_revision=no
-          if [ "${CODIGO}" = "3" ] || [ "${PARCHE_GRANDE}" = "si" ]; then
+          if [ "${CODIGO}" = "3" ] || [ "${PARCHE_GRANDE}" = "si" ] || [ -n "${PARCHE_BINARIOS}" ]; then
             pide_revision=si
           fi
 

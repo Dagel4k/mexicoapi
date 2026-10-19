@@ -75,7 +75,7 @@ El cliente HTTP del pipeline solo pide por `https` a los hosts de cada dataset (
 
 Lo que `revision-datos` no puede repetir son los avisos que `generar` saca de las fuentes y no quedan en los datos, como un banco del PDF de participantes que no aparece en el CEP.
 
-`publicar` agrega otra barrera que no corre nada del repositorio: al revisar el parche cuenta las líneas que cambia en archivos de texto (`git apply --numstat`; los binarios no suman). Si pasan del umbral del grupo, abre el PR con la etiqueta `revisar` y sin auto-merge, y el issue de revisión lleva ese motivo primero, aunque `generar` haya terminado con el código 0. Los umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su manifiesto y sus crudos:
+`publicar` agrega otra barrera que no corre nada del repositorio: después de aplicar el parche cuenta las líneas que cambiaron en el índice (`git diff --cached --numstat`, sin atributos ni filtros de diff, así que un archivo de texto enviado como parche binario cuenta igual; un binario no suma). Si pasan del umbral del grupo, o si el parche trae un cambio binario en algo que no es el PDF de participantes (`data/bancos/raw/*.pdf`, lo único binario que arma `generar`), abre el PR con la etiqueta `revisar` y sin auto-merge, y el issue de revisión lleva ese motivo primero, aunque `generar` haya terminado con el código 0. Los umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su manifiesto y sus crudos:
 
 | Grupo | Umbral | Corrida grande sin revisión |
 | --- | --- | --- |
