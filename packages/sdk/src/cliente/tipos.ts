@@ -44,9 +44,11 @@ export interface RespuestaSinMeta<D> {
   /**
    * Las mismas advertencias, en el mismo orden, cada una con su código estable: `avisos[i].texto`
    * es `advertencias[i]`. Para decidir en un programa sin leer el texto (mostrar el aviso,
-   * detener el cálculo, mandarlo a revisión). Los códigos los pone el cliente con su catálogo
-   * (`CODIGOS_AVISO`), aunque la API ya los traiga: un texto que esta versión no conoce sale como
-   * `otro`. Si `data` trae advertencias (`/v1/dias-habiles`), `data.avisos` son las suyas.
+   * detener el cálculo, mandarlo a revisión). Si la API manda el código de un aviso y es del
+   * catálogo (`CODIGOS_AVISO`), el cliente lo conserva, emparejado por el texto. Solo a una
+   * advertencia sin código, o con uno que esta versión no conoce, le pone el de `codigoAviso`; un
+   * texto que tampoco conoce sale como `otro`. Si `data` trae advertencias (`/v1/dias-habiles`),
+   * `data.avisos` son las suyas.
    */
   readonly avisos: readonly Aviso[];
 }
