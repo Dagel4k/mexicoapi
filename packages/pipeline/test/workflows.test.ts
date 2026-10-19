@@ -233,12 +233,16 @@ describe("revision-datos de ci.yml", () => {
     expect(exigir.run).toContain('.user.type != "Bot"');
     expect(exigir.run).toContain(".commit_id == $sha");
     expect(exigir.run).toContain("admin | maintain | write)");
-    // Aprobar vuelve a correr CI, y solo-datos reconoce el PR del bot en ese evento.
+    // Sin pull_request_review: en ese evento el emisor es quien revisa (una revisión de una
+    // cuenta Bot marcaría como del bot el PR de una persona) y cualquiera podría correr CI con
+    // un comentario. Después de aprobar se usa "Re-run failed jobs" en la corrida original.
     const on = (ci as unknown as { on: Record<string, unknown> }).on;
-    expect(on.pull_request_review).toEqual({ types: ["submitted", "dismissed"] });
+    expect(Object.keys(on).sort()).toEqual(["pull_request", "push"]);
     const bot = paso(ci, "solo-datos", "Ver si el PR es del bot de datos");
-    expect(bot.env?.RAMA).toBe(expresion("github.event.pull_request.head.ref"));
-    expect(bot.run).toContain(`[ "\${EVENTO}" = "pull_request_review" ]`);
+    expect(bot.env?.RAMA).toBe(expresion("github.head_ref"));
+    expect(bot.run).toContain(`if [ "\${EVENTO}" = "pull_request" ]; then`);
+    expect(bot.run).not.toContain("pull_request_review");
+    expect(exigir.run).toContain("Re-run failed jobs");
     const verify = ci.jobs.verify as Job & { needs: string[] };
     expect(verify.needs).toContain("revision-datos");
     expect(paso(ci, "verify", "Revisar los jobs requeridos").run).toContain(
