@@ -169,6 +169,21 @@ Ejemplo: mexicoapi sepomex cp 80000`,
 Muestra cuándo se guardó el catálogo y cuántos códigos postales tiene. Sale con 1 si no hay.`,
 };
 
+/**
+ * Lo que recuerda un error de uso: la ayuda del comando (o del subcomando de sepomex) si existe y,
+ * si no, la general.
+ */
+export function recordatorioDeAyuda(comando: string | undefined, sub: string | undefined): string {
+  if (comando === undefined || comando.includes(" ") || !Object.hasOwn(COMANDOS, comando)) {
+    return "Usa mexicoapi --help para ver los comandos.";
+  }
+  const cual =
+    comando === "sepomex" && sub !== undefined && Object.hasOwn(COMANDOS, `sepomex ${sub}`)
+      ? `sepomex ${sub}`
+      : comando;
+  return `Usa mexicoapi ${cual} --help para ver su uso.`;
+}
+
 /** Ayuda de un comando (y de un subcomando de sepomex), o undefined si no existe. */
 export function ayudaDe(comando: string | undefined, sub: string | undefined): string | undefined {
   if (comando === undefined) return undefined;
