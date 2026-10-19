@@ -40,6 +40,7 @@ export const ERRORES = [
 ] as const;
 
 export const CONSTANTES = [
+  "AVISO_SIN_API",
   "NOTA_VALIDACION",
   "NOTAS_VALIDACION",
   "ENTIDADES_CURP",

@@ -503,8 +503,12 @@ describe("el cliente contra el Worker", () => {
       expect(dePaquete.origen, nombre).toBe("paquete");
       expect(dePaquete.data, nombre).toEqual(deApi.data);
       expect(dePaquete.meta, nombre).toEqual(deApi.meta);
-      // Las mismas advertencias de primer nivel; la de antigüedad de una serie es solo del paquete.
-      const propias = dePaquete.advertencias.filter((a) => !/^Los datos de .* del paquete/.test(a));
+      // Las mismas advertencias de primer nivel; la de antigüedad de una serie y la del último FIX
+      // (cambio: pueden faltar publicaciones, como en el MCP) son solo del paquete.
+      const { AVISO_SIN_API } = await importar<{ AVISO_SIN_API: string }>("index.js");
+      const propias = dePaquete.advertencias.filter(
+        (a) => !/^Los datos de .* del paquete/.test(a) && a !== AVISO_SIN_API,
+      );
       expect(propias, nombre).toEqual(deApi.advertencias);
     }
   });

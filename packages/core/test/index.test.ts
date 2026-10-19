@@ -41,6 +41,8 @@ const VALORES_PUBLICOS = [
   "hoyEnMexico",
   "ENTIDADES_CURP",
   "AVISO_LFT_715",
+  // Lo que avisan el cliente y el MCP cuando una serie sale del paquete y no de la API.
+  "AVISO_SIN_API",
   "COBERTURA_LFT",
   "FUENTE_LFT_74",
   "FUENTE_LFT_715",
@@ -118,6 +120,9 @@ describe("API pública", () => {
     expect(core.FUENTE_LFT_715).toBeDefined();
     expect(core.VIGENCIA_LFT).toBe("2026-05-14");
     expect(core.AVISO_LFT_715).toContain("art. 715");
+    expect(core.AVISO_SIN_API).toBe(
+      "Respuesta con los datos del paquete mexicoapi, no de la API: pueden faltar publicaciones recientes.",
+    );
     expect(core.FUENTE_CFF_20.fragmento).toContain("el día anterior a aquél");
     expect(core.COBERTURA_CFF).toEqual({ desde: "2026-01-01", hasta: "2100-12-31" });
     expect(core.FUENTE_CFF_12.fragmento).toContain("no se contarán los sábados");

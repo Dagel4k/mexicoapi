@@ -1169,6 +1169,17 @@ describe("de dónde sale cada respuesta", () => {
     ]);
   });
 
+  it("el último FIX del paquete de respaldo avisa que pueden faltar publicaciones", async () => {
+    const { fetch } = fetchFalso(errorInterno());
+    const r = await conFetch(fetch, { reintentos: 0 }).fixUltimo();
+    expect(r.origen).toBe("paquete");
+    expect(r.advertencias[0]).toMatch(/^Respuesta de los datos del paquete porque la API falló: /);
+    expect(r.advertencias.at(-1)).toBe(mexicoapi.AVISO_SIN_API);
+    // De la API, no.
+    const deApi = await conFetch(fetchFalso(respuestaDatos(FIX_API)).fetch).fixUltimo();
+    expect(deApi.advertencias).toEqual([]);
+  });
+
   it("la advertencia de respaldo nombra el fallo sin la ruta pedida", async () => {
     const { fetch } = fetchFalso(errorInterno());
     const r = await conFetch(fetch, { reintentos: 0 }).fixParaOperacion("2026-10-16");
@@ -1265,6 +1276,7 @@ describe("de dónde sale cada respuesta", () => {
     const sinRed = fetchFalso();
     const r = await crearCliente({ offline: true, fetch: sinRed.fetch }).fixUltimo();
     expect(r.origen).toBe("paquete");
+    expect(r.advertencias).toContain(mexicoapi.AVISO_SIN_API);
     expect(sinRed.llamadas).toHaveLength(0);
   });
 
@@ -1313,11 +1325,14 @@ describe("advertencia de antigüedad", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const api = crearCliente({ offline: true });
     vi.setSystemTime(new Date(`${mover(hasta, 7)}T23:59:59Z`));
-    expect((await api.fixUltimo()).advertencias).toEqual([]);
+    // Cambio: el último FIX del paquete siempre avisa que pueden faltar publicaciones, como el MCP.
+    expect((await api.fixPublicado(hasta)).advertencias).toEqual([]);
+    expect((await api.fixUltimo()).advertencias).toEqual([mexicoapi.AVISO_SIN_API]);
     vi.setSystemTime(new Date(`${mover(hasta, 8)}T00:00:00Z`));
     const r = await api.fixUltimo();
     expect(r.advertencias).toEqual([
       `Los datos de tipo-cambio.fix del paquete llegan hasta el ${hasta}, hace 8 días; la API puede tener datos más recientes.`,
+      mexicoapi.AVISO_SIN_API,
     ]);
     expect(r.meta.as_of).toBe(fix.meta.as_of);
   });

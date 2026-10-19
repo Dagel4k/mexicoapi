@@ -1,3 +1,4 @@
+export { AVISO_SIN_API } from "./avisos.js";
 export type { BancoClabe, DetalleClabe, Plaza, ResultadoValidacionClabe } from "./clabe.js";
 export { digitoControlClabe, normalizarClabe, validarClabe } from "./clabe.js";
 export type { DetalleCurp } from "./curp.js";

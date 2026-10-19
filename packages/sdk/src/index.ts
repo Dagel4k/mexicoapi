@@ -43,6 +43,7 @@ export type {
 } from "@mexicoapi/core";
 export {
   AUTORIDADES,
+  AVISO_SIN_API,
   aUnaLinea,
   CalendarioIncompletoError,
   COBERTURA_LFT,
