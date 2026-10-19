@@ -16,7 +16,7 @@ Los días del primer párrafo del artículo 12 del CFF (1o. de enero, primer lun
 
 ## Pasos
 
-1. Crear una rama para la tarea (`datos/sat-vacaciones-2026-2`, por ejemplo) y compilar una vez para tener el comando de curado:
+1. Crear una rama para la tarea (`curado/sat-vacaciones-2026-2`, por ejemplo; no `datos/…`: ese prefijo es el del bot, y `solo-datos` deja `verify` en rojo si la rama toca algo fuera de las carpetas de sus datasets) y compilar una vez para tener el comando de curado:
 
    ```bash
    pnpm install --frozen-lockfile

@@ -1,6 +1,8 @@
 # Publicación en npm
 
-Los paquetes `mexicoapi` (`packages/sdk`) y `mexicoapi-mcp` (`packages/mcp`, el servidor MCP) están listos para publicarse, pero todavía no hay versión en npm. Cada versión la publica el workflow `publicacion.yml` cuando se publica un Release de GitHub con la etiqueta `mexicoapi@<versión>` o `mexicoapi-mcp@<versión>`: sin tokens (npm confía en ese workflow, con OIDC) y con procedencia. npm solo deja configurar esa confianza en un paquete que ya existe, así que la primera versión de cada uno se publica a mano.
+Los paquetes `mexicoapi` (`packages/sdk`) y `mexicoapi-mcp` (`packages/mcp`, el servidor MCP) están listos para publicarse como 0.1.0, pero todavía no hay versión en npm. Cada versión la publica el workflow `publicacion.yml` cuando se publica un Release de GitHub con la etiqueta `mexicoapi@<versión>` o `mexicoapi-mcp@<versión>`: sin tokens (npm confía en ese workflow, con OIDC) y con procedencia. npm solo deja configurar esa confianza en un paquete que ya existe, así que la primera versión de cada uno se publica a mano.
+
+Estado al 2026-10-18: el Environment `npm` (con revisor obligatorio y solo las etiquetas `mexicoapi@*` y `mexicoapi-mcp@*`) y el ruleset de esas etiquetas ya están configurados; falta la primera publicación a mano de cada paquete y su publicador de confianza.
 
 Este documento dice cómo se arma cada paquete, qué hay que preparar en npm una sola vez, cómo se publica a mano la primera versión, cómo se configura el publicador de confianza, cómo se corta cada versión después y qué revisa el workflow. `mexicoapi-mcp` depende de `mexicoapi`, así que siempre se publica después.
 
@@ -16,7 +18,7 @@ Un `npm pack` o `npm publish` en `packages/sdk` falla a propósito (el `prepack`
 
 En CI, el job `paquete` de `ci.yml` hace estos tres pasos con el Node de `.nvmrc` y sube el `.tgz` como artefacto; `paquete-node` lo instala en un proyecto nuevo con `npm install --offline` (no tiene dependencias, así que npm no consulta el registro) en Node 22.13.0 (el piso de `engines`), 22, 24 y 26 y corre la prueba de humo (`packages/sdk/test/paquete/humo.mjs`). `paquete-runtimes` lo instala igual y prueba lo que no es Node: Bun 1.4.3 y Deno 2.9.7 (este sin permisos) corren la prueba de las entradas universales (`packages/sdk/test/paquete/universal.mjs`, sin módulos de Node ni red), y `packages/sdk/scripts/navegador.ts` empaqueta cada entrada universal con el esbuild del lockfile (`platform: "browser"`, `format: "esm"`) y falla si alguna llega a un módulo de Node o si la principal pasa de 15 KB con gzip. El check `verify`, el que exige la protección de `main`, pasa solo si `verificacion` (que corre `verify.sh`), `paquete`, cada Node de `paquete-node`, `paquete-runtimes` y cada Node de `paquete-mcp` (siguiente sección) terminan bien: uno que falla, se salta o se cancela bloquea el merge. `pnpm --filter mexicoapi test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local, salvo Bun y Deno, y además levanta un Worker en workerd que usa el paquete instalado.
 
-Hoy (0.1.0) el paquete tiene 148 archivos: unos 189 kB comprimido y 925 kB sin comprimir.
+Hoy (0.1.0) el paquete tiene 162 archivos: unos 181 kB comprimido y 908 kB sin comprimir (`npm pack --dry-run` del 2026-10-18; crece un poco con cada actualización del FIX y las UDIS).
 
 ## Cómo se arma `mexicoapi-mcp`
 
@@ -30,7 +32,7 @@ Un `npm pack` o `npm publish` en `packages/mcp` también falla a propósito.
 
 En CI, el job `paquete-mcp` hace estos tres pasos con el Node de `.nvmrc` e instala el `.tgz` del servidor y el de `mexicoapi` (el artefacto del job `paquete`) en un proyecto nuevo con `npm install --offline`: la dependencia `mexicoapi@^0.1.0` la cumple el `.tgz` local, así que npm no consulta el registro, donde `mexicoapi` todavía no existe. Después, con Node 22.13.0 (el piso de `engines`), 22.23.3 y 24.21.0, corre la prueba de humo (`packages/mcp/test/paquete/humo.mjs`, sin dependencias), que lanza el binario instalado (`node_modules/.bin/mexicoapi-mcp`) y le habla por stdio: `initialize`, `tools/list` y tres `tools/call` (`validar_clabe`, `udis` y `codigo_postal` sin catálogo, que cargan los datos y `mexicoapi/sepomex` del paquete instalado). `paquete-mcp` es uno de los jobs que exige el check `verify`. `pnpm --filter mexicoapi-mcp test:paquete` (dentro de `verify.sh`) hace lo mismo con el Node local y revisa además el `package.json` publicado y lo que lista `npm pack`.
 
-Hoy (0.1.0) el paquete tiene 20 archivos (solo JavaScript en `dist`: es un binario y no publica tipos): unos 31 kB comprimido y 115 kB sin comprimir.
+Hoy (0.1.0) el paquete tiene 20 archivos (solo JavaScript en `dist`: es un binario y no publica tipos): unos 33 kB comprimido y 120 kB sin comprimir.
 
 ## Preparación en npm (una vez)
 
