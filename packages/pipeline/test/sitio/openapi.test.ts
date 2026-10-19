@@ -191,6 +191,21 @@ describe("documento OpenAPI", () => {
     expect(doc.servers).toEqual([{ url: "/" }]);
   });
 
+  // HEAD y OPTIONS valen en toda ruta y el documento solo declara GET: declararlos daría a los
+  // clientes generados dos métodos de más por ruta. La prueba de contrato revisa la nota contra
+  // el Worker.
+  it("la descripción general dice cómo responden HEAD, OPTIONS y una URL demasiado larga", () => {
+    const { description } = doc.info;
+    expect(description).toContain(
+      "Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo",
+    );
+    expect(description).toContain(
+      "y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones",
+    );
+    expect(description).toContain("Otro método da 405.");
+    expect(description).toContain("no es problem+json");
+  });
+
   it("documenta exactamente las rutas y operationId esperados", () => {
     const esperado = [
       ["/v1", "indiceV1"],
@@ -228,6 +243,35 @@ describe("documento OpenAPI", () => {
     }
   });
 
+  it("toda operación declara la 308 de una ruta con / al final, con Location", () => {
+    for (const { ruta, op } of operaciones) {
+      expect(op.responses["308"], ruta).toEqual({ $ref: "#/components/responses/Redireccion" });
+    }
+    const { Redireccion } = doc.components.responses;
+    expect(Redireccion.content).toBeUndefined();
+    expect(Redireccion.description).toContain("termina en /");
+    expect(Redireccion.headers.Location).toMatchObject({
+      required: true,
+      schema: { type: "string" },
+      example: "/v1/estados",
+    });
+  });
+
+  // El Worker busca la ruta sin decodificarla: un parámetro de ruta con % (un espacio codificado
+  // en la CLABE) no la encuentra y da 404. Sin parámetros de ruta, ese 404 no tiene cómo llegar.
+  it("toda operación con parámetros de ruta declara 404; las demás, solo si tienen el suyo", () => {
+    const propios = ["/v1/tipo-cambio/fix", "/v1/udis", "/v1/constantes/uma"];
+    for (const { ruta, op } of operaciones) {
+      const debe = ruta.includes("{") || propios.includes(ruta);
+      expect(op.responses["404"] !== undefined, ruta).toBe(debe);
+    }
+    expect(doc.paths["/v1/clabe/{clabe}"].get.responses["404"]).toEqual({
+      $ref: "#/components/responses/NoEncontrado",
+    });
+    expect(doc.components.responses.NoEncontrado.description).toContain("%");
+    expect(doc.components.responses.SinAnio.description).toContain("%");
+  });
+
   it("toda operación declara 400, 405, 429 y 500 como problem+json", () => {
     for (const { op } of operaciones) {
       for (const codigo of ["400", "405", "429", "500"]) {
@@ -247,31 +291,40 @@ describe("documento OpenAPI", () => {
     expect(codigos("/v1/estados/{cve_ent}")).toEqual([
       "200",
       "304",
+      "308",
       "400",
       "404",
       "405",
       "429",
       "500",
     ]);
-    expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "400", "405", "429", "500"]);
-    expect(codigos("/v1/dias-habiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
-    expect(codigos("/v1/dias-inhabiles")).toEqual(["200", "400", "405", "422", "429", "500"]);
+    expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "308", "400", "404", "405", "429", "500"]);
+    expect(codigos("/v1/dias-habiles")).toEqual(["200", "308", "400", "405", "422", "429", "500"]);
+    expect(codigos("/v1/dias-inhabiles")).toEqual([
+      "200",
+      "308",
+      "400",
+      "405",
+      "422",
+      "429",
+      "500",
+    ]);
     for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis", "/v1/constantes/uma"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "400", "404", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "404", "405", "429", "500"]);
     }
     for (const ruta of [
       "/v1/constantes/uma/{anio}",
       "/v1/constantes/salario-minimo/{anio}",
       "/v1/isr/tarifa/{periodo}/{anio}",
     ]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "304", "400", "404", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "304", "308", "400", "404", "405", "429", "500"]);
     }
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
     for (const ruta of ["/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "400", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "405", "429", "500"]);
     }
     for (const ruta of ["/v1/estados", "/v1/municipios", "/v1/bancos", "/v1/openapi.json"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "304", "400", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "304", "308", "400", "405", "429", "500"]);
     }
   });
 

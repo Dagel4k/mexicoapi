@@ -231,7 +231,10 @@ interface Operacion {
   tag: string;
   parametros?: Json[];
   ok: Json;
-  /** Errores propios de la ruta; los de ERRORES_COMUNES se agregan siempre. */
+  /**
+   * Errores propios de la ruta; los de COMUNES se agregan siempre, y el 404 en toda ruta con
+   * parámetros de ruta.
+   */
   errores: number[];
   /** Respuesta de componentes para un código, en lugar de la de CODIGOS. */
   respuestas?: Partial<Record<number, string>>;
@@ -240,6 +243,7 @@ interface Operacion {
 }
 
 const CODIGOS: Record<number, string> = {
+  308: "Redireccion",
   400: "ParametroInvalido",
   404: "NoEncontrado",
   405: "MetodoNoPermitido",
@@ -248,8 +252,11 @@ const CODIGOS: Record<number, string> = {
   500: "ErrorInterno",
 };
 
-/** Toda ruta valida su query: un parámetro que no declara es un 400, aunque no tenga ninguno. */
-const ERRORES_COMUNES = [400, 405, 429, 500];
+/**
+ * Lo que puede responder cualquier ruta: la 308 de la misma ruta con `/` al final, y el 400 de
+ * la query, que toda ruta valida aunque no declare ningún parámetro.
+ */
+const COMUNES = [308, 400, 405, 429, 500];
 
 function operacion(o: Operacion): [string, Json] {
   const responses: Record<string, Json> = { "200": o.ok };
@@ -260,7 +267,10 @@ function operacion(o: Operacion): [string, Json] {
     responses["304"] = refRespuesta("NoModificado");
     parametros = [...(parametros ?? []), IF_NONE_MATCH];
   }
-  for (const codigo of [...o.errores, ...ERRORES_COMUNES].sort((a, b) => a - b)) {
+  // El Worker busca la ruta sin decodificarla: un parámetro de ruta con `%` no la encuentra.
+  const conParametros = o.ruta.includes("{") ? [404] : [];
+  const codigos = new Set([...o.errores, ...conParametros, ...COMUNES]);
+  for (const codigo of [...codigos].sort((a, b) => a - b)) {
     responses[String(codigo)] = refRespuesta(o.respuestas?.[codigo] ?? (CODIGOS[codigo] as string));
   }
   const op: Json = { operationId: o.operationId, summary: o.summary };
@@ -560,7 +570,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       version: "1.0.0",
       summary: "Datos de referencia oficiales de México.",
       description:
-        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta.",
+        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
       license: { name: "MIT", identifier: "MIT" },
     },
     servers: [{ url: "/" }],
@@ -587,12 +597,26 @@ export function documentoOpenApi(): Record<string, unknown> {
           description: "El If-None-Match coincide con el ETag actual: la respuesta no trae cuerpo.",
           headers: { ETag: ETAG },
         },
-        NoEncontrado: respuestaProblema("El recurso o la ruta no existe."),
+        NoEncontrado: respuestaProblema(
+          "El recurso o la ruta no existe. La ruta se busca sin decodificar: un parámetro de ruta con un carácter codificado con % (por ejemplo, un espacio en la CLABE) da este 404 con el detail No existe la ruta.",
+        ),
+        Redireccion: {
+          description:
+            "La ruta pedida termina en /: redirige a la misma ruta sin las / del final, con la misma query. No trae cuerpo.",
+          headers: {
+            Location: {
+              description: "La ruta sin las / del final, con la query.",
+              required: true,
+              schema: { type: "string" },
+              example: "/v1/estados",
+            },
+          },
+        },
         SinDato: respuestaProblema(
           "No hay dato para la fecha pedida. El tipo no-encontrado es definitivo: ese día no hubo publicación o la fecha es anterior al inicio de la serie. El tipo dato-no-disponible puede cambiar: todavía no se cargan los datos necesarios para responder con certeza, y se puede reintentar después de la siguiente actualización.",
         ),
         SinAnio: respuestaProblema(
-          "No hay datos del año pedido. El tipo no-encontrado es definitivo: el año es anterior a los datos cargados o no tiene publicación. El tipo dato-no-disponible puede cambiar: el año es posterior al último cargado, y se puede reintentar cuando se carguen sus valores.",
+          "No hay datos del año pedido. El tipo no-encontrado es definitivo: el año es anterior a los datos cargados o no tiene publicación. El tipo dato-no-disponible puede cambiar: el año es posterior al último cargado, y se puede reintentar cuando se carguen sus valores. Un parámetro de ruta con un carácter codificado con % también da no-encontrado, con el detail No existe la ruta.",
         ),
         MetodoNoPermitido: respuestaProblema("Métodos permitidos: GET, HEAD y OPTIONS.", {
           Allow: {
