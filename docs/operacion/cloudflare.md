@@ -29,7 +29,7 @@ Los pasos 1 a 4 son en Cloudflare, los 5 y 6 en GitHub y el 7, el token de KV, e
    - Recursos de cuenta: solo tu cuenta (Include, Specific account).
    - Sin permisos de zona ni de usuario, con fecha de expiración y un recordatorio para rotarlo, como el de despliegue.
 
-   Guárdalo en el Environment `produccion` como `CLOUDFLARE_KV_TOKEN`. Mientras no exista, `estado-kv` usa `CLOUDFLARE_API_TOKEN` y deja un aviso. Cuando una corrida de Datos desde `main` termine con `estado-kv` sin ese aviso, quita el respaldo en un PR: en el job `estado-kv` de `datos.yml`, borra `|| secrets.CLOUDFLARE_API_TOKEN` del paso "Escribir estado en KV" y deja que "Comprobar secretos de Cloudflare" pida solo `CLOUDFLARE_KV_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`. Mientras el respaldo siga en el workflow, el job todavía recibe el token que puede desplegar el Worker.
+   Guárdalo en el Environment `produccion` como `CLOUDFLARE_KV_TOKEN`. `estado-kv` solo usa ese token, nunca el de despliegue: si falta (o falta `CLOUDFLARE_ACCOUNT_ID`), deja un aviso y no escribe el estado.
 
 Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los días. Puedes probarla con Actions, Frescura, Run workflow.
 

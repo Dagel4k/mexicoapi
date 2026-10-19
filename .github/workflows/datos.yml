@@ -578,15 +578,12 @@ jobs:
       - name: Comprobar secretos de Cloudflare
         id: cf
         env:
-          TIENE_CF: ${{ (secrets.CLOUDFLARE_KV_TOKEN != '' || secrets.CLOUDFLARE_API_TOKEN != '') && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
-          TIENE_KV: ${{ secrets.CLOUDFLARE_KV_TOKEN != '' }}
+          TIENE_CF: ${{ secrets.CLOUDFLARE_KV_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         run: |
           set -euo pipefail
           echo "tiene_cf=${TIENE_CF}" >> "${GITHUB_OUTPUT}"
           if [ "${TIENE_CF}" != "true" ]; then
-            echo "::notice::Faltan los secretos de Cloudflare (CLOUDFLARE_KV_TOKEN o CLOUDFLARE_API_TOKEN, y CLOUDFLARE_ACCOUNT_ID); no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
-          elif [ "${TIENE_KV}" != "true" ]; then
-            echo "::notice::Sin CLOUDFLARE_KV_TOKEN se usa el token de despliegue. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
+            echo "::notice::Faltan los secretos de Cloudflare (CLOUDFLARE_KV_TOKEN y CLOUDFLARE_ACCOUNT_ID); no se escribe el estado en KV. Ver ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/cloudflare.md"
           fi
 
       # cloudflare.ts no tiene dependencias: basta su carpeta (el modo cono trae además los
@@ -612,9 +609,8 @@ jobs:
       - name: Escribir estado en KV
         if: steps.cf.outputs.tiene_cf == 'true'
         env:
-          # El token propio de KV (solo Workers KV Storage: Edit); mientras no exista, el de
-          # despliegue. Cuando exista, hay que quitar el respaldo (ver docs/operacion/cloudflare.md).
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_KV_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          # El token propio de KV (solo Workers KV Storage: Edit), nunca el de despliegue.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_KV_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CODIGO: ${{ needs.generar.outputs.codigo }}
           # Sin cambios y con código 0 publicar no corre: todos los datasets quedaron sin_cambios
