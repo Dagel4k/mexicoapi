@@ -13,6 +13,8 @@ import { describir } from "./catalogo.js";
 export interface DatasetLlms {
   id: string;
   as_of: string;
+  /** En las series (FIX y UDIS), la fecha de su registro más reciente: `cobertura.hasta`. */
+  ultimo_dato?: string;
   docs: string;
 }
 
@@ -40,11 +42,24 @@ const destinoSeguro = (url: string): boolean =>
 const enlaceMd = (url: string, texto: string): string =>
   destinoSeguro(url) ? `[${textoMd(texto)}](${url})` : textoMd(texto);
 
+/** `GET ruta`, con lo que responde entre paréntesis si el catálogo lo dice. */
+const rutaMd = (ruta: string, nota?: string): string =>
+  `\`GET ${ruta}\`${nota === undefined ? "" : ` (${nota})`}`;
+
+/** "a", "a y b", "a, b y c". */
+function enumerar(partes: readonly string[]): string {
+  const ultima = partes.at(-1) ?? "";
+  return partes.length < 2 ? ultima : `${partes.slice(0, -1).join(", ")} y ${ultima}`;
+}
+
 function renglonDataset(d: DatasetLlms): string {
-  const { nombre, ruta } = describir(d.id);
+  const { nombre, ruta, nota, otras = [] } = describir(d.id);
+  const ultimo = d.ultimo_dato === undefined ? "" : `, último dato ${textoMd(d.ultimo_dato)}`;
+  const tambien =
+    otras.length === 0 ? "" : `; también ${enumerar(otras.map((o) => rutaMd(o.ruta, o.nota)))}`;
   const api =
-    ruta === null ? "sin ruta propia en la API; está en las descargas" : `\`GET ${ruta}\``;
-  return `- ${enlaceMd(d.docs, nombre)}: ${codigoMd(d.id)}, as_of ${textoMd(d.as_of)}, ${api}`;
+    ruta === null ? "sin ruta propia en la API; está en las descargas" : rutaMd(ruta, nota);
+  return `- ${enlaceMd(d.docs, nombre)}: ${codigoMd(d.id)}, as_of ${textoMd(d.as_of)}${ultimo}, ${api}${tambien}`;
 }
 
 function paquetes(publicado: boolean): string {
@@ -66,6 +81,10 @@ La API no pide llave ni cuenta y vive en \`/v1\`, en el mismo origen que este ar
 
 Si la API responde 404 \`dato-no-disponible\` o 422 \`calendario-incompleto\`, ese dato no está en MéxicoAPI (todavía no se carga o queda fuera de la cobertura del calendario): no lo inventes ni lo estimes. Dilo así y remite a la fuente oficial que nombra la documentación del dataset.
 
+El FIX de hoy para un pago: usa \`operacion\` con la fecha del pago (\`GET /v1/tipo-cambio/fix?operacion={fecha}\`), que responde el último publicado en el DOF antes de ese día, el que aplica, con su fundamento. No tomes \`/v1/tipo-cambio/fix/ultimo\` como el FIX de hoy: es la publicación más reciente, que si salió hoy aplica a los pagos de mañana. \`fecha_publicacion\` es la fecha del DOF; Banxico muestra la misma cifra un día hábil bancario antes, con su fecha de determinación. Las fechas son días de la Ciudad de México (America/Mexico_City): en un servidor en UTC, desde las 18:00 de la Ciudad de México ya es el día siguiente. Con \`publicado\`, un 404 \`no-encontrado\` en fin de semana o feriado bancario significa que ese día no hubo publicación: no es un error ni falta un dato.
+
+En Datos, \`as_of\` es la fecha de la última actualización que cambió el dataset (en los curados, la de su publicación oficial más reciente). En las series (FIX y UDIS), el último dato es la fecha de su registro más reciente y va aparte: el FIX no se publica en fines de semana ni en feriados bancarios, y las UDIS se publican por adelantado.
+
 ${paquetes(publicado)}
 
 ## Docs
@@ -74,7 +93,8 @@ ${paquetes(publicado)}
 - [Errores](${URL_DOCS}/api/problemas.md): cada tipo de \`application/problem+json\` y qué significa
 - [GET /v1/clabe/{clabe}](${URL_DOCS}/api/README.md#clabe): valida una CLABE de 18 dígitos: formato, dígito verificador y banco
 - [GET /v1/dias-habiles?autoridad={lft|cnbv|sat}&desde={fecha}&dias={n}](${URL_DOCS}/api/README.md#dias-habiles): suma días hábiles a una fecha con el calendario de la LFT (sábados, domingos y art. 74; no incluye los festivos ni las suspensiones de labores del art. 715), la CNBV (calendario bancario) o el SAT; con \`autoridad=sat\`, \`tipo_plazo\` (\`general\` o \`declaraciones_pagos\`) es obligatorio. \`desde\` es el día en que surte efectos la notificación, no el día en que se hizo, y \`advertencias\` dice lo que el cálculo no descuenta
-- [GET /v1/tipo-cambio/fix/ultimo](${URL_DOCS}/api/README.md#último): la publicación más reciente del tipo de cambio FIX
+- [GET /v1/tipo-cambio/fix?operacion={fecha}](${URL_DOCS}/api/README.md#publicado-y-operación): el FIX que aplica a un pago o una operación de esa fecha: el último publicado en el DOF antes de ese día (CFF art. 20; para una obligación en dólares es la misma publicación que manda el art. 172 de la Circular 3/2012 del Banco de México). Úsala cuando pregunten por "el FIX de hoy" para pagar
+- [GET /v1/tipo-cambio/fix/ultimo](${URL_DOCS}/api/README.md#último): la publicación más reciente del tipo de cambio FIX; no es el FIX de hoy para un pago (ver \`operacion\`)
 - [OpenAPI](/v1/openapi.json): especificación OpenAPI 3.1 de todas las rutas
 - [Documentación completa](/llms-full.txt): la referencia, los errores y la documentación de cada dataset en un solo archivo
 

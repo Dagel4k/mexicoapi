@@ -207,6 +207,9 @@ function validarSalida(raizDatos: string, salida: string): void {
 
 const json = (valor: unknown): string => JSON.stringify(valor);
 
+const ultimoDato = (cobertura: CoberturaSerie | undefined): { ultimo_dato?: FechaISO } =>
+  cobertura === undefined ? {} : { ultimo_dato: cobertura.hasta };
+
 /**
  * El script del sitio, que se publica tal cual. La ruta vale desde `src/sitio` (pruebas) y desde
  * `dist/sitio` (build): las dos quedan a dos niveles de la raíz del paquete.
@@ -440,6 +443,8 @@ export async function construirSitio(opciones: {
     directorio: c.directorio,
     tipo,
     as_of: c.manifiesto.as_of,
+    // En las series, el último dato no es `as_of`: es el fin de su cobertura.
+    ...ultimoDato(coberturas.get(c.manifiesto.dataset)),
     registros: c.manifiesto.records,
     fuentes: c.manifiesto.sources,
     docs: c.meta.docs,
