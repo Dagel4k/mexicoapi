@@ -1023,6 +1023,8 @@ describe("de dónde sale cada respuesta", () => {
       const clabe = await api.clabe(CLABE);
       expect(clabe.origen).toBe("paquete");
       expect(clabe.advertencias).toEqual([]);
+      // Con el catálogo del paquete, como la API.
+      expect(clabe.data.banco_revisado).toBe(true);
     }
     expect(llamadas).toHaveLength(0);
   });

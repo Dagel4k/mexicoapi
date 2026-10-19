@@ -34,6 +34,7 @@ describe("validar_clabe", () => {
       valido: true,
       formato_valido: true,
       digito_verificador_valido: true,
+      banco_revisado: true,
       errores: [],
       detalle: {
         codigo_banco: "002",
@@ -54,7 +55,11 @@ describe("validar_clabe", () => {
     expect(texto(r)).toContain(
       "CLABE válida: banco 002 BANAMEX (activo en el SPEI), plaza 010, cuenta 07777777777, dígito de control 1.",
     );
-    expect(texto(r)).toContain("Valida formato y dígito verificador");
+    // Cambio: la nota es la de la CLABE, sin el SAT, RENAPO ni el IMSS.
+    expect(texto(r)).toContain(
+      "Valida formato, banco y dígito de control; no confirma que la cuenta exista.",
+    );
+    expect(texto(r)).not.toMatch(/RENAPO|IMSS/);
     expect(urls).toEqual([]);
   });
 

@@ -917,6 +917,11 @@ describe("documento OpenAPI", () => {
     for (const codigo of ["vacio", "caracteres", "longitud"]) {
       expect(properties.errores.description, codigo).toContain(codigo);
     }
+    // Nuevo: banco_revisado, siempre true en la API; validarClabe sin catálogo da false.
+    expect(doc.components.schemas.ResultadoClabe.required).toContain("banco_revisado");
+    expect(properties.banco_revisado.type).toBe("boolean");
+    expect(properties.banco_revisado.description).toContain("En la API siempre es true");
+    expect(properties.banco_revisado.description).toContain("validarClabe");
     const plaza = properties.detalle.anyOf[0].properties.plaza;
     expect(plaza.description).toContain("Por ahora es siempre null");
     expect(plaza.description).toContain("catálogo de plazas de la CLABE está pendiente (v1.1)");

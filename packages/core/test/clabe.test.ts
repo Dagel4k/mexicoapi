@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { type BancoClabe, digitoControlClabe, type Plaza, validarClabe } from "../src/clabe.js";
-import { NOTA_VALIDACION, normalizar } from "../src/validacion.js";
+import { NOTAS_VALIDACION, normalizar } from "../src/validacion.js";
 
 describe("normalizar", () => {
   it("quita espacios y guiones y pasa a mayúsculas", () => {
@@ -36,7 +36,8 @@ describe("validarClabe", () => {
       expect(r.formato_valido).toBe(true);
       expect(r.digito_verificador_valido).toBe(true);
       expect(r.errores).toEqual([]);
-      expect(r.nota).toBe(NOTA_VALIDACION);
+      expect(r.nota).toBe(NOTAS_VALIDACION.clabe_sin_banco);
+      expect(r.banco_revisado).toBe(false);
       expect(r.detalle).toMatchObject({
         codigo_banco: clabe.slice(0, 3),
         codigo_plaza: clabe.slice(3, 6),
@@ -154,6 +155,57 @@ describe("validarClabe", () => {
     it("un catálogo vacío no reconoce ningún banco", () => {
       expect(validarClabe("012180001234567899", { bancos: new Map() }).errores).toEqual(["banco"]);
     });
+
+    it("dice que revisó el banco, con la nota de la CLABE", () => {
+      for (const clabe of ["012180001234567899", "721180000000000005", "72118000000000000"]) {
+        const r = validarClabe(clabe, { bancos });
+        expect(r.banco_revisado, clabe).toBe(true);
+        expect(r.nota, clabe).toBe(NOTAS_VALIDACION.clabe);
+      }
+    });
+  });
+
+  describe("sin catálogo de bancos", () => {
+    // Dígito de control correcto, banco 999 inexistente.
+    const SIN_BANCO = "999010077777777774";
+
+    it("da por válida una CLABE de un banco que no existe, pero dice que no revisó el banco", () => {
+      const r = validarClabe(SIN_BANCO);
+      expect(r.valido).toBe(true);
+      expect(r.banco_revisado).toBe(false);
+      expect(r.nota).toBe(NOTAS_VALIDACION.clabe_sin_banco);
+      expect(r.nota).toContain(
+        "sin revisar que el banco exista (no se pasó el catálogo de bancos)",
+      );
+    });
+
+    it("con el catálogo, la misma CLABE es inválida por el banco", () => {
+      const r = validarClabe(SIN_BANCO, { bancos: new Map() });
+      expect(r.valido).toBe(false);
+      expect(r.errores).toEqual(["banco"]);
+      expect(r.banco_revisado).toBe(true);
+    });
+
+    it("también en una CLABE que no llega al banco", () => {
+      for (const entrada of ["", "123", "0021800123456789AB", null, 2]) {
+        const r = validarClabe(entrada as string);
+        expect(r.banco_revisado, String(entrada)).toBe(false);
+        expect(r.nota, String(entrada)).toBe(NOTAS_VALIDACION.clabe_sin_banco);
+      }
+      expect(validarClabe(null as unknown as string, { bancos: new Map() }).banco_revisado).toBe(
+        true,
+      );
+    });
+  });
+
+  it("la nota de la CLABE habla de la cuenta, no del SAT, RENAPO ni el IMSS", () => {
+    for (const nota of [NOTAS_VALIDACION.clabe, NOTAS_VALIDACION.clabe_sin_banco]) {
+      expect(nota).toContain("no confirma que la cuenta exista");
+      expect(nota).not.toMatch(/SAT|RENAPO|IMSS/);
+    }
+    expect(NOTAS_VALIDACION.clabe).toBe(
+      "Valida formato, banco y dígito de control; no confirma que la cuenta exista.",
+    );
   });
 
   it("propiedad: el dígito calculado siempre valida y otro dígito no", () => {

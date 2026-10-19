@@ -50,6 +50,7 @@ const VALORES_PUBLICOS = [
   "VIGENCIA_CFF",
   "RFC_GENERICOS",
   "NOTA_VALIDACION",
+  "NOTAS_VALIDACION",
   "fixPublicado",
   "fixParaOperacion",
   "udiDeFecha",
@@ -100,6 +101,14 @@ describe("API pública", () => {
 
   test("exporta las constantes públicas", () => {
     expect(core.NOTA_VALIDACION).toContain("no confirma que exista");
+    expect(Object.keys(core.NOTAS_VALIDACION).sort()).toEqual([
+      "clabe",
+      "clabe_sin_banco",
+      "curp",
+      "nss",
+      "rfc",
+    ]);
+    expect(Object.isFrozen(core.NOTAS_VALIDACION)).toBe(true);
     expect(core.RFC_GENERICOS.has("XAXX010101000")).toBe(true);
     expect(core.ENTIDADES_CURP.get("DF")).toBeDefined();
     expect(core.COBERTURA_LFT.desde).toMatch(/^\d{4}-\d{2}-\d{2}$/);

@@ -1,5 +1,23 @@
+/**
+ * La nota común que daban los validadores antes de tener una cada uno.
+ * @deprecated Cada validador da la suya: `NOTAS_VALIDACION`.
+ */
 export const NOTA_VALIDACION =
   "Valida formato y dígito verificador; no confirma que exista ante el SAT, RENAPO, el IMSS o un banco.";
+
+/**
+ * La nota (`nota`) de cada validador: qué revisa y ante quién no confirma nada. La CLABE tiene dos:
+ * con el catálogo de bancos (`clabe`) y sin él (`clabe_sin_banco`), en la que no se revisa que el
+ * banco exista.
+ */
+export const NOTAS_VALIDACION = Object.freeze({
+  clabe: "Valida formato, banco y dígito de control; no confirma que la cuenta exista.",
+  clabe_sin_banco:
+    "Valida formato y dígito de control, sin revisar que el banco exista (no se pasó el catálogo de bancos); no confirma que la cuenta exista.",
+  rfc: "Valida estructura, fecha y dígito verificador (informativo: si no coincide, no invalida el RFC); no confirma que el RFC exista ante el SAT.",
+  curp: "Valida estructura, fecha, entidad y dígito verificador; no confirma que la CURP exista ante RENAPO.",
+  nss: "Valida los 11 dígitos y el dígito verificador; no confirma que el NSS exista ante el IMSS.",
+} as const);
 
 export type CodigoError =
   | "vacio"
@@ -40,21 +58,25 @@ export function normalizar(valor: string): string {
  * No convierte números a texto: una CLABE como número ya perdió precisión.
  * Devuelve null si la entrada es string.
  */
-export function rechazoPorTipo<D>(entrada: unknown): ResultadoValidacion<D> | null {
-  if (entrada === null || entrada === undefined) return resultadoInvalido("", "vacio");
-  if (typeof entrada !== "string") return resultadoInvalido("", "caracteres");
+export function rechazoPorTipo<D>(entrada: unknown, nota: string): ResultadoValidacion<D> | null {
+  if (entrada === null || entrada === undefined) return resultadoInvalido("", "vacio", nota);
+  if (typeof entrada !== "string") return resultadoInvalido("", "caracteres", nota);
   return null;
 }
 
 /** Resultado inválido por una falla de formato (antes del dígito verificador). */
-export function resultadoInvalido<D>(valor: string, error: CodigoError): ResultadoValidacion<D> {
+export function resultadoInvalido<D>(
+  valor: string,
+  error: CodigoError,
+  nota: string,
+): ResultadoValidacion<D> {
   return {
     valor,
     valido: false,
     formato_valido: false,
     digito_verificador_valido: null,
     errores: [error],
-    nota: NOTA_VALIDACION,
+    nota,
     detalle: null,
   };
 }
@@ -68,6 +90,7 @@ export function resultadoConFormato<D>(
   valor: string,
   detalle: D,
   digitoOk: boolean,
+  nota: string,
   opciones: { digitoInformativo?: boolean } = {},
 ): ResultadoValidacion<D> {
   return {
@@ -76,7 +99,7 @@ export function resultadoConFormato<D>(
     formato_valido: true,
     digito_verificador_valido: digitoOk,
     errores: digitoOk ? [] : ["digito_verificador"],
-    nota: NOTA_VALIDACION,
+    nota,
     detalle,
   };
 }

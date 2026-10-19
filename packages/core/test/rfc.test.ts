@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { digitoVerificadorRfc, RFC_GENERICOS, validarRfc } from "../src/rfc.js";
-import { NOTA_VALIDACION } from "../src/validacion.js";
+import { NOTAS_VALIDACION } from "../src/validacion.js";
 
 describe("validarRfc", () => {
   it("acepta una persona física válida", () => {
@@ -10,8 +10,14 @@ describe("validarRfc", () => {
     expect(r.formato_valido).toBe(true);
     expect(r.digito_verificador_valido).toBe(true);
     expect(r.errores).toEqual([]);
-    expect(r.nota).toBe(NOTA_VALIDACION);
+    expect(r.nota).toBe(NOTAS_VALIDACION.rfc);
     expect(r.detalle).toEqual({ tipo: "fisica", fecha_yymmdd: "561231", homoclave: "GR8" });
+  });
+
+  it("su nota nombra solo al SAT y dice que el dígito es informativo", () => {
+    expect(NOTAS_VALIDACION.rfc).toContain("no confirma que el RFC exista ante el SAT");
+    expect(NOTAS_VALIDACION.rfc).toContain("informativo");
+    expect(NOTAS_VALIDACION.rfc).not.toMatch(/RENAPO|IMSS|banco/);
   });
 
   it("acepta una persona moral válida", () => {

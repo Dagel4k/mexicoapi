@@ -1,5 +1,6 @@
 import { type FechaISO, fechaValida } from "./fechas.js";
 import {
+  NOTAS_VALIDACION,
   normalizar,
   type ResultadoValidacion,
   rechazoPorTipo,
@@ -70,26 +71,28 @@ export function digitoVerificadorCurp(primeros17: string): string {
   return String((10 - (suma % 10)) % 10);
 }
 
+const NOTA = NOTAS_VALIDACION.curp;
+
 export function validarCurp(curp: string): ResultadoValidacion<DetalleCurp> {
-  const rechazo = rechazoPorTipo<DetalleCurp>(curp);
+  const rechazo = rechazoPorTipo<DetalleCurp>(curp, NOTA);
   if (rechazo) return rechazo;
   const valor = normalizar(curp);
-  if (valor.length === 0) return resultadoInvalido(valor, "vacio");
+  if (valor.length === 0) return resultadoInvalido(valor, "vacio", NOTA);
   // La CURP nunca lleva Ñ: RENAPO la sustituye por X.
-  if (!/^[A-Z0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
-  if (valor.length !== 18) return resultadoInvalido(valor, "longitud");
-  if (!ESTRUCTURA.test(valor)) return resultadoInvalido(valor, "estructura");
+  if (!/^[A-Z0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres", NOTA);
+  if (valor.length !== 18) return resultadoInvalido(valor, "longitud", NOTA);
+  if (!ESTRUCTURA.test(valor)) return resultadoInvalido(valor, "estructura", NOTA);
 
   const diferenciador = valor.charAt(16);
   const siglo = /\d/.test(diferenciador) ? 1900 : 2000;
   const anio = siglo + Number(valor.slice(4, 6));
   const mes = Number(valor.slice(6, 8));
   const dia = Number(valor.slice(8, 10));
-  if (!fechaValida(anio, mes, dia)) return resultadoInvalido(valor, "fecha");
+  if (!fechaValida(anio, mes, dia)) return resultadoInvalido(valor, "fecha", NOTA);
 
   const entidad = valor.slice(11, 13);
   const nombreEntidad = ENTIDADES.get(entidad);
-  if (nombreEntidad === undefined) return resultadoInvalido(valor, "entidad");
+  if (nombreEntidad === undefined) return resultadoInvalido(valor, "entidad", NOTA);
 
   const detalle: DetalleCurp = {
     fecha: `${anio}-${valor.slice(6, 8)}-${valor.slice(8, 10)}`,
@@ -102,5 +105,6 @@ export function validarCurp(curp: string): ResultadoValidacion<DetalleCurp> {
     valor,
     detalle,
     digitoVerificadorCurp(valor.slice(0, 17)) === valor.charAt(17),
+    NOTA,
   );
 }

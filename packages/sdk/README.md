@@ -36,10 +36,13 @@ Universal quiere decir que no usa módulos de Node: corre en Node, en el navegad
 
 ```ts
 import { validarClabe, validarCurp, validarNss, validarRfc } from "mexicoapi";
+import { catalogoClabe } from "mexicoapi/datos";
 
-const r = validarClabe("002010077777777771");
+const bancos = catalogoClabe(); // guárdalo si vas a validar muchas
+const r = validarClabe("002010077777777771", { bancos });
 r.valido; // true
-r.detalle?.codigo_banco; // "002"
+r.banco_revisado; // true
+r.detalle?.banco; // { codigo: "002", nombre_corto: "BANAMEX", activo: true }
 r.detalle?.cuenta; // "07777777777"
 
 validarRfc("XAXX010101000").detalle?.tipo; // "generico"
@@ -47,7 +50,7 @@ validarCurp("HEGG560427MVZRRL04").valido; // true
 validarNss("12345678903").valido; // true
 ```
 
-Cada validador devuelve `{ valor, valido, formato_valido, digito_verificador_valido, errores, nota, detalle }`. `errores` dice qué falló (`longitud`, `caracteres`, `digito_verificador`...). Revisan formato y dígito verificador; no confirman que la CLABE, el RFC, la CURP o el NSS existan ante el banco, el SAT, RENAPO o el IMSS.
+Cada validador devuelve `{ valor, valido, formato_valido, digito_verificador_valido, errores, nota, detalle }`; la CLABE agrega `banco_revisado`. `errores` dice qué falló (`longitud`, `caracteres`, `banco`, `digito_verificador`...). `nota` dice qué revisa cada uno: ninguno confirma que la cuenta, el RFC, la CURP o el NSS existan ante el banco, el SAT, RENAPO o el IMSS.
 
 En el RFC, un dígito verificador que no coincide aparece en `errores` como `digito_verificador`, pero no invalida el resultado: `valido` es igual a `formato_valido`, porque cerca del 1.5 % de los RFC en uso tienen un dígito inválido y rechazar uno real es peor. Si necesitas exigirlo, revisa `digito_verificador_valido`:
 
@@ -58,18 +61,15 @@ validarRfc("XAXX010101001");
 
 En la CLABE, la CURP y el NSS, un dígito que no coincide sí hace `valido: false`.
 
-Para que la CLABE diga su banco, pásale el catálogo del paquete:
+Con el catálogo, un código de banco que no existe es un error de formato (`banco`). Un banco dado de baja sigue dando una CLABE válida, con `activo: false`. Es el mismo resultado que dan la API, la CLI, el MCP y `api.clabe()` del cliente.
+
+Sin el catálogo no se revisa que el banco exista: una CLABE con un banco que no existe y el dígito de control correcto sale válida, con `banco_revisado: false` y una nota que lo dice. Úsalo así solo si ya revisaste el banco por tu cuenta:
 
 ```ts
-import { validarClabe } from "mexicoapi";
-import { catalogoClabe } from "mexicoapi/datos";
-
-const bancos = catalogoClabe(); // guárdalo si vas a validar muchas
-validarClabe("002010077777777771", { bancos }).detalle?.banco;
-// { codigo: "002", nombre_corto: "BANAMEX", activo: true }
+validarClabe("999010077777777774");
+// { valido: true, banco_revisado: false, nota: "Valida formato y dígito de control, sin revisar que el banco exista...", ... }
+validarClabe("999010077777777774", { bancos }).errores; // ["banco"]
 ```
-
-Con el catálogo, un código de banco que no existe es un error de formato (`banco`). Un banco dado de baja sigue dando una CLABE válida, con `activo: false`.
 
 ## Días hábiles
 
@@ -294,7 +294,7 @@ Códigos de salida:
 De `mexicoapi`:
 
 - `digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp` y `digitoVerificadorNss` calculan el dígito verificador a partir de los primeros caracteres (17 en la CLABE y la CURP, 11 o 12 en el RFC, 10 en el NSS). Lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados.
-- `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTA_VALIDACION` (la nota de cada resultado).
+- `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTAS_VALIDACION` (la nota de cada validador; la CLABE tiene una con el catálogo de bancos y otra sin él). `NOTA_VALIDACION`, la nota común de la 0.1.0, sigue exportada pero ningún validador la usa.
 - `esFechaIsoValida`: si un texto es una fecha real `AAAA-MM-DD`.
 - `diasDescansoLft(anio)`: los días de descanso obligatorio del artículo 74 de un año, de 2007 a 2100, con su cita. `COBERTURA_LFT` es ese rango y `VIGENCIA_LFT`, la fecha de la última reforma de la LFT que se tomó en cuenta.
 - `crearCalendario`: arma un `Calendario` para `sumarDiasHabiles` con tus propios días inhábiles, su cobertura y la fuente de los fines de semana.

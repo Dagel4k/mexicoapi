@@ -18,8 +18,11 @@ import {
   resultado,
 } from "../respuesta.js";
 
-/** El resultado de un validador, con su `detalle`. */
-export function esquemaValidacion(detalle: EsquemaJson): EsquemaJson {
+/** El resultado de un validador, con su `detalle` y los campos propios del validador. */
+export function esquemaValidacion(
+  detalle: EsquemaJson,
+  propios: Readonly<Record<string, EsquemaJson>> = {},
+): EsquemaJson {
   return {
     type: "object",
     properties: {
@@ -27,6 +30,7 @@ export function esquemaValidacion(detalle: EsquemaJson): EsquemaJson {
       valido: { type: "boolean" },
       formato_valido: { type: "boolean" },
       digito_verificador_valido: { type: ["boolean", "null"] },
+      ...propios,
       errores: { type: "array", items: { type: "string" } },
       nota: { type: "string" },
       detalle,
@@ -36,6 +40,7 @@ export function esquemaValidacion(detalle: EsquemaJson): EsquemaJson {
       "valido",
       "formato_valido",
       "digito_verificador_valido",
+      ...Object.keys(propios),
       "errores",
       "nota",
       "detalle",

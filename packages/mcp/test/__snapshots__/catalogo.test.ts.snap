@@ -485,6 +485,10 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
         },
         "datos": {
           "properties": {
+            "banco_revisado": {
+              "description": "Si el código de banco se revisó contra el catálogo: aquí, siempre.",
+              "type": "boolean",
+            },
             "detalle": {
               "properties": {
                 "banco": {
@@ -571,6 +575,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
             "valido",
             "formato_valido",
             "digito_verificador_valido",
+            "banco_revisado",
             "errores",
             "nota",
             "detalle",

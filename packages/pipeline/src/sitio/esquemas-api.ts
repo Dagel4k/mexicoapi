@@ -183,6 +183,11 @@ export const esquemaResultadoClabe = z.object({
     .boolean()
     .nullable()
     .describe("Si el dígito de control coincide; null si el formato es inválido."),
+  banco_revisado: z
+    .boolean()
+    .describe(
+      "Si el código de banco se revisó contra el catálogo de bancos. En la API siempre es true. validarClabe del paquete mexicoapi da false si se llama sin el catálogo: entonces valido no garantiza que el banco exista.",
+    ),
   errores: z
     .array(codigoError)
     .describe(

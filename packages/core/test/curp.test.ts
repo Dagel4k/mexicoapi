@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { digitoVerificadorCurp, ENTIDADES_CURP, validarCurp } from "../src/curp.js";
-import { NOTA_VALIDACION } from "../src/validacion.js";
+import { NOTAS_VALIDACION } from "../src/validacion.js";
 
 const conDigito = (primeros17: string): string => primeros17 + digitoVerificadorCurp(primeros17);
 
@@ -67,7 +67,9 @@ describe("validarCurp", () => {
     expect(r.formato_valido).toBe(true);
     expect(r.digito_verificador_valido).toBe(true);
     expect(r.errores).toEqual([]);
-    expect(r.nota).toBe(NOTA_VALIDACION);
+    expect(r.nota).toBe(NOTAS_VALIDACION.curp);
+    expect(r.nota).toContain("no confirma que la CURP exista ante RENAPO");
+    expect(r.nota).not.toMatch(/SAT|IMSS|banco/);
     expect(r.detalle).toEqual({
       fecha: "1931-08-20",
       sexo: "H",

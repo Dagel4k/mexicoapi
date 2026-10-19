@@ -55,10 +55,16 @@ export interface FixOperacion {
   fundamento: Fuente;
 }
 
-/** Resultado de `/v1/clabe/{clabe}`: el banco trae `activo`, porque se valida con el catálogo. */
+/**
+ * Resultado de `/v1/clabe/{clabe}`: el banco trae `activo`, porque se valida con el catálogo, y
+ * `banco_revisado` siempre es true.
+ */
 export type ResultadoClabe = ResultadoValidacion<
   Omit<DetalleClabe, "banco"> & { banco: BancoCatalogo | null }
->;
+> & {
+  /** Si el código de banco se revisó contra el catálogo: en la API y en `clabe()`, siempre. */
+  banco_revisado: boolean;
+};
 
 /** Un dataset en `/v1/status`. */
 export interface EstadoDataset {

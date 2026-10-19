@@ -49,6 +49,7 @@ beforeAll(async () => {
       valido: false,
       formato_valido: false,
       digito_verificador_valido: false,
+      banco_revisado: true,
       errores: ["banco", "digito_verificador"],
       nota: "Nota.",
       detalle: null,

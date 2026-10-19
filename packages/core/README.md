@@ -11,7 +11,7 @@ Funciones puras en TypeScript, sin dependencias de runtime. Por ahora el paquete
 - Catálogos de los calendarios: `AUTORIDADES`, `TIPOS_PLAZO` y `TIPOS_DIA_CURADO` (los tipos `Autoridad`, `TipoPlazo` y `TipoDiaCurado` salen de ellos) y `NOMBRE_AUTORIDAD` ("el SAT"), el único lugar donde se nombran las autoridades en los textos.
 - Reglas de la API entre parámetros, que el MCP y la CLI usan sin pedirle nada a la API: `revisarTipoPlazo` (con el SAT, el tipo de plazo es obligatorio; con las demás no se acepta) y `revisarFix` (exactamente uno de `publicado` u `operacion`). Devuelven el problema de la API o null.
 - `aUnaLinea`: un texto de los datos o de la API sin saltos ni caracteres de control, para imprimirlo.
-- Constantes y tipos: `NOTA_VALIDACION`, `ResultadoValidacion`, `Calendario`, `DiaInhabil`, `Fuente`, entre otros.
+- Constantes y tipos: `NOTAS_VALIDACION` (la nota de cada validador), `ResultadoValidacion`, `ResultadoValidacionClabe`, `Calendario`, `DiaInhabil`, `Fuente`, entre otros. `NOTA_VALIDACION`, la nota común de antes, sigue exportada sin uso.
 
 Las subrutas van aparte para no pesar en quien solo valida:
 
@@ -22,11 +22,11 @@ Las subrutas van aparte para no pesar en quien solo valida:
 - `@mexicoapi/core/combinaciones`: solo `revisarTipoPlazo` y `revisarFix`, que también exporta el índice; la usan los calendarios del paquete, que no cargan el índice.
 - `@mexicoapi/core/problemas`: `PROBLEMAS` (título y status de cada tipo), `URL_API` (la API pública), `URL_REPOSITORIO`, `URL_DOCS`, `URL_PROBLEMAS` y `tipoDeProblema`. No importa nada.
 
-Los validadores revisan formato y dígito verificador. No confirman que la CLABE, el RFC, la CURP o el NSS existan ante un banco, el SAT, RENAPO o el IMSS. Las funciones `validar*` nunca lanzan excepciones, aunque la entrada no sea string: una entrada inválida devuelve `valido: false` con los códigos de error. Las auxiliares `digito*` sí lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados. Los errores del núcleo traen `tipo` para reconocerlos sin `instanceof`, que falla con dos copias del núcleo (`problemaDeError` lo compara así). Las funciones de días hábiles lanzan `RangeError` por parámetros inválidos, `FechaFueraDeRangoError` (un `RangeError` con `tipo: "fecha-fuera-de-rango"`) si el resultado pasaría de 0001-9999, y `CalendarioIncompletoError` (con `tipo: "calendario-incompleto"`) si la fecha cae fuera de la cobertura del calendario. Las consultas de FIX y UDIS lanzan `RangeError` si la fecha, la cobertura o el tramo no son válidos (el tramo debe estar dentro de la cobertura), y `SerieIncompletaError` (con `tipo: "serie-incompleta"`) si el tramo que reciben no alcanza para responder con certeza o trae registros fuera de sus fechas.
+Los validadores revisan formato y dígito verificador, y cada uno lo dice en su `nota`. No confirman que la cuenta, el RFC, la CURP o el NSS existan ante un banco, el SAT, RENAPO o el IMSS. Las funciones `validar*` nunca lanzan excepciones, aunque la entrada no sea string: una entrada inválida devuelve `valido: false` con los códigos de error. Las auxiliares `digito*` sí lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados. Los errores del núcleo traen `tipo` para reconocerlos sin `instanceof`, que falla con dos copias del núcleo (`problemaDeError` lo compara así). Las funciones de días hábiles lanzan `RangeError` por parámetros inválidos, `FechaFueraDeRangoError` (un `RangeError` con `tipo: "fecha-fuera-de-rango"`) si el resultado pasaría de 0001-9999, y `CalendarioIncompletoError` (con `tipo: "calendario-incompleto"`) si la fecha cae fuera de la cobertura del calendario. Las consultas de FIX y UDIS lanzan `RangeError` si la fecha, la cobertura o el tramo no son válidos (el tramo debe estar dentro de la cobertura), y `SerieIncompletaError` (con `tipo: "serie-incompleta"`) si el tramo que reciben no alcanza para responder con certeza o trae registros fuera de sus fechas.
 
 En el RFC, un dígito verificador que no coincide aparece en `errores` como `digito_verificador`, pero no invalida el resultado: `valido` es igual a `formato_valido`. Cerca de 1.5 % de los RFC en uso tienen un dígito inválido, y rechazar un RFC real es peor que aceptar un error de dedo.
 
-`validarClabe` acepta catálogos opcionales de bancos y plazas. Con catálogo de bancos, un código que no está en él da el error `banco`. La plaza solo es informativa: si no está en el catálogo, queda en `null`.
+`validarClabe` acepta catálogos opcionales de bancos y plazas. Con catálogo de bancos, un código que no está en él da el error `banco`. Sin él no se revisa el banco: el resultado trae `banco_revisado: false` y la nota lo dice. La plaza solo es informativa: si no está en el catálogo, queda en `null`.
 
 ## Ejemplos
 
@@ -39,8 +39,9 @@ validarClabe("002010077777777771");
 //   valido: true,
 //   formato_valido: true,
 //   digito_verificador_valido: true,
+//   banco_revisado: false,
 //   errores: [],
-//   nota: "Valida formato y dígito verificador; no confirma que exista ante el SAT, RENAPO, el IMSS o un banco.",
+//   nota: "Valida formato y dígito de control, sin revisar que el banco exista (no se pasó el catálogo de bancos); no confirma que la cuenta exista.",
 //   detalle: {
 //     codigo_banco: "002", codigo_plaza: "010", cuenta: "07777777777",
 //     digito_control: "1", banco: null, plaza: null

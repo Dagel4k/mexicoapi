@@ -40,7 +40,8 @@ describe("validar_rfc", () => {
         formato_valido: true,
         digito_verificador_valido: true,
         errores: [],
-        nota: expect.stringContaining("no confirma que exista"),
+        // Cambio: cada validador tiene su nota; la del RFC solo nombra al SAT.
+        nota: expect.stringContaining("no confirma que el RFC exista ante el SAT"),
         detalle: { tipo: "generico", fecha_yymmdd: "010101", homoclave: "000" },
       },
       ...PROCEDENCIA,

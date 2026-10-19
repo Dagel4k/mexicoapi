@@ -65,6 +65,13 @@ const DETALLE_CLABE = {
   required: ["codigo_banco", "codigo_plaza", "cuenta", "digito_control", "banco"],
 } as const;
 
+const PROPIOS_CLABE = {
+  banco_revisado: {
+    type: "boolean",
+    description: "Si el código de banco se revisó contra el catálogo: aquí, siempre.",
+  },
+} as const;
+
 interface DetalleClabe {
   codigo_banco: string;
   codigo_plaza: string;
@@ -92,7 +99,9 @@ export function validarClabeHerramienta({ cliente }: OpcionesHerramientas): Herr
       required: ["clabe"],
       additionalProperties: false,
     },
-    outputSchema: esquemaSalida(esquemaValidacion(DETALLE_CLABE), { origenes: ["paquete"] }),
+    outputSchema: esquemaSalida(esquemaValidacion(DETALLE_CLABE, PROPIOS_CLABE), {
+      origenes: ["paquete"],
+    }),
     annotations: anotaciones(false),
     async ejecutar(args, { signal }) {
       // Sin los separadores que quita el validador; si no quedan 18 dígitos, el cliente responde

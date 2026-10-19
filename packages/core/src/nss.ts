@@ -1,4 +1,5 @@
 import {
+  NOTAS_VALIDACION,
   normalizar,
   type ResultadoValidacion,
   rechazoPorTipo,
@@ -23,12 +24,15 @@ export function digitoVerificadorNss(primeros10: string): string {
   return String((10 - (suma % 10)) % 10);
 }
 
+const NOTA = NOTAS_VALIDACION.nss;
+
 export function validarNss(nss: string): ResultadoValidacion<null> {
-  const rechazo = rechazoPorTipo<null>(nss);
+  const rechazo = rechazoPorTipo<null>(nss, NOTA);
   if (rechazo) return rechazo;
   const valor = normalizar(nss);
-  if (valor.length === 0) return resultadoInvalido(valor, "vacio");
-  if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres");
-  if (valor.length !== 11) return resultadoInvalido(valor, "longitud");
-  return resultadoConFormato(valor, null, digitoVerificadorNss(valor.slice(0, 10)) === valor[10]);
+  if (valor.length === 0) return resultadoInvalido(valor, "vacio", NOTA);
+  if (!/^[0-9]+$/.test(valor)) return resultadoInvalido(valor, "caracteres", NOTA);
+  if (valor.length !== 11) return resultadoInvalido(valor, "longitud", NOTA);
+  const digitoOk = digitoVerificadorNss(valor.slice(0, 10)) === valor[10];
+  return resultadoConFormato(valor, null, digitoOk, NOTA);
 }

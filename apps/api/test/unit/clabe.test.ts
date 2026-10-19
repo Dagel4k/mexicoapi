@@ -1,4 +1,4 @@
-import { digitoControlClabe, NOTA_VALIDACION } from "@mexicoapi/core";
+import { digitoControlClabe, NOTAS_VALIDACION } from "@mexicoapi/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import bancos from "../../../../data/bancos/bancos.json" with { type: "json" };
 import manifiesto from "../../../../data/bancos/manifest.json" with { type: "json" };
@@ -88,8 +88,9 @@ describe("GET /v1/clabe/{clabe}", () => {
         valido: true,
         formato_valido: true,
         digito_verificador_valido: true,
+        banco_revisado: true,
         errores: [],
-        nota: NOTA_VALIDACION,
+        nota: NOTAS_VALIDACION.clabe,
         detalle: {
           codigo_banco: "012",
           codigo_plaza: "010",
@@ -131,8 +132,9 @@ describe("GET /v1/clabe/{clabe}", () => {
         valido: false,
         formato_valido: false,
         digito_verificador_valido: null,
+        banco_revisado: true,
         errores: ["banco"],
-        nota: NOTA_VALIDACION,
+        nota: NOTAS_VALIDACION.clabe,
         detalle: null,
       },
       meta: META_CLABE,

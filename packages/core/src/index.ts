@@ -1,4 +1,4 @@
-export type { BancoClabe, DetalleClabe, Plaza } from "./clabe.js";
+export type { BancoClabe, DetalleClabe, Plaza, ResultadoValidacionClabe } from "./clabe.js";
 export { digitoControlClabe, normalizarClabe, validarClabe } from "./clabe.js";
 export type { DetalleCurp } from "./curp.js";
 export { digitoVerificadorCurp, ENTIDADES_CURP, validarCurp } from "./curp.js";
@@ -67,4 +67,4 @@ export type { ProblemaConsulta } from "./rutas/parametros.js";
 export type { TipoProblema } from "./rutas/problemas.js";
 export { aUnaLinea } from "./texto.js";
 export type { CodigoError, ResultadoValidacion } from "./validacion.js";
-export { NOTA_VALIDACION } from "./validacion.js";
+export { NOTA_VALIDACION, NOTAS_VALIDACION } from "./validacion.js";
