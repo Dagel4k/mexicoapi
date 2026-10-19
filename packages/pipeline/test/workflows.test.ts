@@ -270,9 +270,15 @@ describe("publicar de datos.yml", () => {
     ].map((g) => g[1]);
     const aplicar = paso(datos, "publicar", "Revisar y aplicar el parche");
     expect(aplicar.id).toBe("aplicar");
-    const umbrales = [...(aplicar.run ?? "").matchAll(/^\s*([a-z]+)\) limite=(\d+) ;;$/gm)];
+    // En líneas y en bytes: un JSON de una sola línea cambia pocas líneas y muchos bytes.
+    const umbrales = [
+      ...(aplicar.run ?? "").matchAll(/^\s*([a-z]+)\) limite=(\d+); limite_bytes=(\d+) ;;$/gm),
+    ];
     expect(umbrales.map((u) => u[1])).toEqual(grupos);
-    for (const [, , limite] of umbrales) expect(Number(limite)).toBeGreaterThan(0);
+    for (const [, , limite, bytes] of umbrales) {
+      expect(Number(limite)).toBeGreaterThan(0);
+      expect(Number(bytes)).toBeGreaterThan(0);
+    }
     const publicar = paso(datos, "publicar", "Publicar resultado");
     expect(publicar.env?.PARCHE_GRANDE).toBe(expresion("steps.aplicar.outputs.grande"));
     expect(publicar.run).toContain(
@@ -289,7 +295,10 @@ describe("publicar de datos.yml", () => {
     const conteo = run.indexOf("git -c core.attributesFile=/dev/null diff --cached --numstat -z");
     expect(aplicado).toBeGreaterThan(-1);
     expect(conteo).toBeGreaterThan(aplicado);
-    expect(run).toContain(String.raw`^data/bancos/raw/[A-Za-z0-9._-]+\.pdf$`);
+    // Solo la ruta exacta que escribe el pipeline, y con un tope de bytes.
+    expect(run).toContain('pdf="data/bancos/raw/participantes-spei.pdf"');
+    expect(run).toContain("tope_pdf=5242880");
+    expect(run).toContain(`[ "\${bytes}" -gt "\${limite_bytes}" ]`);
   });
 
   it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {

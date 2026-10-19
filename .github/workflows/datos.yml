@@ -224,13 +224,15 @@ jobs:
       # fuentes). Cualquier otra cosa detiene la corrida y el paso de fallas abre el issue. Con el
       # código 1 no se publica nada, así que tampoco se aplica.
       #
-      # Además, ya aplicado, cuenta las líneas que cambia en archivos de texto (--numstat del
-      # índice, solo git del runner: un texto enviado como parche binario cuenta igual) y, si pasan
-      # del umbral del grupo o hay un binario que no es el PDF de participantes, publicar abre el
-      # PR con la etiqueta revisar y sin auto-merge aunque generar diga que no hace falta: generar
-      # procesó datos externos y no decide solo. Los umbrales dejan margen sobre lo más que cambia
-      # una corrida que no pide revisión, con su manifiesto y sus crudos: 31 FIX nuevos son unas
-      # 140 líneas; 45 UDIS, 200; 12 municipios (el 0.5 %), 220, y 3 cambios en bancos, unas 50.
+      # Además, ya aplicado, cuenta las líneas y los bytes que cambia (en el índice, solo git del
+      # runner: un texto enviado como parche binario cuenta igual) y, si pasan del umbral del grupo
+      # o hay un binario que no es el PDF de participantes (o el PDF pasa de 5 MB), publicar abre
+      # el PR con la etiqueta revisar y sin auto-merge aunque generar diga que no hace falta:
+      # generar procesó datos externos y no decide solo. Los umbrales dejan margen sobre lo más que
+      # cambia una corrida que no pide revisión, con su manifiesto y sus crudos: 31 FIX nuevos son
+      # unas 140 líneas; 45 UDIS, 200; 12 municipios (el 0.5 %), 220, y 3 cambios en bancos, unas
+      # 50. En bytes cuentan sobre todo los crudos de una sola línea: los del SIDOF, de 20 a 30 KB
+      # (una corrida cambia uno o dos), y los 32 de INEGI, unos 470 KB.
       - name: Revisar y aplicar el parche
         id: aplicar
         if: >-
@@ -248,13 +250,18 @@ jobs:
             echo "::error::Falta la lista de carpetas del grupo."
             exit 1
           fi
+          # Umbral por grupo en líneas y en bytes (un JSON de una sola línea cambia pocas líneas y
+          # muchos bytes). Ver el comentario del paso.
           case "${GRUPO}" in
-            inegi) limite=400 ;;
-            bancos) limite=300 ;;
-            fix) limite=300 ;;
-            udis) limite=400 ;;
+            inegi) limite=400; limite_bytes=2097152 ;;
+            bancos) limite=300; limite_bytes=262144 ;;
+            fix) limite=300; limite_bytes=262144 ;;
+            udis) limite=400; limite_bytes=262144 ;;
             *) echo "::error::El grupo no tiene umbral de líneas."; exit 1 ;;
           esac
+          # El único binario que arma generar, con un tope: el real ronda los 400 KB.
+          pdf="data/bancos/raw/participantes-spei.pdf"
+          tope_pdf=5242880
           # Una ruta vale si está en una carpeta del grupo, solo lleva letras ASCII, dígitos y
           # . _ / - (nada de espacios, controles ni saltos de línea), y ningún componente está
           # vacío ni empieza con punto (., .., .git, archivos ocultos). La misma regla está en
@@ -299,11 +306,8 @@ jobs:
           # archivo (generar arma el parche con git diff --binary, que solo lo usa en binarios)
           # pide revisión.
           binarios=""
-          es_pdf() {
-            [[ "$1" =~ ^data/bancos/raw/[A-Za-z0-9._-]+\.pdf$ ]]
-          }
           anotar_binario() {
-            if ! es_pdf "$1" && [[ " ${binarios} " != *" $1 "* ]]; then
+            if [ "$1" != "${pdf}" ] && [[ " ${binarios} " != *" $1 "* ]]; then
               binarios="${binarios:+${binarios} }$1"
             fi
           }
@@ -359,9 +363,9 @@ jobs:
           if [ "${mal}" -ne 0 ]; then
             exit 1
           fi
-          # Las líneas, sobre lo que quedó en el índice y no sobre el parche: un archivo de texto
-          # enviado como parche binario cuenta sus líneas. Sin atributos ni filtros de diff: el
-          # contenido decide qué es binario. Un binario trae - y no suma.
+          # Las líneas y los bytes, sobre lo que quedó en el índice y no sobre el parche: un archivo
+          # de texto enviado como parche binario cuenta igual. Sin atributos ni filtros de diff: el
+          # contenido decide qué es binario. Un binario trae - y no suma líneas.
           cuenta="${RUNNER_TEMP}/lineas-parche"
           git -c core.attributesFile=/dev/null diff --cached --numstat -z --no-renames \
             --no-textconv --no-ext-diff > "${cuenta}"
@@ -377,20 +381,37 @@ jobs:
               anotar_binario "${ruta}"
             fi
           done < "${cuenta}"
+          # Bytes de las líneas que quitan o agregan (sin los encabezados), en todo menos el PDF.
+          bytes="$(git -c core.attributesFile=/dev/null diff --cached -U0 --text --no-renames \
+            --no-textconv --no-ext-diff -- . ":(exclude)${pdf}" \
+            | { grep -E '^[-+]' || true; } \
+            | { grep -vE '^(--- (a/|/dev/null)|\+\+\+ (b/|/dev/null))' || true; } \
+            | wc -c)"
+          # El PDF, si cambió, con su tope; más grande pide revisión como un binario inesperado.
+          # (Cambió si su blob en el índice no es el de HEAD.)
+          pdf_nuevo="$(git rev-parse -q --verify ":${pdf}" || true)"
+          pdf_antes="$(git rev-parse -q --verify "HEAD:${pdf}" || true)"
+          if [ -n "${pdf_nuevo}" ] && [ "${pdf_nuevo}" != "${pdf_antes}" ] \
+            && [ "$(git cat-file -s "${pdf_nuevo}")" -gt "${tope_pdf}" ]; then
+            binarios="${binarios:+${binarios} }${pdf}"
+            echo "::warning::El PDF de participantes pasa de ${tope_pdf} bytes."
+          fi
           grande=no
-          if [ "${lineas}" -gt "${limite}" ]; then
+          if [ "${lineas}" -gt "${limite}" ] || [ "${bytes}" -gt "${limite_bytes}" ]; then
             grande=si
-            echo "::warning::El parche cambia ${lineas} líneas de data/, más que el umbral de ${limite} de ${GRUPO}: el PR pide revisión."
+            echo "::warning::El parche cambia ${lineas} líneas y ${bytes} bytes de data/, más que el umbral de ${GRUPO} (${limite} líneas o ${limite_bytes} bytes): el PR pide revisión."
           else
-            echo "El parche cambia ${lineas} líneas de data/ (umbral de ${GRUPO}: ${limite})."
+            echo "El parche cambia ${lineas} líneas y ${bytes} bytes de data/ (umbral de ${GRUPO}: ${limite} líneas, ${limite_bytes} bytes)."
           fi
           if [ -n "${binarios}" ]; then
-            echo "::warning::El parche trae cambios binarios fuera del PDF de participantes (${binarios}): el PR pide revisión."
+            echo "::warning::El parche trae binarios que no se esperan (${binarios}): el PR pide revisión."
           fi
           {
             echo "grande=${grande}"
             echo "lineas=${lineas}"
             echo "limite=${limite}"
+            echo "bytes=${bytes}"
+            echo "limite_bytes=${limite_bytes}"
             echo "binarios=${binarios}"
           } >> "${GITHUB_OUTPUT}"
 
@@ -417,6 +438,8 @@ jobs:
           PARCHE_GRANDE: ${{ steps.aplicar.outputs.grande }}
           PARCHE_LINEAS: ${{ steps.aplicar.outputs.lineas }}
           PARCHE_LIMITE: ${{ steps.aplicar.outputs.limite }}
+          PARCHE_BYTES: ${{ steps.aplicar.outputs.bytes }}
+          PARCHE_LIMITE_BYTES: ${{ steps.aplicar.outputs.limite_bytes }}
           PARCHE_BINARIOS: ${{ steps.aplicar.outputs.binarios }}
           GH_REPO: ${{ github.repository }}
           CORRIDA: ${{ runner.temp }}/corrida
@@ -495,10 +518,10 @@ jobs:
             local lista="${RUNNER_TEMP}/motivos.txt"
             : > "${lista}"
             if [ "${PARCHE_GRANDE}" = "si" ]; then
-              echo "- el parche cambia ${PARCHE_LINEAS} líneas de data/, más que el umbral de ${PARCHE_LIMITE} del grupo" >> "${lista}"
+              echo "- el parche cambia ${PARCHE_LINEAS} líneas y ${PARCHE_BYTES} bytes de data/, más que el umbral del grupo (${PARCHE_LIMITE} líneas o ${PARCHE_LIMITE_BYTES} bytes)" >> "${lista}"
             fi
             if [ -n "${PARCHE_BINARIOS}" ]; then
-              echo "- el parche trae cambios binarios fuera del PDF de participantes: ${PARCHE_BINARIOS}" >> "${lista}"
+              echo "- el parche trae binarios que no se esperan (otros que el PDF de participantes, o el PDF de más de 5 MB): ${PARCHE_BINARIOS}" >> "${lista}"
             fi
             if es_archivo "${resumen_json}"; then
               jq -r 'def linea: tostring | gsub("[[:cntrl:]\u2028\u2029]+"; " ") | gsub("@"; "@\u200b");
