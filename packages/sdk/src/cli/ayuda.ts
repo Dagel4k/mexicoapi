@@ -70,12 +70,12 @@ const COMANDOS: Readonly<Record<string, string>> = {
   ),
   curp: validador("curp", "una CURP", "HEGG560427MVZRRL04"),
   nss: validador("nss", "un número de seguridad social del IMSS", "12345678903"),
-  "dias-habiles": `Uso: mexicoapi dias-habiles --desde AAAA-MM-DD --dias N [--autoridad lft|cnbv|sat]
+  "dias-habiles": `Uso: mexicoapi dias-habiles --autoridad lft|cnbv|sat --desde AAAA-MM-DD --dias N
                              [--tipo-plazo general|declaraciones_pagos]
                              [--permitir-incompleto] [--json]
 
-Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad: la LFT (Ley
-Federal del Trabajo, por omisión), la CNBV (calendario bancario) o el SAT. Con el SAT,
+Suma N días hábiles (de 1 a 3650) a una fecha con el calendario de la autoridad, que es
+obligatoria: la LFT (Ley Federal del Trabajo), la CNBV (calendario bancario) o el SAT. Con el SAT,
 --tipo-plazo es obligatorio y con las demás no se acepta (si no, sale con 2): en
 declaraciones_pagos sus vacaciones cuentan como hábiles (CFF art. 12). La LFT solo descuenta
 sábados, domingos y los días del art. 74, no los festivos ni las suspensiones de labores del
@@ -86,7 +86,7 @@ Opciones:
   --desde AAAA-MM-DD   fecha de partida, que no se cuenta: en un plazo que corre desde una
                        notificación, el día en que surte efectos
   --dias N             días hábiles a sumar
-  --autoridad <a>      lft, cnbv o sat
+  --autoridad <a>      lft, cnbv o sat (obligatoria)
   --tipo-plazo <t>     general o declaraciones_pagos (solo con sat)
   --permitir-incompleto
                        calcula fuera de la cobertura del calendario, con aviso: el
@@ -94,7 +94,7 @@ Opciones:
 ${BASE}
 
 Ejemplos:
-  mexicoapi dias-habiles --desde 2026-03-16 --dias 5
+  mexicoapi dias-habiles --autoridad lft --desde 2026-03-16 --dias 5
   mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-17 --dias 3`,
   uma: `Uso: mexicoapi uma <anio> [--json]
        mexicoapi uma --fecha AAAA-MM-DD [--json]

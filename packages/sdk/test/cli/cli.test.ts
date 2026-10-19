@@ -74,7 +74,7 @@ describe("CLI: a qué API pregunta", () => {
     expect(AYUDA.match(/https:\/\/[^\s)]+workers\.dev/g)).toEqual([URL_API]);
   });
 
-  const DIAS = ["dias-habiles", "--desde", "2026-03-16", "--dias", "5"];
+  const DIAS = ["dias-habiles", "--autoridad", "lft", "--desde", "2026-03-16", "--dias", "5"];
   const respuesta = () =>
     new Response(
       JSON.stringify({
