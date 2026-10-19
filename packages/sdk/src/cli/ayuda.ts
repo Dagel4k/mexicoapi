@@ -19,6 +19,8 @@ Comandos:
   curp <valor>           valida una CURP
   nss <valor>            valida un número de seguridad social
   dias-habiles           suma días hábiles a una fecha (LFT, CNBV o SAT)
+  estados                las 32 entidades federativas, con su clave (cve_ent)
+  municipios <cve_ent>   todos los municipios de un estado, por su clave
   municipio <valor>      busca un municipio por clave (cvegeo) o por nombre
   banco <codigo>         consulta un banco por los 3 dígitos de la CLABE
   fix                    tipo de cambio FIX: el más reciente, o con --operacion o --publicado
@@ -34,8 +36,8 @@ dias-habiles, fix, udi, uma, salario-minimo e isr consultan primero la API públ
 (${URL_API}), o la de --base <url> o la variable MEXICOAPI_BASE, y si
 no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 (o true,
 yes, si, on) todo sale del paquete, sin red (--base gana a esa variable); con 0, false, no, off
-o vacía, consultan la API, y otro valor sale con 2. municipio y banco salen siempre del paquete,
-como los validadores.
+o vacía, consultan la API, y otro valor sale con 2. estados, municipios, municipio y banco salen
+siempre del paquete, como los validadores.
 
 Códigos de salida:
   0   todo bien
@@ -158,6 +160,21 @@ distinguir mayúsculas ni acentos. Sale siempre de los datos del paquete, sin re
 --base o MEXICOAPI_BASE. Sale con 1 si no hay resultados.
 
 Ejemplo: mexicoapi municipio culiacan`,
+  estados: `Uso: mexicoapi estados [--json]
+
+Las 32 entidades federativas del catálogo de INEGI, con su clave de 2 dígitos (cve_ent), su
+nombre y su abreviatura. Sale siempre de los datos del paquete, sin red, aunque haya --base o
+MEXICOAPI_BASE.
+
+Ejemplo: mexicoapi estados`,
+  municipios: `Uso: mexicoapi municipios <cve_ent> [--json]
+
+Todos los municipios de un estado (en la Ciudad de México, sus alcaldías), con el total, por la
+clave INEGI de 2 dígitos del estado; mexicoapi estados da las claves.
+Sale siempre de los datos del paquete, sin red, aunque haya --base o MEXICOAPI_BASE. Sale con 1
+si la clave no existe y con 2 si no son 2 dígitos.
+
+Ejemplo: mexicoapi municipios 25`,
   banco: `Uso: mexicoapi banco <codigo> [--json]
 
 Consulta un banco por los 3 dígitos con los que empieza la CLABE. Sale con 1 si no existe.

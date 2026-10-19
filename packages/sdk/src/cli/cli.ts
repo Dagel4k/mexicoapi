@@ -25,7 +25,9 @@ import {
   type ConsultaFix,
   conNombresCli,
   diasHabilesTexto,
+  estadosTexto,
   fixTexto,
+  municipiosDeEstadoTexto,
   municipiosTexto,
   municipioTexto,
   pieTexto,
@@ -129,12 +131,16 @@ const PROPIAS: Readonly<Record<string, readonly (keyof Opciones)[]>> = {
   isr: ["base"],
   fix: ["base", "operacion", "publicado"],
   udi: ["base"],
+  estados: ["base"],
+  municipios: ["base"],
 };
 
 const VALIDADORES = ["clabe", "rfc", "curp", "nss"] as const;
 const SUBCOMANDOS_SEPOMEX = ["sync", "importar", "cp", "resumen"] as const;
 /** Una clave de municipio (cvegeo) o un código postal. */
 const CINCO_DIGITOS = /^\d{5}$/;
+/** La clave de un estado (cve_ent). */
+const DOS_DIGITOS = /^\d{2}$/;
 const ENTERO = /^\d+$/;
 const MAXIMO_MUNICIPIOS = 20;
 const SIN_CATALOGO =
@@ -410,13 +416,50 @@ async function municipio(valor: string, e: Entorno, opciones: Opciones): Promise
   const encontrados = datos.buscarMunicipio(valor);
   if (opciones.json) json(e, encontrados);
   else {
+    // Con la clave de un estado ("25") quizá se buscaban sus municipios.
+    const sugerencia =
+      encontrados.length === 0 && DOS_DIGITOS.test(valor)
+        ? `\nPara los municipios del estado ${valor}, usa mexicoapi municipios ${valor}.`
+        : "";
     imprimir(
       e,
       municipiosTexto(valor, encontrados, MAXIMO_MUNICIPIOS, (cve) => datos.estado(cve)?.nombre) +
+        sugerencia +
         pieTexto({ origen: "paquete", advertencias: [] }),
     );
   }
   return encontrados.length > 0 ? 0 : 1;
+}
+
+async function estados(
+  posiciones: readonly string[],
+  e: Entorno,
+  opciones: Opciones,
+): Promise<number> {
+  sinArgumentos(posiciones, "estados");
+  const cliente = await crearClienteCli(e, opciones);
+  const respuesta = await cliente.estados();
+  if (opciones.json) json(e, respuesta);
+  else imprimir(e, estadosTexto(respuesta.data) + pieTexto(respuesta));
+  return 0;
+}
+
+async function municipios(cve_ent: string, e: Entorno, opciones: Opciones): Promise<number> {
+  if (!DOS_DIGITOS.test(cve_ent)) {
+    throw new ErrorUso(
+      `La clave del estado son 2 dígitos, como 25; no "${cve_ent}". mexicoapi estados da las claves.`,
+    );
+  }
+  const cliente = await crearClienteCli(e, opciones);
+  // Un estado que no existe lo rechaza el cliente con su 404, como la API.
+  const respuesta = await cliente.municipios(cve_ent);
+  if (opciones.json) json(e, respuesta);
+  else {
+    const { estado } = await import("../datos/estados.js");
+    const texto = municipiosDeEstadoTexto(cve_ent, estado(cve_ent)?.nombre, respuesta.data);
+    imprimir(e, texto + pieTexto(respuesta));
+  }
+  return 0;
 }
 
 async function banco(codigo: string, e: Entorno, opciones: Opciones): Promise<number> {
@@ -573,6 +616,14 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
         return await fix(resto, e, opciones);
       case "udi":
         return await udi(unValor(resto, "la fecha AAAA-MM-DD", comando), e, opciones);
+      case "estados":
+        return await estados(resto, e, opciones);
+      case "municipios":
+        return await municipios(
+          unValor(resto, "la clave del estado (cve_ent)", comando),
+          e,
+          opciones,
+        );
       default:
         return await sepomex(resto, e, opciones);
     }

@@ -7,6 +7,7 @@ import {
   aUnaLinea,
   type Banco,
   type CodigoError,
+  type Estado,
   type Municipio,
   type ResultadoDiasHabiles,
   type ResultadoValidacion,
@@ -213,6 +214,26 @@ export function municipiosTexto(
     lineas.push(`... y ${encontrados.length - maximo} más; afina la búsqueda o usa --json.`);
   }
   return lineas.join("\n");
+}
+
+export function estadosTexto(estados: readonly Estado[]): string {
+  return estados
+    .map((e) => `${aUnaLinea(e.cve_ent)}  ${aUnaLinea(e.nombre)} (${aUnaLinea(e.abreviatura)})`)
+    .join("\n");
+}
+
+/** Los municipios de un estado, con el total; en la Ciudad de México son alcaldías. */
+export function municipiosDeEstadoTexto(
+  cve_ent: string,
+  estado: string | undefined,
+  lista: readonly Municipio[],
+): string {
+  const nombre = estado === undefined ? `Entidad ${cve_ent}` : aUnaLinea(estado);
+  const que = cve_ent === "09" ? "alcaldías" : "municipios";
+  return [
+    `${nombre} (${cve_ent}): ${lista.length} ${que}`,
+    ...lista.map((m) => `${aUnaLinea(m.cvegeo)}  ${aUnaLinea(m.nombre)}`),
+  ].join("\n");
 }
 
 export function bancoTexto(b: Banco): string {
