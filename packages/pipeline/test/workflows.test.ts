@@ -324,3 +324,23 @@ describe("estado-kv de datos.yml", () => {
     });
   });
 });
+
+describe("publicacion.yml", () => {
+  it("una corrida a la vez, instalación filtrada y el .tgz revisado antes de publicar", async () => {
+    const wf = (await workflow("publicacion.yml")) as Workflow & {
+      concurrency: { group: string; "cancel-in-progress": boolean };
+    };
+    expect(wf.concurrency).toEqual({ group: "publicacion", "cancel-in-progress": false });
+    const instalar = paso(wf, "preparar", "Instalar dependencias");
+    expect(instalar.env).toEqual({ NOMBRE: expresion("steps.revisar.outputs.nombre") });
+    expect(instalar.run).toBe(`pnpm install --frozen-lockfile --filter "\${NOMBRE}..."`);
+    const publicar = paso(wf, "publicar", "Publicar en npm con procedencia").run ?? "";
+    expect(publicar).toContain('for (const campo of ["scripts", "publishConfig"])');
+    expect(publicar).toContain(
+      "package/package.json | package/README.md | package/CHANGELOG.md | package/LICENSE) ;;",
+    );
+    expect(publicar).toContain("grep -qv '^-'");
+    // Las revisiones van antes de publicar.
+    expect(publicar.indexOf("rutas-tgz")).toBeLessThan(publicar.indexOf("npm publish"));
+  });
+});
