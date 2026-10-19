@@ -356,17 +356,17 @@ De las entradas de datos: `umas()`, `salariosMinimos()`, `tarifasIsr()` (las lis
 
 ## Tamaño y compatibilidad
 
-Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en la versión 0.1.0. El JS se publica sin comentarios; la documentación va en los `.d.ts`.
+Tamaño con gzip de lo que carga cada entrada (todos sus módulos juntos), en esta versión. El JS se publica sin comentarios; la documentación va en los `.d.ts`.
 
 | Entrada | gzip |
 | --- | --- |
-| `mexicoapi` | 9.3 KB (una prueba exige 15 KB o menos) |
-| `mexicoapi/cliente` | 6.7 KB al importarlo, con el catálogo de problemas y las reglas de la ruta del núcleo; lo demás del núcleo y cada dataset se cargan solo si responde el paquete |
+| `mexicoapi` | 10.3 KB (una prueba exige 15 KB o menos) |
+| `mexicoapi/cliente` | 6.9 KB al importarlo, con el catálogo de problemas y las reglas de la ruta del núcleo; lo demás del núcleo y cada dataset se cargan solo si responde el paquete |
 | `mexicoapi/datos` | 43.7 KB |
 | `mexicoapi/datos/fix` | 13.0 KB |
 | `mexicoapi/datos/udis` | 18.7 KB |
-| `mexicoapi/datos/calendarios` | 13.0 KB |
-| `mexicoapi/datos/constantes` | 7.5 KB |
+| `mexicoapi/datos/calendarios` | 13.6 KB |
+| `mexicoapi/datos/constantes` | 7.6 KB |
 
 | Entorno | Estado |
 | --- | --- |
