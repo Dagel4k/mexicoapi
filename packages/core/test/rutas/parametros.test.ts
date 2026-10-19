@@ -78,6 +78,22 @@ describe("REGLAS_RUTA", () => {
     expect(Object.isFrozen(REGLAS_RUTA)).toBe(true);
   });
 
+  // El patrón es el `pattern` del OpenAPI: si una comprobación aparte rechazara algo, un cliente
+  // generado aceptaría valores que la API responde con 400. Sin lookaround, para los motores de
+  // expresiones que no lo tienen (RE2, Go, Rust).
+  it("el patrón de anio es la regla completa: de 0001 a 9999, sin 0000 y sin lookaround", () => {
+    const { anio } = REGLAS_RUTA;
+    expect("cumple" in anio).toBe(false);
+    expect(anio.patron.source).not.toMatch(/\(\?<?[=!]/);
+    for (let n = 0; n <= 9999; n++) {
+      const valor = String(n).padStart(4, "0");
+      expect(anio.patron.test(valor), valor).toBe(n >= 1);
+    }
+    for (const v of ["", "1", "999", "10000", "02026", " 2026", "2026\n"]) {
+      expect(anio.patron.test(v), JSON.stringify(v)).toBe(false);
+    }
+  });
+
   it("una regla con valores los acepta exactamente, como el enum del OpenAPI", () => {
     expect(REGLAS_RUTA.periodo.valores).toEqual(["mensual", "anual"]);
   });

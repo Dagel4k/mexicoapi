@@ -276,7 +276,7 @@ function operaciones(): Operacion[] {
   const cvegeo = parametroRuta("cvegeo", "Clave geoestadística del municipio, 5 dígitos.", "09002");
   const codigo = parametroRuta("codigo", "Código de banco, 3 dígitos.", "002");
   const clabe = parametroRuta("clabe", "CLABE de 18 dígitos.", "002010077777777771");
-  const anio = parametroRuta("anio", "Año, 4 dígitos.", "2026");
+  const anio = parametroRuta("anio", "Año de 0001 a 9999, 4 dígitos.", "2026");
   const indice = respuestaDatosPlano("Datos de la API.", ref("Indice"));
   return [
     {

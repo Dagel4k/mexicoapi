@@ -29,10 +29,11 @@ const TIPO_PLAZO = deConsulta(
   enumeracion(TIPOS_PLAZO, `El tipo de plazo (tipo_plazo) debe ser ${TIPOS_PLAZO.join(" o ")}.`),
   false,
 );
+// De 1 a DIAS_MAX (3650) en el patrón, que es el `pattern` del OpenAPI: 1-999, 1000-2999,
+// 3000-3599, 3600-3649 y 3650. Una prueba lo compara con DIAS_MAX.
 const DIAS = deConsulta(
   {
-    patron: /^[1-9]\d{0,3}$/,
-    cumple: (valor) => Number(valor) <= DIAS_MAX,
+    patron: /^(?:[1-9]\d{0,2}|[12]\d{3}|3[0-5]\d{2}|36[0-4]\d|3650)$/,
     detalle: `Los días hábiles (dias) deben ser un entero de 1 a ${DIAS_MAX}, sin ceros a la izquierda.`,
   },
   true,

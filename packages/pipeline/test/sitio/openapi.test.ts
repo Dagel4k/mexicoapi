@@ -38,6 +38,10 @@ const operaciones: Array<{ ruta: string; metodo: string; op: Obj }> = Object.ent
 
 const leerJson = async (url: URL) => JSON.parse(await readFile(url, "utf8"));
 
+/** Los patrones de `anio` (0001 a 9999) y `dias` (1 a 3650), como los publica el documento. */
+const ANIO = "^(?:000[1-9]|00[1-9]\\d|0[1-9]\\d{2}|[1-9]\\d{3})$";
+const DIAS = "^(?:[1-9]\\d{0,2}|[12]\\d{3}|3[0-5]\\d{2}|36[0-4]\\d|3650)$";
+
 /** Esquema de la respuesta 200 en JSON de la operación de `ruta`. */
 function esquema200(ruta: string): Obj {
   const o = operaciones.find((x) => x.ruta === ruta);
@@ -283,7 +287,7 @@ describe("documento OpenAPI", () => {
       cvegeo: "^\\d{5}$",
       codigo: "^\\d{3}$",
       clabe: "^\\d{18}$",
-      anio: "^\\d{4}$",
+      anio: ANIO,
     };
     let vistos = 0;
     for (const { op } of operaciones) {
@@ -346,12 +350,12 @@ describe("documento OpenAPI", () => {
     expect(sumar.description).toContain(
       "no aplica la prórroga del quinto párrafo del art. 12 del CFF",
     );
-    expect(habiles.dias.schema.pattern).toBe("^[1-9]\\d{0,3}$");
+    expect(habiles.dias.schema).toEqual({ type: "string", pattern: DIAS });
     expect(habiles.dias.required).toBe(true);
     expect(habiles.permitir_incompleto.required).toBeFalsy();
     expect(habiles.permitir_incompleto.schema.enum).toEqual(["true", "false"]);
     const inhabiles = params("/v1/dias-inhabiles");
-    expect(inhabiles.anio.schema.pattern).toBe("^\\d{4}$");
+    expect(inhabiles.anio.schema).toEqual({ type: "string", pattern: ANIO });
     expect(inhabiles.autoridad.required).toBe(true);
     expect(inhabiles.autoridad.schema.enum).toEqual(["lft", "cnbv", "sat"]);
     expect(Object.keys(inhabiles).sort()).toEqual(["anio", "autoridad"]);
@@ -878,6 +882,47 @@ describe("parámetros y reglas del núcleo", () => {
     // Ninguna ruta del núcleo con query queda fuera del documento.
     const conQuery = operaciones.filter(({ op }) => delDocumento(op, "query").length > 0);
     expect(conQuery.map((o) => o.ruta).sort()).toEqual(Object.keys(consultas).sort());
+  });
+
+  // Un validador de JSON Schema con el `pattern` publicado acepta lo mismo que la API: anio sin
+  // 0000 y dias hasta 3650, sin ceros a la izquierda.
+  it("un validador con el schema publicado acepta anio y dias como la API", () => {
+    const ajv = new Ajv2020({ strict: false });
+    const schemaDe = (ruta: string, nombre: string): Obj =>
+      ((operaciones.find((o) => o.ruta === ruta)?.op.parameters ?? []) as Obj[]).find(
+        (p) => p.name === nombre,
+      )?.schema;
+    const casos: Array<[Obj, RegExp, string[], string[]]> = [
+      [
+        schemaDe("/v1/dias-habiles", "dias"),
+        CONSULTAS["/v1/dias-habiles"].dias?.patron as RegExp,
+        ["1", "10", "999", "1000", "2999", "3000", "3599", "3600", "3649", "3650"],
+        ["0", "01", "3651", "3700", "4000", "9999", "10000", "+3", "1.5", "1e3"],
+      ],
+      [
+        schemaDe("/v1/dias-inhabiles", "anio"),
+        CONSULTAS["/v1/dias-inhabiles"].anio?.patron as RegExp,
+        ["0001", "0010", "0100", "1000", "2026", "9999"],
+        ["0000", "26", "20266", "２０２６"],
+      ],
+      [
+        schemaDe("/v1/constantes/uma/{anio}", "anio"),
+        REGLAS_RUTA.anio.patron,
+        ["0001", "2026", "9999"],
+        ["0000", "026"],
+      ],
+    ];
+    for (const [schema, patron, buenos, malos] of casos) {
+      const validar = ajv.compile(schema);
+      for (const v of buenos) {
+        expect(validar(v), v).toBe(true);
+        expect(patron.test(v), v).toBe(true);
+      }
+      for (const v of malos) {
+        expect(validar(v), v).toBe(false);
+        expect(patron.test(v), v).toBe(false);
+      }
+    }
   });
 
   it("las fechas se publican con format date además del patrón", () => {
