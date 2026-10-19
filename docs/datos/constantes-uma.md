@@ -24,6 +24,8 @@ Los montos son texto con dos decimales y sin separador de miles, para no perder 
 
 Cada valor rige del 1 de febrero del año al 31 de enero del siguiente. En enero sigue vigente la UMA del año anterior: para una fecha de enero de 2026 corresponde la UMA de 2025.
 
+La serie empieza con la UMA de 2017, vigente desde el 1 de febrero de 2017. La de 2016, el primer valor de la UMA, no está en los datos: en la API, `/v1/constantes/uma/2016` y una `fecha` anterior al 2017-02-01 responden 404 `no-encontrado`.
+
 ## Fuente de cada registro
 
 | Campo | Descripción |

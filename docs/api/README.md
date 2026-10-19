@@ -88,6 +88,16 @@ Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta
 }
 ```
 
+## Fechas
+
+Las fechas de los parámetros y de las respuestas van en `AAAA-MM-DD`, sin hora, y son días de la Ciudad de México (`America/Mexico_City`). Importa sobre todo en el FIX: el de un pago de hoy se pide con la fecha de hoy en la Ciudad de México (ver [Publicado y operación](#publicado-y-operación)). Si tu servidor está en UTC, de las 18:00 a las 24:00 de la Ciudad de México `new Date().toISOString().slice(0, 10)` ya da el día siguiente; calcula hoy así:
+
+```js
+const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
+```
+
+En el paquete `mexicoapi`, `hoyEnMexico()` hace lo mismo.
+
 ## Estados
 
 ```bash
@@ -598,7 +608,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10
 
 El Banco de México, en el SIE y en su sitio, muestra el FIX por fecha de determinación, que es el día hábil bancario anterior a la publicación en el DOF. Por eso ahí la misma cifra aparece un día hábil antes que en `publicado`: el 18.4250 que el DOF publicó el 2026-10-16 aparece en Banxico como FIX del 2026-10-15. La columna de publicación en el DOF de la tabla de Banxico sí coincide con `publicado`.
 
-`operacion` aplica el artículo 20 del Código Fiscal de la Federación: para una operación se usa el FIX que el Banco de México publicó el día anterior y, si ese día no hubo publicación, el último publicado antes. La respuesta dice qué publicación se usó y cita el fundamento:
+`operacion` da el FIX que aplica a una operación o a un pago de esa fecha, un día de la Ciudad de México (ver [Fechas](#fechas)): el último que el Banco de México publicó en el DOF antes de ese día. Calcula con el artículo 20 del Código Fiscal de la Federación, la regla de las contribuciones: se usa el FIX publicado el día anterior y, si ese día no hubo publicación, el último publicado antes. Para un pago en dólares la regla es otra, pero da la misma publicación (ver [Pagos en dólares](#pagos-en-dólares)). La respuesta dice qué publicación se usó y cita el fundamento:
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10-19"
@@ -621,6 +631,14 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10
 ```
 
 El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica el valor del viernes 16.
+
+#### Pagos en dólares
+
+Las obligaciones de pago en dólares que se cumplen en México siguen la regla del Banco de México, el artículo 172 de su [Circular 3/2012](https://www.banxico.org.mx/marco-normativo/normativa-emitida-por-el-banco-de-mexico/circular-3-2012/%7B4E0281A4-7AD8-1462-BC79-7F2925F3171D%7D.pdf) (Título Tercero, Capítulo V; texto compilado con sus modificaciones hasta la Circular 11/2026): "Las obligaciones de pago denominadas en Dólares que se contraigan dentro o fuera de la República Mexicana para ser cumplidas en esta, se solventarán entregando el equivalente en moneda nacional al tipo de cambio que el Banco de México publique en el Diario Oficial de la Federación el Día Hábil Bancario inmediato anterior a aquel en que se haga el pago."
+
+Esa publicación es la misma que da `operacion`. El Banco de México determina el FIX cada día hábil bancario y lo publica en el DOF "el Día Hábil Bancario inmediato siguiente a aquel en el que lo determine" (artículos 165 y 171 de la misma circular), así que hay publicación todos los días hábiles bancarios y solo esos. La circular llama días hábiles bancarios a los días en que los bancos no cierran según las disposiciones de la CNBV, el mismo calendario con que la API sabe qué días no hay publicación. La publicación del día hábil bancario anterior al pago es, entonces, la última publicada antes del pago.
+
+La ruta calcula con la regla del CFF y su `fundamento` cita el artículo 20 del CFF. Para un pago en dólares, pasa en `operacion` la fecha del pago y cita el artículo 172 de la circular; para una contribución, la fecha en que se causa. Para otras monedas, el mismo artículo calcula la equivalencia con la cotización de esa moneda contra el dólar el día del pago, que MéxicoAPI no tiene.
 
 `operacion` solo responde cuando la respuesta es cierta, es decir, cuando están cargados todos los días hasta la víspera de la operación en que pudo haber publicación:
 
@@ -726,7 +744,7 @@ Los montos son texto con dos decimales, sin separador de miles, para no perder p
 
 ### UMA
 
-Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero `fecha` responde la UMA del año anterior:
+Hay UMA de 2017 en adelante: la de 2016, el primer año de la UMA, no está en los datos y responde 404 `no-encontrado` (ver [Años que no están](#años-que-no-están)). Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero `fecha` responde la UMA del año anterior:
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/constantes/uma?fecha=2026-01-15"
@@ -998,7 +1016,7 @@ Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que gener
 | --- | --- |
 | `/` | Página de inicio: cómo empezar, la tabla de datasets con su fecha, fuente y licencia, y las descargas |
 | `/estado/` | Si cada dataset automático está al día; la página consulta `/v1/status` |
-| `/llms.txt` | Resumen de la API en el formato de [llmstxt.org](https://llmstxt.org/): la ruta de cada dataset con sus parámetros obligatorios, su `as_of` y su documentación |
+| `/llms.txt` | Resumen de la API en el formato de [llmstxt.org](https://llmstxt.org/): cómo pedir el FIX de un pago, y la ruta de cada dataset con sus parámetros obligatorios, su `as_of` (en las series, también su último dato) y su documentación |
 | `/llms-full.txt` | Esta referencia, la de errores y la documentación de cada dataset en un solo archivo de texto, con los enlaces absolutos |
 | `/robots.txt` | Pide a los rastreadores que no entren a `/v1` ni a `/descargas/`; el resto del sitio queda abierto |
 
