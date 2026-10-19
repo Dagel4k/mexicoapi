@@ -217,6 +217,24 @@ export function probarCli(correr: Correr, version: string): void {
     }
   });
 
+  // validarRfc deja valido: true con un mal dígito verificador y solo lo anota en errores; en la
+  // CLABE, la CURP y el NSS el mal dígito sí invalida. La ayuda lo dice.
+  it("un RFC con mal dígito verificador sale con 0 y la ayuda lo dice", async () => {
+    const rfc = await correr(["rfc", "XAXX010101001"]);
+    expect(rfc.codigo).toBe(0);
+    expect(rfc.salida).toContain("el dígito verificador no coincide");
+    const general = (await correr(["--help"])).salida;
+    expect(general).toContain("en el RFC, un mal dígito verificador solo se avisa");
+    expect(general).toContain("y sale con 0");
+    const ayudaRfc = (await correr(["rfc", "--help"])).salida;
+    expect(ayudaRfc).toContain(
+      "Un dígito verificador que no coincide solo se avisa: el RFC sigue siendo válido y sale con 0.",
+    );
+    for (const comando of ["clabe", "curp", "nss"]) {
+      expect((await correr([comando, "--help"])).salida, comando).not.toContain("solo se avisa");
+    }
+  });
+
   it("dias-habiles sin red usa el paquete y lo dice", async () => {
     const c = await correr(DIAS, { MEXICOAPI_BASE: "" });
     expect(c.codigo).toBe(0);

@@ -37,18 +37,19 @@ como los validadores.
 Códigos de salida:
   0   todo bien
   1   dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no
-      existe) o error al ejecutar
+      existe) o error al ejecutar; en el RFC, un mal dígito verificador solo se avisa
+      y sale con 0
   2   uso incorrecto: comando desconocido, falta un argumento u opción (--autoridad
       sat sin --tipo-plazo), sobra una (--tipo-plazo con lft) o tiene un valor mal
       formado (--dias x, sepomex cp 8000)
 
 Usa "mexicoapi <comando> --help" para el detalle de cada comando.`;
 
-const validador = (comando: string, que: string, ejemplo: string): string =>
+const validador = (comando: string, que: string, ejemplo: string, nota = ""): string =>
   `Uso: mexicoapi ${comando} <valor> [--json]
 
 Valida ${que}: formato y dígito verificador, sin red. No confirma que exista ante la
-institución que lo emite. Sale con 0 si es válido y con 1 si no lo es.
+institución que lo emite. Sale con 0 si es válido y con 1 si no lo es.${nota}
 
 Ejemplo: mexicoapi ${comando} ${ejemplo}`;
 
@@ -60,7 +61,12 @@ const COMANDOS: Readonly<Record<string, string>> = {
     "una CLABE y su banco con el catálogo del paquete",
     "002010077777777771",
   ),
-  rfc: validador("rfc", "un RFC de persona física, moral o genérico", "XAXX010101000"),
+  rfc: validador(
+    "rfc",
+    "un RFC de persona física, moral o genérico",
+    "XAXX010101000",
+    "\nUn dígito verificador que no coincide solo se avisa: el RFC sigue siendo válido y sale con 0.",
+  ),
   curp: validador("curp", "una CURP", "HEGG560427MVZRRL04"),
   nss: validador("nss", "un número de seguridad social del IMSS", "12345678903"),
   "dias-habiles": `Uso: mexicoapi dias-habiles --desde AAAA-MM-DD --dias N [--autoridad lft|cnbv|sat]
