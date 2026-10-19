@@ -1244,6 +1244,69 @@ describe("caché", () => {
     expect(llamadas).toHaveLength(3);
   });
 
+  it("descuenta de max-age la edad que trae la respuesta (Age)", async () => {
+    relojFalso();
+    const nuevo = { fecha_publicacion: "2026-10-16", valor: "19.0000" };
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos(FIX_API, { "Cache-Control": "public, max-age=300", Age: "299", ETag: '"a"' }),
+      respuestaDatos(nuevo, { "Cache-Control": "public, max-age=300" }),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    expect((await api.fixUltimo({ fuente: "api" })).data).toEqual(FIX_API);
+    vi.advanceTimersByTime(2_000);
+    expect((await api.fixUltimo({ fuente: "api" })).data).toEqual(nuevo);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[1]?.init.headers).toEqual({
+      Accept: "application/json",
+      "If-None-Match": '"a"',
+    });
+  });
+
+  it("una respuesta con Age de max-age o más se guarda ya caducada", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": "max-age=60", Age: "90", ETag: '"a"' }),
+      new Response(null, { status: 304, headers: { "Cache-Control": "max-age=60" } }),
+    );
+    const api = conFetch(fetch, { cache: true });
+    const primera = await api.estados({ fuente: "api" });
+    expect(await api.estados({ fuente: "api" })).toBe(primera);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[1]?.init.headers).toEqual({
+      Accept: "application/json",
+      "If-None-Match": '"a"',
+    });
+  });
+
+  it("con Age, el tope de ttlMs se sigue aplicando", async () => {
+    relojFalso();
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": "max-age=3600", Age: "100" }),
+      respuestaDatos([]),
+    );
+    const api = conFetch(fetch, { cache: { ttlMs: 60_000 } });
+    await api.estados({ fuente: "api" });
+    vi.advanceTimersByTime(59_999);
+    await api.estados({ fuente: "api" });
+    expect(llamadas).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect((await api.estados({ fuente: "api" })).data).toEqual([]);
+    expect(llamadas).toHaveLength(2);
+  });
+
+  it("no guarda lo que dice no-cache", async () => {
+    relojFalso();
+    const nuevo = { fecha_publicacion: "2026-10-16", valor: "19.0000" };
+    const { fetch, llamadas } = fetchFalso(
+      respuestaDatos(FIX_API, { "Cache-Control": "no-cache", ETag: '"a"' }),
+      respuestaDatos(nuevo, { "Cache-Control": "no-cache", ETag: '"b"' }),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    expect((await api.fixUltimo({ fuente: "api" })).data).toEqual(FIX_API);
+    expect((await api.fixUltimo({ fuente: "api" })).data).toEqual(nuevo);
+    expect(llamadas).toHaveLength(2);
+  });
+
   it("con cache: true usa 5 minutos y no guarda lo que dice no-store ni los errores", async () => {
     relojFalso();
     const { fetch, llamadas } = fetchFalso(
@@ -1416,6 +1479,32 @@ describe("respuesta guardada si la API falla (stale-if-error)", () => {
     await api2.estados({ fuente: "api" });
     vi.advanceTimersByTime(61_000);
     expect(((await rechazo(api2.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(404);
+  });
+
+  it("la ventana de stale-if-error también descuenta la edad (Age)", async () => {
+    relojFalso();
+    // Llega 240 s caducada: de los 600 s de stale-if-error le quedan 360.
+    const { fetch } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": CONTROL, Age: "300" }),
+      errorInterno(),
+      errorInterno(),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    await api.estados({ fuente: "api" });
+    vi.advanceTimersByTime(360_000);
+    expect((await api.estados({ fuente: "api" })).data).toEqual([SINALOA]);
+    vi.advanceTimersByTime(1);
+    expect(((await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(500);
+  });
+
+  it("una respuesta no-cache no se usa aunque traiga stale-if-error", async () => {
+    const { fetch } = fetchFalso(
+      respuestaDatos([SINALOA], { "Cache-Control": "no-cache, stale-if-error=600" }),
+      errorInterno(),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    await api.estados({ fuente: "api" });
+    expect(((await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(500);
   });
 
   it("la respuesta guardada sigue caducada: la siguiente consulta vuelve a la API", async () => {
