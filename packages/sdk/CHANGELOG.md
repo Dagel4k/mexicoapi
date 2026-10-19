@@ -10,6 +10,7 @@ Cambios de comportamiento. Revisa tu código si usas lo que nombran:
 - Cada validador tiene su propia `nota`: la de la CLABE ya no nombra al SAT, RENAPO ni el IMSS y, sin catálogo de bancos, dice que no revisó el banco. `NOTA_VALIDACION` sigue exportada, pero ningún validador la usa y queda obsoleta: usa `NOTAS_VALIDACION`.
 - `fixUltimo()` respondido con los datos del paquete (sin red, con `fuente: "paquete"` o de respaldo) trae siempre la advertencia `AVISO_SIN_API`: pueden faltar publicaciones recientes.
 - Con el SAT y `declaraciones_pagos`, advertencia nueva cuando el resultado cae fuera de las vacaciones publicadas: ese día podría ser de vacaciones y aplicaría la prórroga del art. 12. El resultado no cambia.
+- Los días de la LFT anteriores al 2024-10-01 (`diasDescansoLft`, `calendarioLft` y el cliente) citan el texto del art. 74 vigente entonces, el de la reforma del DOF 17-01-2006 (fracción VII: "1o. de diciembre"), con su `fecha_publicacion`; antes citaban el texto actual. Las fechas no cambian.
 - Textos más claros: el 422 del SAT `general` fuera de su cobertura sugiere `permitir_incompleto=true` y nombra `declaraciones_pagos` solo para plazos de declaraciones o pagos; el 404 del FIX con `publicado` en un día sin publicación sugiere `operacion`. La CLI muestra esos errores con sus opciones (`--tipo-plazo`, `--permitir-incompleto`) y rechaza con su nombre un `--tipo-plazo` que no existe.
 
 Nuevo:
