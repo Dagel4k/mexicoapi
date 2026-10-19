@@ -2,7 +2,7 @@
 
 ## Versiones soportadas
 
-Solo la última versión publicada recibe correcciones de seguridad.
+La API desplegada es siempre la de `main`: las correcciones llegan con el siguiente despliegue. Los paquetes de npm (`mexicoapi` y `mexicoapi-mcp`, que todavía no tienen versión publicada) reciben correcciones de seguridad solo en su última versión.
 
 ## Cómo reportar una vulnerabilidad
 
@@ -32,4 +32,4 @@ Los hallazgos de CodeQL, osv-scanner y Scorecard aparecen en la pestaña Securit
 
 ## Paquetes de npm
 
-Después de su primera versión, que se publica a mano, `mexicoapi` y `mexicoapi-mcp` se publican solo desde el workflow `publicacion.yml`, sin tokens (trusted publishing de npm) y con procedencia: la página de cada versión en npmjs.com enlaza el commit y la corrida que la publicaron, y `npm audit signatures` la verifica en un proyecto que instala los paquetes.
+Después de su primera versión, que se publica a mano, `mexicoapi` y `mexicoapi-mcp` se publican desde el workflow `publicacion.yml`, sin tokens (trusted publishing de npm) y con procedencia: la página de cada versión en npmjs.com enlaza el commit y la corrida que la publicaron, y `npm audit signatures` la verifica en un proyecto que instala los paquetes.
