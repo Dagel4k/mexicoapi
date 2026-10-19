@@ -932,7 +932,7 @@ Los parámetros se validan antes de consultar el dato. Estas peticiones dan 400:
 - un parámetro vacío o un segmento vacío en la query (`?&`);
 - un valor que no cumple su formato.
 
-Una ruta con `%` no se encuentra (404). Un cliente que agrega `?_=123` para saltarse el caché recibe 400.
+Una ruta con `%` no se encuentra (404). Un cliente que agrega `?_=123` para saltarse el caché recibe 400. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.
 
 Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `status` y `detail`, más `instance` y, cuando aplica, `parametro`. El `type` es un enlace a la sección correspondiente de [problemas.md](problemas.md) y es un identificador estable: dentro de `/v1` no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el `type` completo o la parte después de `#` (`parametro-invalido`). Nunca llevan trazas internas.
 
