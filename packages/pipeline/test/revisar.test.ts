@@ -231,6 +231,17 @@ describe("revisar", { timeout: PRUEBA_LENTA }, () => {
     expect(r.salida).toContain("no es la que arma el código: citation");
   });
 
+  it("un manifiesto que no es JSON o que no trae sus fuentes es un error", async () => {
+    await writeFile(join(despues, "udis", "manifest.json"), "{");
+    let r = await revisar();
+    expect(r.codigo).toBe(1);
+    expect(r.errores).toContain("udis: manifest.json no es JSON válido");
+    await writeFile(join(despues, "udis", "manifest.json"), JSON.stringify({ sources: "x" }));
+    r = await revisar();
+    expect(r.codigo).toBe(1);
+    expect(r.errores).toContain("udis: manifest.json no trae sus fuentes");
+  });
+
   it("datos sin manifiesto son un error", async () => {
     await rm(join(despues, "udis", "manifest.json"));
     const r = await revisar();
