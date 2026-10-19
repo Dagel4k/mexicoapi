@@ -31,7 +31,7 @@ Los pasos 1 a 4 son en Cloudflare, los 5 y 6 en GitHub y el 7, el token de KV, e
 
    Guárdalo en el Environment `produccion` como `CLOUDFLARE_KV_TOKEN`. `estado-kv` solo usa ese token, nunca el de despliegue: si falta (o falta `CLOUDFLARE_ACCOUNT_ID`), deja un aviso y no escribe el estado.
 
-Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los días. Puedes probarla con Actions, Frescura, Run workflow.
+Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los días. Puedes probarla con Actions, Frescura, Run workflow. La alerta de coberturas del mismo workflow no necesita `API_URL` ni secretos: corre desde el primer día.
 
 ## Qué hace cada workflow
 
@@ -39,7 +39,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 | --- | --- | --- |
 | `despliegue.yml` (cada merge a `main` y a mano desde `main`) | Compila, despliega a staging, corre la prueba de humo, despliega a producción, corre el humo otra vez y, si falla, revierte | Deja un aviso y termina en verde sin desplegar |
 | `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` y nunca con el token de despliegue | Sin `CLOUDFLARE_KV_TOKEN` o `CLOUDFLARE_ACCOUNT_ID`, deja un aviso y no escribe; el bot de datos funciona igual |
-| `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues | Sin `API_URL`, deja un aviso y termina en verde |
+| `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues; además, abre un issue por cada cobertura de los datos curados que termina en 30 días o menos | Sin `API_URL`, deja un aviso y no consulta `/v1/status`; la alerta de coberturas corre igual |
 
 ### Despliegue
 
@@ -76,6 +76,12 @@ Lee `/v1/status` con `GITHUB_TOKEN`, sin secretos de Cloudflare.
 - Un dataset desactualizado abre o comenta el issue `Datos desactualizados: <dataset>`; cuando vuelve a estar al día, el issue se cierra solo.
 - Un estado `unknown` no cuenta como desactualizado: significa que KV aún no tiene estado para ese dataset. Pasa hasta la primera corrida de `datos.yml` con los secretos.
 - Si `/v1/status` no responde o no devuelve un estado válido, abre o comenta `API sin respuesta` y la corrida queda en rojo, en lugar de abrir un issue por dataset.
+
+Además, sin `API_URL` ni secretos, revisa en `data/` hasta cuándo cubren los datos curados: cada tipo de plazo de los calendarios de la CNBV y el SAT, la vigencia de la última UMA y el último año del salario mínimo y de las tarifas de ISR (el comando `coberturas` del pipeline).
+
+- Por cada cobertura que termina en 30 días o menos, o que ya terminó, abre un issue `Cobertura por vencer: <cobertura>` con el procedimiento de [datos-curados.md](datos-curados.md). Si ya hay uno abierto, reescribe su descripción con los días que faltan, sin comentar cada día.
+- Nunca cierra uno de estos issues: se cierra a mano al integrar el PR con la publicación nueva.
+- Va en dos jobs: el que instala y corre el pipeline solo puede leer el repositorio, y el que abre los issues solo puede escribir issues y no instala nada.
 
 ### Estado en KV
 
