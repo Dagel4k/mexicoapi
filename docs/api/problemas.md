@@ -21,7 +21,7 @@ Campos de siempre: `type`, `title`, `status`, `detail` (el motivo, en español) 
 Status 400. Un parámetro de ruta o de query tiene un formato incorrecto. También lo causan un parámetro repetido, un parámetro vacío y una query con un segmento sin nombre (`?&`). El campo `parametro` dice cuál es, salvo cuando la query tiene un segmento sin nombre.
 
 ```bash
-curl https://<base>/v1/estados/99x
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados/99x
 ```
 
 ```json
@@ -44,7 +44,7 @@ Qué hacer: corrige el valor. El `detail` dice el formato esperado.
 Status 400. La ruta no acepta ese parámetro de query. Aplica también a las rutas que no tienen ninguno, y a los que se agregan para saltarse el caché (`?_=123`).
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2026-01-01&dias=3&x=1"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=2026-01-01&dias=3&x=1"
 ```
 
 ```json
@@ -65,7 +65,7 @@ Qué hacer: quita el parámetro. Si es para evitar el caché, no hace falta: los
 Status 400. Falta un parámetro obligatorio. Tienen parámetros de query obligatorios `dias-habiles` (`autoridad`, `desde` y `dias`, más `tipo_plazo` con `autoridad=sat`), `dias-inhabiles` (`autoridad` y `anio`), `udis` y `/v1/constantes/uma` (`fecha`). `/v1/tipo-cambio/fix` pide exactamente uno de `publicado` u `operacion`: sin ninguno, el `detail` es `Indica publicado u operacion.` y no hay `parametro`.
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=lft&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&dias=3"
 ```
 
 ```json
@@ -86,7 +86,7 @@ Qué hacer: agrega el parámetro que indica `parametro`.
 Status 404. La ruta no existe dentro de `/v1`, o el estado, municipio o banco tiene un formato correcto pero no está en el catálogo. Una ruta con `%` tampoco se encuentra. Fuera de `/v1` (`/v2`, `/descargas/nada`), una dirección que no existe responde 404 con una página HTML y no con este tipo.
 
 ```bash
-curl https://<base>/v1/estados/99
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados/99
 ```
 
 ```json
@@ -109,7 +109,7 @@ En el tipo de cambio FIX, las UDIS y `/v1/constantes/uma?fecha=`, este tipo es d
 - En las UDIS: solo una fecha anterior al inicio de la serie. Hay un valor para cada día, así que dentro de la serie no falta ninguno; una fecha posterior a lo cargado es `dato-no-disponible`.
 
 ```bash
-curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10-10"
 ```
 
 ```json
@@ -127,7 +127,7 @@ curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
 Antes del inicio de la serie, el `detail` dice dónde empieza:
 
 ```bash
-curl "https://<base>/v1/udis?fecha=2019-12-31"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2019-12-31"
 ```
 
 ```json
@@ -149,7 +149,7 @@ Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`
 Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie (salvo en el FIX con `publicado` un fin de semana o día de descanso de la CNBV con solo días así desde el último dato, que es [`no-encontrado`](#no-encontrado)) o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (los días de descanso de la CNBV no cuentan dentro de la cobertura de su calendario; fuera de ella, un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
 
 ```bash
-curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-20"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10-20"
 ```
 
 ```json
@@ -175,7 +175,7 @@ Qué hacer: en el FIX y las UDIS, reintenta después de la siguiente actualizaci
 Status 405. La API es de solo lectura: acepta `GET`, `HEAD` y `OPTIONS`. La respuesta trae `Allow: GET, HEAD, OPTIONS`.
 
 ```bash
-curl -X POST https://<base>/v1/estados
+curl -X POST https://mexicoapi.dagel4k.workers.dev/v1/estados
 ```
 
 ```json
@@ -195,7 +195,7 @@ Qué hacer: usa `GET`.
 Status 422. El cálculo cruza fechas que el calendario no cubre. Hoy el calendario `lft` va del 2007-01-01 al 2100-12-31, el de la `cnbv` del 2025-01-01 al 2026-12-31 y el del `sat` del 2026-01-01 al 2100-12-31 (con `tipo_plazo=general`, hasta el 2026-11-30, mientras no se publique el segundo periodo de vacaciones de 2026). El problema trae además `autoridad`, `fecha` (la primera fecha sin cobertura) y `cobertura`.
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
 ```
 
 ```json

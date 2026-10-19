@@ -4,7 +4,9 @@ API de solo lectura con los datos de referencia de MéxicoAPI. Responde JSON en 
 
 ## URL base
 
-La API se publica primero en `workers.dev` y después en un dominio propio. Mientras no haya dominio propio, los ejemplos usan `https://<base>`; si lees esto en `/llms-full.txt`, la base es ese mismo origen. Las respuestas de ejemplo salen de una corrida local del Worker. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
+La API pública está en `https://mexicoapi.dagel4k.workers.dev`, en `workers.dev` de Cloudflare; todavía no tiene dominio propio. Los ejemplos usan esa base. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
+
+Las respuestas de ejemplo son las de la API el 2026-10-18, casi todas recortadas. Los valores que cambian con cada actualización (`as_of`, `cobertura`, `records`, `data_sha256`, `ETag`) pueden ser otros cuando lo leas.
 
 Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
@@ -89,8 +91,8 @@ Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta
 ## Estados
 
 ```bash
-curl https://<base>/v1/estados
-curl https://<base>/v1/estados/25
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados/25
 ```
 
 `cve_ent` son dos dígitos con cero a la izquierda. La lista completa trae 32 estados; este fragmento muestra 2 (`meta` omitido):
@@ -109,9 +111,9 @@ curl https://<base>/v1/estados/25
 ## Municipios
 
 ```bash
-curl https://<base>/v1/municipios
-curl https://<base>/v1/municipios/25006
-curl https://<base>/v1/estados/25/municipios
+curl https://mexicoapi.dagel4k.workers.dev/v1/municipios
+curl https://mexicoapi.dagel4k.workers.dev/v1/municipios/25006
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados/25/municipios
 ```
 
 `cvegeo` son cinco dígitos: la clave del estado más la del municipio.
@@ -137,8 +139,8 @@ En las 16 alcaldías de la Ciudad de México, la fuente no trae cabecera y `cve_
 ## Bancos
 
 ```bash
-curl https://<base>/v1/bancos
-curl https://<base>/v1/bancos/012
+curl https://mexicoapi.dagel4k.workers.dev/v1/bancos
+curl https://mexicoapi.dagel4k.workers.dev/v1/bancos/012
 ```
 
 `codigo` son los tres dígitos que van al inicio de la CLABE. La lista trae las instituciones activas e inactivas. Un banco inactivo se conserva con `activo: false` para decodificar CLABE antiguas. Respuesta de `/v1/bancos/012` (con `meta.sources` recortado a la primera fuente; la segunda es el documento de participantes directos del SPEI):
@@ -168,7 +170,7 @@ Los periodos de `historial` son intervalos `[desde, hasta)` observados, no fecha
 ## clabe
 
 ```bash
-curl https://<base>/v1/clabe/002010077777777771
+curl https://mexicoapi.dagel4k.workers.dev/v1/clabe/002010077777777771
 ```
 
 Valida una CLABE de 18 dígitos: formato, dígito verificador y banco contra el catálogo. La respuesta separa cada revisión:
@@ -213,7 +215,7 @@ Una CLABE que no tiene 18 dígitos da 400 (`parametro-invalido`). La validación
 ## dias-habiles
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2026-12-18&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=2026-12-18&dias=3"
 ```
 
 Suma días hábiles a una fecha según el calendario de una autoridad: `lft`, `cnbv` o `sat`. El plazo empieza a contar el día hábil siguiente a `desde`, sea `desde` hábil o no: del viernes 18 de diciembre de 2026, el día 1 es el lunes 21 y el día 3 el miércoles 23.
@@ -286,7 +288,7 @@ El `fragmento` y la advertencia reales traen el texto completo; aquí se acortar
 Con `autoridad=cnbv` se descuentan los días que las disposiciones de la CNBV mandan cerrar a las entidades financieras (por ejemplo, el 12 y el 25 de diciembre), además de sábados y domingos. Es el calendario bancario, no el de la CNBV como autoridad: para un plazo en un procedimiento ante la Comisión cuentan sus propios días de suspensión de labores, que no están aquí. Del miércoles 23 de diciembre de 2026, 3 días hábiles caen el martes 29:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=cnbv&desde=2026-12-23&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=cnbv&desde=2026-12-23&dias=3"
 ```
 
 ```json
@@ -326,8 +328,8 @@ Con `autoridad=sat`, `tipo_plazo` es obligatorio. El artículo 12 del Código Fi
 Del viernes 17 de julio de 2026, 3 días hábiles dan resultados distintos porque el primer periodo general de vacaciones de 2026 va del 20 al 31 de julio:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-17&dias=3"
-curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-07-17&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-17&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-07-17&dias=3"
 ```
 
 Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` trae los 12 días de vacaciones (del 2026-07-20 al 2026-07-31, con `tipo: "vacaciones"`). Con `declaraciones_pagos` el resultado es el miércoles 2026-07-22 y `inhabiles_saltados` queda vacío. Como el 22 de julio es de vacaciones del SAT, `advertencias` trae el aviso de la [prórroga del artículo 12](#prórroga-del-artículo-12-del-cff):
@@ -362,7 +364,7 @@ El quinto párrafo del artículo 12 prorroga el plazo al siguiente día hábil s
 Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día de vacaciones del SAT (hábil en estos plazos) o en un día de cierre bancario del [calendario de la CNBV](#cnbv), `advertencias` lo dice:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
 ```
 
 El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos, y un resultado dentro de un periodo de vacaciones que todavía no se publica (diciembre de 2026, mientras falte el segundo periodo) no la trae por eso. En esos casos el resultado sigue siendo el último día del cómputo, nunca posterior al vencimiento legal.
@@ -372,7 +374,7 @@ El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-0
 El calendario `lft` cubre del 2007-01-01 al 2100-12-31. Si el cálculo cruza esos límites, responde 422 `calendario-incompleto` y nombra la fecha que falta:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=2100-12-30&dias=3"
 ```
 
 ```json
@@ -418,7 +420,7 @@ El plazo `general` del SAT termina el 30 de noviembre de 2026 porque el segundo 
 Fuera de la cobertura responde 422 `calendario-incompleto`. Cuando otro `tipo_plazo` sí cubre la fecha, el `detail` lo dice:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=5"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=5"
 ```
 
 ```json
@@ -437,7 +439,7 @@ curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026
 Con `permitir_incompleto=true`, un plazo que tiene calendario de respaldo no se limita a los fines de semana: sigue descontando los días ya conocidos (el 25 de diciembre y los demás días del artículo 12) y avisa de lo que puede faltar. Del 27 de noviembre de 2026, 20 días hábiles con `tipo_plazo=general`:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=20&permitir_incompleto=true"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-11-27&dias=20&permitir_incompleto=true"
 ```
 
 ```json
@@ -465,7 +467,7 @@ El resultado puede cambiar cuando se publique el periodo de vacaciones faltante.
 Con la CNBV no hay respaldo: después del 31 de diciembre de 2026 solo se descuentan fines de semana, y la advertencia nombra el riesgo, porque los bancos cierran días que no son fin de semana:
 
 ```bash
-curl "https://<base>/v1/dias-habiles?autoridad=cnbv&desde=2026-12-31&dias=1&permitir_incompleto=true"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=cnbv&desde=2026-12-31&dias=1&permitir_incompleto=true"
 ```
 
 ```json
@@ -486,9 +488,9 @@ Esta ruta es una calculadora, no asesoría legal. Para un plazo procesal o fisca
 ## dias-inhabiles
 
 ```bash
-curl "https://<base>/v1/dias-inhabiles?autoridad=lft&anio=2026"
-curl "https://<base>/v1/dias-inhabiles?autoridad=cnbv&anio=2026"
-curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2026"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=lft&anio=2026"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=cnbv&anio=2026"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
 Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`).
@@ -535,7 +537,7 @@ El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha pu
 Para un plazo de declaraciones y pagos la lista de 2026 está completa; para un plazo general falta lo que el SAT publique para diciembre. Cuando se capture ese periodo, la advertencia desaparece. De 2027 a 2100 la lista trae los 8 días del artículo 12, calculados por regla, con la misma advertencia mientras no se publiquen las vacaciones de ese año:
 
 ```bash
-curl "https://<base>/v1/dias-inhabiles?autoridad=sat&anio=2027"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=sat&anio=2027"
 ```
 
 ```json
@@ -567,7 +569,7 @@ En `/v1/tipo-cambio/fix` hay que mandar exactamente uno de `publicado` y `operac
 `publicado` busca la fecha en que el DOF publicó el valor. Solo hay publicación en los días hábiles bancarios, así que un fin de semana o un feriado bancario no tiene valor.
 
 ```bash
-curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-16"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10-16"
 ```
 
 ```json
@@ -597,7 +599,7 @@ El Banco de México, en el SIE y en su sitio, muestra el FIX por fecha de determ
 `operacion` aplica el artículo 20 del Código Fiscal de la Federación: para una operación se usa el FIX que el Banco de México publicó el día anterior y, si ese día no hubo publicación, el último publicado antes. La respuesta dice qué publicación se usó y cita el fundamento:
 
 ```bash
-curl "https://<base>/v1/tipo-cambio/fix?operacion=2026-10-19"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10-19"
 ```
 
 ```json
@@ -625,7 +627,7 @@ La mañana después de un feriado bancario la respuesta ya es cierta. Por ejempl
 ### Último
 
 ```bash
-curl https://<base>/v1/tipo-cambio/fix/ultimo
+curl https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix/ultimo
 ```
 
 Responde `{ "data": { "fecha_publicacion": "2026-10-16", "valor": "18.4250" }, "meta": … }`, con la misma `meta` de arriba y `Cache-Control: public, max-age=300` (ver [Caché y ETag](#caché-y-etag)).
@@ -642,7 +644,7 @@ Hay dos 404 distintos, y conviene mirar el `type`, no solo el estado HTTP:
 Los dos traen `fecha` (la pedida) y `cobertura` (`desde` y `hasta` de la serie cargada). Para saber qué valor aplica a una operación de un día sin publicación, usa `operacion` en lugar de `publicado`.
 
 ```bash
-curl "https://<base>/v1/tipo-cambio/fix?publicado=2026-10-10"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10-10"
 ```
 
 ```json
@@ -666,7 +668,7 @@ El valor de la Unidad de Inversión (UDI) que el Banco de México publica en el 
 `GET /v1/udis?fecha=AAAA-MM-DD` responde el valor de la UDI de ese día. Hay un valor para cada día del calendario, fines de semana y feriados incluidos, porque la UDI se publica por adelantado para los días siguientes. Por eso la serie llega unos días después de la fecha de la última corrida.
 
 ```bash
-curl "https://<base>/v1/udis?fecha=2026-10-18"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2026-10-18"
 ```
 
 ```json
@@ -686,7 +688,7 @@ En el ejemplo `sources` se muestra vacío por brevedad; la respuesta real trae l
 Los 404 son los mismos que en el FIX. Una fecha anterior al 2020-01-01 da `no-encontrado`; una posterior al último valor cargado da `dato-no-disponible`, porque una publicación próxima puede cubrirla:
 
 ```bash
-curl "https://<base>/v1/udis?fecha=2026-12-01"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2026-12-01"
 ```
 
 ```json
@@ -719,7 +721,7 @@ Los montos son texto con dos decimales, sin separador de miles, para no perder p
 Cada UMA rige del 1 de febrero de su año al 31 de enero del siguiente, así que en enero `fecha` responde la UMA del año anterior:
 
 ```bash
-curl "https://<base>/v1/constantes/uma?fecha=2026-01-15"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/constantes/uma?fecha=2026-01-15"
 ```
 
 ```json
@@ -751,7 +753,7 @@ curl "https://<base>/v1/constantes/uma?fecha=2026-01-15"
 ### Salario mínimo
 
 ```bash
-curl https://<base>/v1/constantes/salario-minimo/2026
+curl https://mexicoapi.dagel4k.workers.dev/v1/constantes/salario-minimo/2026
 ```
 
 `data` es una lista con un elemento por zona (`general` y `zlfn`, la Zona Libre de la Frontera Norte). Cada elemento trae `anio`, `zona`, `diario`, `vigencia_desde` y `fuente`:
@@ -769,7 +771,7 @@ curl https://<base>/v1/constantes/salario-minimo/2026
 ### Tarifas de ISR
 
 ```bash
-curl https://<base>/v1/isr/tarifa/mensual/2026
+curl https://mexicoapi.dagel4k.workers.dev/v1/isr/tarifa/mensual/2026
 ```
 
 `data` trae `anio`, `periodo`, `tramos` y `fuente`. Cada tramo es `limite_inferior`, `limite_superior` (`null` en el último), `cuota_fija` y `tasa_excedente`, en pesos y por ciento. Dos de los tramos de la mensual de 2026 (la respuesta real trae todos):
@@ -806,8 +808,8 @@ Un año que no está cargado da 404, y el `type` dice cuál de los dos casos es:
 | [`dato-no-disponible`](problemas.md#dato-no-disponible) | El año es posterior al último cargado. Puede llegar cuando el DOF lo publique | `/v1/constantes/uma/2030` |
 
 ```bash
-curl https://<base>/v1/constantes/uma/2016
-curl https://<base>/v1/constantes/uma/2030
+curl https://mexicoapi.dagel4k.workers.dev/v1/constantes/uma/2016
+curl https://mexicoapi.dagel4k.workers.dev/v1/constantes/uma/2030
 ```
 
 ```json
@@ -835,7 +837,7 @@ Las rutas por año no traen `fecha` ni `cobertura`; el rango de años cargados v
 ## status
 
 ```bash
-curl https://<base>/v1/status
+curl https://mexicoapi.dagel4k.workers.dev/v1/status
 ```
 
 Frescura de cada dataset. Responde `{ "data": [...] }` sin `meta`:
@@ -896,7 +898,7 @@ Los datos se actualizan como máximo una vez al día, así que una hora de cach�
 Las rutas de estados, municipios y bancos, y `/v1/openapi.json`, traen `ETag`. Si lo mandas en `If-None-Match`, responde 304 sin cuerpo:
 
 ```bash
-curl -i -H 'If-None-Match: "2124ff58da103db22f553c325831f0c5"' https://<base>/v1/estados/25
+curl -i -H 'If-None-Match: "2124ff58da103db22f553c325831f0c5"' https://mexicoapi.dagel4k.workers.dev/v1/estados/25
 ```
 
 ```
@@ -965,7 +967,7 @@ Los datos completos están en `/descargas/`:
 Para verificar lo que descargaste:
 
 ```bash
-curl -O https://<base>/descargas/SHA256SUMS
+curl -O https://mexicoapi.dagel4k.workers.dev/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing
 ```
 
@@ -994,7 +996,7 @@ Una dirección que no existe fuera de `/v1` (`/v2`, `/descargas/nada`) responde 
 
 ## Privacidad
 
-El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete de npm cuando esté disponible.
+El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él) y cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` ([packages/sdk](../../packages/sdk/README.md)), que se publicará en npm.
 
 Los datos son públicos y la API no usa cookies.
 
