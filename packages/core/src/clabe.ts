@@ -75,7 +75,8 @@ export function validarClabe(
   clabe: string,
   catalogos?: { bancos?: ReadonlyMap<string, BancoClabe>; plazas?: ReadonlyMap<string, Plaza> },
 ): ResultadoValidacionClabe {
-  const revisado = catalogos?.bancos !== undefined;
+  // null es no pasar catálogo, como undefined (en la 0.1.0 se revisaba si era truthy).
+  const revisado = catalogos?.bancos != null;
   return conBanco(validar(clabe, catalogos, revisado), revisado);
 }
 
