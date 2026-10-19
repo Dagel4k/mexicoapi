@@ -2,12 +2,14 @@
 
 La API corre como un Worker de Cloudflare en el plan gratuito. Los workflows `despliegue.yml`, `frescura.yml` y el job `estado-kv` de `datos.yml` necesitan dos secretos y una variable de GitHub, y `estado-kv` usa además un token propio, solo para KV. Hasta que existan, los tres terminan en verde y solo dejan un aviso con el enlace a este documento.
 
+Estado: configurado el 2026-10-18. Producción está en https://mexicoapi.dagel4k.workers.dev y staging en el Worker `mexicoapi-staging`; los tres secretos están en el Environment `produccion`, limitado a `main`, y la variable `API_URL` apunta a producción. Los pasos de abajo sirven para repetir la puesta en marcha en otra cuenta o para revisarla.
+
 ## Puesta en marcha
 
 Los pasos 1 a 4 son en Cloudflare, los 5 y 6 en GitHub y el 7, el token de KV, en los dos. Los nombres de los menús pueden cambiar; si no encuentras uno, busca la pantalla que se describe.
 
 1. Crea una cuenta de Cloudflare en el plan gratuito. No hace falta tarjeta ni dominio. Cloudflare nombra la cuenta con tu correo: cámbiale el nombre por uno neutro (Manage Account, Configurations, nombre de la cuenta), porque wrangler puede imprimir el nombre de la cuenta en un error de autenticación y los logs de Actions de un repositorio público los puede leer cualquiera.
-2. Entra a Workers y Pages. La primera vez pide elegir el subdominio de `workers.dev` (por ejemplo `daniel`). Las URLs quedan como `https://mexicoapi.<subdominio>.workers.dev`. El subdominio es público, así que elígelo con cuidado.
+2. Entra a Workers y Pages. La primera vez pide elegir el subdominio de `workers.dev` (por ejemplo `mi-proyecto`). Las URLs quedan como `https://mexicoapi.<subdominio>.workers.dev`. El subdominio es público, así que elígelo con cuidado.
 3. Crea un token de API. En tu perfil, API Tokens, Create Token, Create Custom Token:
    - Permisos de cuenta: `Workers Scripts: Edit`, `Workers KV Storage: Edit` y `Account Settings: Read`.
    - Recursos de cuenta: solo tu cuenta (Include, Specific account).
@@ -105,7 +107,7 @@ Hazlo antes de la fecha de expiración, y de inmediato si sospechas que el token
 ## Límites del plan gratuito
 
 - 100,000 peticiones al día al Worker. Cada consulta a `/v1` cuenta; las descargas en `/descargas/*`, las páginas del sitio y el 404 de cualquier dirección fuera de `/v1` se sirven como assets estáticos y no cuentan.
-- Las escrituras en KV son pocas (de 1 a 3 al día: una por dataset en cada corrida de datos), muy por debajo del límite diario del plan.
+- Las escrituras en KV son pocas (3 al día y 5 los lunes: una por dataset en cada corrida programada de datos, más las corridas a mano), muy por debajo del límite diario del plan.
 - El límite de peticiones por IP es parte de la configuración del Worker y no tiene costo.
 
 Si el tráfico supera el límite diario, el Worker falla hasta el día siguiente. El plan de pago de 5 USD al mes sube el límite a 10 millones al mes.

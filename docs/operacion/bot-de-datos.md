@@ -2,9 +2,11 @@
 
 El workflow `.github/workflows/datos.yml` actualiza los datos de `data/` y abre PRs con los cambios. Usa una GitHub App propia, con tokens de corta vida, en lugar de un token personal. Mientras la App no exista, el workflow termina en verde y solo deja un aviso.
 
+Estado: configurado el 2026-10-18. La App `mexicoapi-datos` está instalada solo en este repositorio, sus secretos están en el Environment `datos`, limitado a `main`, y la regla de ramas del paso 5 está activa. Los pasos de abajo sirven para repetir la puesta en marcha o para revisarla.
+
 ## Puesta en marcha
 
-1. Crear la GitHub App en la cuenta de Daniel (Settings, Developer settings, GitHub Apps). Sin webhook (desmarcar "Active"). Permisos de repositorio:
+1. Crear la GitHub App en la cuenta dueña del repositorio (Settings, Developer settings, GitHub Apps). Sin webhook (desmarcar "Active"). Permisos de repositorio:
    - Contents: lectura y escritura.
    - Pull requests: lectura y escritura.
    - Issues: lectura y escritura.
