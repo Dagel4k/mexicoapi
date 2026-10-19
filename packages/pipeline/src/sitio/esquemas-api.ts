@@ -40,7 +40,11 @@ export const esquemaProblema = z.object({
   instance: z.string().optional().describe("Ruta pedida."),
   parametro: z.string().optional().describe("Parámetro que causó el problema."),
   autoridad: z.string().optional().describe("Autoridad del calendario consultado."),
-  fecha: fechaIso.optional().describe("Fecha pedida que el calendario o la serie no cubre."),
+  fecha: fechaIso
+    .optional()
+    .describe(
+      "En un 422 calendario-incompleto, el primer día del cálculo que el calendario no cubre (puede ser posterior a la fecha de partida). En un 404 del FIX, las UDIS o la UMA, la fecha de la consulta (publicado, operacion o fecha), que puede estar dentro de la cobertura de la serie: por ejemplo, un día en que no hubo publicación.",
+    ),
   cobertura: z
     .object({
       desde: fechaIso.describe("Primer día cubierto."),
@@ -62,7 +66,12 @@ const autoridad = z.enum(AUTORIDADES).describe("Autoridad del calendario.");
 export const esquemaDiaInhabil = z.object({
   fecha: fechaIso.describe("Día inhábil (AAAA-MM-DD)."),
   motivo: z.string().describe("Motivo del día inhábil."),
-  tipo: z.enum([...TIPOS_DIA_CURADO, "fin_de_semana"]).describe("Tipo de día inhábil."),
+  // La API no lista los fines de semana: solo los tipos curados.
+  tipo: z
+    .enum(TIPOS_DIA_CURADO)
+    .describe(
+      "Tipo de día inhábil: descanso (de ley) o vacaciones (del SAT). El tipo DiaInhabil del paquete mexicoapi admite además fin_de_semana, que la API nunca da.",
+    ),
   fuente: esquemaFuente.describe("Fuente que lo establece."),
 });
 
@@ -152,26 +161,27 @@ export const esquemaTarifaIsr: z.ZodType<TarifaIsr> = z.object({
   ),
 });
 
-const codigoError = z.enum([
-  "vacio",
-  "longitud",
-  "caracteres",
-  "estructura",
-  "fecha",
-  "entidad",
-  "banco",
-  "digito_verificador",
-]);
+// La ruta rechaza con 400 una CLABE vacía, de otra longitud o con otros caracteres: aquí solo
+// llegan los errores que se revisan con 18 dígitos.
+const codigoError = z.enum(["banco", "digito_verificador"]);
 
 export const esquemaResultadoClabe = z.object({
   valor: z.string().describe("Valor normalizado que se validó."),
   valido: z.boolean().describe("Si el valor es una CLABE válida."),
-  formato_valido: z.boolean().describe("Si la longitud y los caracteres son correctos."),
+  formato_valido: z
+    .boolean()
+    .describe(
+      "Si la longitud, los caracteres y el código de banco son correctos: false si el banco no está en el catálogo (activo o no). La ruta ya rechaza con 400 una longitud o unos caracteres que no son de una CLABE, así que en la API false solo significa un banco que no existe.",
+    ),
   digito_verificador_valido: z
     .boolean()
     .nullable()
     .describe("Si el dígito de control coincide; null si el formato es inválido."),
-  errores: z.array(codigoError).describe("Códigos de los errores encontrados."),
+  errores: z
+    .array(codigoError)
+    .describe(
+      "Códigos de los errores encontrados: banco (el código de banco no está en el catálogo) o digito_verificador. validarClabe del paquete mexicoapi, que valida sin pasar por la ruta, también da vacio, caracteres o longitud.",
+    ),
   nota: z.string().describe("Alcance de la validación."),
   detalle: z
     .object({
@@ -194,7 +204,9 @@ export const esquemaResultadoClabe = z.object({
           estado: z.string().describe("Estado de la plaza."),
         })
         .nullable()
-        .describe("Plaza del catálogo; null si no se encontró."),
+        .describe(
+          "Plaza del catálogo; null si no se encontró. La API no tiene catálogo de plazas: hoy siempre null.",
+        ),
     })
     .nullable()
     .describe("Partes de la CLABE; null si el formato es inválido."),
