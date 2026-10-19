@@ -22,7 +22,11 @@ export function sumarDiasHabiles(parametros: {
   dias: number;
   permitirIncompleto?: boolean;
 }): ResultadoDiasHabiles {
-  const { calendario, desde, dias, permitirIncompleto = false } = parametros;
+  const { desde, dias, permitirIncompleto = false } = parametros;
+  // Con permitirIncompleto, el respaldo del calendario (si tiene) da lo que se sabe fuera de su
+  // cobertura; su aviso va antes que las demás advertencias, como en la API.
+  const respaldo = permitirIncompleto ? parametros.calendario.respaldo : undefined;
+  const calendario = respaldo?.calendario ?? parametros.calendario;
   if (!Number.isInteger(dias) || dias < 1 || dias > DIAS_MAX) {
     throw new RangeError(`Los días deben ser un entero de 1 a ${DIAS_MAX}: ${dias}`);
   }
@@ -67,6 +71,8 @@ export function sumarDiasHabiles(parametros: {
   }
 
   if (calendario.avisos !== undefined) advertencias.push(...calendario.avisos(desde, actual));
+  const delRespaldo = respaldo?.aviso(desde, actual);
+  if (delRespaldo !== undefined) advertencias.unshift(delRespaldo);
   return {
     autoridad,
     desde,

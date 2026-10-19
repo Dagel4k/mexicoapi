@@ -253,6 +253,36 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     expect(dentro.data.advertencias).toEqual([]);
   });
 
+  // Cambio: calendario("sat", "general") con permitirIncompleto daba el 25 de diciembre (inhábil
+  // por el art. 12) y la API el 28; ahora el núcleo usa el respaldo del plazo, como la API.
+  it.skipIf(!SAT_GENERAL_CORTO)(
+    "sumarDiasHabiles con calendario('sat', 'general') da lo mismo que el cliente",
+    async () => {
+      const { general, amplia } = m.calendarios.calendarioCurado("sat");
+      for (const [desde, dias] of [
+        [general.cobertura.hasta, 20],
+        [mover(general.cobertura.hasta, -3), 5],
+        [mover(amplia.hasta, -11), 20],
+        ["2026-07-17", 3],
+      ] as const) {
+        const cliente = await api.diasHabiles({
+          autoridad: "sat",
+          tipoPlazo: "general",
+          desde,
+          dias,
+          permitirIncompleto: true,
+        });
+        const nucleo = m.mexicoapi.sumarDiasHabiles({
+          calendario: m.calendarios.calendario("sat", "general"),
+          desde,
+          dias,
+          permitirIncompleto: true,
+        });
+        expect(nucleo, desde).toEqual(cliente.data);
+      }
+    },
+  );
+
   it("lista los días inhábiles con las advertencias de primer nivel de la API", async () => {
     const cnbv = await api.diasInhabiles({ autoridad: "cnbv", anio: 2026 });
     expect(cnbv.data).toEqual(

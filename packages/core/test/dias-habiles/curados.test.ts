@@ -783,28 +783,62 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     ]);
   });
 
-  it("sumarDiasHabiles con el calendario de un plazo, sin respaldo, nombra lo que puede faltar", () => {
-    // El camino de bajo nivel: el calendario del plazo general no sigue con el respaldo, así que
-    // el 25 de diciembre cuenta como hábil; la advertencia lo dice. El cliente usa el respaldo.
+  it("sumarDiasHabiles con el calendario de un plazo usa su respaldo, como la API", () => {
+    // Cambio: el camino de bajo nivel (calendario("sat", "general") en el SDK) daba el 25 de
+    // diciembre, inhábil por el art. 12; ahora sigue con el respaldo, con las advertencias de la API.
     const general = sumarDiasHabiles({
       calendario: SAT.general.calendario,
       desde: "2026-12-23",
       dias: 2,
       permitirIncompleto: true,
     });
-    expect(general).toMatchObject({
-      resultado: "2026-12-25",
-      advertencias: [
-        `Calendario incompleto: SAT 2026; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
-      ],
-    });
-    expect(sat("general", "2026-12-23", 2, true).resultado).toBe("2026-12-28");
+    expect(general).toMatchObject({ resultado: "2026-12-28", advertencias: [AVISO_GENERAL] });
+    expect(general).toEqual(sat("general", "2026-12-23", 2, true));
+    // Sin permitirIncompleto no lo usa: fuera de la cobertura lanza, como antes.
+    const error = incompleto(() =>
+      sumarDiasHabiles({ calendario: SAT.general.calendario, desde: "2026-12-23", dias: 2 }),
+    );
+    expect(error).toMatchObject({ fecha: "2026-12-24", cobertura: COBERTURA_GENERAL });
+    expect(SAT.general.calendario.respaldo?.calendario).toBe(SAT.general.respaldo);
+    expect(SAT.plazos.get("declaraciones_pagos")?.calendario.respaldo).toBeUndefined();
+    expect(CNBV.general.calendario.respaldo).toBeUndefined();
     expect(SAT.general.calendario.faltaFuera).toBe(FALTA_ART_12_Y_VACACIONES);
     expect(SAT.general.respaldo?.faltaFuera).toBe(FALTA_ART_12_Y_VACACIONES);
     expect(SAT.plazos.get("declaraciones_pagos")?.calendario.faltaFuera).toBe(FALTA_ART_12);
     expect(CNBV.general.calendario.faltaFuera).toBe(
       "Pueden faltar días de cierre bancario, como el 1 de enero.",
     );
+  });
+
+  it.each([
+    ["2026-07-15", 10],
+    ["2026-11-27", 2],
+    ["2026-12-24", 5],
+    ["2030-09-30", 1],
+    ["2100-12-31", 1],
+    ["2025-12-30", 2],
+    // Empieza antes de 2026 y pasa del fin de general: el aviso del respaldo va antes que el del año.
+    ["2025-12-30", 240],
+  ] as const)(
+    "con permitirIncompleto, el núcleo da lo mismo que sumarDiasHabilesCurado: %s + %i",
+    (desde, dias) => {
+      const nucleo = sumarDiasHabiles({
+        calendario: SAT.general.calendario,
+        desde,
+        dias,
+        permitirIncompleto: true,
+      });
+      expect(nucleo).toEqual(sat("general", desde, dias, true));
+    },
+  );
+
+  it("el aviso del respaldo va antes que el del año sin calendario", () => {
+    const r = sat("general", "2025-12-30", 240, true);
+    expect(r.resultado > "2026-11-30").toBe(true);
+    expect(r.advertencias).toEqual([
+      AVISO_GENERAL,
+      `Calendario incompleto: SAT 2025; solo se descontaron fines de semana. ${FALTA_ART_12_Y_VACACIONES}`,
+    ]);
   });
 
   it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre de 2030", () => {
