@@ -318,7 +318,7 @@ describe("página de inicio", () => {
 
   // Un comando copiable de un paquete que no existe en npm falla, o instala el de otra persona.
   it("mientras no estén en npm, solo avisa, sin comandos de instalación ni configuración", () => {
-    expect(PUBLICADO_EN_NPM).toBe(false);
+    const html = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, false);
     expect(html.match(/se publicará en npm/g)).toHaveLength(2);
     const codigo = bloquesDeCodigo(html).join("\n");
     for (const texto of ["npm install", "npx", "mexicoapi-mcp", "mcpServers", 'from "mexicoapi"']) {
@@ -332,7 +332,9 @@ describe("página de inicio", () => {
     expect(html).toContain(
       '<p class="aviso"><strong>Pendiente:</strong> el servidor se publicará en npm; mientras tanto, usa la API.</p>',
     );
-    const publicado = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, true);
+    // Ya están en npm (0.1.0, 2026-10-18): la página que se publica es la de los paquetes publicados.
+    expect(PUBLICADO_EN_NPM).toBe(true);
+    const publicado = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS });
     expect(publicado).not.toContain("se publicará en npm");
     expect(publicado).not.toContain('class="aviso"');
     expect(publicado).toContain("npm install mexicoapi");

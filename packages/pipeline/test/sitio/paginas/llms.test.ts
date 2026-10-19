@@ -212,11 +212,13 @@ describe("llms.txt", () => {
   });
 
   it("dice que el paquete y el servidor MCP todavía no están en npm mientras no lo estén", () => {
-    expect(PUBLICADO_EN_NPM).toBe(false);
-    expect(texto).toContain("todavía no están publicados en npm");
-    expect(texto).not.toContain("npx");
-    expect(texto).not.toContain("npm install");
-    const publicado = archivoLlms(DATASETS, true);
+    const pendiente = archivoLlms(DATASETS, false);
+    expect(pendiente).toContain("todavía no están publicados en npm");
+    expect(pendiente).not.toContain("npx");
+    expect(pendiente).not.toContain("npm install");
+    // Ya están en npm (0.1.0, 2026-10-18): el llms.txt que se publica trae los comandos.
+    expect(PUBLICADO_EN_NPM).toBe(true);
+    const publicado = texto;
     expect(publicado).not.toContain("no están publicados");
     expect(publicado).toContain("`npm install mexicoapi`");
     expect(publicado).toContain("`npx -y mexicoapi-mcp`");

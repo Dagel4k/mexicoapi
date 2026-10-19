@@ -7,7 +7,7 @@ describe("lo común del sitio", () => {
     expect(porNombre("x", "x")).toBe(0);
   });
 
-  it("los paquetes todavía no están en npm", () => {
-    expect(PUBLICADO_EN_NPM).toBe(false);
+  it("los paquetes ya están en npm (0.1.0, 2026-10-18)", () => {
+    expect(PUBLICADO_EN_NPM).toBe(true);
   });
 });
