@@ -1,14 +1,7 @@
 // Lo que comparten los resultados de las herramientas: la procedencia que acompaña a cada dato
 // (as_of, fuente, origen y advertencias con sus avisos), sus esquemas, el texto legible y cómo se
 // traducen los errores esperables del paquete y de la API.
-import {
-  AVISO_SIN_API,
-  type Aviso,
-  aUnaLinea,
-  CODIGOS_AVISO,
-  codigoAviso,
-  esFechaIsoValida,
-} from "mexicoapi";
+import { AVISO_SIN_API, type Aviso, aUnaLinea, codigoAviso, esFechaIsoValida } from "mexicoapi";
 import {
   type Cliente,
   type Meta,
@@ -113,21 +106,22 @@ export const ESQUEMA_FUENTE_DATO = {
 
 /**
  * `avisos` de un resultado o de un cálculo: sus advertencias con su código estable, en el mismo
- * orden. Es el campo del mismo nombre de la API y del cliente de mexicoapi.
+ * orden, como en la API y el cliente de mexicoapi. El código es un texto abierto en kebab-case (una
+ * versión nueva puede agregar códigos) y la lista de códigos no va aquí: el esquema se repite en
+ * cada herramienta y alarga tools/list. La lista está en la guía de la API y en el README.
  */
 export const ESQUEMA_AVISOS = {
   type: "array",
   items: {
     type: "object",
     properties: {
-      codigo: { type: "string", enum: [...CODIGOS_AVISO] },
+      codigo: { type: "string", pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" },
       texto: { type: "string" },
     },
     required: ["codigo", "texto"],
     additionalProperties: false,
   },
-  description:
-    "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+  description: "Las advertencias con su código estable.",
 } as const;
 
 const DESCRIPCION_AS_OF =

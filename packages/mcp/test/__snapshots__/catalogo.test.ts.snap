@@ -213,28 +213,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -390,28 +374,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -560,28 +528,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -793,28 +745,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1009,28 +945,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           ],
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1213,28 +1133,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           ],
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1420,28 +1324,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           ],
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1598,28 +1486,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1779,28 +1651,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -1943,28 +1799,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -2155,28 +1995,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -2203,28 +2027,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
               "type": "string",
             },
             "avisos": {
-              "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+              "description": "Las advertencias con su código estable.",
               "items": {
                 "additionalProperties": false,
                 "properties": {
                   "codigo": {
-                    "enum": [
-                      "calendario-incompleto",
-                      "tipo-plazo-incompleto",
-                      "lista-incompleta",
-                      "lft-art-715",
-                      "transmision-poder-ejecutivo",
-                      "prorroga-art-12",
-                      "vacaciones-sin-publicar",
-                      "api-sin-respuesta",
-                      "respuesta-guardada",
-                      "datos-viejos",
-                      "datos-del-paquete",
-                      "municipio-sin-inegi",
-                      "cp-varios-municipios",
-                      "aviso-sepomex-distinto",
-                      "otro",
-                    ],
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                     "type": "string",
                   },
                   "texto": {
@@ -2432,28 +2240,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {
@@ -2723,28 +2515,12 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
           "type": "string",
         },
         "avisos": {
-          "description": "Las mismas advertencias, en el mismo orden, cada una con su código estable (avisos[i].texto es advertencias[i]): para decidir sin leer el texto. otro es el de un texto sin código.",
+          "description": "Las advertencias con su código estable.",
           "items": {
             "additionalProperties": false,
             "properties": {
               "codigo": {
-                "enum": [
-                  "calendario-incompleto",
-                  "tipo-plazo-incompleto",
-                  "lista-incompleta",
-                  "lft-art-715",
-                  "transmision-poder-ejecutivo",
-                  "prorroga-art-12",
-                  "vacaciones-sin-publicar",
-                  "api-sin-respuesta",
-                  "respuesta-guardada",
-                  "datos-viejos",
-                  "datos-del-paquete",
-                  "municipio-sin-inegi",
-                  "cp-varios-municipios",
-                  "aviso-sepomex-distinto",
-                  "otro",
-                ],
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
                 "type": "string",
               },
               "texto": {

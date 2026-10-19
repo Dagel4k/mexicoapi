@@ -160,7 +160,11 @@ describe("esquemaSalida", () => {
     expect(validar(bien)).toEqual([]);
     const conAviso = { ...bien, advertencias: ["x"], avisos: [{ codigo: "otro", texto: "x" }] };
     expect(validar(conAviso)).toEqual([]);
-    expect(validar({ ...conAviso, avisos: [{ codigo: "nuevo", texto: "x" }] })).toHaveLength(1);
+    // El código es un texto abierto en kebab-case: uno nuevo pasa, uno con otra forma no.
+    expect(validar({ ...conAviso, avisos: [{ codigo: "nuevo-codigo", texto: "x" }] })).toEqual([]);
+    expect(validar({ ...conAviso, avisos: [{ codigo: "Nuevo código", texto: "x" }] })).toHaveLength(
+      1,
+    );
     expect(validar({ ...conAviso, avisos: [{ codigo: "otro" }] })).toHaveLength(1);
     const { avisos: _a, ...sinAvisos } = bien;
     expect(validar(sinAvisos)).toEqual(['falta "avisos"']);
@@ -169,6 +173,16 @@ describe("esquemaSalida", () => {
     expect(validar({ ...bien, otro: 1 })).toHaveLength(1);
     const { total: _, ...sinTotal } = bien;
     expect(validar(sinTotal)).toEqual(['falta "total"']);
+  });
+
+  it("avisos es un esquema corto: código abierto con patrón, sin la lista del catálogo", () => {
+    const { properties } = esquemaSalida({ type: "null" }, { origenes: ["paquete"] });
+    const avisos = (properties as Record<string, EsquemaJson>).avisos as EsquemaJson;
+    const texto = JSON.stringify(avisos);
+    expect(texto).not.toContain("enum");
+    expect(texto).toContain('"pattern":"^[a-z0-9]+(-[a-z0-9]+)*$"');
+    // Se repite en cada herramienta: tools/list no debe crecer de más.
+    expect(texto.length).toBeLessThan(400);
   });
 
   /** La descripción de una propiedad del esquema de salida. */
