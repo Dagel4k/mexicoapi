@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { anioDeConstante, umaVigente } from "../../src/constantes/consulta.js";
+import {
+  anioDeConstante,
+  coberturaAnual,
+  coberturaUma,
+  umaVigente,
+} from "../../src/constantes/consulta.js";
 import type { Uma } from "../../src/datos/curados.js";
 
 const uma = (anio: number, diaria: string): Uma => ({
@@ -72,6 +77,40 @@ describe("umaVigente", () => {
     expect(() => umaVigente([UMAS[0] as Uma, UMAS[2] as Uma], "2025-03-01")).toThrow(
       /años consecutivos/,
     );
+  });
+});
+
+describe("coberturaUma", () => {
+  it("va del 1 de febrero de la primera UMA al 31 de enero siguiente a la última", () => {
+    expect(coberturaUma(UMAS)).toEqual(COBERTURA);
+    expect(coberturaUma([uma(2026, "117.31")])).toEqual({
+      desde: "2026-02-01",
+      hasta: "2027-01-31",
+    });
+    expect(Object.isFrozen(coberturaUma(UMAS))).toBe(true);
+  });
+
+  it("una lista vacía es RangeError", () => {
+    expect(() => coberturaUma([])).toThrow(RangeError);
+  });
+});
+
+describe("coberturaAnual", () => {
+  // El salario mínimo y las tarifas de ISR rigen del 1 de enero al 31 de diciembre de su año.
+  it("va del 1 de enero del primer año al 31 de diciembre del último", () => {
+    expect(coberturaAnual([2019, 2020, 2026])).toEqual({
+      desde: "2019-01-01",
+      hasta: "2026-12-31",
+    });
+    expect(coberturaAnual([26])).toEqual({ desde: "0026-01-01", hasta: "0026-12-31" });
+  });
+
+  it.each([
+    ["una lista vacía", []],
+    ["una lista desordenada", [2026, 2025]],
+    ["un año fuera de 1 a 9999", [0, 2026]],
+  ])("%s es RangeError", (_caso, anios) => {
+    expect(() => coberturaAnual(anios)).toThrow(RangeError);
   });
 });
 
