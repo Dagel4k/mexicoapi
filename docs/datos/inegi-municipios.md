@@ -5,7 +5,7 @@ Los municipios y alcaldías con su clave geoestadística (CVEGEO), del Catálogo
 - Identificador: `inegi.municipios`
 - Registros: uno por municipio o alcaldía; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `cvegeo`
-- Se actualiza: cada semana (lunes); si hay más de 0.5 % de altas o bajas, el cambio va a revisión humana
+- Se actualiza: cada semana (lunes); si más del 0.5 % de los municipios tiene altas, bajas o cambios, el cambio va a revisión humana. En `/v1/status` cuenta como desactualizado si pasan 216 horas sin una revisión correcta
 - Datos en el repositorio: `data/inegi-municipios/`
 
 ## Campos
@@ -28,7 +28,7 @@ Las claves son texto con ceros a la izquierda.
 | Descarga | `/descargas/inegi-municipios.json`, `.csv` y `.manifest.json` |
 | SQLite | tabla `municipios` de `/descargas/mexicoapi.sqlite` |
 
-`GET /v1/municipios` pesa unos 300 KB. Si necesitas todos los municipios, la descarga trae lo mismo. Ver [API v1](../api/README.md).
+`GET /v1/municipios` pesa unos 240 KB (unos 35 KB con gzip). Si necesitas todos los municipios, la descarga trae lo mismo. Ver [API v1](../api/README.md).
 
 ## Fuente y licencia
 

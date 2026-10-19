@@ -17,6 +17,8 @@ Días en que las entidades financieras supervisadas por la Comisión Nacional Ba
 | `tipo` | texto | `"descanso"` | Siempre `descanso` en este dataset |
 | `fuente` | objeto | ver abajo | Publicación del DOF que establece el día |
 
+En la API, cada día de `/v1/dias-inhabiles` trae `fecha`, `motivo`, `tipo` y `fuente`; `autoridad` solo va en los archivos de `data/` y en las descargas.
+
 Los sábados y domingos también son inhábiles (fracción IX del artículo 1), pero no se listan: el calendario los agrega solo. Una fecha de las disposiciones que cae en fin de semana sí aparece, como el 12 de diciembre de 2026, que es sábado.
 
 ## Fuente de cada registro
