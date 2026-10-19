@@ -6,6 +6,8 @@ import { principal, probarHumo } from "../../scripts/humo.ts";
 const BASE = "https://api.ejemplo.mx";
 const SCRIPT = fileURLToPath(new URL("../../scripts/humo.ts", import.meta.url));
 const SEGURIDAD = { "access-control-allow-origin": "*", "x-content-type-options": "nosniff" };
+/** La regla `/*` de `_headers`, la única que alcanza al 404 de los assets. */
+const DE_TODAS = { "x-content-type-options": "nosniff", "x-frame-options": "DENY" };
 const UDIS = "/v1/udis?fecha=2024-06-03";
 const DIAS = "/v1/dias-habiles?autoridad=lft&desde=2026-11-13&dias=1";
 const DIAS_SAT = "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10";
@@ -17,8 +19,10 @@ interface Ruta {
   estado?: number;
   tipo?: string;
   cuerpo: unknown;
-  /** Como el 404 de los assets: sin ninguna regla de `_headers`. */
+  /** Sin ningún encabezado de seguridad. */
   sinSeguridad?: boolean;
+  /** En lugar de los del Worker; el 404 de los assets solo lleva los de `/*` (`DE_TODAS`). */
+  encabezados?: Record<string, string>;
 }
 
 const ESTADOS = Array.from({ length: 32 }, (_, i) => ({ cve_ent: String(i + 1).padStart(2, "0") }));
@@ -55,7 +59,7 @@ function rutasBuenas(): Record<string, Ruta> {
       estado: 404,
       tipo: "text/html; charset=utf-8",
       cuerpo: "<h1>No existe esta página</h1>",
-      sinSeguridad: true,
+      encabezados: DE_TODAS,
     },
   };
 }
@@ -75,7 +79,7 @@ function falso(
       status: r.estado ?? 200,
       headers: {
         "content-type": r.tipo ?? "application/json; charset=utf-8",
-        ...(r.sinSeguridad === true ? {} : SEGURIDAD),
+        ...(r.sinSeguridad === true ? {} : (r.encabezados ?? SEGURIDAD)),
       },
     });
   }) as typeof fetch;
@@ -269,7 +273,10 @@ describe("el sitio de los assets", () => {
         "/v2: tipo de contenido application/problem+json, se esperaba text/html",
       ],
       [{ estado: 200, tipo: "text/html", cuerpo: "<h1>MéxicoAPI</h1>" }, "/v2: estado 200"],
-      [{ estado: 404, tipo: "text/html", cuerpo: "<h1>Otra</h1>" }, "/v2: no es 404.html"],
+      [
+        { estado: 404, tipo: "text/html", cuerpo: "<h1>Otra</h1>", encabezados: DE_TODAS },
+        "/v2: no es 404.html",
+      ],
     ];
     for (const [ruta, falla] of casos) {
       const rutas = rutasBuenas();
@@ -277,9 +284,13 @@ describe("el sitio de los assets", () => {
       const r = await probarHumo(BASE, { fetch: falso(rutas) });
       expect(r.fallas).toEqual([expect.stringContaining(falla)]);
     }
-    // El 404 de los assets no recibe reglas de _headers: no se le exigen CORS ni nosniff.
+    // Al 404 de los assets no se le exige CORS, pero sí lo de /* en _headers.
     const r = await probarHumo(BASE, { fetch: falso(rutasBuenas()) });
     expect(r.fallas).toEqual([]);
+    const rutas = rutasBuenas();
+    rutas["/v2"] = { ...(rutas["/v2"] as Ruta), encabezados: SEGURIDAD };
+    const sinRegla = await probarHumo(BASE, { fetch: falso(rutas) });
+    expect(sinRegla.fallas).toEqual(["/v2: x-frame-options: ausente, se esperaba DENY"]);
   });
 });
 

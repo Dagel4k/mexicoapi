@@ -1,11 +1,12 @@
 /**
- * El `_headers` de los assets: las descargas y las rutas del sitio. Cloudflare aplica todas las
- * reglas que coinciden con la URL pedida y junta con coma un encabezado repetido, así que cada
- * ruta tiene una sola regla con todo lo suyo.
+ * El `_headers` de los assets: lo de todas las URL, las descargas y las rutas del sitio.
+ * Cloudflare aplica todas las reglas que coinciden con la URL pedida y junta con coma un
+ * encabezado repetido, así que ningún encabezado sale en dos reglas que alcancen la misma URL.
  *
- * Ninguna regla lleva comodín (`/*`, `/descargas/*`): alcanzaría también al 404, que se sirve en
- * la URL pedida. Así ninguna URL que no es un asset recibe reglas, tampoco bajo `/descargas/`, y
- * el 404 lleva `CSP_404` y su política de referrer en `<meta>`.
+ * El único comodín es `/*`, con lo que vale en cualquier URL: alcanza también al 404 (que se
+ * sirve en la URL pedida) y a las redirecciones. Ahí no va la CSP ni la caché, que cambian por
+ * ruta: el 404 lleva `CSP_404` en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas
+ * reglas; ponen sus propios encabezados (`respuestas.ts` de la API).
  */
 
 type Encabezados = readonly (readonly [string, string])[];
@@ -32,22 +33,25 @@ const CSP_ARCHIVOS = "default-src 'none'";
 /** HTML, CSS y JS no llevan hash en el nombre: se revalidan pronto. */
 const CACHE_SITIO = "public, max-age=300";
 
+/** La regla `/*`: sin CSP ni caché, que se juntarían con las de cada ruta. */
+const TODAS: Regla = {
+  ruta: "/*",
+  encabezados: [
+    ["X-Content-Type-Options", "nosniff"],
+    ["Referrer-Policy", "no-referrer"],
+    ["X-Frame-Options", "DENY"],
+  ],
+};
+
 const SEGURIDAD_DESCARGAS: Encabezados = [
   ["Access-Control-Allow-Origin", "*"],
-  ["X-Content-Type-Options", "nosniff"],
   ["Content-Security-Policy", CSP_ARCHIVOS],
   ["Cache-Control", "public, max-age=3600, stale-while-revalidate=86400"],
 ];
 
 const sitio = (ruta: string, csp: string, cache: string, extra: Encabezados = []): Regla => ({
   ruta,
-  encabezados: [
-    ["Content-Security-Policy", csp],
-    ["X-Content-Type-Options", "nosniff"],
-    ["Referrer-Policy", "no-referrer"],
-    ["Cache-Control", cache],
-    ...extra,
-  ],
+  encabezados: [["Content-Security-Policy", csp], ["Cache-Control", cache], ...extra],
 });
 
 const TEXTO_PARA_TODOS: Encabezados = [
@@ -79,12 +83,15 @@ function tipoContenido(nombre: string): string {
 const texto = ({ ruta, encabezados }: Regla): string =>
   `${ruta}\n${encabezados.map(([nombre, valor]) => `  ${nombre}: ${valor}\n`).join("")}`;
 
-/** El archivo completo: una regla por descarga, con su tipo y lo de todas, y las del sitio. */
+/** El archivo completo: `/*`, una regla por descarga con su tipo y lo de todas, y las del sitio. */
 export function archivoEncabezados(descargas: readonly string[]): string {
-  const reglas: Regla[] = descargas.map((nombre) => ({
-    ruta: `/descargas/${nombre}`,
-    encabezados: [["Content-Type", tipoContenido(nombre)], ...SEGURIDAD_DESCARGAS],
-  }));
+  const reglas: Regla[] = [TODAS];
+  for (const nombre of descargas) {
+    reglas.push({
+      ruta: `/descargas/${nombre}`,
+      encabezados: [["Content-Type", tipoContenido(nombre)], ...SEGURIDAD_DESCARGAS],
+    });
+  }
   reglas.push(...REGLAS_SITIO);
   return reglas.map(texto).join("\n");
 }

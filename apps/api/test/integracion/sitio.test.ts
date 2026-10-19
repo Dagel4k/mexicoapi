@@ -4,11 +4,21 @@ import { filasDeEstado } from "../../../../packages/pipeline/src/sitio/cliente/s
 import { CSP_PAGINAS } from "../../../../packages/pipeline/src/sitio/paginas/encabezados.ts";
 import { leerPublico, pedir, pedirJson, SEGURIDAD, tipoDeMedio } from "./ayudas.js";
 
-/** Encabezados que pone `_headers` en todas las rutas del sitio. */
-function esperarSitio(respuesta: Response, csp: string, cache: string): void {
-  expect(respuesta.headers.get("content-security-policy")).toBe(csp);
+/**
+ * Lo que pone la regla `/*` de `_headers` en toda respuesta de los assets, también en el 404 y en
+ * las redirecciones. `get` junta con coma un encabezado repetido: un valor exacto prueba que llegó
+ * una sola vez.
+ */
+function esperarTodas(respuesta: Response): void {
   expect(respuesta.headers.get("x-content-type-options")).toBe("nosniff");
   expect(respuesta.headers.get("referrer-policy")).toBe("no-referrer");
+  expect(respuesta.headers.get("x-frame-options")).toBe("DENY");
+}
+
+/** Encabezados que pone `_headers` en todas las rutas del sitio. */
+function esperarSitio(respuesta: Response, csp: string, cache: string): void {
+  esperarTodas(respuesta);
+  expect(respuesta.headers.get("content-security-policy")).toBe(csp);
   expect(respuesta.headers.get("cache-control")).toBe(cache);
 }
 
@@ -54,11 +64,12 @@ describe("páginas del sitio en el Worker local", () => {
     expect(html).toContain('<script type="module" src="/sitio.js"></script>');
   });
 
-  it("/estado redirige a /estado/", async () => {
+  it("/estado redirige a /estado/, con los encabezados de /*", async () => {
     const respuesta = await pedir("/estado");
     expect(respuesta.status).toBeGreaterThanOrEqual(300);
     expect(respuesta.status).toBeLessThan(400);
     expect(new URL(respuesta.headers.get("location") ?? "", "http://x").pathname).toBe("/estado/");
+    esperarTodas(respuesta);
     await respuesta.arrayBuffer();
   });
 
@@ -106,16 +117,16 @@ describe("lo que no existe", () => {
     },
   );
 
-  // Ninguna regla de _headers alcanza un 404: su CSP va en meta y la hoja de estilo carga, también
-  // bajo /descargas/, y no hereda la caché ni el CORS de las descargas.
+  // Al 404 solo lo alcanza la regla /* de _headers: su CSP va en meta y la hoja de estilo carga,
+  // también bajo /descargas/, y no hereda la caché ni el CORS de las descargas.
   it.each(["/descargas/nada.csv", "/descargas/", "/wp-admin"])(
-    "%s: el 404 no recibe encabezados de _headers",
+    "%s: el 404 solo recibe los encabezados de /*",
     async (ruta) => {
       const respuesta = await pedir(ruta);
       expect(respuesta.status).toBe(404);
+      esperarTodas(respuesta);
       expect(respuesta.headers.get("content-security-policy")).toBeNull();
       expect(respuesta.headers.get("access-control-allow-origin")).toBeNull();
-      expect(respuesta.headers.get("x-content-type-options")).toBeNull();
       expect(respuesta.headers.get("cache-control") ?? "").not.toContain("stale-while-revalidate");
       const html = await respuesta.text();
       expect(html).toContain('<meta http-equiv="Content-Security-Policy"');
@@ -138,6 +149,8 @@ describe("lo que no existe", () => {
       expect(Object.fromEntries(respuesta.headers), archivo).toMatchObject({
         "access-control-allow-origin": "*",
         "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+        "x-frame-options": "DENY",
         "content-security-policy": "default-src 'none'",
         "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
       });
@@ -154,6 +167,20 @@ describe("lo que no existe", () => {
         esperarSinWorker(respuesta);
         await respuesta.arrayBuffer();
       }
+    },
+  );
+
+  // El Worker arma sus propios encabezados y del asset solo copia el ETag: /* no le llega ni se
+  // repite. X-Frame-Options no hace falta ahí: la CSP del Worker lleva frame-ancestors 'none'.
+  it.each(["/v1", "/v1/estados", "/v1/estados/25", "/v1/openapi.json", "/v1/nada", "/v1/estados/"])(
+    "%s: los encabezados del Worker, cada uno una vez y sin los de _headers",
+    async (ruta) => {
+      const respuesta = await pedir(ruta);
+      await respuesta.arrayBuffer();
+      for (const [nombre, valor] of Object.entries(SEGURIDAD)) {
+        expect(respuesta.headers.get(nombre), `${ruta} ${nombre}`).toBe(valor);
+      }
+      expect(respuesta.headers.get("x-frame-options"), ruta).toBeNull();
     },
   );
 
