@@ -13,6 +13,7 @@ import {
   metaLft,
   problemaDeError,
   problemaSinRegistro,
+  sinPublicacionFix,
 } from "../../src/rutas/respuestas.js";
 
 describe("fechaEnTexto", () => {
@@ -130,6 +131,14 @@ describe("problemaSinRegistro", () => {
       detalle: "Todavía no.",
       extras: { fecha: "2027-01-01" },
     });
+  });
+});
+
+describe("sinPublicacionFix", () => {
+  it("dice que ese día no hubo FIX y qué consulta da el de una operación de ese día", () => {
+    expect(sinPublicacionFix("2026-10-18")).toBe(
+      "No hubo publicación del FIX en el DOF el 2026-10-18. Para el FIX que aplica a una operación de ese día, usa operacion=2026-10-18.",
+    );
   });
 });
 

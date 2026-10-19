@@ -10,7 +10,12 @@ import {
   type TipoCambioFix,
   udiDeFecha,
 } from "@mexicoapi/core";
-import { consultarConFeriados, problemaSinRegistro, revisarFix } from "@mexicoapi/core/rutas";
+import {
+  consultarConFeriados,
+  problemaSinRegistro,
+  revisarFix,
+  sinPublicacionFix,
+} from "@mexicoapi/core/rutas";
 import {
   anioDe,
   feriadosDeLaCnbv,
@@ -161,9 +166,7 @@ async function fixDelDia(c: Contexto, fecha: FechaISO): Promise<Response> {
   );
   return responder(c, consulta, serie, fecha, {
     sinDato:
-      fecha < cobertura.desde
-        ? fueraDeLaSerie(cobertura, `el ${fecha}`)
-        : `No hubo publicación del FIX en el DOF el ${fecha}.`,
+      fecha < cobertura.desde ? fueraDeLaSerie(cobertura, `el ${fecha}`) : sinPublicacionFix(fecha),
     noDisponible: `El FIX del ${fecha} todavía no está cargado; la última publicación cargada es del ${cobertura.hasta}.`,
   });
 }

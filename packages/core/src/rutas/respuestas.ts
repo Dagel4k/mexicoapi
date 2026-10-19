@@ -123,6 +123,15 @@ export function problemaSinRegistro(
 }
 
 /**
+ * `detail` del FIX de un día sin publicación en el DOF (`publicado` en fin de semana o feriado
+ * bancario), con la consulta que da el FIX que aplica a un pago de ese día. Lo usan la API y el
+ * cliente del paquete.
+ */
+export function sinPublicacionFix(fecha: FechaISO): string {
+  return `No hubo publicación del FIX en el DOF el ${fecha}. Para el FIX que aplica a una operación de ese día, usa operacion=${fecha}.`;
+}
+
+/**
  * Una consulta del FIX con solo los fines de semana y, si da no_disponible, otra vez con los
  * feriados bancarios: el DOF no publica el FIX esos días, así que solo vuelven cierta una
  * respuesta que sin ellos es no_disponible y se piden solo entonces. Si `feriados` da undefined

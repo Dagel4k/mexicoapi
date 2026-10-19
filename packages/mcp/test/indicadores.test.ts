@@ -119,7 +119,7 @@ describe("tipo_de_cambio_fix sin API", () => {
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2026-10-10" }),
-      "[no-encontrado] No hubo publicación del FIX en el DOF el 2026-10-10.",
+      "[no-encontrado] No hubo publicación del FIX en el DOF el 2026-10-10. Para el FIX que aplica a una operación de ese día, usa operacion=2026-10-10.",
     );
     esError(
       await sinRed("tipo_de_cambio_fix", { publicado: "2099-01-05" }),

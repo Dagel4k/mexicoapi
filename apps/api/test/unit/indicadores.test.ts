@@ -260,7 +260,7 @@ describe("GET /v1/tipo-cambio/fix?publicado=", () => {
     await sinDato(
       fixPublicado(fecha),
       "no-encontrado",
-      `No hubo publicación del FIX en el DOF el ${fecha}.`,
+      `No hubo publicación del FIX en el DOF el ${fecha}. Para el FIX que aplica a una operación de ese día, usa operacion=${fecha}.`,
       COBERTURA_FIX,
     );
   });
@@ -284,7 +284,7 @@ describe("GET /v1/tipo-cambio/fix?publicado=", () => {
       const { texto } = await sinDato(
         fixPublicado(fecha),
         "no-encontrado",
-        `No hubo publicación del FIX en el DOF el ${fecha}.`,
+        `No hubo publicación del FIX en el DOF el ${fecha}. Para el FIX que aplica a una operación de ese día, usa operacion=${fecha}.`,
         COBERTURA_FIX,
       );
       expect(texto).not.toContain("18.4250");
@@ -491,7 +491,7 @@ describe("GET /v1/tipo-cambio/fix con los feriados bancarios de la CNBV", () => 
     const { texto } = await sinDato(
       fixPublicado("2026-11-16"),
       "no-encontrado",
-      "No hubo publicación del FIX en el DOF el 2026-11-16.",
+      "No hubo publicación del FIX en el DOF el 2026-11-16. Para el FIX que aplica a una operación de ese día, usa operacion=2026-11-16.",
       COBERTURA_13,
       HASTA_13,
     );
@@ -529,7 +529,7 @@ describe("GET /v1/tipo-cambio/fix con los feriados bancarios de la CNBV", () => 
     await sinDato(
       fixPublicado("2026-11-02"),
       "no-encontrado",
-      "No hubo publicación del FIX en el DOF el 2026-11-02.",
+      "No hubo publicación del FIX en el DOF el 2026-11-02. Para el FIX que aplica a una operación de ese día, usa operacion=2026-11-02.",
       { desde: "2020-01-02", hasta: "2026-10-30" },
       hasta30,
     );
