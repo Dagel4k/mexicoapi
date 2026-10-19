@@ -26,7 +26,7 @@ import {
   curadoUma,
 } from "../../src/curado/registro.js";
 import { DATASETS } from "../../src/registro.js";
-import { coberturasDe } from "../../src/sitio/calendarios.js";
+import { COBERTURA_LISTA_LFT, coberturasDe } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { type MetaInterna, URL_ARCHIVOS, URL_DOCS } from "../../src/sitio/meta.js";
 import { enlaceSeguro } from "../../src/sitio/paginas/html.js";
@@ -143,7 +143,8 @@ describe("con los datos reales del repositorio", () => {
       "isr/tarifa/anual",
       "isr/tarifa/mensual",
     ]);
-    const coberturas: unknown[] = [];
+    // La de la LFT va primero: su lista se calcula por regla y no tiene YAML.
+    const coberturas: unknown[] = [COBERTURA_LISTA_LFT];
     for (const [def, autoridad] of [
       [curadoDiasCnbv, "cnbv"],
       [curadoDiasSat, "sat"],

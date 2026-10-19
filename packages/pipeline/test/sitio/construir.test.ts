@@ -5,8 +5,10 @@ import { DatabaseSync } from "node:sqlite";
 import {
   crearCalendario,
   type DiaInhabilCurado,
+  FUENTE_LFT_74,
   type FuenteDof,
   sumarDiasHabiles,
+  VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
@@ -23,7 +25,7 @@ import {
 } from "../../src/curado/registro.js";
 import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
-import { coberturasDe } from "../../src/sitio/calendarios.js";
+import { coberturasDe, diasLft } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import {
@@ -207,6 +209,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/dias-inhabiles-cnbv.manifest.json",
         "descargas/dias-inhabiles-coberturas.csv",
         "descargas/dias-inhabiles-coberturas.json",
+        "descargas/dias-inhabiles-lft.csv",
+        "descargas/dias-inhabiles-lft.json",
         "descargas/dias-inhabiles-sat.csv",
         "descargas/dias-inhabiles-sat.json",
         "descargas/dias-inhabiles-sat.manifest.json",
@@ -522,6 +526,25 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       `fecha,autoridad,motivo,tipo,${fuente}`,
     );
 
+    // La LFT no tiene dataset: su lista se calcula por regla, de 2007 a 2100, con la cita del
+    // art. 74 y la fecha de la última reforma de la ley.
+    const lft = await renglones("dias-inhabiles-lft.csv");
+    expect(lft[0]).toBe(`fecha,autoridad,motivo,tipo,${fuente}`);
+    expect(lft).toHaveLength(diasLft().length + 2);
+    expect(lft[1]).toBe(
+      `2007-01-01,lft,1 de enero,descanso,"Ley Federal del Trabajo, artículo 74",https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf,${VIGENCIA_LFT},"${FUENTE_LFT_74.fragmento}"`,
+    );
+    expect(lft.at(-2)?.startsWith("2100-12-25,lft,25 de diciembre,descanso,")).toBe(true);
+    const json = await readFile(join(salida, "descargas/dias-inhabiles-lft.json"), "utf8");
+    expect(json).toBe(jsonCanonico(diasLft()));
+    const encabezados = await readFile(join(salida, "_headers"), "utf8");
+    expect(encabezados).toContain(
+      "/descargas/dias-inhabiles-lft.json\n  Content-Type: application/json; charset=utf-8",
+    );
+    expect(encabezados).toContain(
+      "/descargas/dias-inhabiles-lft.csv\n  Content-Type: text/csv; charset=utf-8",
+    );
+
     const uma = await renglones("constantes-uma.csv");
     expect(uma[0]).toBe(`anio,diaria,mensual,anual,vigencia_desde,${fuente}`);
     expect(uma[1]).toMatch(
@@ -549,8 +572,10 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
 
   it("publica la cobertura de cada calendario por tipo de plazo en json, csv y sqlite", async () => {
     await construirSitio({ raizDatos: datos, salida });
+    // La LFT y la CNBV no aceptan tipo_plazo en la API: su renglón no nombra ninguno.
     const esperadas = [
-      { autoridad: "cnbv", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-12-31" },
+      { autoridad: "lft", tipo_plazo: null, desde: "2007-01-01", hasta: "2100-12-31" },
+      { autoridad: "cnbv", tipo_plazo: null, desde: "2026-01-01", hasta: "2026-12-31" },
       { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
       {
         autoridad: "sat",
@@ -563,7 +588,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(json).toBe(jsonCanonico(esperadas));
     expect(await readFile(join(salida, "descargas/dias-inhabiles-coberturas.csv"), "utf8")).toBe(
       "autoridad,tipo_plazo,desde,hasta\r\n" +
-        "cnbv,general,2026-01-01,2026-12-31\r\n" +
+        "lft,,2007-01-01,2100-12-31\r\n" +
+        "cnbv,,2026-01-01,2026-12-31\r\n" +
         "sat,general,2026-01-01,2026-11-30\r\n" +
         "sat,declaraciones_pagos,2026-01-01,2026-12-31\r\n",
     );
@@ -575,15 +601,15 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
           join(salida, `v1/_internos/calendarios/${autoridad}.json`),
         )) as ShardCalendario,
       );
-    expect(await delWorker("cnbv")).toEqual(esperadas.slice(0, 1));
+    expect(await delWorker("cnbv")).toEqual(esperadas.slice(1, 2));
     expect(await delWorker("sat")).toEqual([
-      esperadas[1],
-      { ...esperadas[2], hasta: "2100-12-31" },
+      esperadas[2],
+      { ...esperadas[3], hasta: "2100-12-31" },
     ]);
     const db = new DatabaseSync(join(salida, "descargas/mexicoapi.sqlite"), { readOnly: true });
     expect(
       db.prepare("SELECT * FROM coberturas_calendario ORDER BY autoridad, tipo_plazo").all(),
-    ).toEqual([esperadas[0], esperadas[2], esperadas[1]]);
+    ).toEqual([esperadas[1], esperadas[0], esperadas[3], esperadas[2]]);
     db.close();
     const encabezados = await readFile(join(salida, "_headers"), "utf8");
     expect(encabezados).toContain(
@@ -697,10 +723,21 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     ]);
     const cuenta = (tabla: string) =>
       (db.prepare(`SELECT count(*) AS n FROM ${tabla}`).get() as { n: number }).n;
-    // 11 de la CNBV y 12 del SAT (sus 4 vacaciones y los 8 días del art. 12 de 2026).
+    // 11 de la CNBV, 12 del SAT (sus 4 vacaciones y los 8 días del art. 12 de 2026) y los de la
+    // LFT de 2007 a 2100.
     expect(["dias_inhabiles", "uma", "salario_minimo", "isr_tramos"].map(cuenta)).toEqual([
-      23, 2, 4, 33,
+      23 + diasLft().length,
+      2,
+      4,
+      33,
     ]);
+    expect(
+      db
+        .prepare(
+          "SELECT min(fecha) AS desde, max(fecha) AS hasta, count(*) AS n FROM dias_inhabiles WHERE autoridad = 'lft'",
+        )
+        .get(),
+    ).toEqual({ desde: "2007-01-01", hasta: "2100-12-25", n: 673 });
     expect(
       db
         .prepare(

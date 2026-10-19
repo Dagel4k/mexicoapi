@@ -2,15 +2,18 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type {
-  Banco,
-  DiaInhabilCurado,
-  Estado,
-  Municipio,
-  TipoCambioFix,
-  Udi,
+import {
+  type Banco,
+  type DiaInhabilCurado,
+  type Estado,
+  FUENTE_LFT_74,
+  type Municipio,
+  type TipoCambioFix,
+  type Udi,
+  VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { diasLft } from "../../src/sitio/calendarios.js";
 import { construirSqlite, type DatosSqlite } from "../../src/sitio/sqlite.js";
 import {
   DIAS_CNBV_OFICIALES,
@@ -96,15 +99,21 @@ const vacaciones: DiaInhabilCurado = {
       "III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026.",
   },
 };
-// El 1 de enero lo tienen las dos autoridades: la llave es autoridad y fecha.
-const diasInhabiles: DiaInhabilCurado[] = [
+// Los días de la LFT de 2026, como en las descargas.
+const diasLft2026 = diasLft().filter((d) => d.fecha.startsWith("2026-"));
+
+// El 1 de enero lo tienen las tres autoridades: la llave es autoridad y fecha.
+const diasInhabiles: DatosSqlite["diasInhabiles"] = [
+  ...diasLft2026,
   ...DIAS_CNBV_OFICIALES,
   { ...vacaciones, fecha: "2026-01-01", motivo: "1o. de enero", tipo: "descanso" },
   vacaciones,
 ];
 
+// La LFT y la CNBV no aceptan tipo_plazo: su renglón lo lleva en null.
 const coberturasCalendario: DatosSqlite["coberturasCalendario"] = [
-  { autoridad: "cnbv", tipo_plazo: "general", desde: "2025-01-01", hasta: "2026-12-31" },
+  { autoridad: "lft", tipo_plazo: null, desde: "2007-01-01", hasta: "2100-12-31" },
+  { autoridad: "cnbv", tipo_plazo: null, desde: "2025-01-01", hasta: "2026-12-31" },
   { autoridad: "sat", tipo_plazo: "general", desde: "2026-01-01", hasta: "2026-11-30" },
   { autoridad: "sat", tipo_plazo: "declaraciones_pagos", desde: "2026-01-01", hasta: "2026-12-31" },
 ];
@@ -154,7 +163,8 @@ describe("construirSqlite", () => {
       n("salario_minimo"),
       n("isr_tramos"),
       n("datasets"),
-    ]).toEqual([2, 2, 2, 3, 2, 3, 24, 3, 10, 16, 33, 1]);
+    ]).toEqual([2, 2, 2, 3, 2, 3, 24 + diasLft2026.length, 4, 10, 16, 33, 1]);
+    expect(diasLft2026).toHaveLength(7);
     db.close();
   });
 
@@ -251,6 +261,9 @@ describe("construirSqlite", () => {
     const repetidos: Partial<DatosSqlite>[] = [
       { diasInhabiles: [...diasInhabiles, vacaciones] },
       { coberturasCalendario: [...coberturasCalendario, ...coberturasCalendario.slice(0, 1)] },
+      // Sin llave primaria (tipo_plazo puede ser null), un índice único hace sus veces.
+      { coberturasCalendario: [...coberturasCalendario, ...coberturasCalendario.slice(1, 2)] },
+      { coberturasCalendario: [...coberturasCalendario, ...coberturasCalendario.slice(2, 3)] },
       { uma: [...UMA_OFICIALES, UMA_OFICIALES[0] as DatosSqlite["uma"][number]] },
       {
         salarioMinimo: [
@@ -293,8 +306,8 @@ describe("construirSqlite", () => {
       ...fuente,
     ]);
     expect(columnas("coberturas_calendario")).toEqual([
-      "autoridad TEXT 1 1",
-      "tipo_plazo TEXT 1 2",
+      "autoridad TEXT 1 0",
+      "tipo_plazo TEXT 0 0",
       "desde TEXT 1 0",
       "hasta TEXT 1 0",
     ]);
@@ -302,7 +315,12 @@ describe("construirSqlite", () => {
       db
         .prepare("SELECT * FROM coberturas_calendario WHERE autoridad = 'sat' ORDER BY tipo_plazo")
         .all(),
-    ).toEqual([coberturasCalendario[2], coberturasCalendario[1]]);
+    ).toEqual([coberturasCalendario[3], coberturasCalendario[2]]);
+    expect(
+      db
+        .prepare("SELECT * FROM coberturas_calendario WHERE tipo_plazo IS NULL ORDER BY autoridad")
+        .all(),
+    ).toEqual([coberturasCalendario[1], coberturasCalendario[0]]);
     expect(columnas("uma")).toEqual([
       "anio INTEGER 0 1",
       "diaria TEXT 1 0",
@@ -358,8 +376,23 @@ describe("construirSqlite", () => {
         .all(),
     ).toEqual([
       { autoridad: "cnbv", fecha: "2026-01-01", tipo: "descanso" },
+      { autoridad: "lft", fecha: "2026-01-01", tipo: "descanso" },
       { autoridad: "sat", fecha: "2026-01-01", tipo: "descanso" },
     ]);
+    expect(
+      db
+        .prepare("SELECT * FROM dias_inhabiles WHERE autoridad = 'lft' AND fecha = '2026-12-25'")
+        .get(),
+    ).toEqual({
+      autoridad: "lft",
+      fecha: "2026-12-25",
+      motivo: "25 de diciembre",
+      tipo: "descanso",
+      fuente_nombre: "Ley Federal del Trabajo, artículo 74",
+      fuente_url: "https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf",
+      fuente_fecha_publicacion: VIGENCIA_LFT,
+      fuente_fragmento: FUENTE_LFT_74.fragmento,
+    });
     // Un renglón por tramo, numerado desde 1; el último no tiene límite superior.
     expect(
       db

@@ -32,7 +32,12 @@ import { ErrorDatos } from "../errores.js";
 import { escribirDirectorioAtomico } from "../escritura.js";
 import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
-import { type CoberturaCalendario, coberturasDe } from "./calendarios.js";
+import {
+  COBERTURA_LISTA_LFT,
+  type CoberturaCalendario,
+  coberturasDe,
+  diasLft,
+} from "./calendarios.js";
 import { porNombre } from "./comun.js";
 import { aCsv } from "./csv.js";
 import {
@@ -275,8 +280,10 @@ export async function construirSitio(opciones: {
   // Los calendarios de la CNBV y el SAT los arma el Worker con crearCalendarioCurado. Las
   // descargas llevan aparte la cobertura de cada plazo en su lista: la lista de días no dice
   // hasta dónde está completa, y la del SAT solo trae los días del art. 12 de los años que cubre
-  // su YAML (el Worker los calcula hasta 2100).
-  const coberturasCalendario: CoberturaCalendario[] = [];
+  // su YAML (el Worker los calcula hasta 2100). La LFT no tiene dataset: su lista sale de la regla
+  // del núcleo, como `/v1/dias-inhabiles?autoridad=lft`, y está completa en toda su cobertura.
+  const lft = diasLft();
+  const coberturasCalendario: CoberturaCalendario[] = [COBERTURA_LISTA_LFT];
   for (const [c, def, autoridad] of [
     [diasCnbv, curadoDiasCnbv, "cnbv"],
     [diasSat, curadoDiasSat, "sat"],
@@ -376,6 +383,11 @@ export async function construirSitio(opciones: {
   };
   csvCurado(COLUMNAS_DIAS, diasCnbv, diasCnbv.registros);
   csvCurado(COLUMNAS_DIAS, diasSat, diasSat.registros);
+  descargas.set("dias-inhabiles-lft.json", jsonCanonico(lft));
+  descargas.set(
+    "dias-inhabiles-lft.csv",
+    aCsv(COLUMNAS_DIAS, lft.map(conFuentePlana), "dias-inhabiles.lft"),
+  );
   descargas.set("dias-inhabiles-coberturas.json", jsonCanonico(coberturasCalendario));
   descargas.set("dias-inhabiles-coberturas.csv", aCsv(COLUMNAS_COBERTURAS, coberturasCalendario));
   csvCurado(COLUMNAS_UMA, uma, uma.registros);
@@ -405,7 +417,7 @@ export async function construirSitio(opciones: {
       bancos: bancos.registros,
       tipoCambioFix: fix.registros,
       udis: udis.registros,
-      diasInhabiles: [...diasCnbv.registros, ...diasSat.registros],
+      diasInhabiles: [...lft, ...diasCnbv.registros, ...diasSat.registros],
       coberturasCalendario,
       uma: uma.registros,
       salarioMinimo: salario.registros,
