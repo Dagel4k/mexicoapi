@@ -113,6 +113,48 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
     expect(m.hoyEnMexico()).toMatch(FECHA);
   });
 
+  // El ejemplo del README (Días hábiles): la LFT más los días que cierra un tribunal.
+  it("suma días hábiles con la LFT y las vacaciones de un tribunal", () => {
+    const acuerdo = {
+      nombre: "Acuerdo del pleno del tribunal",
+      url: "https://tribunal.example/acuerdo",
+    };
+    const vacaciones = [
+      "2026-12-21",
+      "2026-12-22",
+      "2026-12-23",
+      "2026-12-24",
+      "2026-12-28",
+      "2026-12-29",
+      "2026-12-30",
+      "2026-12-31",
+    ].map((fecha) => ({
+      fecha,
+      motivo: "Vacaciones del tribunal",
+      tipo: "vacaciones" as const,
+      fuente: acuerdo,
+    }));
+    const tribunal = m.crearCalendario({
+      autoridad: "lft",
+      cobertura: { desde: "2026-01-01", hasta: "2027-12-31" },
+      dias: [...m.diasDescansoLft(2026), ...m.diasDescansoLft(2027), ...vacaciones],
+      fuenteFinDeSemana: m.FUENTE_LFT_715,
+    });
+    const r = m.sumarDiasHabiles({ calendario: tribunal, desde: "2026-12-18", dias: 1 });
+    expect(r.resultado).toBe("2027-01-04");
+    // Las vacaciones, el 25 de diciembre y el 1 de enero (art. 74), sin los fines de semana.
+    expect(r.inhabiles_saltados.map((d) => d.fecha)).toEqual(
+      [...vacaciones.map((d) => d.fecha), "2026-12-25", "2027-01-01"].sort(),
+    );
+    // Sin el calendario del tribunal, el 21 de diciembre.
+    const soloLft = m.sumarDiasHabiles({
+      calendario: m.calendarioLft(),
+      desde: "2026-12-18",
+      dias: 1,
+    });
+    expect(soloLft.resultado).toBe("2026-12-21");
+  });
+
   describe("validadores", () => {
     it("valida una CLABE y calcula su dígito de control", () => {
       const r = m.validarClabe("002010077777777771");
