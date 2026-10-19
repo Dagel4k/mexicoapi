@@ -148,3 +148,158 @@ describe("municipio", () => {
     }
   });
 });
+
+const INEGI_ESTADOS = {
+  nombre: meta.estados.sources[0]?.name,
+  url: meta.estados.sources[0]?.url,
+};
+
+describe("estados", () => {
+  it("lista las 32 entidades con su clave, nombre y abreviatura, del paquete", async () => {
+    const r = await llamar("estados");
+    const c = contenido(r);
+    const datos = c.datos as Array<Record<string, string>>;
+    expect(datos).toHaveLength(32);
+    expect(datos[24]).toEqual({
+      cve_ent: "25",
+      nombre: "Sinaloa",
+      abreviatura: "Sin.",
+      cvegeo: "25",
+    });
+    expect(c).toMatchObject({
+      as_of: meta.estados.as_of,
+      fuente: INEGI_ESTADOS,
+      origen: "paquete",
+      advertencias: [],
+      avisos: [],
+    });
+    const t = texto(r);
+    expect(t).toContain("32 entidades federativas (clave, nombre y abreviatura):");
+    expect(t).toContain("- 25 Sinaloa (Sin.)");
+    expect(t).toContain("- 09 Ciudad de México (CDMX)");
+    expect(t).toContain(`as_of (corte de los datos): ${meta.estados.as_of}`);
+    expect(urls).toEqual([]);
+  });
+
+  it("no recibe argumentos", async () => {
+    esError(
+      await llamar("estados", { cve_ent: "25" }),
+      /^\[parametro-invalido\] Argumentos inválidos para estados: /,
+    );
+  });
+});
+
+describe("municipios_de_estado", () => {
+  it("con cve_ent da todos los municipios del estado, el total y el estado", async () => {
+    const r = await llamar("municipios_de_estado", { cve_ent: "25" });
+    const c = contenido(r);
+    const datos = c.datos as Array<Record<string, unknown>>;
+    expect(c.total).toBe(20);
+    expect(datos).toHaveLength(20);
+    expect(datos[0]).toEqual({
+      cvegeo: "25001",
+      cve_ent: "25",
+      cve_mun: "001",
+      nombre: "Ahome",
+      cve_cabecera: "0001",
+    });
+    expect(datos.find((m) => m.cvegeo === "25006")).toMatchObject({ nombre: "Culiacán" });
+    expect(c.estado).toEqual({
+      cve_ent: "25",
+      nombre: "Sinaloa",
+      abreviatura: "Sin.",
+      cvegeo: "25",
+    });
+    expect(c).toMatchObject({
+      as_of: meta.municipios.as_of,
+      fuente: INEGI,
+      origen: "paquete",
+      advertencias: [],
+      avisos: [],
+    });
+    const t = texto(r);
+    expect(t).toContain("Sinaloa (cve_ent 25) tiene 20 municipios:");
+    expect(t).toContain("- 25001 Ahome");
+    expect(t.split("\n").filter((l) => l.startsWith("- 25"))).toHaveLength(20);
+    expect(urls).toEqual([]);
+  });
+
+  it("no corta la lista: el estado con más municipios trae todos", async () => {
+    const c = contenido(await llamar("municipios_de_estado", { cve_ent: "20" }));
+    expect(c.total).toBe(570);
+    expect(c.datos as unknown[]).toHaveLength(570);
+  });
+
+  it("en la Ciudad de México dice alcaldías", async () => {
+    const r = await llamar("municipios_de_estado", { cve_ent: "09" });
+    expect(contenido(r).total).toBe(16);
+    expect(texto(r)).toContain("Ciudad de México (cve_ent 09) tiene 16 alcaldías:");
+  });
+
+  it("con estado acepta el nombre o la abreviatura sin distinguir mayúsculas ni acentos", async () => {
+    const claveDe = async (estado: string) =>
+      (contenido(await llamar("municipios_de_estado", { estado })).estado as { cve_ent: string })
+        .cve_ent;
+    for (const [nombre, cve] of [
+      ["Sinaloa", "25"],
+      ["SINALOA", "25"],
+      ["  sinaloa ", "25"],
+      ["Sin.", "25"],
+      ["Yucatan", "31"],
+      ["nuevo leon", "19"],
+      ["CDMX", "09"],
+      ["ciudad de mexico", "09"],
+      ["México", "15"],
+      ["Estado de México", "15"],
+      ["Baja California", "02"],
+      ["baja california sur", "03"],
+      // El comienzo del nombre de uno solo, como se dice a diario.
+      ["Coahuila", "05"],
+      ["Michoacán", "16"],
+      ["Veracruz", "30"],
+    ] as const) {
+      expect(await claveDe(nombre), nombre).toBe(cve);
+    }
+  });
+
+  it("un nombre que no es de un solo estado, o que no existe, es error claro", async () => {
+    esError(
+      await llamar("municipios_de_estado", { estado: "Baja" }),
+      '[parametro-invalido] "Baja" corresponde a más de un estado: 02 Baja California, 03 Baja California Sur. Indica cve_ent.',
+    );
+    esError(
+      await llamar("municipios_de_estado", { estado: "Atlántida" }),
+      '[no-encontrado] Ningún estado se llama "Atlántida". La herramienta estados da los nombres y las claves.',
+    );
+    esError(
+      await llamar("municipios_de_estado", { estado: " ¿!- " }),
+      "[parametro-invalido] El nombre del estado no tiene letras ni números.",
+    );
+    esError(
+      await llamar("municipios_de_estado", { cve_ent: "99" }),
+      "[no-encontrado] No existe el estado 99. La herramienta estados da las claves.",
+    );
+  });
+
+  it("pide uno solo de cve_ent o estado", async () => {
+    esError(
+      await llamar("municipios_de_estado", {}),
+      "[parametro-faltante] Indica cve_ent (la clave de 2 dígitos) o estado (el nombre).",
+    );
+    esError(
+      await llamar("municipios_de_estado", { cve_ent: "25", estado: "Sinaloa" }),
+      "[parametro-invalido] Indica solo uno de cve_ent o estado.",
+    );
+    for (const args of [
+      { cve_ent: "8" },
+      { estado: "" },
+      { estado: "x".repeat(61) },
+      { texto: "a" },
+    ]) {
+      esError(
+        await llamar("municipios_de_estado", args),
+        /^\[parametro-invalido\] Argumentos inválidos para municipios_de_estado: /,
+      );
+    }
+  });
+});

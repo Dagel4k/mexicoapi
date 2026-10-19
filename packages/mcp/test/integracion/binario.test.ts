@@ -187,11 +187,11 @@ async function sesion(env: Record<string, string> = {}) {
 }
 
 describe("herramientas en el binario compilado", () => {
-  it("publica las 13 herramientas y responde con mexicoapi compilado, sin red", async () => {
+  it("publica las 15 herramientas y responde con mexicoapi compilado, sin red", async () => {
     const s = await sesion();
     s.proceso.enviar({ jsonrpc: "2.0", id: 2, method: "tools/list" });
     const lista = (await s.proceso.recibir()).result as { tools: Array<{ name: string }> };
-    expect(lista.tools).toHaveLength(13);
+    expect(lista.tools).toHaveLength(15);
     const clabe = await s.llamar("validar_clabe", { clabe: "002010077777777771" });
     expect(clabe.structuredContent).toMatchObject({
       datos: { valido: true, detalle: { banco: { nombre_corto: "BANAMEX" } } },

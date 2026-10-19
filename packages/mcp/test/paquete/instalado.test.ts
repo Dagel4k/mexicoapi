@@ -24,7 +24,7 @@ describe("mexicoapi-mcp instalado desde su .tgz", () => {
       timeout: 120_000,
     });
     expect(r.status, r.stdout + r.stderr).toBe(0);
-    expect(r.stdout).toMatch(/^humo: tools\/list: 13 herramientas$/m);
+    expect(r.stdout).toMatch(/^humo: tools\/list: 15 herramientas$/m);
     expect(r.stdout).toMatch(/^humo: tools\/call udis$/m);
     expect(r.stdout).toMatch(/^humo: tools\/call codigo_postal sin catálogo$/m);
     expect(r.stdout).toMatch(/^humo: OK$/m);

@@ -35,6 +35,8 @@ const CACHE_VACIA = mkdtempSync(join(tmpdir(), "mexicoapi-mcp-cliente-oficial-")
 const LLAMADAS: Record<string, Record<string, unknown>> = {
   buscar_municipio: { texto: "culiacan" },
   municipio: { cvegeo: "25006" },
+  estados: {},
+  municipios_de_estado: { estado: "Sinaloa" },
   validar_clabe: { clabe: "002010077777777771" },
   banco_por_codigo: { codigo: "002" },
   validar_rfc: { rfc: "XAXX010101000" },
@@ -52,6 +54,8 @@ const LLAMADAS: Record<string, Record<string, unknown>> = {
 const DATOS: Record<string, unknown> = {
   buscar_municipio: expect.arrayContaining([expect.objectContaining({ cvegeo: "25006" })]),
   municipio: expect.objectContaining({ cvegeo: "25006", nombre: "Culiacán" }),
+  estados: expect.arrayContaining([expect.objectContaining({ cve_ent: "25", nombre: "Sinaloa" })]),
+  municipios_de_estado: expect.arrayContaining([expect.objectContaining({ cvegeo: "25006" })]),
   validar_clabe: expect.objectContaining({ valido: true }),
   banco_por_codigo: expect.objectContaining({ codigo: "002", nombre_corto: "BANAMEX" }),
   validar_rfc: expect.objectContaining({ valido: true }),
@@ -158,7 +162,7 @@ describe("binario con el cliente oficial de MCP", () => {
     expect(errores).toContain("datos del paquete, sin red");
   });
 
-  it("lista las 13 herramientas, de solo lectura y con outputSchema", async () => {
+  it("lista las 15 herramientas, de solo lectura y con outputSchema", async () => {
     const cliente = await conectar();
     const { tools, nextCursor } = await cliente.listTools();
     expect(nextCursor).toBeUndefined();
@@ -177,7 +181,7 @@ describe("binario con el cliente oficial de MCP", () => {
     // listTools guarda en el cliente el validador de cada outputSchema; callTool lo aplica.
     const { tools } = await cliente.listTools();
     const conEsquema = tools.filter((t: Tool) => t.outputSchema !== undefined);
-    expect(conEsquema).toHaveLength(13);
+    expect(conEsquema).toHaveLength(15);
     for (const [nombre, args] of Object.entries(LLAMADAS)) {
       const resultado = (await cliente.callTool({
         name: nombre,

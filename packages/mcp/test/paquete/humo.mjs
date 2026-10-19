@@ -19,6 +19,8 @@ const MS_LIMITE = 60_000;
 const HERRAMIENTAS = [
   "buscar_municipio",
   "municipio",
+  "estados",
+  "municipios_de_estado",
   "validar_clabe",
   "banco_por_codigo",
   "validar_rfc",

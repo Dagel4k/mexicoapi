@@ -1,7 +1,7 @@
 {
   "name": "mexicoapi-mcp",
   "version": "0.2.0",
-  "description": "Servidor MCP por stdio, de solo lectura, con datos oficiales de México: municipios, bancos y CLABE, RFC, CURP, NSS, tipo de cambio FIX, UDIS, días hábiles, UMA, salario mínimo, ISR y códigos postales.",
+  "description": "Servidor MCP por stdio, de solo lectura, con datos oficiales de México: estados y municipios, bancos y CLABE, RFC, CURP, NSS, tipo de cambio FIX, UDIS, días hábiles, UMA, salario mínimo, ISR y códigos postales.",
   "keywords": [
     "mcp",
     "model context protocol",

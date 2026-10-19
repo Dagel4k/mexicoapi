@@ -4,7 +4,12 @@ import { bancoPorCodigoHerramienta, validarClabeHerramienta } from "./consultas/
 import { diasInhabilesHerramienta, sumarDiasHabilesHerramienta } from "./consultas/calendarios.js";
 import { codigoPostalHerramienta } from "./consultas/codigo-postal.js";
 import { constantesHerramienta } from "./consultas/constantes.js";
-import { buscarMunicipioHerramienta, municipioHerramienta } from "./consultas/geografia.js";
+import {
+  buscarMunicipioHerramienta,
+  estadosHerramienta,
+  municipioHerramienta,
+  municipiosDeEstadoHerramienta,
+} from "./consultas/geografia.js";
 import { tipoDeCambioFixHerramienta, udisHerramienta } from "./consultas/indicadores.js";
 import {
   validarCurpHerramienta,
@@ -18,6 +23,8 @@ export function crearHerramientas(opciones: OpcionesHerramientas): readonly Herr
   const herramientas = [
     buscarMunicipioHerramienta(),
     municipioHerramienta(opciones),
+    estadosHerramienta(),
+    municipiosDeEstadoHerramienta(),
     validarClabeHerramienta(opciones),
     bancoPorCodigoHerramienta(opciones),
     validarRfcHerramienta(),
