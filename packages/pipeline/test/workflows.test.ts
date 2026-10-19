@@ -225,9 +225,20 @@ describe("revision-datos de ci.yml", () => {
     expect(recalcular.run).toContain("git archive --format=tar 'HEAD^1' data");
     expect(recalcular.run).toContain(`revisar --antes "\${antes}/data" || codigo=$?`);
     expect(recalcular.run).toContain(`echo "::stop-commands::\${pausa}"`);
-    const exigir = paso(ci, "revision-datos", "Exigir la etiqueta revisar");
+    const exigir = paso(ci, "revision-datos", "Exigir la etiqueta revisar y una aprobación");
     expect(exigir.env?.GH_TOKEN).toBe(expresion("github.token"));
+    expect(exigir.env?.CABEZA).toBe(expresion("github.event.pull_request.head.sha"));
     expect(exigir.run).not.toContain("$" + "{{");
+    // Una aprobación del commit actual, de una persona (no Bot) con permiso de escritura.
+    expect(exigir.run).toContain('.user.type != "Bot"');
+    expect(exigir.run).toContain(".commit_id == $sha");
+    expect(exigir.run).toContain("admin | maintain | write)");
+    // Aprobar vuelve a correr CI, y solo-datos reconoce el PR del bot en ese evento.
+    const on = (ci as unknown as { on: Record<string, unknown> }).on;
+    expect(on.pull_request_review).toEqual({ types: ["submitted", "dismissed"] });
+    const bot = paso(ci, "solo-datos", "Ver si el PR es del bot de datos");
+    expect(bot.env?.RAMA).toBe(expresion("github.event.pull_request.head.ref"));
+    expect(bot.run).toContain(`[ "\${EVENTO}" = "pull_request_review" ]`);
     const verify = ci.jobs.verify as Job & { needs: string[] };
     expect(verify.needs).toContain("revision-datos");
     expect(paso(ci, "verify", "Revisar los jobs requeridos").run).toContain(
