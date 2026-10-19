@@ -244,6 +244,14 @@ describe("herramientas en el binario compilado", () => {
     expect(proceso.errores()).toContain("MEXICOAPI_BASE no es válida");
     expect(proceso.errores()).not.toContain("CLAVE-SECRETA");
   });
+
+  it("un MEXICOAPI_SIN_RED que no se reconoce sale con código 2 y dice qué valores acepta", async () => {
+    const proceso = lanzar(BINARIO, { MEXICOAPI_SIN_RED: "verdadero" });
+    expect(await proceso.fin).toEqual({ codigo: 2, senal: null });
+    expect(proceso.lineas).toEqual([]);
+    expect(proceso.errores()).toContain("mexicoapi-mcp: MEXICOAPI_SIN_RED no es válida: usa 1,");
+    expect(proceso.errores()).not.toContain("verdadero");
+  });
 });
 
 describe("servidor con herramientas de prueba por stdio real", () => {
