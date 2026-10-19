@@ -204,6 +204,68 @@ describe("consulta a la API", () => {
     expect((await api.diasInhabiles({ autoridad: "sat", anio: 2026 })).advertencias).toEqual([]);
   });
 
+  // Nuevo: quien copia `const { data, advertencias } = await api.diasHabiles(...)` del README ve
+  // también las del cálculo (calendario incompleto, art. 715, prórroga del art. 12).
+  it("junta en advertencias las del cálculo, sin quitarlas de data", async () => {
+    const calculo = {
+      autoridad: "lft",
+      desde: "2026-12-22",
+      dias: 5,
+      resultado: "2026-12-30",
+      inhabiles_saltados: [],
+      advertencias: ["del cálculo", "otra del cálculo"],
+    };
+    const { fetch } = fetchFalso(
+      json({ data: calculo, meta: META }),
+      // Una de primer nivel repetida en data sale una sola vez, con las del cliente primero.
+      json({ data: calculo, advertencias: ["de la API", "del cálculo"], meta: META }),
+      json({ data: { ...calculo, advertencias: [1, "texto"] }, meta: META }),
+    );
+    const api = conFetch(fetch);
+    const r = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
+    expect(r.advertencias).toEqual(["del cálculo", "otra del cálculo"]);
+    expect(r.data.advertencias).toEqual(["del cálculo", "otra del cálculo"]);
+    esperarCongelado(r, "respuesta");
+    expect((await api.diasHabiles({ desde: "2026-12-22", dias: 5 })).advertencias).toEqual([
+      "de la API",
+      "del cálculo",
+      "otra del cálculo",
+    ]);
+    // Solo los textos, como las de primer nivel.
+    expect((await api.diasHabiles({ desde: "2026-12-22", dias: 5 })).advertencias).toEqual([
+      "texto",
+    ]);
+  });
+
+  it("junta las del cálculo también en una respuesta guardada y con consultar", async () => {
+    relojFalso();
+    const calculo = {
+      autoridad: "lft",
+      desde: "2026-12-22",
+      dias: 5,
+      resultado: "2026-12-30",
+      inhabiles_saltados: [],
+      advertencias: ["del cálculo"],
+    };
+    const { fetch } = fetchFalso(
+      json({ data: calculo, meta: META }, 200, {
+        "Cache-Control": "max-age=60, stale-if-error=600",
+      }),
+      errorInterno(),
+    );
+    const api = conFetch(fetch, { cache: true, reintentos: 0 });
+    const consulta = { autoridad: "lft", desde: "2026-12-22", dias: 5 } as const;
+    expect((await api.consultar("/v1/dias-habiles", consulta)).advertencias).toEqual([
+      "del cálculo",
+    ]);
+    vi.advanceTimersByTime(61_000);
+    const rancia = await api.diasHabiles({ desde: "2026-12-22", dias: 5 });
+    expect(rancia.advertencias).toHaveLength(2);
+    expect(rancia.advertencias[0]).toMatch(/^Respuesta guardada de la API/);
+    expect(rancia.advertencias[1]).toBe("del cálculo");
+    esperarCongelado(rancia, "respuesta");
+  });
+
   it("/v1/status responde sin meta", async () => {
     const estado = { dataset: "udis", status: "ok" };
     const { fetch } = fetchFalso(json({ data: [estado] }));
@@ -1091,6 +1153,20 @@ describe("de dónde sale cada respuesta", () => {
     expect(r.advertencias[0]).toBe(
       "Respuesta de los datos del paquete porque la API falló: 429 Respuesta inesperada de la API: La API respondió 429 sin problem+json.",
     );
+  });
+
+  it("con el paquete de respaldo, las del cliente van antes que las del cálculo", async () => {
+    const { fetch } = fetchFalso(errorInterno());
+    const r = await conFetch(fetch, { reintentos: 0 }).diasHabiles({
+      desde: "2026-12-22",
+      dias: 5,
+    });
+    expect(r.origen).toBe("paquete");
+    expect(r.data.advertencias).toEqual([AVISO_LFT]);
+    expect(r.advertencias).toEqual([
+      "Respuesta de los datos del paquete porque la API falló: 500 Error interno: Ocurrió un error interno.",
+      AVISO_LFT,
+    ]);
   });
 
   it("la advertencia de respaldo nombra el fallo sin la ruta pedida", async () => {

@@ -174,14 +174,16 @@ import { crearCliente, MexicoApiError } from "mexicoapi/cliente";
 const api = crearCliente({ cache: true }); // sin base: la API pública, URL_API
 
 const { data, meta, origen, advertencias } = await api.diasHabiles({
-  autoridad: "sat",
-  tipoPlazo: "general",
-  desde: "2026-07-17",
-  dias: 3,
+  autoridad: "lft",
+  desde: "2026-12-22",
+  dias: 5,
 });
-data.resultado; // "2026-08-05"
+data.resultado; // "2026-12-30": salta el 25 de diciembre
 origen; // "api", o "paquete" si la API no respondió
+advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; ..."]
 ```
+
+`advertencias` trae todo lo que hay que decirle a quien usa el resultado: primero las del cliente (la API no respondió y salió del paquete, los datos del paquete son viejos) y después las del cálculo (calendario incompleto, el art. 715 de la LFT, la prórroga del art. 12 del CFF), sin repetidos. Las del cálculo siguen también en `data.advertencias`, como las da la API. Muéstralas junto al resultado.
 
 Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `http://127.0.0.1:8787` (`wrangler dev`) o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
 

@@ -229,7 +229,13 @@ async function diasHabiles(e: Entorno, opciones: Opciones): Promise<number> {
     permitirIncompleto: opciones["permitir-incompleto"],
   } as ConsultaDiasHabiles);
   if (opciones.json) json(e, respuesta);
-  else imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pieTexto(respuesta));
+  else {
+    // Las del cálculo ya salen debajo del resultado: el pie lleva solo las demás.
+    const delCalculo = new Set(respuesta.data.advertencias);
+    const advertencias = respuesta.advertencias.filter((a) => !delCalculo.has(a));
+    const pie = pieTexto({ origen: respuesta.origen, advertencias });
+    imprimir(e, diasHabilesTexto(respuesta, tipoPlazo) + pie);
+  }
   return 0;
 }
 

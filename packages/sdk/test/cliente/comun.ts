@@ -192,6 +192,8 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     expect(r.data.resultado).toBe("2026-11-19");
     // Toda respuesta lft avisa que no tiene las suspensiones de labores del art. 715.
     expect(r.data.advertencias).toEqual([AVISO_LFT]);
+    // Nuevo: también en las de primer nivel, como en la API.
+    expect(r.advertencias).toEqual([AVISO_LFT]);
     expect(r.meta).toEqual({
       dataset: "dias-inhabiles.lft",
       as_of: m.mexicoapi.VIGENCIA_LFT,
@@ -224,6 +226,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
       AVISO_LFT,
     ]);
+    expect(incompleto.advertencias).toEqual(incompleto.data.advertencias);
   });
 
   it("da los problemas de días hábiles e inhábiles con su forma de la API", async () => {
