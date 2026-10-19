@@ -345,7 +345,7 @@ Códigos de salida:
 | --- | --- |
 | 0 | Todo bien |
 | 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar. En el RFC, un mal dígito verificador solo se avisa y sale con 0 |
-| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`) |
+| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`dias-habiles` sin `--autoridad`, `--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`); también un `MEXICOAPI_SIN_RED` que no se reconoce |
 
 ## Otras exportaciones
 
