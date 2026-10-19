@@ -1,10 +1,16 @@
-// Consultas a la API: fetch con tiempo límite por intento (incluida la lectura del cuerpo),
-// reintentos con espera exponencial dentro de un tope de espera total, y caché en memoria con
-// revalidación por ETag y stale-if-error.
+// Consultas a la API: fetch con tiempo límite por intento (incluida la lectura del cuerpo), sin
+// seguir redirecciones y con un tope para el cuerpo, reintentos con espera exponencial dentro de
+// un tope de espera total, y caché en memoria con revalidación por ETag y stale-if-error.
 import type { Cache, Guardado } from "./cache.js";
 import { congelar, esObjeto, type Objeto } from "./comun.js";
 import { MexicoApiError, type Problema } from "./error.js";
-import type { FetchCompatible, InitFetch, RespuestaSinMeta, SenalAborto } from "./tipos.js";
+import type {
+  FetchCompatible,
+  InitFetch,
+  RespuestaFetch,
+  RespuestaSinMeta,
+  SenalAborto,
+} from "./tipos.js";
 
 /** Lo que el cliente usa del entorno, sin depender de los tipos de DOM ni de Node. */
 interface Entorno {
@@ -12,6 +18,7 @@ interface Entorno {
   AbortController: new () => { readonly signal: SenalAborto; abort(motivo?: unknown): void };
   setTimeout(funcion: () => void, ms: number): unknown;
   clearTimeout(id: unknown): void;
+  TextDecoder: new () => { decode(bytes: Uint8Array): string };
 }
 
 const entorno = globalThis as unknown as Entorno;
@@ -22,6 +29,12 @@ const ESPERA_TOPE_MS = 10_000;
 const RETRY_AFTER_TOPE_MS = 60_000;
 /** Causas anidadas que se copian al ocultar la ruta; las demás se cortan. */
 const CAUSAS_MAX = 5;
+/**
+ * Tope del cuerpo de una respuesta. La más grande de la API, `/v1/municipios`, ronda los 250 KB;
+ * el tope deja mucho margen y evita que una respuesta sin fin llene la memoria.
+ */
+export const TOPE_CUERPO_BYTES = 8 * 1024 * 1024;
+const TOPE_TEXTO = `${TOPE_CUERPO_BYTES / (1024 * 1024)} MB`;
 
 export interface ConfigHttp {
   /** Origen de la API sin barra final ni `/v1`. */
@@ -45,12 +58,17 @@ export interface Pedido {
   ocultar(texto: string): string;
   /** Si la respuesta debe traer `meta`. */
   conMeta: boolean;
+  /** Qué debe ser `data`; sin forma (una ruta que el cliente no conoce), cualquier valor. */
+  forma: "lista" | "objeto" | undefined;
   signal: SenalAborto | undefined;
 }
 
 interface Leida {
   status: number;
+  /** El cuerpo; vacío si pasó del tope. */
   texto: string;
+  /** Si el cuerpo pasó de TOPE_CUERPO_BYTES y se dejó de leer. */
+  grande: boolean;
   encabezado(nombre: string): string | null;
 }
 
@@ -98,6 +116,7 @@ async function deLaApi(
   if (guardado?.etag != null) encabezados["If-None-Match"] = guardado.etag;
 
   const r = await conReintentos(c, fetch, url, encabezados, p);
+  if (r.grande) throw inesperada(r.status, `La respuesta pasa de ${TOPE_TEXTO}.`, p);
   if (r.status === 304 && guardado !== undefined) {
     guardar(c, url, guardado.respuesta, r, guardado.etag);
     return guardado.respuesta;
@@ -110,6 +129,9 @@ async function deLaApi(
     cuerpo.data !== undefined &&
     (!p.conMeta || esObjeto(cuerpo.meta))
   ) {
+    if (!tieneForma(cuerpo.data, p.forma)) {
+      throw inesperada(r.status, `La respuesta no trae data como ${p.forma}.`, p);
+    }
     const respuesta = congelar({
       data: cuerpo.data,
       ...(esObjeto(cuerpo.meta) ? { meta: cuerpo.meta } : {}),
@@ -171,17 +193,75 @@ async function intentar(
   const cancelar = (): void => control.abort(senal?.reason);
   senal?.addEventListener("abort", cancelar);
   try {
-    const init: InitFetch = { headers: encabezados, signal: control.signal as InitFetch["signal"] };
+    const init: InitFetch = {
+      headers: encabezados,
+      signal: control.signal as InitFetch["signal"],
+      redirect: "error",
+    };
     // Las carreras con la señal cortan aunque un fetch propio no la respete.
     const respuesta = await hastaAbortar(fetch(url, init), control.signal);
-    const texto = await hastaAbortar(respuesta.text(), control.signal);
-    return { status: respuesta.status, texto, encabezado: (n) => respuesta.headers.get(n) };
+    const texto = await hastaAbortar(leerTexto(respuesta, control.signal), control.signal);
+    return {
+      status: respuesta.status,
+      texto: texto ?? "",
+      grande: texto === null,
+      encabezado: (n) => respuesta.headers.get(n),
+    };
   } catch (error) {
     return agotado ? { falla: "tiempo" } : { falla: "red", error };
   } finally {
     entorno.clearTimeout(reloj);
     senal?.removeEventListener("abort", cancelar);
   }
+}
+
+/**
+ * El texto del cuerpo, o null si pasa de TOPE_CUERPO_BYTES: por partes si la respuesta trae
+ * `body` (se corta y se cancela al pasar del tope o al abortar el intento), con `text()` si no.
+ */
+async function leerTexto(respuesta: RespuestaFetch, senal: SenalAborto): Promise<string | null> {
+  const cuerpo = respuesta.body;
+  if (Number(respuesta.headers.get("Content-Length")) > TOPE_CUERPO_BYTES) {
+    cuerpo
+      ?.getReader()
+      .cancel()
+      .catch(() => undefined);
+    return null;
+  }
+  if (!cuerpo) {
+    const texto = await respuesta.text();
+    return texto.length > TOPE_CUERPO_BYTES ? null : texto;
+  }
+  const lector = cuerpo.getReader();
+  const cancelar = (): void => void lector.cancel(senal.reason).catch(() => undefined);
+  senal.addEventListener("abort", cancelar);
+  const trozos: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      if (value === undefined) continue;
+      total += value.byteLength;
+      if (total > TOPE_CUERPO_BYTES) {
+        cancelar();
+        return null;
+      }
+      trozos.push(value);
+    }
+  } catch (error) {
+    cancelar();
+    throw error;
+  } finally {
+    senal.removeEventListener("abort", cancelar);
+  }
+  const bytes = new Uint8Array(total);
+  let desde = 0;
+  for (const trozo of trozos) {
+    bytes.set(trozo, desde);
+    desde += trozo.byteLength;
+  }
+  return new entorno.TextDecoder().decode(bytes);
 }
 
 function hastaAbortar<T>(promesa: Promise<T>, senal: SenalAborto): Promise<T> {
@@ -264,6 +344,12 @@ function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaSinMeta<unk
   });
 }
 
+function tieneForma(data: unknown, forma: Pedido["forma"]): boolean {
+  if (forma === "lista") return Array.isArray(data);
+  if (forma === "objeto") return esObjeto(data);
+  return true;
+}
+
 function leerJson(texto: string): unknown {
   try {
     return JSON.parse(texto);
@@ -316,8 +402,15 @@ function ocultarEn(valor: unknown, p: Pedido): unknown {
   return valor;
 }
 
+/** Una respuesta que no es de la API, o que no tiene la forma de la ruta. */
+function inesperada(status: number, detalle: string, p: Pedido): MexicoApiError {
+  return new MexicoApiError(
+    { type: "about:blank", title: "Respuesta inesperada de la API", status, detail: detalle },
+    { url: p.urlOculta, origen: "api" },
+  );
+}
+
 function errorDeRespuesta(status: number, cuerpo: unknown, p: Pedido): MexicoApiError {
-  let problema: Problema;
   if (
     status >= 400 &&
     esObjeto(cuerpo) &&
@@ -325,23 +418,20 @@ function errorDeRespuesta(status: number, cuerpo: unknown, p: Pedido): MexicoApi
     typeof cuerpo.title === "string"
   ) {
     // `type` y `title` son del catálogo de la API: no traen valores y no se tocan.
-    problema = {
+    const problema: Problema = {
       ...(ocultarEn(cuerpo, p) as Objeto),
       type: cuerpo.type,
       title: cuerpo.title,
       status,
       detail: typeof cuerpo.detail === "string" ? p.ocultar(cuerpo.detail) : "",
     };
-  } else {
-    problema = {
-      type: "about:blank",
-      title: "Respuesta inesperada de la API",
-      status,
-      detail:
-        status >= 200 && status < 300
-          ? "La respuesta no trae JSON con data."
-          : `La API respondió ${status} sin problem+json.`,
-    };
+    return new MexicoApiError(problema, { url: p.urlOculta, origen: "api" });
   }
-  return new MexicoApiError(problema, { url: p.urlOculta, origen: "api" });
+  return inesperada(
+    status,
+    status >= 200 && status < 300
+      ? "La respuesta no trae JSON con data."
+      : `La API respondió ${status} sin problem+json.`,
+    p,
+  );
 }

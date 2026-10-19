@@ -1,6 +1,8 @@
 // Una respuesta 200 de la API que no tiene la forma esperada (otra versión de la API, un proxy que
 // responde otra cosa) da un error claro de la herramienta, nunca un -32603 opaco ni un dato mal
-// armado. Los datos del paquete no pasan por aquí: los revisa el protocolo con el outputSchema.
+// armado. Si `data` ni siquiera es una lista o un objeto como pide la ruta, el cliente no la toma
+// por respuesta de la API y responde con el paquete, con su advertencia. Los datos del paquete no
+// pasan por aquí: los revisa el protocolo con el outputSchema.
 import { describe, expect, it } from "vitest";
 import { DATOS_CON_OTRA_FORMA } from "../src/respuesta.js";
 import {
@@ -20,8 +22,6 @@ describe("una respuesta de la API con otra forma", () => {
     ["tipo_de_cambio_fix", { publicado: "2026-10-19" }, { ...FIX_BIEN, valor: "dieciocho" }],
     ["tipo_de_cambio_fix", {}, { ...FIX_BIEN, fundamento: { nombre: "CFF" } }],
     ["udis", { fecha: "2026-10-01" }, { fecha: "2026-10-01", valor: "8,836029" }],
-    ["udis", { fecha: "2026-10-01" }, "8.836029"],
-    ["dias_inhabiles", { autoridad: "lft", anio: 2026 }, { dias: [] }],
     ["dias_inhabiles", { autoridad: "lft", anio: 2026 }, [{ fecha: "2026-11-16", motivo: "x" }]],
     [
       "sumar_dias_habiles",
@@ -39,6 +39,21 @@ describe("una respuesta de la API con otra forma", () => {
     const { herramientas } = herramientasConApi(() => apiOk(data));
     esError(await (await servidor(herramientas))(nombre, args), DATOS_CON_OTRA_FORMA);
   });
+
+  it.each([
+    ["udis", { fecha: "2026-10-01" }, "8.836029", "objeto"],
+    ["dias_inhabiles", { autoridad: "lft", anio: 2026 }, { dias: [] }, "lista"],
+  ])(
+    "%s %j con data %j de otro tipo responde con el paquete",
+    async (nombre, args, data, forma) => {
+      const { herramientas } = herramientasConApi(() => apiOk(data));
+      const c = contenido(await (await servidor(herramientas))(nombre, args));
+      expect(c.origen).toBe("paquete");
+      expect((c.advertencias as string[])[0]).toBe(
+        `Respuesta de los datos del paquete porque la API falló: 200 Respuesta inesperada de la API: La respuesta no trae data como ${forma}.`,
+      );
+    },
+  );
 
   it.each([
     ["una fuente que no es http(s)", { sources: [{ name: "Fuente", url: "javascript:alert(1)" }] }],

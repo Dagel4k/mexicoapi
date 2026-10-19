@@ -159,12 +159,24 @@ type SenalDelEntorno = typeof globalThis extends { AbortSignal: { prototype: inf
 export interface InitFetch {
   headers: Record<string, string>;
   signal: SenalDelEntorno;
+  /** La API no redirige lo que pide el cliente: una redirección es un fallo de conexión. */
+  redirect: "error";
 }
 
-/** Lo que el cliente usa de la respuesta de `fetch`. */
+/** Lo que el cliente usa del lector de un cuerpo (el de un `ReadableStream`). */
+export interface LectorCuerpo {
+  read(): Promise<{ done: boolean; value?: Uint8Array | undefined }>;
+  cancel(motivo?: unknown): Promise<void>;
+}
+
+/**
+ * Lo que el cliente usa de la respuesta de `fetch`. Si trae `body`, el cuerpo se lee por partes
+ * y se corta al pasar de 8 MB; si no, se usa `text()` y el tope se revisa al final.
+ */
 export interface RespuestaFetch {
   readonly status: number;
   readonly headers: { get(nombre: string): string | null };
+  readonly body?: { getReader(): LectorCuerpo } | null | undefined;
   text(): Promise<string>;
 }
 
