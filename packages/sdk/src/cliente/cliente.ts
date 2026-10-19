@@ -297,7 +297,8 @@ function codigosPorTexto(listas: readonly unknown[]): Map<string, CodigoAviso> {
 
 /**
  * `r` con `avisos`: sus advertencias con su código, en el mismo orden. Si `data` trae advertencias
- * (`/v1/dias-habiles`), también `data.avisos` con las suyas, solo los textos. El código de cada
+ * (`/v1/dias-habiles`), también `data.avisos` con las suyas: solo los textos, y lo que no es texto
+ * sale también de `data.advertencias`, como de las de primer nivel. El código de cada
  * texto es el que mandó la API (en los avisos de primer nivel o en `data.avisos`) si es del
  * catálogo, aunque el texto tenga otra redacción; si no lo mandó (una API anterior) o no es del
  * catálogo (una API más nueva), sale del texto con `codigoAviso`. Siempre es un `CodigoAviso`.
@@ -308,12 +309,12 @@ function conAvisos(r: RespuestaPrevia): RespuestaSinMeta<unknown> {
   const conCodigo = (textos: readonly string[]): Aviso[] =>
     textos.map((texto) => ({ codigo: codigos.get(texto) ?? codigoAviso(texto), texto }));
   const delCalculo = datos?.advertencias;
-  const data = Array.isArray(delCalculo)
-    ? {
-        ...(datos as Objeto),
-        avisos: conCodigo(delCalculo.filter((a): a is string => typeof a === "string")),
-      }
-    : r.data;
+  let data = r.data;
+  if (Array.isArray(delCalculo)) {
+    const textos = delCalculo.filter((a): a is string => typeof a === "string");
+    const advertencias = textos.length === delCalculo.length ? delCalculo : textos;
+    data = { ...(datos as Objeto), advertencias, avisos: conCodigo(textos) };
+  }
   const { avisos: _deLaApi, ...resto } = r;
   return congelar({ ...resto, data, avisos: conCodigo(r.advertencias) });
 }
