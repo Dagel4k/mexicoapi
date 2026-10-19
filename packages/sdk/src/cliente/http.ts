@@ -220,7 +220,9 @@ async function intentar(
  * `body` (se corta y se cancela al pasar del tope o al abortar el intento), con `text()` si no.
  */
 async function leerTexto(respuesta: RespuestaFetch, senal: SenalAborto): Promise<string | null> {
-  const cuerpo = respuesta.body;
+  // Un fetch propio puede traer otro tipo de body (node-fetch 2 da un stream de Node): ese se lee
+  // con text(), como antes.
+  const cuerpo = typeof respuesta.body?.getReader === "function" ? respuesta.body : undefined;
   if (Number(respuesta.headers.get("Content-Length")) > TOPE_CUERPO_BYTES) {
     cuerpo
       ?.getReader()

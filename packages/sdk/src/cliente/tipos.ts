@@ -170,8 +170,9 @@ export interface LectorCuerpo {
 }
 
 /**
- * Lo que el cliente usa de la respuesta de `fetch`. Si trae `body`, el cuerpo se lee por partes
- * y se corta al pasar de 8 MB; si no, se usa `text()` y el tope se revisa al final.
+ * Lo que el cliente usa de la respuesta de `fetch`. Si trae `body` con `getReader()` (un
+ * `ReadableStream`), el cuerpo se lee por partes y se corta al pasar de 8 MB; si no, se usa
+ * `text()` y el tope se revisa al final.
  */
 export interface RespuestaFetch {
   readonly status: number;
