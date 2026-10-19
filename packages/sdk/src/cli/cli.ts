@@ -4,7 +4,8 @@
 // Códigos de salida: 0 todo bien; 1 entrada o resultado inválido (un RFC mal formado, un banco
 // que no existe) o error al ejecutar; 2 uso incorrecto (comando desconocido, falta un argumento
 // u opción, como --tipo-plazo con el SAT, sobra una, como --tipo-plazo con la LFT, o uno mal
-// formado, como un código postal de 4 dígitos).
+// formado, como un código postal de 4 dígitos) o de configuración (un MEXICOAPI_SIN_RED que no se
+// reconoce, sin el recordatorio de --help).
 import { parseArgs } from "node:util";
 import {
   type NombresTipoPlazo,
@@ -56,8 +57,11 @@ export interface Entorno {
 /** Uso incorrecto: sale con código 2 y un recordatorio de `--help`. */
 class ErrorUso extends Error {}
 
-/** Una variable de entorno con un valor que no se reconoce: sale con código 2, sin `--help`. */
-class ErrorEntorno extends Error {}
+/**
+ * Error de configuración: una variable de entorno con un valor que no se reconoce. Sale con código
+ * 2 como el uso incorrecto, pero sin el recordatorio de `--help`: los argumentos están bien.
+ */
+class ErrorConfiguracion extends Error {}
 
 const SI = new Set(["1", "true", "yes", "si", "sí", "on"]);
 const NO = new Set(["0", "false", "no", "off", ""]);
@@ -71,7 +75,7 @@ function sinRedPedido(valor: string | undefined): boolean {
   const texto = (valor ?? "").normalize("NFC").trim().toLowerCase();
   if (SI.has(texto)) return true;
   if (NO.has(texto)) return false;
-  throw new ErrorEntorno(
+  throw new ErrorConfiguracion(
     "MEXICOAPI_SIN_RED no es válida: usa 1, true, yes, si u on para responder sin red, o 0, false, no, off o nada para consultar la API.",
   );
 }
@@ -628,7 +632,7 @@ export async function ejecutar(argv: readonly string[], e: Entorno): Promise<num
         return await sepomex(resto, e, opciones);
     }
   } catch (error) {
-    if (error instanceof ErrorEntorno) {
+    if (error instanceof ErrorConfiguracion) {
       imprimirError(e, error.message, enJson);
       return 2;
     }

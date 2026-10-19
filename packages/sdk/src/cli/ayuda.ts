@@ -36,8 +36,8 @@ dias-habiles, fix, udi, uma, salario-minimo e isr consultan primero la API públ
 (${URL_API}), o la de --base <url> o la variable MEXICOAPI_BASE, y si
 no responde usan los datos que trae el paquete y lo avisan. Con MEXICOAPI_SIN_RED=1 (o true,
 yes, si, on) todo sale del paquete, sin red (--base gana a esa variable); con 0, false, no, off
-o vacía, consultan la API, y otro valor sale con 2. estados, municipios, municipio y banco salen
-siempre del paquete, como los validadores.
+o vacía, consultan la API, y otro valor es un error de configuración (sale con 2). estados,
+municipios, municipio y banco salen siempre del paquete, como los validadores.
 
 Códigos de salida:
   0   todo bien
@@ -46,7 +46,8 @@ Códigos de salida:
       y sale con 0
   2   uso incorrecto: comando desconocido, falta un argumento u opción (--autoridad
       sat sin --tipo-plazo), sobra una (--tipo-plazo con lft) o tiene un valor mal
-      formado (--dias x, sepomex cp 8000)
+      formado (--dias x, sepomex cp 8000); o un error de configuración, como un MEXICOAPI_SIN_RED
+      que no se reconoce
 
 Usa "mexicoapi <comando> --help" para el detalle de cada comando.`;
 
