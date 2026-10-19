@@ -58,6 +58,21 @@ export const CODIGOS_AVISO = Object.freeze([
 ] as const);
 export type CodigoAviso = (typeof CODIGOS_AVISO)[number];
 
+/**
+ * Los códigos que da la API (los de días hábiles e inhábiles), en el orden del catálogo. El
+ * documento OpenAPI publica `codigo` como texto abierto y los lista aquí; la prueba de contrato
+ * exige que la API no dé otros.
+ */
+export const CODIGOS_AVISO_API = Object.freeze([
+  "calendario-incompleto",
+  "tipo-plazo-incompleto",
+  "lista-incompleta",
+  "lft-art-715",
+  "transmision-poder-ejecutivo",
+  "prorroga-art-12",
+  "vacaciones-sin-publicar",
+] as const satisfies readonly CodigoAviso[]);
+
 /** Una advertencia con su código: `texto` es el mismo de `advertencias`. */
 export interface Aviso {
   codigo: CodigoAviso;

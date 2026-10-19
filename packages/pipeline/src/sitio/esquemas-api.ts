@@ -1,6 +1,6 @@
 import {
   AUTORIDADES,
-  CODIGOS_AVISO,
+  CODIGOS_AVISO_API,
   type FuenteDof,
   type SalarioMinimo,
   type TarifaIsr,
@@ -86,10 +86,15 @@ export const AVISOS_PARALELOS =
 
 export const esquemaAviso = z.object({
   codigo: z
-    .enum(CODIGOS_AVISO)
+    .string()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/)
     .describe(
-      "Código estable del aviso, en kebab-case: dentro de /v1 no cambia de significado aunque cambie la redacción del texto. Qué significa cada uno y qué hacer: docs/api/README.md#avisos. La API da los de días hábiles e inhábiles; los demás los da el paquete mexicoapi (cliente y SEPOMEX) o el servidor MCP. Una versión nueva puede agregar códigos: trata uno que no conozcas como otro, que es el de un texto sin código.",
-    ),
+      "Código estable del aviso, en kebab-case: dentro de /v1 no cambia de significado aunque cambie la redacción del texto. Los que da la API están en x-extensible-enum; qué significa cada uno y qué hacer: docs/api/README.md#avisos. Es un texto abierto porque una versión nueva puede agregar códigos: trata uno que no conozcas como otro, el de un aviso sin código conocido.",
+    )
+    .meta({
+      "x-extensible-enum": [...CODIGOS_AVISO_API],
+      examples: ["lft-art-715", "prorroga-art-12"],
+    }),
   texto: z.string().describe("El texto de la advertencia, el mismo que en advertencias."),
 });
 

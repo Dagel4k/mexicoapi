@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { CODIGOS_AVISO, FUENTE_CFF_20 } from "@mexicoapi/core";
+import { CODIGOS_AVISO_API, FUENTE_CFF_20 } from "@mexicoapi/core";
 import { PROBLEMAS, URL_API } from "@mexicoapi/core/problemas";
 import {
   CONSULTAS,
@@ -483,12 +483,21 @@ describe("documento OpenAPI", () => {
     expect(op.description).toContain("vacaciones");
   });
 
-  it("Aviso: el código es del catálogo cerrado y el texto, el de advertencias", () => {
+  it("Aviso: el código es un texto abierto con los de la API como enum extensible", () => {
     const aviso = doc.components.schemas.Aviso as Obj;
     expect(aviso.required).toEqual(["codigo", "texto"]);
-    expect(aviso.properties.codigo.enum).toEqual([...CODIGOS_AVISO]);
-    expect(aviso.properties.codigo.description).toContain("README.md#avisos");
-    expect(aviso.properties.codigo.description).toContain("otro");
+    const codigo = aviso.properties.codigo as Obj;
+    // Abierto: un código nuevo no rompe a un cliente generado; la prueba de contrato exige los
+    // de CODIGOS_AVISO_API.
+    expect(codigo.type).toBe("string");
+    expect(codigo.enum).toBeUndefined();
+    expect(codigo.pattern).toBe("^[a-z0-9]+(-[a-z0-9]+)*$");
+    expect(codigo["x-extensible-enum"]).toEqual([...CODIGOS_AVISO_API]);
+    expect(codigo.examples.length).toBeGreaterThan(0);
+    for (const ejemplo of codigo.examples) expect(CODIGOS_AVISO_API).toContain(ejemplo);
+    for (const valor of CODIGOS_AVISO_API) expect(valor).toMatch(new RegExp(codigo.pattern));
+    expect(codigo.description).toContain("README.md#avisos");
+    expect(codigo.description).toContain("otro");
     expect(aviso.properties.texto.description).toContain("advertencias");
   });
 
