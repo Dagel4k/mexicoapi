@@ -79,7 +79,8 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
   "fuente": { "nombre": "Diario Oficial de la Federación (SIDOF): valor de la unidad de inversión (UDIS)", "url": "https://sidof.segob.gob.mx/" },
   "fuentes": [{ "nombre": "Diario Oficial de la Federación (SIDOF): valor de la unidad de inversión (UDIS)", "url": "https://sidof.segob.gob.mx/" }],
   "origen": "paquete",
-  "advertencias": []
+  "advertencias": [],
+  "avisos": []
 }
 ```
 
@@ -88,6 +89,7 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 - `fuente` y `fuentes`: la publicación oficial con su URL, para citarla. `fuente` es la primera de `fuentes`.
 - `origen`: `api` si respondió la API (la pública o la de `MEXICOAPI_BASE`), `paquete` si salió de los datos y las reglas del paquete `mexicoapi`, o `cache_local` en `codigo_postal`.
 - `advertencias`: lo que hay que decirle a quien pregunta, por ejemplo que la API falló o que un calendario puede estar incompleto.
+- `avisos`: las mismas advertencias, en el mismo orden, cada una con un código estable (`{ "codigo": "lft-art-715", "texto": "…" }`), para que un programa decida sin leer el texto. `sumar_dias_habiles` trae también `datos.avisos`. Los códigos están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos). El texto del resultado solo trae las advertencias.
 
 Las fechas que reciben y devuelven las herramientas (`publicado`, `operacion`, `fecha`, `desde`) son días de la Ciudad de México (America/Mexico_City). El servidor no decide qué día es hoy: para el FIX de un pago de hoy, el asistente debe pedir `operacion` con la fecha de hoy en esa zona. De las 18:00 a las 24:00 de la Ciudad de México, en UTC ya es el día siguiente, y con esa fecha la respuesta puede ser el FIX de otro día sin ningún error. La descripción de `tipo_de_cambio_fix` se lo dice al asistente.
 

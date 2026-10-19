@@ -82,7 +82,10 @@ const r = sumarDiasHabiles({ calendario: calendarioLft(), desde: "2026-11-13", d
 r.resultado; // "2026-11-19": salta el lunes 16 de noviembre
 r.inhabiles_saltados; // [{ fecha: "2026-11-16", motivo: "Tercer lunes de noviembre...", tipo: "descanso", fuente }]
 r.advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; ..."]
+r.avisos; // [{ codigo: "lft-art-715", texto: "Solo descuenta sábados, domingos y ..." }]
 ```
+
+`avisos` son las mismas advertencias, en el mismo orden, cada una con un código estable: para decidir en un programa sin leer el texto, que puede cambiar de redacción. Los códigos y qué hacer con cada uno están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
 
 `desde` no se cuenta: en un plazo que corre desde una notificación, es el día en que surte efectos, no el día en que se hizo.
 
@@ -220,9 +223,20 @@ advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obl
 
 `advertencias` trae todo lo que hay que decirle a quien usa el resultado: primero las del cliente (la API no respondió y salió del paquete, los datos del paquete son viejos) y después las del cálculo (calendario incompleto, el art. 715 de la LFT, la prórroga del art. 12 del CFF), sin repetidos. Las del cálculo siguen también en `data.advertencias`, como las da la API. Muéstralas junto al resultado.
 
+`avisos` trae las mismas advertencias, en el mismo orden, como `{ codigo, texto }`, y `data.avisos` las del cálculo. Para decidir en un programa usa `codigo`, que no cambia aunque cambie el texto:
+
+```ts
+const { avisos } = await api.diasHabiles({ autoridad: "lft", desde: "2026-12-22", dias: 5 });
+if (avisos.some((a) => a.codigo === "lft-art-715")) {
+  // revisar el calendario del tribunal antes de dar el vencimiento
+}
+```
+
+Los códigos los pone el cliente con su catálogo (`CODIGOS_AVISO` de `mexicoapi`); un texto que esta versión no conoce sale como `otro`. La lista con qué significa cada código está en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
+
 Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `http://127.0.0.1:8787` (`wrangler dev`) o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
 
-Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen` y `advertencias`.
+Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen`, `advertencias` y `avisos`.
 
 ### Qué responde el paquete y qué la API
 
@@ -287,6 +301,8 @@ await sepomex.colonias("80000");
 await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, dónde quedó
 ```
 
+`resumen()` trae `advertencias` y `avisos` con lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI (`municipio-sin-inegi`), que aparecen en más de un municipio (`cp-varios-municipios`) o un aviso de uso distinto del conocido (`aviso-sepomex-distinto`).
+
 - Si el sitio bloquea la descarga automática (un 403, un 429 o un CAPTCHA), no se intenta evadir: el error dice cómo bajar el archivo a mano (estado "Todos", formato TXT) y cargarlo con `sepomex.importar("CPdescarga.zip")`, que acepta el ZIP o el TXT.
 - La caché queda en `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y en `$XDG_CACHE_HOME/mexicoapi/sepomex` (o `~/.cache/mexicoapi/sepomex`) en los demás; la opción `dir` la cambia. Si algo falla, la caché anterior queda igual.
 - Se guarda en JSON y también en SQLite (`node:sqlite`). Si `node:sqlite` no carga, queda solo en JSON y `resumen().sin_sqlite` dice por qué.
@@ -335,6 +351,7 @@ De `mexicoapi`:
 - `digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp` y `digitoVerificadorNss` calculan el dígito verificador a partir de los primeros caracteres (17 en la CLABE y la CURP, 11 o 12 en el RFC, 10 en el NSS). Lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados.
 - `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTAS_VALIDACION` (la nota de cada validador; la CLABE tiene una con el catálogo de bancos y otra sin él). `NOTA_VALIDACION`, la nota común de la 0.1.0, sigue exportada pero ningún validador la usa.
 - `esFechaIsoValida`: si un texto es una fecha real `AAAA-MM-DD`.
+- `CODIGOS_AVISO` y `codigoAviso(texto)`: el catálogo de códigos de los avisos y el código de una advertencia (`otro` si no la conoce). Tipos `Aviso` y `CodigoAviso`.
 - `hoyEnMexico(ahora?)`: la fecha de hoy (`AAAA-MM-DD`) en la Ciudad de México, la zona de todas las fechas de MéxicoAPI. `ahora` (un `Date` o milisegundos) fija el reloj, por ejemplo en pruebas.
 - `diasDescansoLft(anio)`: los días de descanso obligatorio del artículo 74 de un año, de 2007 a 2100, con su cita. `COBERTURA_LFT` es ese rango y `VIGENCIA_LFT`, la fecha de la última reforma de la LFT que se tomó en cuenta.
 - `crearCalendario`: arma un `Calendario` para `sumarDiasHabiles` con tus propios días inhábiles, su cobertura y la fuente de los fines de semana.
