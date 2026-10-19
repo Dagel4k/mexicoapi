@@ -25,7 +25,7 @@ ${navegacion(false)}
 <button type="button" id="actualizar-estado" hidden>Actualizar</button>
 <p id="mensaje-estado" class="mensaje" role="status" aria-live="polite"></p>
 </div>
-<div class="tabla" id="marco-estado" role="region" aria-labelledby="tabla-estado" tabindex="0" hidden>
+<div class="tabla tarjetas" id="marco-estado" role="region" aria-labelledby="tabla-estado" tabindex="0" hidden>
 <table>
 <caption id="tabla-estado">Estado de cada dataset automático, según /v1/status</caption>
 <thead>
@@ -49,7 +49,7 @@ ${navegacion(false)}
 <h2 id="titulo-columnas">Las columnas</h2>
 <dl>
 <dt>Datos al</dt>
-<dd>La fecha de los datos que se sirven ahora.</dd>
+<dd>La fecha de la última actualización que cambió el dataset. En las series (FIX y UDIS) no es la del último dato: esa va debajo, como «último dato», y es el final de la cobertura.</dd>
 <dt>Última revisión correcta</dt>
 <dd>Cuándo terminó bien la última corrida del bot, haya traído cambios o no, y cuántas horas han pasado desde entonces.</dd>
 <dt>Plazo</dt>

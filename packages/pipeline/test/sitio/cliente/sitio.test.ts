@@ -11,6 +11,7 @@ import {
   nombresDeDatasets,
   rellenarOrigen,
 } from "../../../src/sitio/cliente/sitio.js";
+import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 
 /** `GET /v1/status` tal como lo devuelve el Worker local (sin KV), con el build de `data/`. */
@@ -101,6 +102,7 @@ describe("filasDeEstado", () => {
         ...sinExito,
         plazo: "72 h",
         cobertura: "No aplica",
+        ultimoDato: null,
       },
       {
         dataset: "inegi.estados",
@@ -110,6 +112,7 @@ describe("filasDeEstado", () => {
         ...sinExito,
         plazo: "216 h",
         cobertura: "No aplica",
+        ultimoDato: null,
       },
       {
         dataset: "inegi.municipios",
@@ -119,6 +122,7 @@ describe("filasDeEstado", () => {
         ...sinExito,
         plazo: "216 h",
         cobertura: "No aplica",
+        ultimoDato: null,
       },
       {
         dataset: "tipo-cambio.fix",
@@ -128,6 +132,7 @@ describe("filasDeEstado", () => {
         ...sinExito,
         plazo: "72 h",
         cobertura: "2020-01-02 – 2026-10-16",
+        ultimoDato: "2026-10-16",
       },
       {
         dataset: "udis",
@@ -137,6 +142,7 @@ describe("filasDeEstado", () => {
         ...sinExito,
         plazo: "72 h",
         cobertura: "2020-01-01 – 2026-10-25",
+        ultimoDato: "2026-10-25",
       },
     ]);
   });
@@ -161,6 +167,7 @@ describe("filasDeEstado", () => {
       instante: "2026-10-18T12:00:00.000Z",
       plazo: "72 h",
       cobertura: "No aplica",
+      ultimoDato: null,
     });
     expect(filas[1]).toMatchObject({ ...sinExito, plazo: "24 h" });
     expect(NOMBRES_STATUS).toEqual({
@@ -532,7 +539,7 @@ describe("actualizarEstado", () => {
       [
         "UDISudis",
         "Desactualizado",
-        "2026-10-18",
+        "2026-10-18último dato 2026-10-25",
         "15 oct 2026, 4:00 a.m.hace 80 h",
         "72 h",
         "1995-04-04 – 2026-10-25",
@@ -590,6 +597,37 @@ describe("actualizarEstado", () => {
     for (const clase of [...clases, "mensaje", "aviso"]) {
       expect(ESTILO, clase).toMatch(new RegExp(`\\.${clase}\\b`));
     }
+  });
+
+  // Debajo de 640 px la tabla es de tarjetas: cada celda lleva el nombre de su columna, que es el
+  // de la cabecera de /estado/.
+  it("cada celda lleva la etiqueta de su columna y las series, su último dato", async () => {
+    const { pagina } = crearPagina();
+    const { pedir } = pedirCon(async () => responder(JSON.stringify(VARIADA)));
+    await actualizarEstado(pagina, pedir, reloj);
+    const cabecera = [
+      ...paginaEstado().matchAll(/<th scope="col"(?: class="[^"]+")?>([^<]+)<\/th>/g),
+    ]
+      .map((m) => m[1])
+      .slice(1);
+    for (const tr of filasDe(pagina.cuerpo)) {
+      const [encabezado, ...resto] = filasDe(tr);
+      expect(encabezado?.atributos.has("data-etiqueta")).toBe(false);
+      expect(resto.map((td) => td.atributos.get("data-etiqueta"))).toEqual(cabecera);
+    }
+    const [bancos, udis] = filasDe(pagina.cuerpo) as [Nodo, Nodo];
+    const datosDe = (tr: Nodo) => filasDe(tr)[2] as Nodo;
+    expect(filasDe(datosDe(bancos))).toHaveLength(1);
+    const [fecha, ultimo] = filasDe(datosDe(udis));
+    expect(fecha?.atributos.get("datetime")).toBe("2026-10-18");
+    expect(ultimo?.className).toBe("detalle");
+    expect(ultimo?.hijos[0]).toBe("último dato ");
+    const [tiempo] = filasDe(ultimo as Nodo);
+    expect([tiempo?.etiqueta, tiempo?.atributos.get("datetime"), tiempo?.texto()]).toEqual([
+      "time",
+      "2026-10-25",
+      "2026-10-25",
+    ]);
   });
 
   it("mientras consulta lo dice, y al terminar ya no", async () => {

@@ -76,7 +76,21 @@ const forma = (detalle) => new ErrorEstado(`la respuesta no tiene la forma esper
  * @property {string | null} instante El último éxito tal como lo da la API.
  * @property {string} plazo Las horas de frescura: "72 h".
  * @property {string} cobertura "desde – hasta" en las series; "No aplica" en lo demás.
+ * @property {string | null} ultimoDato En las series, la fecha de su registro más reciente (el
+ *   fin de la cobertura), que no es `as_of`; null en lo demás.
  */
+
+/**
+ * El nombre de cada columna después de la del dataset, como en la cabecera de `/estado/`: debajo
+ * de 640 px cada renglón es una tarjeta y la hoja de estilo toma la etiqueta de `data-etiqueta`.
+ */
+export const ETIQUETAS = Object.freeze([
+  "Estado",
+  "Datos al",
+  "Última revisión correcta",
+  "Plazo",
+  "Cobertura",
+]);
 
 /**
  * @param {string} instante
@@ -119,6 +133,7 @@ function filaDe(valor, i, ahora) {
     instante: last_success,
     plazo: `${frescura_horas} h`,
     cobertura: rangoDe(cobertura, donde),
+    ultimoDato: esObjeto(cobertura) && esFecha(cobertura.hasta) ? cobertura.hasta : null,
   };
 }
 
@@ -301,16 +316,26 @@ function crearFila(documento, fila, nombres) {
           tiempo(fila.instante, fila.ultimoExito),
           crear("span", "detalle", fila.hace),
         );
-  return crear(
-    "tr",
-    "",
-    encabezado,
+  const datos =
+    fila.ultimoDato === null
+      ? crear("td", "junto", tiempo(fila.datos, fila.datos))
+      : crear(
+          "td",
+          "junto",
+          tiempo(fila.datos, fila.datos),
+          crear("span", "detalle", "último dato ", tiempo(fila.ultimoDato, fila.ultimoDato)),
+        );
+  const celdas = [
     crear("td", "", crear("span", `estado estado-${fila.status}`, fila.estado)),
-    crear("td", "junto", tiempo(fila.datos, fila.datos)),
+    datos,
     exito,
     crear("td", "num", fila.plazo),
     crear("td", "junto", fila.cobertura),
-  );
+  ];
+  celdas.forEach((celda, i) => {
+    celda.setAttribute("data-etiqueta", ETIQUETAS[i] ?? "");
+  });
+  return crear("tr", "", encabezado, ...celdas);
 }
 
 /**
