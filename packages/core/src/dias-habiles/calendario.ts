@@ -1,6 +1,7 @@
+import { type Aviso, aAviso, avisosDe } from "../avisos.js";
 import { CalendarioIncompletoError } from "../errores.js";
 import { aDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
-import { AVISO_LFT_715, COBERTURA_LFT, diasDescansoLft, FUENTE_LFT_715 } from "./lft.js";
+import { avisoLft715, COBERTURA_LFT, diasDescansoLft, FUENTE_LFT_715 } from "./lft.js";
 import type { Autoridad, DiaInhabil, Fuente } from "./tipos.js";
 
 type Cobertura = { readonly desde: FechaISO; readonly hasta: FechaISO };
@@ -13,8 +14,9 @@ export interface Calendario {
   readonly inhabil: (fecha: FechaISO) => DiaInhabil | null;
   /**
    * Lo que el calendario no descuenta y conviene revisar en un cálculo de `desde` (sin contarlo)
-   * a `resultado`. `sumarDiasHabiles` lo agrega al final de sus advertencias: la LFT avisa siempre
-   * que no tiene los festivos ni las suspensiones de labores del art. 715.
+   * a `resultado`, solo los textos. `sumarDiasHabiles` lo agrega al final de sus advertencias, con
+   * el código que dio quien armó el calendario: la LFT avisa siempre que no tiene los festivos ni
+   * las suspensiones de labores del art. 715.
    */
   readonly avisos?: (desde: FechaISO, resultado: FechaISO) => readonly string[];
   /**
@@ -35,15 +37,19 @@ export interface RespaldoCalendario {
   /** El mismo plazo con una cobertura que contiene a la del calendario. */
   readonly calendario: Calendario;
   /**
-   * La advertencia de un cálculo de `desde` (sin contarlo) a `resultado` con el respaldo, o
-   * undefined si no hay nada que avisar. `sumarDiasHabiles` la pone antes que las demás.
+   * La advertencia de un cálculo de `desde` (sin contarlo) a `resultado` con el respaldo, con su
+   * código o solo el texto, o undefined si no hay nada que avisar. `sumarDiasHabiles` la pone
+   * antes que las demás.
    */
-  readonly aviso: (desde: FechaISO, resultado: FechaISO) => string | undefined;
+  readonly aviso: (desde: FechaISO, resultado: FechaISO) => Aviso | string | undefined;
 }
 
-/** Los avisos de un calendario; los que no se dan no quedan como propiedad. */
+/**
+ * Los avisos de un calendario; los que no se dan no quedan como propiedad. Cada aviso puede ir con
+ * su código (`{ codigo, texto }`) o solo como texto, y entonces su código es el de `codigoAviso`.
+ */
 export interface AvisosCalendario {
-  avisos?: ((desde: FechaISO, resultado: FechaISO) => readonly string[]) | undefined;
+  avisos?: ((desde: FechaISO, resultado: FechaISO) => readonly (Aviso | string)[]) | undefined;
   faltaFuera?: string | undefined;
   respaldo?: RespaldoCalendario | undefined;
 }
@@ -102,6 +108,29 @@ function fuentePorAnio(fuente: FuenteFinDeSemana): (anio: number) => Fuente {
   };
 }
 
+type AvisosConCodigo = (desde: FechaISO, resultado: FechaISO) => Aviso[];
+
+/**
+ * Los avisos con su código de cada calendario que arma `construir`: `Calendario.avisos` da solo
+ * los textos, como en la 0.1.0, y aquí quedan los códigos que dio quien armó el calendario.
+ */
+const conCodigo = new WeakMap<Calendario, AvisosConCodigo>();
+
+/**
+ * Los avisos de un cálculo de `desde` (sin contarlo) a `resultado` con `calendario`, con su
+ * código. Uno armado a mano, que no pasó por `crearCalendario`, solo da textos: su código sale de
+ * `codigoAviso`.
+ */
+export function avisosDelCalendario(
+  calendario: Calendario,
+  desde: FechaISO,
+  resultado: FechaISO,
+): Aviso[] {
+  const avisos = conCodigo.get(calendario);
+  if (avisos !== undefined) return avisos(desde, resultado);
+  return avisosDe(calendario.avisos?.(desde, resultado) ?? []);
+}
+
 function construir(
   autoridad: Autoridad,
   cobertura: Cobertura,
@@ -113,10 +142,14 @@ function construir(
 ): Calendario {
   const fija = Object.freeze({ desde: cobertura.desde, hasta: cobertura.hasta });
   const fuenteFds = fuentePorAnio(fuenteFinDeSemana);
+  const conSuCodigo: AvisosConCodigo | undefined =
+    avisos === undefined ? undefined : (desde, resultado) => avisos(desde, resultado).map(aAviso);
   const calendario: Calendario = {
     autoridad,
     cobertura: fija,
-    ...(avisos === undefined ? {} : { avisos }),
+    ...(conSuCodigo === undefined
+      ? {}
+      : { avisos: (desde, resultado) => conSuCodigo(desde, resultado).map((a) => a.texto) }),
     ...(faltaFuera === undefined ? {} : { faltaFuera }),
     ...(respaldo === undefined ? {} : { respaldo: copiarRespaldo(autoridad, fija, respaldo) }),
     inhabil(fecha) {
@@ -142,7 +175,9 @@ function construir(
       return null;
     },
   };
-  return Object.freeze(calendario);
+  Object.freeze(calendario);
+  if (conSuCodigo !== undefined) conCodigo.set(calendario, conSuCodigo);
+  return calendario;
 }
 
 export function crearCalendario(
@@ -179,7 +214,7 @@ export function crearCalendario(
   );
 }
 
-const AVISOS_LFT = (): readonly string[] => [AVISO_LFT_715];
+const AVISOS_LFT = (): Aviso[] => [avisoLft715()];
 
 export function calendarioLft(): Calendario {
   const porAnio = new Map<number, Map<number, DiaInhabil[]>>();

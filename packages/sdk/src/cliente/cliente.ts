@@ -213,7 +213,7 @@ function armar(
     signal,
     valores,
     query,
-    advertencias: [],
+    avisos: [],
   };
   // Las reglas de la API para los valores de la ruta, las del núcleo: antes de armar la URL.
   for (const [nombre, v] of deRuta) {
@@ -236,15 +236,24 @@ async function desdePaquete(
   const { responderPaquete } = await import("./paquete.js");
   const contexto: Contexto = { ...pedido, causa };
   if (causa !== undefined) {
-    contexto.advertencias.push(`${AVISO_RESPALDO}: ${causa.message}`);
+    contexto.avisos.push({
+      codigo: "api-sin-respuesta",
+      texto: `${AVISO_RESPALDO}: ${causa.message}`,
+    });
   }
-  const { data, meta, advertencias = [] } = await responderPaquete(plantilla, contexto);
+  const {
+    data,
+    meta,
+    advertencias = [],
+    avisos = [],
+  } = await responderPaquete(plantilla, contexto);
   return congelar({
     data,
     meta,
     origen: "paquete" as const,
     // Primero las del cliente (respaldo, antigüedad) y luego las que daría la API.
-    advertencias: [...contexto.advertencias, ...advertencias],
+    advertencias: [...contexto.avisos.map((a) => a.texto), ...advertencias],
+    avisos: [...contexto.avisos, ...avisos],
   });
 }
 

@@ -355,15 +355,18 @@ function duracion(ms: number): string {
   return h < 48 ? `${h} h` : `${Math.floor(h / 24)} días`;
 }
 
-/** La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo. */
+/**
+ * La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo antes de las suyas.
+ * Conserva los avisos que mandó la API, con el de la respuesta guardada al principio.
+ */
 function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaPrevia {
   const ahora = Date.now();
+  const texto = `Respuesta guardada de la API, de hace ${duracion(ahora - guardado.guardadoEn)} y caducada hace ${duracion(ahora - guardado.expira)}, porque la API falló: ${causa.message}`;
+  const { avisos } = guardado.respuesta;
   return congelar({
     ...guardado.respuesta,
-    advertencias: [
-      `Respuesta guardada de la API, de hace ${duracion(ahora - guardado.guardadoEn)} y caducada hace ${duracion(ahora - guardado.expira)}, porque la API falló: ${causa.message}`,
-      ...guardado.respuesta.advertencias,
-    ],
+    advertencias: [texto, ...guardado.respuesta.advertencias],
+    avisos: [{ codigo: "respuesta-guardada", texto }, ...(Array.isArray(avisos) ? avisos : [])],
   });
 }
 

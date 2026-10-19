@@ -144,6 +144,16 @@ export function codigoAviso(texto: string): CodigoAviso {
   return "otro";
 }
 
-/** Los avisos de unas advertencias: los mismos textos, en el mismo orden, con su código. */
+/**
+ * Los avisos de unas advertencias que llegan solo como texto: los mismos textos, en el mismo orden,
+ * con el código que da `codigoAviso`. Es para lo que no trae código (una respuesta de una API
+ * anterior, el texto libre de un calendario propio); lo que da el núcleo ya trae el suyo.
+ */
 export const avisosDe = (advertencias: readonly string[]): Aviso[] =>
   advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto }));
+
+/** Un aviso como `Aviso`: copia uno con código y le pone el de `codigoAviso` a un texto suelto. */
+export const aAviso = (aviso: string | Aviso): Aviso =>
+  typeof aviso === "string"
+    ? { codigo: codigoAviso(aviso), texto: aviso }
+    : { codigo: aviso.codigo, texto: aviso.texto };

@@ -5,10 +5,10 @@ import {
   sumarDiasHabiles,
   type TipoPlazo,
 } from "@mexicoapi/core";
-import { avisosDe } from "@mexicoapi/core/avisos";
 import {
   type CalendarioCurado,
   type ConsultaDiasHabilesCurado,
+  type DiasInhabilesCurados,
   diasInhabilesCurados,
   sumarDiasHabilesCurado,
 } from "@mexicoapi/core/curados";
@@ -136,13 +136,10 @@ export function diasHabiles(c: Contexto): Response | Promise<Response> {
 
 /**
  * `{ data, advertencias, avisos, meta }`: la lista puede estar completa solo para algunos plazos.
- * `avisos` son las mismas advertencias, en el mismo orden, con su código.
+ * `avisos` son las mismas advertencias, en el mismo orden, con el código que les da el núcleo.
  */
-const respuestaInhabiles = (data: unknown, advertencias: readonly string[], meta: Meta) =>
-  respuestaJson(
-    { data, advertencias, avisos: avisosDe(advertencias), meta },
-    { cache: CACHE_DATOS },
-  );
+const respuestaInhabiles = ({ dias, advertencias, avisos }: DiasInhabilesCurados, meta: Meta) =>
+  respuestaJson({ data: dias, advertencias, avisos, meta }, { cache: CACHE_DATOS });
 
 /**
  * Un año de un calendario curado con el núcleo: la lista si un plazo lo cubre completo y, si el
@@ -154,10 +151,7 @@ async function inhabilesCurados(
   anio: number,
 ): Promise<Response> {
   const [meta, calendario] = await cargarCurado(c, autoridad, DOCS_INHABILES);
-  return conCalendario(c, () => {
-    const { dias, advertencias } = diasInhabilesCurados(calendario, anio);
-    return respuestaInhabiles(dias, advertencias, meta);
-  });
+  return conCalendario(c, () => respuestaInhabiles(diasInhabilesCurados(calendario, anio), meta));
 }
 
 /**
@@ -169,8 +163,7 @@ export function diasInhabiles(c: Contexto): Response | Promise<Response> {
   const anio = Number(requerido(c.consulta, "anio"));
   const autoridad = requerido(c.consulta, "autoridad") as Autoridad;
   if (autoridad !== "lft") return inhabilesCurados(c, autoridad, anio);
-  return conCalendario(c, () => {
-    const { dias, advertencias } = diasInhabilesLft(anio);
-    return respuestaInhabiles(dias, advertencias, metaLft("dias-inhabiles"));
-  });
+  return conCalendario(c, () =>
+    respuestaInhabiles(diasInhabilesLft(anio), metaLft("dias-inhabiles")),
+  );
 }

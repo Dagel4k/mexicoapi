@@ -80,11 +80,13 @@ export const DIAS_INHABILES: RutaPaquete = {
     const anio = Number(valor(c, "anio"));
     const autoridad = valor(c, "autoridad") as Autoridad;
     if (autoridad === "lft") {
-      const { dias, advertencias } = conCalendario(c, () => diasInhabilesLft(anio));
-      return { data: dias, meta: metaLft("dias-inhabiles"), advertencias };
+      const { dias, advertencias, avisos } = conCalendario(c, () => diasInhabilesLft(anio));
+      return { data: dias, meta: metaLft("dias-inhabiles"), advertencias, avisos };
     }
     const curado = (await calendarios()).calendarioCurado(autoridad as AutoridadCurada);
-    const { dias, advertencias } = conCalendario(c, () => diasInhabilesCurados(curado, anio));
-    return { data: dias, meta: conDocs(curado.meta, "dias-inhabiles"), advertencias };
+    const { dias, advertencias, avisos } = conCalendario(c, () =>
+      diasInhabilesCurados(curado, anio),
+    );
+    return { data: dias, meta: conDocs(curado.meta, "dias-inhabiles"), advertencias, avisos };
   },
 };

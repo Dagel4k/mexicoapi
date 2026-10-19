@@ -1,5 +1,6 @@
 // Lo que comparten las respuestas desde el paquete: el contexto de una consulta, la forma de una
 // ruta y cómo se arman sus problemas y su `meta`.
+import type { Aviso } from "@mexicoapi/core";
 import type { TipoProblema } from "@mexicoapi/core/problemas";
 import { URL_DOCS } from "@mexicoapi/core/problemas";
 import type { ProblemaConsulta } from "@mexicoapi/core/rutas";
@@ -15,15 +16,19 @@ export interface Contexto extends ContextoLocal {
   query: string;
   /** Cambia cada valor sensible de la ruta por `{nombre}`. */
   ocultar(texto: string): string;
-  /** Se le agregan las advertencias de antigüedad. */
-  advertencias: string[];
+  /**
+   * Los avisos del cliente, con su código: que la API falló, la antigüedad de una serie del
+   * paquete y que pueden faltar publicaciones. Van antes que los de la respuesta.
+   */
+  avisos: Aviso[];
 }
 
 export interface Dato {
   data: unknown;
   meta: MetaDatos;
-  /** Las de primer nivel que daría la API (`/v1/dias-inhabiles`). */
+  /** Las de primer nivel que daría la API (`/v1/dias-inhabiles`), con sus avisos. */
   advertencias?: readonly string[];
+  avisos?: readonly Aviso[];
 }
 
 /** Cómo responde el paquete una ruta cuya query ya pasó las reglas del núcleo. */

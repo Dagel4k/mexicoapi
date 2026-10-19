@@ -1,9 +1,9 @@
 // Cómo responden las rutas de la API lo que no es un dato: la meta de la LFT, los errores del
 // núcleo y las consultas sin registro como problemas, el FIX con los feriados bancarios y la lista
 // de la LFT. Los usan la API y el cliente del paquete, que responden igual.
-import { type DiasInhabilesCurados, exigirAnio } from "../dias-habiles/curados.js";
+import { conTextos, type DiasInhabilesCurados, exigirAnio } from "../dias-habiles/curados.js";
 import {
-  AVISO_LFT_715,
+  avisoLft715,
   COBERTURA_LFT,
   diasDescansoLft,
   FUENTE_LFT_74,
@@ -155,5 +155,5 @@ export async function consultarConFeriados<T>(
  */
 export function diasInhabilesLft(anio: number): DiasInhabilesCurados {
   exigirAnio("lft", anio, COBERTURA_LFT);
-  return { dias: diasDescansoLft(anio), advertencias: [AVISO_LFT_715] };
+  return { dias: diasDescansoLft(anio), ...conTextos([avisoLft715()]) };
 }

@@ -1,3 +1,4 @@
+import type { Aviso } from "../avisos.js";
 import type { FuenteDof } from "../datos/curados.js";
 import { enesimoDiaDeSemana, type FechaISO } from "../fechas.js";
 import type { DiaInhabil } from "./tipos.js";
@@ -64,8 +65,9 @@ export function diasDescansoCff(anio: number): DiaInhabil[] {
 }
 
 /** El aviso de un año de transmisión del Poder Ejecutivo: qué no se descuenta y por qué. */
-export function avisoTransmisionCff(anio: number): string {
-  return `En ${anio} no se descuentan el 1o. de octubre ni el 1o. de diciembre: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.`;
+export function avisoTransmisionCff(anio: number): Aviso {
+  const texto = `En ${anio} no se descuentan el 1o. de octubre ni el 1o. de diciembre: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.`;
+  return { codigo: "transmision-poder-ejecutivo", texto };
 }
 
 /**
@@ -73,8 +75,8 @@ export function avisoTransmisionCff(anio: number): string {
  * transmisión (cada seis años desde 2024) dentro de la cobertura: de `desde`, sin contarlo, a
  * `hasta`. Uno por año, en orden; vacío si no pasa por ninguno.
  */
-export function avisosTransmisionCff(desde: FechaISO, hasta: FechaISO): string[] {
-  const avisos: string[] = [];
+export function avisosTransmisionCff(desde: FechaISO, hasta: FechaISO): Aviso[] {
+  const avisos: Aviso[] = [];
   const primero = Math.max(Number(desde.slice(0, 4)), ANIO_MIN);
   const ultimo = Math.min(Number(hasta.slice(0, 4)), ANIO_MAX);
   for (let anio = primero; anio <= ultimo; anio++) {

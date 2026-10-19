@@ -1,3 +1,4 @@
+import type { Aviso } from "../avisos.js";
 import { enesimoDiaDeSemana, type FechaISO } from "../fechas.js";
 import type { DiaInhabil, Fuente } from "./tipos.js";
 
@@ -46,6 +47,9 @@ export const FUENTE_LFT_715: Fuente = Object.freeze({
  */
 export const AVISO_LFT_715 =
   "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación.";
+
+/** `AVISO_LFT_715` con su código, nuevo en cada llamada. */
+export const avisoLft715 = (): Aviso => ({ codigo: "lft-art-715", texto: AVISO_LFT_715 });
 
 export const COBERTURA_LFT: { readonly desde: FechaISO; readonly hasta: FechaISO } = Object.freeze({
   desde: "2007-01-01",

@@ -130,8 +130,13 @@ describe("fuente y cobertura", () => {
 describe("avisosTransmisionCff", () => {
   const aviso2030 = avisoTransmisionCff(2030);
 
+  it("da cada aviso con su código", () => {
+    expect(aviso2030.codigo).toBe("transmision-poder-ejecutivo");
+    expect(aviso2030.texto).toMatch(/^En 2030 no se descuentan el 1o\. de octubre/);
+  });
+
   it("dice qué no se descuenta y por qué", () => {
-    expect(aviso2030).toBe(
+    expect(aviso2030.texto).toBe(
       "En 2030 no se descuentan el 1o. de octubre ni el 1o. de diciembre: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.",
     );
   });
