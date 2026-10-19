@@ -63,17 +63,23 @@ Las rutas se revisan antes de que git pueda imprimirlas. git corre con su salida
 
 Los datos curados (`data/curado/` y las carpetas que arma `curar`) nunca pasan por el bot: se cambian en un PR de una persona ([Datos curados](datos-curados.md)).
 
-`generar` no usa la caché de pnpm. Eso no basta para aislarla: un `generar` comprometido podría escribir en la caché de Actions de `main` con el token del runner. Por eso `despliegue.yml`, que tiene el token de Cloudflare, tampoco la usa. Los jobs de `ci.yml` sí: no tienen secretos, y `solo-datos` no instala nada.
+`generar` no usa la caché de pnpm. Eso no basta para aislarla: un `generar` comprometido podría escribir en la caché de Actions de `main` con el token del runner. Por eso `despliegue.yml`, que tiene el token de Cloudflare, tampoco la usa, ni los jobs de `ci.yml`: no tienen secretos, pero su resultado decide `verify`, y un paquete alterado en la caché podría dejarlo en verde.
 
 Los textos que vienen de las fuentes (motivos, registros, claves y mensajes de error) llegan a los PRs, comentarios e issues como código, en línea o en bloque, y las `@` llevan un espacio de ancho cero: no se vuelven menciones, enlaces ni encabezados.
 
 El cliente HTTP del pipeline solo pide por `https` a los hosts de cada dataset (la lista está en la definición del dataset y una prueba la compara con las URL de `data/*/manifest.json`). No pide una URL con usuario o contraseña. Sigue hasta 5 redirecciones y revisa cada salto como la URL original: esquema, credenciales, host, `robots.txt` e intervalo por host. Lee el cuerpo por partes con un tope de 50 MB (la fuente más grande, el PDF de Banxico, ronda los 400 KB) y cierra los cuerpos que no usa.
 
+## La revisión no depende de `generar`
+
+`generar` decide si los cambios piden revisión humana (el código 3 del CLI), y con eso `publicar` pone o no la etiqueta `revisar` y el auto-merge. Como `generar` procesa archivos de terceros, esa decisión se repite donde no llega lo que corre ahí: el job `revision-datos` de `ci.yml`, en cada PR del bot, después de `solo-datos` y con el código de `main` (el PR solo toca `data/`), compara `data/` de `main` con la del PR con el comando `revisar` del pipeline, que usa las mismas reglas que `actualizar` (umbrales, cambios en valores publicados, altas y bajas). Si los cambios piden revisión y el PR no lleva la etiqueta `revisar`, el job falla y `verify` queda en rojo, así que el auto-merge no avanza. La etiqueta se lee de la API al final del job, no del evento, porque `gh pr create` la agrega justo después de abrir el PR. Si el job falla en un PR legítimo (por ejemplo, porque `generar` no vio un motivo que sí está en los datos), revisa los motivos en su log; si los cambios son correctos, agrega la etiqueta, quita el auto-merge y vuelve a correr el job.
+
+Lo que `revision-datos` no puede repetir son los avisos que `generar` saca de las fuentes y no quedan en los datos, como un banco del PDF de participantes que no aparece en el CEP.
+
 ## Qué hace el bot
 
 - Descarga y valida los datos con el CLI del pipeline.
 - Si no hay cambios, no hace nada.
-- Si hay cambios dentro de los umbrales, abre un PR desde la rama `datos/<grupo>-<fecha>` con el resumen y activa el auto-merge. El PR se fusiona cuando pasa el check `verify`, que exige los jobs `verificacion`, `paquete`, `paquete-node`, `paquete-runtimes`, `paquete-mcp` y `solo-datos` de `ci.yml`.
+- Si hay cambios dentro de los umbrales, abre un PR desde la rama `datos/<grupo>-<fecha>` con el resumen y activa el auto-merge. El PR se fusiona cuando pasa el check `verify`, que exige los jobs `verificacion`, `paquete`, `paquete-node`, `paquete-runtimes`, `paquete-mcp`, `solo-datos` y `revision-datos` de `ci.yml`.
 - Si los cambios piden revisión humana, abre el PR con la etiqueta `revisar`, sin auto-merge, y un issue `Revisar datos: <grupo> <fecha>` con los motivos.
 - Si el pipeline pide revisión pero no hay cambios en `data/`, abre (o comenta en) un issue `Revisar datos: <grupo>`.
 - Si el bot ya tiene un PR abierto para el grupo (una rama `datos/<grupo>-…` del propio repo, con o sin etiqueta), no abre otro: comenta en ese PR con el resumen nuevo y el enlace a la corrida. Si además los cambios piden revisión, abre (o comenta en) el issue `Revisar datos: <grupo>` con los motivos. Cuando ese PR lleva más de 48 horas abierto o tiene algún check en rojo, abre (o comenta en) el issue `PR de datos atascado: <grupo>`. Si esa consulta a GitHub falla, la corrida deja un aviso y sigue, así que el issue de revisión se abre igual.
