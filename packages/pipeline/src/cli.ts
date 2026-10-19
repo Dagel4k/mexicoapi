@@ -231,8 +231,9 @@ async function bancosHistorico(
 
 /**
  * Compara los datos de `--antes` (main) con los de `--datos` (un PR del bot) y decide, con las
- * reglas de `actualizar`, si los cambios piden revisión: 0 si ninguno la pide, 3 si alguno sí y 1
- * si un snapshot nuevo no se puede leer o no es válido.
+ * reglas de `actualizar` y las fuentes que arma el código para cada manifiesto, si los cambios
+ * piden revisión: 0 si ninguno la pide, 3 si alguno sí y 1 si un snapshot o un manifiesto nuevo no
+ * se puede leer o no es válido.
  */
 async function revisar(
   valores: { antes?: string | undefined; fecha?: string | undefined },
