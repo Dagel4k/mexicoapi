@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { FUENTE_CFF_20 } from "@mexicoapi/core";
-import { PROBLEMAS } from "@mexicoapi/core/problemas";
+import { PROBLEMAS, URL_API } from "@mexicoapi/core/problemas";
 import {
   CONSULTAS,
   REGLAS_RUTA,
@@ -189,7 +189,26 @@ describe("documento OpenAPI", () => {
     expect(doc.info.description).toContain("meta.sources");
     expect(doc.info.description).toContain("tipo de cambio FIX y UDIS");
     expect(doc.info.description).toContain("UMA, salario mínimo y tarifas de ISR");
-    expect(doc.servers).toEqual([{ url: "/" }]);
+  });
+
+  // `/` vale cuando el documento se lee del mismo origen; quien lo baja para generar un cliente o
+  // importarlo desde un archivo necesita la base de la API pública.
+  it("declara el mismo origen y la API pública como servidores", () => {
+    expect(doc.servers).toEqual([{ url: "/" }, { url: URL_API, description: "API pública" }]);
+    expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
+  });
+
+  // Un servidor en UTC entre las 18:00 y las 24:00 de la Ciudad de México ya está en el día
+  // siguiente: sin la zona, "hoy" da otro FIX.
+  it("dice que las fechas son días de la Ciudad de México", () => {
+    expect(doc.info.description).toContain(
+      "Las fechas (AAAA-MM-DD) son días de la Ciudad de México (America/Mexico_City)",
+    );
+    const fix = operaciones.find((o) => o.ruta === "/v1/tipo-cambio/fix")?.op as Obj;
+    const operacion = (fix.parameters as Obj[]).find((p) => p.name === "operacion") as Obj;
+    expect(operacion.description).toContain("día de la Ciudad de México");
+    expect(operacion.description).toContain("CFF art. 20");
+    expect(operacion.description).toContain("art. 172 de la Circular 3/2012 del Banco de México");
   });
 
   // HEAD y OPTIONS valen en toda ruta y el documento solo declara GET: declararlos daría a los

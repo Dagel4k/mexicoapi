@@ -1,4 +1,4 @@
-import { PROBLEMAS, URL_PROBLEMAS } from "@mexicoapi/core/problemas";
+import { PROBLEMAS, URL_API, URL_PROBLEMAS } from "@mexicoapi/core/problemas";
 import {
   CONSULTAS,
   REGLAS_RUTA,
@@ -442,7 +442,7 @@ function operaciones(): Operacion[] {
         parametroFecha(
           "/v1/tipo-cambio/fix",
           "operacion",
-          "Fecha de una operación (AAAA-MM-DD): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20).",
+          "Fecha de una operación o de un pago (AAAA-MM-DD, día de la Ciudad de México): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20). Para una obligación en dólares es la misma publicación que manda el art. 172 de la Circular 3/2012 del Banco de México: la del día hábil bancario inmediato anterior al pago.",
         ),
       ],
       ok: respuestaDatos(
@@ -571,10 +571,11 @@ export function documentoOpenApi(): Record<string, unknown> {
       version: "1.0.0",
       summary: "Datos de referencia oficiales de México.",
       description:
-        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
+        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Las fechas (AAAA-MM-DD) son días de la Ciudad de México (America/Mexico_City): un servidor en UTC ya está en el día siguiente desde las 18:00 de la Ciudad de México. Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
       license: { name: "MIT", identifier: "MIT" },
     },
-    servers: [{ url: "/" }],
+    // `/` para quien lo lee del mismo origen; la pública, para quien lo baja e importa de un archivo.
+    servers: [{ url: "/" }, { url: URL_API, description: "API pública" }],
     tags: [
       { name: "General", description: "Índice, estado y especificación." },
       { name: "Estados", description: "Catálogo de entidades de INEGI." },
