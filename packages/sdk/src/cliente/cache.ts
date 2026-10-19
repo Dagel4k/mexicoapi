@@ -1,7 +1,7 @@
-import type { RespuestaSinMeta } from "./tipos.js";
+import type { RespuestaPrevia } from "./comun.js";
 
 export interface Guardado {
-  respuesta: RespuestaSinMeta<unknown>;
+  respuesta: RespuestaPrevia;
   /** Para pedirla otra vez con If-None-Match cuando caduque. */
   etag: string | null;
   /** Cuándo llegó o se revalidó (milisegundos de Date.now). */

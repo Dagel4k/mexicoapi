@@ -2,7 +2,7 @@ import { avisosDe } from "@mexicoapi/core/avisos";
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
-import { AVISO_RESPALDO, congelar, esObjeto, type Objeto } from "./comun.js";
+import { AVISO_RESPALDO, congelar, esObjeto, type Objeto, type RespuestaPrevia } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
 import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
 import type { Contexto } from "./paquete-comun.js";
@@ -232,7 +232,7 @@ async function desdePaquete(
   plantilla: RutaDelPaquete,
   pedido: Pedido & Contexto,
   causa?: MexicoApiError,
-): Promise<RespuestaSinMeta<unknown>> {
+): Promise<RespuestaPrevia> {
   const { responderPaquete } = await import("./paquete.js");
   const contexto: Contexto = { ...pedido, causa };
   if (causa !== undefined) {
@@ -253,7 +253,7 @@ async function desdePaquete(
  * de primer nivel, después de las que ya trae y sin repetir ninguna: quien solo mira `advertencias`
  * ve todo lo que hay que decir. `data` no cambia.
  */
-function conAdvertenciasDelCalculo(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
+function conAdvertenciasDelCalculo(r: RespuestaPrevia): RespuestaPrevia {
   const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
   if (!Array.isArray(delCalculo)) return r;
   const textos = delCalculo.filter((a): a is string => typeof a === "string");
@@ -271,7 +271,7 @@ function conAdvertenciasDelCalculo(r: RespuestaSinMeta<unknown>): RespuestaSinMe
  * del catálogo del cliente aunque la API ya los traiga (una API anterior no los trae y una nueva
  * puede tener códigos que esta versión no conoce): así siempre son de `CodigoAviso`.
  */
-function conAvisos(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
+function conAvisos(r: RespuestaPrevia): RespuestaSinMeta<unknown> {
   const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
   const data = Array.isArray(delCalculo)
     ? {
@@ -286,7 +286,7 @@ function conAvisos(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
  * Lo que entrega el cliente por cada respuesta de `responder`: la misma respuesta guardada en la
  * caché da el mismo objeto en cada consulta.
  */
-const completas = new WeakMap<RespuestaSinMeta<unknown>, RespuestaSinMeta<unknown>>();
+const completas = new WeakMap<RespuestaPrevia, RespuestaSinMeta<unknown>>();
 
 async function ejecutar(
   c: Config,
@@ -308,7 +308,7 @@ async function responder(
   plantilla: string,
   parametros: Readonly<Record<string, unknown>> | undefined,
   opciones: OpcionesConsulta | undefined,
-): Promise<RespuestaSinMeta<unknown>> {
+): Promise<RespuestaPrevia> {
   const { fuente, signal } = opciones ?? {};
   if (signal?.aborted) throw signal.reason;
   if (fuente !== undefined && fuente !== "api" && fuente !== "paquete") {

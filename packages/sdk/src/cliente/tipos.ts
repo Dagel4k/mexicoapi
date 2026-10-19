@@ -46,17 +46,14 @@ export interface RespuestaSinMeta<D> {
    * es `advertencias[i]`. Para decidir en un programa sin leer el texto (mostrar el aviso,
    * detener el cálculo, mandarlo a revisión). Los códigos los pone el cliente con su catálogo
    * (`CODIGOS_AVISO`), aunque la API ya los traiga: un texto que esta versión no conoce sale como
-   * `otro`. Si `data` trae advertencias (`/v1/dias-habiles`), `data.avisos` son las suyas. El
-   * cliente siempre lo entrega; aquí es opcional porque este tipo también es el de la respuesta
-   * antes de completarla. En `Respuesta` es obligatorio.
+   * `otro`. Si `data` trae advertencias (`/v1/dias-habiles`), `data.avisos` son las suyas.
    */
-  readonly avisos?: readonly Aviso[];
+  readonly avisos: readonly Aviso[];
 }
 
 /** `data` y `meta` como los da la API, con su origen, advertencias y avisos. Está congelada. */
 export interface Respuesta<D> extends RespuestaSinMeta<D> {
   readonly meta: Meta;
-  readonly avisos: readonly Aviso[];
 }
 
 /** FIX que aplica a una operación según el CFF, art. 20 (`/v1/tipo-cambio/fix?operacion=`). */
