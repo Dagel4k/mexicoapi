@@ -68,7 +68,7 @@ describe("FIX del paquete con los feriados bancarios de la CNBV", () => {
     const error = await problemaDe(
       api.fixPublicado("2026-11-16"),
       "no-encontrado",
-      "No hubo publicación del FIX en el DOF el 2026-11-16.",
+      "No hubo publicación del FIX en el DOF el 2026-11-16. Para el FIX que aplica a una operación de ese día, usa operacion=2026-11-16.",
     );
     expect(error.problema).toMatchObject({ fecha: "2026-11-16", cobertura: COBERTURA });
     expect(JSON.stringify(error.problema)).not.toContain("18.3100");

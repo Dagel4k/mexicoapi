@@ -20,4 +20,5 @@ export {
   metaLft,
   problemaDeError,
   problemaSinRegistro,
+  sinPublicacionFix,
 } from "./respuestas.js";

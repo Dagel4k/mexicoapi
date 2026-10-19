@@ -117,7 +117,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?publicado=2026-10
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#no-encontrado",
   "title": "Recurso no encontrado",
   "status": 404,
-  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10.",
+  "detail": "No hubo publicación del FIX en el DOF el 2026-10-10. Para el FIX que aplica a una operación de ese día, usa operacion=2026-10-10.",
   "instance": "/v1/tipo-cambio/fix",
   "fecha": "2026-10-10",
   "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }

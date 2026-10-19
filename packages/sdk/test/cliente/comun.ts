@@ -356,7 +356,9 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
     });
     const sabado = siguiente(cobertura.desde, (f) => diaDeLaSemana(f) === 6);
     const fds = await problemaDe(m, api.fixPublicado(sabado), "no-encontrado", 404);
-    expect(fds.detail).toBe(`No hubo publicación del FIX en el DOF el ${sabado}.`);
+    expect(fds.detail).toBe(
+      `No hubo publicación del FIX en el DOF el ${sabado}. Para el FIX que aplica a una operación de ese día, usa operacion=${sabado}.`,
+    );
 
     const futuro = await problemaDe(m, api.fixPublicado("2100-01-04"), "dato-no-disponible", 404);
     expect(futuro.detail).toBe(

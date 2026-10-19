@@ -15,6 +15,7 @@ import {
   problemaSinRegistro,
   revisarConsulta,
   revisarFix,
+  sinPublicacionFix,
 } from "@mexicoapi/core/rutas";
 import type { MetaDatos } from "../datos/tipos.js";
 import type { RutaDelPaquete } from "./cliente.js";
@@ -185,7 +186,7 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
             sinDato:
               publicado < s.cobertura.desde
                 ? empiezaEl(s, `el ${publicado}`)
-                : `No hubo publicación del FIX en el DOF el ${publicado}.`,
+                : sinPublicacionFix(publicado),
             noDisponible: `El FIX del ${publicado} no está en los datos del paquete; la última publicación que traen es del ${s.cobertura.hasta}.`,
           },
         );
