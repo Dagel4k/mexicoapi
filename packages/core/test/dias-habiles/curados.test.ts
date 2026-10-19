@@ -719,7 +719,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       expect(r.resultado).toBe("2030-10-04");
       // Cambio: al final, que las vacaciones de 2030 no están publicadas.
       expect(r.advertencias).toEqual([
-        avisoTransmisionCff(2030),
+        avisoTransmisionCff(2030).texto,
         PRORROGA("2030-10-04", "viernes"),
         VACACIONES_SIN_PUBLICAR("2026-11-30", "2030-10-04"),
       ]);
@@ -906,7 +906,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
   });
 
   it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre de 2030", () => {
-    const aviso = avisoTransmisionCff(2030);
+    const aviso = avisoTransmisionCff(2030).texto;
     // El 1o. de octubre de 2030 (martes) cuenta como hábil: es el lado seguro, y se avisa.
     // Cambio: al final, que las vacaciones de 2030 no están publicadas.
     const sinPublicar = (fecha: string) => VACACIONES_SIN_PUBLICAR("2026-11-30", fecha);
@@ -1059,6 +1059,7 @@ describe("diasInhabilesCurados", () => {
     expect(diasInhabilesCurados(CNBV, 2026)).toEqual({
       dias: DIAS_CNBV.slice(1),
       advertencias: [],
+      avisos: [],
     });
     expect(diasInhabilesCurados(CNBV, 2025).dias).toEqual(DIAS_CNBV.slice(0, 1));
   });
@@ -1068,23 +1069,25 @@ describe("diasInhabilesCurados", () => {
     expect(diasInhabilesCurados(SAT, 2026)).toEqual({
       dias: DIAS_CALENDARIO_SAT.filter((d) => d.fecha.startsWith("2026-")),
       advertencias: [ADVERTENCIA_SAT_2026],
+      avisos: [{ codigo: "lista-incompleta", texto: ADVERTENCIA_SAT_2026 }],
     });
     expect(diasInhabilesCurados(SAT, 2026).dias).toHaveLength(22);
   });
 
   it("sat 2027 y después: los días del art. 12, con la advertencia de las vacaciones", () => {
     // Cambio: antes, 422 desde 2027.
+    const lista2027 =
+      "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa.";
     expect(diasInhabilesCurados(SAT, 2027)).toEqual({
       dias: diasDescansoCff(2027),
-      advertencias: [
-        "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa.",
-      ],
+      advertencias: [lista2027],
+      avisos: [{ codigo: "lista-incompleta", texto: lista2027 }],
     });
     // En un año de transmisión, también el aviso del 1o. de octubre y el 1o. de diciembre.
     const { dias, advertencias } = diasInhabilesCurados(SAT, 2030);
     expect(dias).toEqual(diasDescansoCff(2030));
     expect(advertencias).toHaveLength(2);
-    expect(advertencias[1]).toBe(avisoTransmisionCff(2030));
+    expect(advertencias[1]).toBe(avisoTransmisionCff(2030).texto);
     expect(diasInhabilesCurados(SAT, 2100).dias).toEqual(diasDescansoCff(2100));
   });
 

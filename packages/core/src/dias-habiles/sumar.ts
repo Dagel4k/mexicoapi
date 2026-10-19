@@ -1,7 +1,7 @@
-import { type Aviso, avisosDe } from "../avisos.js";
+import { type Aviso, aAviso } from "../avisos.js";
 import { CalendarioIncompletoError } from "../errores.js";
 import { aDias, deDias, diaSemanaDeDias, esFechaIsoValida, type FechaISO } from "../fechas.js";
-import type { Calendario } from "./calendario.js";
+import { avisosDelCalendario, type Calendario } from "./calendario.js";
 import { type Autoridad, type DiaInhabil, SIGLAS_AUTORIDAD } from "./tipos.js";
 
 export interface ResultadoDiasHabiles {
@@ -40,7 +40,8 @@ export function sumarDiasHabiles(parametros: {
   const { autoridad, cobertura, faltaFuera } = calendario;
   const falta = faltaFuera === undefined ? "" : ` ${faltaFuera}`;
   const saltados: DiaInhabil[] = [];
-  const advertencias: string[] = [];
+  // Cada aviso con su código desde aquí; advertencias son sus textos.
+  const avisos: Aviso[] = [];
   const aniosAvisados = new Set<string>();
   let contados = 0;
   let numero = aDias(desde);
@@ -57,9 +58,10 @@ export function sumarDiasHabiles(parametros: {
       const anio = actual.slice(0, 4);
       if (!aniosAvisados.has(anio)) {
         aniosAvisados.add(anio);
-        advertencias.push(
-          `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} ${anio}; solo se descontaron fines de semana.${falta}`,
-        );
+        avisos.push({
+          codigo: "calendario-incompleto",
+          texto: `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} ${anio}; solo se descontaron fines de semana.${falta}`,
+        });
       }
       const semana = diaSemanaDeDias(numero);
       inhabil = semana === 0 || semana === 6 ? { tipo: "fin_de_semana" } : null;
@@ -73,16 +75,16 @@ export function sumarDiasHabiles(parametros: {
     }
   }
 
-  if (calendario.avisos !== undefined) advertencias.push(...calendario.avisos(desde, actual));
+  avisos.push(...avisosDelCalendario(calendario, desde, actual));
   const delRespaldo = respaldo?.aviso(desde, actual);
-  if (delRespaldo !== undefined) advertencias.unshift(delRespaldo);
+  if (delRespaldo !== undefined) avisos.unshift(aAviso(delRespaldo));
   return {
     autoridad,
     desde,
     dias,
     resultado: actual,
     inhabiles_saltados: saltados,
-    advertencias,
-    avisos: avisosDe(advertencias),
+    advertencias: avisos.map((a) => a.texto),
+    avisos,
   };
 }

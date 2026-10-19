@@ -72,9 +72,10 @@ interface Serie {
 function antiguedad(c: Contexto, { meta, cobertura }: Serie): void {
   const dias = Math.floor((Date.now() - Date.parse(cobertura.hasta)) / MS_POR_DIA);
   if (dias > DIAS_DATOS_RECIENTES) {
-    c.advertencias.push(
-      `Los datos de ${meta.dataset} del paquete llegan hasta el ${cobertura.hasta}, hace ${dias} días; la API puede tener datos más recientes.`,
-    );
+    c.avisos.push({
+      codigo: "datos-viejos",
+      texto: `Los datos de ${meta.dataset} del paquete llegan hasta el ${cobertura.hasta}, hace ${dias} días; la API puede tener datos más recientes.`,
+    });
   }
 }
 
@@ -217,7 +218,7 @@ export const PAQUETE: Readonly<Record<RutaDelPaquete, RutaPaquete>> = {
       const s = await import("../datos/fix.js");
       antiguedad(c, s);
       // La más reciente del paquete puede no ser la última publicada: lo avisa siempre, como el MCP.
-      c.advertencias.push(n.AVISO_SIN_API);
+      c.avisos.push({ codigo: "datos-del-paquete", texto: n.AVISO_SIN_API });
       return { data: s.serie.at(-1), meta: conDocs(s.meta, "tipo-de-cambio-fix") };
     },
   },

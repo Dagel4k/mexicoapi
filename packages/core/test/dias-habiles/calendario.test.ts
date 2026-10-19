@@ -200,7 +200,7 @@ describe("Calendario congelado", () => {
 });
 
 describe("avisos y faltaFuera", () => {
-  it("crearCalendario los guarda tal cual y sin ellos quedan sin definir", () => {
+  it("crearCalendario da los textos de sus avisos y sin ellos quedan sin definir", () => {
     const avisos = (desde: string, resultado: string) => [`de ${desde} a ${resultado}`];
     const c = crearCalendario({
       autoridad: "cnbv",
@@ -210,7 +210,9 @@ describe("avisos y faltaFuera", () => {
       avisos,
       faltaFuera: "Pueden faltar días.",
     });
-    expect(c.avisos).toBe(avisos);
+    // Cambio: avisos da los textos (como antes), pero ya no es la misma función que se pasó: el
+    // calendario guarda aparte el código de cada aviso.
+    expect(c.avisos?.("2026-01-01", "2026-01-05")).toEqual(["de 2026-01-01 a 2026-01-05"]);
     expect(c.faltaFuera).toBe("Pueden faltar días.");
     const sin = calendario([]);
     expect(sin.avisos).toBeUndefined();

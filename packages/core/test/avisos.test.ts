@@ -119,6 +119,57 @@ describe("codigoAviso con los textos que da el núcleo", () => {
     expect(codigos(propio)).toEqual(["calendario-incompleto"]);
   });
 
+  it("los que dan los cálculos y las listas llevan su código desde quien los da", () => {
+    // Cada productor del núcleo devuelve { codigo, texto }: el código no sale del texto.
+    expect(avisoTransmisionCff(2030)).toEqual({
+      codigo: "transmision-poder-ejecutivo",
+      texto: expect.stringMatching(/^En 2030 no se descuentan/),
+    });
+    expect(
+      avisoRespaldo("sat", "general", { desde: "2026-01-01", hasta: "2026-11-30" }, ["vacaciones"]),
+    ).toEqual({
+      codigo: "tipo-plazo-incompleto",
+      texto: expect.stringMatching(/^Calendario incompleto: SAT con tipo_plazo=general/),
+    });
+    const publicadas = { desde: "2026-01-01", hasta: "2026-11-30" };
+    expect(avisoVacacionesSinPublicar(publicadas, "2026-12-30")?.codigo).toBe(
+      "vacaciones-sin-publicar",
+    );
+    expect(avisoVacacionesSinPublicar(publicadas, "2026-07-30")).toBeUndefined();
+    const lista = diasInhabilesCurados(sat, 2030);
+    expect(lista.avisos.map((a) => a.codigo)).toEqual([
+      "lista-incompleta",
+      "transmision-poder-ejecutivo",
+    ]);
+    expect(lista.advertencias).toEqual(lista.avisos.map((a) => a.texto));
+    const lft = diasInhabilesLft(2026);
+    expect(lft.avisos).toEqual([{ codigo: "lft-art-715", texto: AVISO_LFT_715 }]);
+    expect(lft.advertencias).toEqual([AVISO_LFT_715]);
+  });
+
+  it("un calendario propio puede dar sus avisos con código, que se conserva", () => {
+    const tribunal = {
+      codigo: "lft-art-715" as const,
+      texto: "Revisa las suspensiones del tribunal.",
+    };
+    const calendario = crearCalendario({
+      autoridad: "lft",
+      cobertura: { desde: "2026-01-01", hasta: "2027-12-31" },
+      dias: [],
+      fuenteFinDeSemana: { nombre: "Tribunal", url: "https://example.com/t" },
+      avisos: () => [tribunal, "Un texto suelto."],
+      respaldo: undefined,
+    });
+    const r = sumarDiasHabiles({ calendario, desde: "2026-12-18", dias: 1 });
+    expect(r.avisos).toEqual([tribunal, { codigo: "otro", texto: "Un texto suelto." }]);
+    expect(r.advertencias).toEqual([tribunal.texto, "Un texto suelto."]);
+    // calendario.avisos sigue dando solo los textos, como en la 0.1.0.
+    expect(calendario.avisos?.("2026-12-18", "2026-12-21")).toEqual([
+      tribunal.texto,
+      "Un texto suelto.",
+    ]);
+  });
+
   it("tipo-plazo-incompleto: el respaldo de un plazo más corto", () => {
     const r = sumarDiasHabilesCurado(sat, {
       tipoPlazo: "general",
@@ -130,7 +181,7 @@ describe("codigoAviso con los textos que da el núcleo", () => {
     expect(codigos(r)).toEqual(["tipo-plazo-incompleto"]);
     const cobertura = { desde: "2026-01-01", hasta: "2026-11-30" };
     for (const tipos of [["vacaciones"], ["descanso", "vacaciones"]] as const) {
-      const texto = avisoRespaldo("sat", "general", cobertura, tipos);
+      const { texto } = avisoRespaldo("sat", "general", cobertura, tipos);
       expect(codigoAviso(texto), texto).toBe("tipo-plazo-incompleto");
     }
   });
@@ -142,7 +193,7 @@ describe("codigoAviso con los textos que da el núcleo", () => {
   });
 
   it("transmision-poder-ejecutivo: en un cálculo y en la lista del SAT", () => {
-    expect(codigoAviso(avisoTransmisionCff(2030))).toBe("transmision-poder-ejecutivo");
+    expect(codigoAviso(avisoTransmisionCff(2030).texto)).toBe("transmision-poder-ejecutivo");
     const r = sumarDiasHabilesCurado(sat, {
       tipoPlazo: "declaraciones_pagos",
       desde: "2030-09-30",
@@ -184,7 +235,7 @@ describe("codigoAviso con los textos que da el núcleo", () => {
   it("vacaciones-sin-publicar: después y antes de las vacaciones publicadas", () => {
     const publicadas = { desde: "2026-01-01", hasta: "2026-11-30" };
     for (const fecha of ["2026-12-30", "2025-12-30"]) {
-      const texto = avisoVacacionesSinPublicar(publicadas, fecha) as string;
+      const texto = avisoVacacionesSinPublicar(publicadas, fecha)?.texto as string;
       expect(codigoAviso(texto), fecha).toBe("vacaciones-sin-publicar");
     }
     const r = sumarDiasHabilesCurado(sat, {
@@ -304,11 +355,8 @@ describe("avisos de los resultados del núcleo", () => {
       }
     }
     for (let anio = 2007; anio <= 2100; anio++) {
-      revisar({ ...diasInhabilesLft(anio), avisos: avisosDe(diasInhabilesLft(anio).advertencias) });
-      if (anio >= 2026) {
-        const lista = diasInhabilesCurados(sat, anio);
-        revisar({ ...lista, avisos: avisosDe(lista.advertencias) });
-      }
+      revisar(diasInhabilesLft(anio));
+      if (anio >= 2026) revisar(diasInhabilesCurados(sat, anio));
     }
     expect([...vistos].sort()).toEqual(
       [

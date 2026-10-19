@@ -179,6 +179,7 @@ describe("diasInhabilesLft", () => {
     expect(diasInhabilesLft(2026)).toEqual({
       dias: diasDescansoLft(2026),
       advertencias: [AVISO_LFT_715],
+      avisos: [{ codigo: "lft-art-715", texto: AVISO_LFT_715 }],
     });
   });
 

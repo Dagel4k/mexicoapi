@@ -2,7 +2,7 @@
 // cada uno, los días que da una regla del núcleo (en el SAT, los del art. 12 del CFF), el
 // respaldo y los textos de lo que falta. Las usan la API y el paquete; entra por su subruta del
 // núcleo (curados) y no por el índice, para no pesar en quien solo valida.
-import { avisosDe } from "../avisos.js";
+import type { Aviso } from "../avisos.js";
 import {
   type AutoridadCurada,
   type CoberturaCurada,
@@ -56,7 +56,7 @@ export interface ReglaCurada {
   readonly dias: (anio: number) => DiaInhabil[];
   readonly fuente: FuenteDof;
   /** Lo que la regla no resuelve en un cálculo de `desde` (sin contarlo) a `resultado`. */
-  readonly avisos: (desde: FechaISO, resultado: FechaISO) => string[];
+  readonly avisos: (desde: FechaISO, resultado: FechaISO) => Aviso[];
 }
 
 /**
@@ -486,7 +486,7 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
     // con la cobertura amplia y avisa si el cálculo pasó fuera de la del plazo. El aviso se pide
     // después de armar todos los plazos, que nombra.
     const respaldo = armar(amplia, excluirTipos);
-    const aviso = (desde: FechaISO, resultado: FechaISO): string | undefined => {
+    const aviso = (desde: FechaISO, resultado: FechaISO): Aviso | undefined => {
       const fuera = primerDiaFueraDelPlazo({ desde, resultado }, cobertura, amplia);
       if (fuera === undefined) return undefined;
       const tipos = faltan(plazos, excluirTipos, (p) => dentro(fuera, p.cobertura));
@@ -528,8 +528,11 @@ export function avisoRespaldo(
   tipoPlazo: TipoPlazo,
   cobertura: Rango,
   tipos: readonly TipoDiaCurado[],
-): string {
-  return `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
+): Aviso {
+  return {
+    codigo: "tipo-plazo-incompleto",
+    texto: `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
+  };
 }
 
 /** Cuándo corresponde cada tipo de plazo, para sugerirlo sin invitar a cambiar de plazo. */
@@ -640,7 +643,7 @@ function avisoProrroga(
   calendario: CalendarioCurado,
   resultado: FechaISO,
   feriadoBancario: ((fecha: FechaISO) => boolean) | undefined,
-): string | undefined {
+): Aviso | undefined {
   const hechos: string[] = [];
   if (diaDeLaSemana(resultado) === 5) hechos.push("viernes");
   if (calendario.dias.some((d) => d.fecha === resultado && d.tipo === "vacaciones")) {
@@ -648,7 +651,10 @@ function avisoProrroga(
   }
   if (feriadoBancario?.(resultado) === true) hechos.push("día de cierre bancario según la CNBV");
   if (hechos.length === 0) return undefined;
-  return `El resultado (${resultado}) es ${enLista(hechos)}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`;
+  return {
+    codigo: "prorroga-art-12",
+    texto: `El resultado (${resultado}) es ${enLista(hechos)}. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga.`,
+  };
 }
 
 /**
@@ -660,13 +666,16 @@ function avisoProrroga(
 export function avisoVacacionesSinPublicar(
   publicadas: Rango,
   resultado: FechaISO,
-): string | undefined {
+): Aviso | undefined {
   if (dentro(resultado, publicadas)) return undefined;
   const lado =
     resultado > publicadas.hasta
       ? `posteriores al ${publicadas.hasta}`
       : `anteriores al ${publicadas.desde}`;
-  return `Las vacaciones del SAT ${lado} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`;
+  return {
+    codigo: "vacaciones-sin-publicar",
+    texto: `Las vacaciones del SAT ${lado} no están publicadas: si el ${resultado} resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga.`,
+  };
 }
 
 /**
@@ -697,15 +706,15 @@ export function sumarDiasHabilesCurado(
     throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);
   }
   if (calendario.autoridad !== "sat" || tipoPlazo !== "declaraciones_pagos") return resultado;
-  const despues: string[] = [];
+  const despues: Aviso[] = [];
   const prorroga = avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario);
   if (prorroga !== undefined) despues.push(prorroga);
   // General cuenta las vacaciones: su cobertura es donde están publicadas.
   const vacaciones = avisoVacacionesSinPublicar(calendario.general.cobertura, resultado.resultado);
   if (vacaciones !== undefined) despues.push(vacaciones);
   if (despues.length === 0) return resultado;
-  const advertencias = [...resultado.advertencias, ...despues];
-  return { ...resultado, advertencias, avisos: avisosDe(advertencias) };
+  const avisos = [...resultado.avisos, ...despues];
+  return { ...resultado, advertencias: avisos.map((a) => a.texto), avisos };
 }
 
 /** El año con 4 cifras (`"0001"`); lanza RangeError si no es un entero de 1 a 9999. */
@@ -740,7 +749,7 @@ export function exigirAnio(autoridad: Autoridad, anio: number, cobertura: Rango)
  * excluyen solo están completos en la cobertura de general. Al final, lo que la regla de la
  * autoridad no resuelve en el año (en el SAT, la transmisión del Poder Ejecutivo).
  */
-function advertencias(calendario: CalendarioCurado, anio: string): string[] {
+function avisosDeLaLista(calendario: CalendarioCurado, anio: string): Aviso[] {
   const { autoridad, general, plazos } = calendario;
   const regla = reglaDe(autoridad);
   // El año ya está en la cobertura amplia: el día anterior a su 1 de enero existe.
@@ -756,13 +765,11 @@ function advertencias(calendario: CalendarioCurado, anio: string): string[] {
     .map(
       ([tipo]) => `Para tipo_plazo=${tipo}, que no los cuenta, la lista de ${anio} está completa.`,
     );
-  return [
-    [
-      `Los días de tipo ${tipos.join(" y ")} ${DE_AUTORIDAD[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
-      ...completas,
-    ].join(" "),
-    ...deRegla,
-  ];
+  const texto = [
+    `Los días de tipo ${tipos.join(" y ")} ${DE_AUTORIDAD[autoridad]} solo están completos del ${desde} al ${hasta}; fuera de ese rango pueden faltar.`,
+    ...completas,
+  ].join(" ");
+  return [{ codigo: "lista-incompleta", texto }, ...deRegla];
 }
 
 export interface DiasInhabilesCurados {
@@ -770,7 +777,17 @@ export interface DiasInhabilesCurados {
   dias: DiaInhabil[];
   /** Vacío si la lista está completa para todos los tipos de plazo. */
   advertencias: string[];
+  /** Las mismas, en el mismo orden, con su código. */
+  avisos: Aviso[];
 }
+
+/** `advertencias` y `avisos` de una lista de avisos con su código: los textos salen de ellos. */
+export const conTextos = (
+  avisos: Aviso[],
+): Pick<DiasInhabilesCurados, "advertencias" | "avisos"> => ({
+  advertencias: avisos.map((a) => a.texto),
+  avisos,
+});
 
 /**
  * Los días inhábiles de un año. Se responde si un plazo lo cubre completo (la cobertura amplia);
@@ -786,7 +803,7 @@ export function diasInhabilesCurados(
   const texto = textoAnio(anio);
   return {
     dias: calendario.dias.filter((d) => d.fecha.startsWith(`${texto}-`)),
-    advertencias: advertencias(calendario, texto),
+    ...conTextos(avisosDeLaLista(calendario, texto)),
   };
 }
 

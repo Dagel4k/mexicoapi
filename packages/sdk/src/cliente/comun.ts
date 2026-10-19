@@ -13,8 +13,9 @@ export interface RespuestaPrevia {
   readonly origen: Origen;
   readonly advertencias: readonly string[];
   /**
-   * Los avisos de primer nivel que mandó la API, tal como llegaron: el cliente conserva sus
-   * códigos (los del catálogo) por el texto de cada advertencia.
+   * Los avisos de primer nivel con su código: los que mandó la API, tal como llegaron, o los del
+   * paquete y los del cliente (respaldo, antigüedad, respuesta guardada). Al completar la
+   * respuesta, el cliente conserva sus códigos (los del catálogo) por el texto de cada advertencia.
    */
   readonly avisos?: unknown;
 }
