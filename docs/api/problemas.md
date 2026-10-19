@@ -1,6 +1,6 @@
 # Errores de la API
 
-Los errores usan `application/problem+json` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)). El campo `type` es un enlace a la sección de este documento con el mismo nombre que el tipo. Todas las respuestas de error llevan `Cache-Control: no-store`.
+Los errores usan `application/problem+json` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)). El campo `type` es un enlace a la sección de este documento con el mismo nombre que el tipo, y es un identificador estable: dentro de `/v1` no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el `type` completo o la parte después de `#`. Todas las respuestas de error llevan `Cache-Control: no-store`.
 
 Campos de siempre: `type`, `title`, `status`, `detail` (el motivo, en español) e `instance` (la ruta pedida). Algunos tipos agregan campos propios, como `parametro`.
 
@@ -58,7 +58,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=
 }
 ```
 
-Qué hacer: quita el parámetro. Si es para evitar el caché, no hace falta: los datos cambian como máximo una vez al día y se revalidan con `ETag`.
+Qué hacer: quita el parámetro. Si es para evitar el caché, no hace falta: los datos cambian como máximo una vez al día, y las rutas de catálogos y de constantes por año se revalidan con `ETag`.
 
 ## parametro-faltante
 
@@ -146,7 +146,12 @@ Qué hacer: revisa la ruta y la clave. Las claves llevan ceros a la izquierda (`
 
 ## dato-no-disponible
 
-Status 404. Todavía no se cargan los datos necesarios para responder con certeza: la fecha es posterior al último dato de la serie (salvo en el FIX con `publicado` un fin de semana o día de descanso de la CNBV con solo días así desde el último dato, que es [`no-encontrado`](#no-encontrado)) o, en una operación con FIX, falta cargar algún día entre semana hasta la víspera (los días de descanso de la CNBV no cuentan dentro de la cobertura de su calendario; fuera de ella, un feriado bancario cuenta como día entre semana; ver [Publicado y operación](README.md#publicado-y-operación)). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
+Status 404. Todavía no se cargan los datos necesarios para responder con certeza. Pasa cuando:
+
+- la fecha es posterior al último dato de la serie;
+- en una operación con FIX, falta cargar algún día entre semana hasta la víspera. Los días de descanso de la CNBV no cuentan dentro de la cobertura de su calendario; fuera de ella, un feriado bancario cuenta como día entre semana (ver [Publicado y operación](README.md#publicado-y-operación)).
+
+Excepción: en el FIX con `publicado`, un fin de semana o día de descanso de la CNBV posterior al último dato, con solo días así de por medio, es [`no-encontrado`](#no-encontrado). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10-20"
@@ -217,7 +222,7 @@ Qué hacer: acota la consulta a la cobertura. Con `permitir_incompleto=true`, `d
 
 ## demasiadas-peticiones
 
-Status 429. Una IP rebasó el límite de peticiones. La respuesta trae `Retry-After: 60` (segundos). El límite solo aplica cuando el despliegue lo tiene activado.
+Status 429. Una IP rebasó el límite de peticiones: 600 por minuto por IP (en IPv6, por bloque /64) en cada ubicación de Cloudflare, en lo que pasa por el Worker (`/v1`). Las descargas y el sitio no cuentan. La respuesta trae `Retry-After: 60` (segundos).
 
 ```json
 {
