@@ -55,6 +55,15 @@ export function validacionTexto(
 }
 
 /**
+ * Un texto de la API con los nombres de las opciones de la CLI: `tipo_plazo=general` es
+ * `--tipo-plazo general` y `permitir_incompleto=true`, `--permitir-incompleto`.
+ */
+export const conNombresCli = (texto: string): string =>
+  texto
+    .replace(/\bpermitir_incompleto=true\b/g, "--permitir-incompleto")
+    .replace(/\btipo_plazo=(\w+)/g, "--tipo-plazo $1");
+
+/**
  * De dónde salió la respuesta. "La API no respondió" solo si el cliente avisó que usó el paquete
  * de respaldo: con --base, banco y municipio salen del paquete sin consultar la API.
  */

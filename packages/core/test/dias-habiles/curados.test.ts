@@ -56,7 +56,7 @@ const AVISO_GENERAL =
   "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.";
 
 const DETALLE_GENERAL = (fecha: string) =>
-  `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.`;
+  `El calendario del SAT para tipo_plazo=general no cubre ${fecha}; cubre del 2026-01-01 al 2026-11-30 porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y cubre del 2026-01-01 al 2100-12-31.`;
 
 /** El aviso de la prórroga del quinto párrafo del art. 12 del CFF para `fecha`. */
 const PRORROGA = (fecha: string, hechos: string) =>
@@ -900,7 +900,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
         cobertura: { desde: "2026-02-01", hasta: "2026-11-30" },
       });
       expect(error.detalle).toBe(
-        "El calendario del SAT para tipo_plazo=general no cubre 2026-01-06; cubre del 2026-02-01 al 2026-11-30 porque los días de tipo vacaciones anteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre del 2026-01-01 al 2100-12-31.",
+        "El calendario del SAT para tipo_plazo=general no cubre 2026-01-06; cubre del 2026-02-01 al 2026-11-30 porque los días de tipo vacaciones anteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y cubre del 2026-01-01 al 2100-12-31.",
       );
     });
 

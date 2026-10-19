@@ -814,7 +814,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     const base = `El calendario del SAT para tipo_plazo=general no cubre ${despues(general)}; cubre ${rango(general)}`;
     expect(cuerpo.detail).toBe(
       hueco
-        ? `${base} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, cubre ${rango(declaraciones)}.`
+        ? `${base} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y cubre ${rango(declaraciones)}.`
         : `${base}.`,
     );
   });
