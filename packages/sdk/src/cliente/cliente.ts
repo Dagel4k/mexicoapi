@@ -1,7 +1,8 @@
+import { avisosDe } from "@mexicoapi/core/avisos";
 import { cumpleRegla, REGLAS_RUTA } from "@mexicoapi/core/parametros";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { crearCache } from "./cache.js";
-import { AVISO_RESPALDO, congelar, esObjeto } from "./comun.js";
+import { AVISO_RESPALDO, congelar, esObjeto, type Objeto } from "./comun.js";
 import { MexicoApiError, problemaLocal } from "./error.js";
 import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js";
 import type { Contexto } from "./paquete-comun.js";
@@ -264,13 +265,42 @@ function conAdvertenciasDelCalculo(r: RespuestaSinMeta<unknown>): RespuestaSinMe
   return congelar({ ...r, advertencias: todas });
 }
 
+/**
+ * `r` con `avisos`: sus advertencias con su código, en el mismo orden. Si `data` trae advertencias
+ * (`/v1/dias-habiles`), también `data.avisos` con las suyas, solo los textos. Los códigos salen
+ * del catálogo del cliente aunque la API ya los traiga (una API anterior no los trae y una nueva
+ * puede tener códigos que esta versión no conoce): así siempre son de `CodigoAviso`.
+ */
+function conAvisos(r: RespuestaSinMeta<unknown>): RespuestaSinMeta<unknown> {
+  const delCalculo = esObjeto(r.data) ? r.data.advertencias : undefined;
+  const data = Array.isArray(delCalculo)
+    ? {
+        ...(r.data as Objeto),
+        avisos: avisosDe(delCalculo.filter((a): a is string => typeof a === "string")),
+      }
+    : r.data;
+  return congelar({ ...r, data, avisos: avisosDe(r.advertencias) });
+}
+
+/**
+ * Lo que entrega el cliente por cada respuesta de `responder`: la misma respuesta guardada en la
+ * caché da el mismo objeto en cada consulta.
+ */
+const completas = new WeakMap<RespuestaSinMeta<unknown>, RespuestaSinMeta<unknown>>();
+
 async function ejecutar(
   c: Config,
   plantilla: string,
   parametros: Readonly<Record<string, unknown>> | undefined,
   opciones: OpcionesConsulta | undefined,
 ): Promise<RespuestaSinMeta<unknown>> {
-  return conAdvertenciasDelCalculo(await responder(c, plantilla, parametros, opciones));
+  const r = await responder(c, plantilla, parametros, opciones);
+  let completa = completas.get(r);
+  if (completa === undefined) {
+    completa = conAvisos(conAdvertenciasDelCalculo(r));
+    completas.set(r, completa);
+  }
+  return completa;
 }
 
 async function responder(

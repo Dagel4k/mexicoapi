@@ -1,10 +1,12 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type {
   Autoridad,
+  Aviso,
   Banco,
   BancoClabe,
   Calendario,
   CoberturaSerie,
+  CodigoAviso,
   CodigoError,
   Consulta,
   DetalleClabe,
@@ -67,6 +69,10 @@ describe("tipos públicos", () => {
     expectTypeOf<Calendario["autoridad"]>().toEqualTypeOf<Autoridad>();
     expectTypeOf<DiaInhabil["fuente"]>().toEqualTypeOf<Fuente>();
     expectTypeOf<DiaInhabil["fecha"]>().toEqualTypeOf<FechaISO>();
+    expectTypeOf<ResultadoDiasHabiles["avisos"]>().toEqualTypeOf<Aviso[]>();
+    expectTypeOf<Aviso["codigo"]>().toEqualTypeOf<CodigoAviso>();
+    expectTypeOf<(typeof mexicoapi.CODIGOS_AVISO)[number]>().toEqualTypeOf<CodigoAviso>();
+    expectTypeOf(mexicoapi.codigoAviso).returns.toEqualTypeOf<CodigoAviso>();
   });
 
   it("exporta los tipos de FIX y UDIS", () => {

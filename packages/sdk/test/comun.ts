@@ -31,6 +31,8 @@ export const FUNCIONES = [
   "revisarFix",
   "normalizarClabe",
   "aUnaLinea",
+  // El código estable de una advertencia.
+  "codigoAviso",
 ] as const;
 
 export const ERRORES = [
@@ -41,6 +43,7 @@ export const ERRORES = [
 
 export const CONSTANTES = [
   "AVISO_SIN_API",
+  "CODIGOS_AVISO",
   "NOTA_VALIDACION",
   "NOTAS_VALIDACION",
   "ENTIDADES_CURP",
@@ -106,6 +109,22 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
     );
     expect(m.normalizarClabe("002 010-077777777771")).toBe("002010077777777771");
     expect(m.aUnaLinea("a\u001b[2Jb\nc")).toBe("a [2Jb c");
+  });
+
+  it("da el código estable de cada advertencia, del catálogo cerrado", () => {
+    expect(Object.isFrozen(m.CODIGOS_AVISO)).toBe(true);
+    expect(m.CODIGOS_AVISO).toContain("lft-art-715");
+    expect(m.CODIGOS_AVISO.at(-1)).toBe("otro");
+    expect(m.codigoAviso(m.AVISO_SIN_API)).toBe("datos-del-paquete");
+    expect(m.codigoAviso("Un aviso que no se conoce.")).toBe("otro");
+    const r = m.sumarDiasHabiles({
+      calendario: m.calendarioLft(),
+      desde: "2100-12-30",
+      dias: 2,
+      permitirIncompleto: true,
+    });
+    expect(r.avisos.map((a) => a.codigo)).toEqual(["calendario-incompleto", "lft-art-715"]);
+    expect(r.avisos.map((a) => a.texto)).toEqual(r.advertencias);
   });
 
   it("da la fecha de hoy en la Ciudad de México", () => {
