@@ -18,7 +18,11 @@ export { TIPOS_DIA_CURADO } from "./datos/curados.js";
 export type { TipoCambioFix, Udi } from "./datos/indicadores.js";
 export type { Estado, Municipio } from "./datos/inegi.js";
 export type { ArchivoCrudo, FuenteManifiesto, Manifiesto } from "./datos/manifiesto.js";
-export type { Calendario, FuenteFinDeSemana } from "./dias-habiles/calendario.js";
+export type {
+  Calendario,
+  FuenteFinDeSemana,
+  RespaldoCalendario,
+} from "./dias-habiles/calendario.js";
 export { calendarioLft, crearCalendario } from "./dias-habiles/calendario.js";
 export {
   COBERTURA_CFF,

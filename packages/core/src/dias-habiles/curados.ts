@@ -12,7 +12,7 @@ import {
 } from "../datos/curados.js";
 import { CalendarioIncompletoError, esErrorDelNucleo } from "../errores.js";
 import { diaDeLaSemana, esFechaIsoValida, type FechaISO, sumarDias } from "../fechas.js";
-import { type Calendario, crearCalendario } from "./calendario.js";
+import { type Calendario, crearCalendario, type RespaldoCalendario } from "./calendario.js";
 import { avisosTransmisionCff, COBERTURA_CFF, diasDescansoCff, FUENTE_CFF_12 } from "./cff.js";
 import { type ResultadoDiasHabiles, sumarDiasHabiles } from "./sumar.js";
 import {
@@ -457,7 +457,11 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
   }
   const dias = [...deRegla.values(), ...publicados].sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
 
-  const armar = (cobertura: Rango, excluirTipos: readonly TipoDiaCurado[]) =>
+  const armar = (
+    cobertura: Rango,
+    excluirTipos: readonly TipoDiaCurado[],
+    respaldo?: RespaldoCalendario,
+  ) =>
     crearCalendario({
       autoridad,
       cobertura,
@@ -466,18 +470,29 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
       excluirTipos,
       avisos: regla?.avisos,
       faltaFuera: faltaFuera(autoridad, excluirTipos),
+      respaldo,
     });
   const plazos = new Map<TipoPlazo, PlazoCurado>();
   for (const [tipo, cobertura, excluirTipos] of leidos) {
-    const calendario = armar(cobertura, excluirTipos);
-    plazos.set(
-      tipo,
-      Object.freeze(
-        contiene(cobertura, amplia)
-          ? { cobertura, excluirTipos, calendario }
-          : { cobertura, excluirTipos, calendario, respaldo: armar(amplia, excluirTipos) },
-      ),
-    );
+    if (contiene(cobertura, amplia)) {
+      plazos.set(
+        tipo,
+        Object.freeze({ cobertura, excluirTipos, calendario: armar(cobertura, excluirTipos) }),
+      );
+      continue;
+    }
+    // El calendario del plazo lleva su respaldo: con permitirIncompleto, sumarDiasHabiles sigue
+    // con la cobertura amplia y avisa si el cálculo pasó fuera de la del plazo. El aviso se pide
+    // después de armar todos los plazos, que nombra.
+    const respaldo = armar(amplia, excluirTipos);
+    const aviso = (desde: FechaISO, resultado: FechaISO): string | undefined => {
+      const fuera = primerDiaFueraDelPlazo({ desde, resultado }, cobertura, amplia);
+      if (fuera === undefined) return undefined;
+      const tipos = faltan(plazos, excluirTipos, (p) => dentro(fuera, p.cobertura));
+      return tipos.length === 0 ? undefined : avisoRespaldo(autoridad, tipo, cobertura, tipos);
+    };
+    const calendario = armar(cobertura, excluirTipos, { calendario: respaldo, aviso });
+    plazos.set(tipo, Object.freeze({ cobertura, excluirTipos, calendario, respaldo }));
   }
   return Object.freeze({
     autoridad,
@@ -489,18 +504,31 @@ export function crearCalendarioCurado(datos: DatosCalendarioCurado): CalendarioC
 }
 
 /**
- * Los tipos de día que cuenta `plazo` y que excluyen todos los plazos que cumplen `cubren`: los
- * que pueden faltar donde solo esos plazos están completos.
+ * Los tipos de día que cuenta un plazo (los que no están en `excluirTipos`) y que excluyen todos
+ * los `plazos` que cumplen `cubren`: los que pueden faltar donde solo esos plazos están completos.
  */
 function faltan(
-  calendario: CalendarioCurado,
-  plazo: PlazoCurado,
+  plazos: ReadonlyMap<TipoPlazo, PlazoCurado>,
+  excluirTipos: readonly TipoDiaCurado[],
   cubren: (p: PlazoCurado) => boolean,
 ): TipoDiaCurado[] {
-  const otros = [...calendario.plazos.values()].filter(cubren);
+  const otros = [...plazos.values()].filter(cubren);
   return TIPOS_DIA_CURADO.filter(
-    (t) => !plazo.excluirTipos.includes(t) && otros.every((p) => p.excluirTipos.includes(t)),
+    (t) => !excluirTipos.includes(t) && otros.every((p) => p.excluirTipos.includes(t)),
   );
+}
+
+/**
+ * La advertencia de un cálculo con el respaldo de un plazo que pasó por fechas fuera de su
+ * cobertura: qué tipos de día pueden faltar ahí. Va antes que las demás advertencias.
+ */
+export function avisoRespaldo(
+  autoridad: AutoridadCurada,
+  tipoPlazo: TipoPlazo,
+  cobertura: Rango,
+  tipos: readonly TipoDiaCurado[],
+): string {
+  return `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
 }
 
 /**
@@ -518,7 +546,7 @@ function detalleCurado(
   const cual = calendario.plazos.size > 1 ? ` para tipo_plazo=${tipo}` : "";
   const base = `El calendario ${DE_AUTORIDAD[calendario.autoridad]}${cual} no cubre ${fecha}; ${cubre(cobertura)}`;
   const otros = [...calendario.plazos].filter(([, p]) => dentro(fecha, p.cobertura));
-  const tipos = faltan(calendario, plazo, (p) => dentro(fecha, p.cobertura));
+  const tipos = faltan(calendario.plazos, plazo.excluirTipos, (p) => dentro(fecha, p.cobertura));
   if (otros.length === 0 || tipos.length === 0) return `${base}.`;
   const lado = fecha > cobertura.hasta ? "posteriores" : "anteriores";
   return [
@@ -532,7 +560,7 @@ function detalleCurado(
  * de la del plazo, o undefined si el cálculo no pasó por ahí.
  */
 function primerDiaFueraDelPlazo(
-  { desde, resultado }: ResultadoDiasHabiles,
+  { desde, resultado }: { desde: FechaISO; resultado: FechaISO },
   plazo: Rango,
   amplia: Rango,
 ): FechaISO | undefined {
@@ -605,9 +633,10 @@ function avisoProrroga(
  * Suma días hábiles con un tipo de plazo del calendario, como la API. Fuera de la cobertura del
  * plazo lanza CalendarioIncompletoError con un `detalle` que dice por qué no la cubre. Con
  * `permitirIncompleto`, un plazo con respaldo descuenta también los días publicados fuera de su
- * cobertura y, si el cálculo pasa por ahí, lo advierte antes que las advertencias del núcleo. En
- * el SAT con `declaraciones_pagos`, al final avisa de la prórroga del quinto párrafo del art. 12
- * si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario.
+ * cobertura y, si el cálculo pasa por ahí, lo advierte antes que las advertencias del núcleo
+ * (lo hace `sumarDiasHabiles` con el calendario del plazo, que lleva su respaldo). En el SAT con
+ * `declaraciones_pagos`, al final avisa de la prórroga del quinto párrafo del art. 12 si el
+ * resultado cae en viernes, en vacaciones del SAT o en un cierre bancario.
  * Lanza RangeError si el calendario no tiene ese plazo o los parámetros no son válidos, y
  * FechaFueraDeRangoError si el resultado pasaría de 9999.
  */
@@ -617,40 +646,21 @@ export function sumarDiasHabilesCurado(
 ): ResultadoDiasHabiles {
   const { tipoPlazo, desde, dias, permitirIncompleto = false } = consulta;
   const plazo = plazoDe(calendario, tipoPlazo);
-  const { respaldo } = plazo;
   let resultado: ResultadoDiasHabiles;
   try {
-    resultado = sumarDiasHabiles({
-      calendario: permitirIncompleto && respaldo !== undefined ? respaldo : plazo.calendario,
-      desde,
-      dias,
-      permitirIncompleto,
-    });
+    resultado = sumarDiasHabiles({ calendario: plazo.calendario, desde, dias, permitirIncompleto });
   } catch (error) {
     if (!esErrorDelNucleo(error, "calendario-incompleto")) throw error;
     const { autoridad, fecha, cobertura } = error;
     const detalle = detalleCurado(calendario, tipoPlazo, plazo, error);
     throw new CalendarioIncompletoError(autoridad, fecha, cobertura, detalle);
   }
-  const antes: string[] = [];
-  const fuera =
-    permitirIncompleto && respaldo !== undefined
-      ? primerDiaFueraDelPlazo(resultado, plazo.cobertura, calendario.amplia)
-      : undefined;
-  const tipos =
-    fuera === undefined ? [] : faltan(calendario, plazo, (p) => dentro(fuera, p.cobertura));
-  if (tipos.length > 0) {
-    antes.push(
-      `Calendario incompleto: ${SIGLAS_AUTORIDAD[calendario.autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(plazo.cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`,
-    );
-  }
   const prorroga =
     calendario.autoridad === "sat" && tipoPlazo === "declaraciones_pagos"
       ? avisoProrroga(calendario, resultado.resultado, consulta.feriadoBancario)
       : undefined;
-  const despues = prorroga === undefined ? [] : [prorroga];
-  if (antes.length === 0 && despues.length === 0) return resultado;
-  return { ...resultado, advertencias: [...antes, ...resultado.advertencias, ...despues] };
+  if (prorroga === undefined) return resultado;
+  return { ...resultado, advertencias: [...resultado.advertencias, prorroga] };
 }
 
 /** El año con 4 cifras (`"0001"`); lanza RangeError si no es un entero de 1 a 9999. */
@@ -693,7 +703,7 @@ function advertencias(calendario: CalendarioCurado, anio: string): string[] {
   // Con los plazos de PLAZOS, si general no cubre el año lo cubre un plazo que excluye algo.
   const tipos = cubreAnio(anio, general.cobertura)
     ? []
-    : faltan(calendario, general, (p) => cubreAnio(anio, p.cobertura));
+    : faltan(plazos, general.excluirTipos, (p) => cubreAnio(anio, p.cobertura));
   if (tipos.length === 0) return deRegla;
   const { desde, hasta } = general.cobertura;
   const completas = [...plazos]

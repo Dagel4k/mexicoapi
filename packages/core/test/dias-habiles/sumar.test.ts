@@ -268,3 +268,101 @@ describe("sumarDiasHabiles con el calendario del SAT 2026", () => {
     expect(r.inhabiles_saltados).toEqual([navidad]);
   });
 });
+
+describe("sumarDiasHabiles con el respaldo del calendario", () => {
+  const FUENTE: Fuente = { nombre: "Prueba", url: "https://example.com/prueba" };
+  const navidad: DiaInhabil = {
+    fecha: "2026-12-25",
+    motivo: "25 de diciembre",
+    tipo: "descanso",
+    fuente: FUENTE,
+  };
+  // Lo que se sabe hasta el 31 de diciembre; el plazo, completo solo hasta el 30 de noviembre.
+  const amplio = crearCalendario({
+    autoridad: "sat",
+    cobertura: { desde: "2026-01-01", hasta: "2026-12-31" },
+    dias: [navidad],
+    fuenteFinDeSemana: FUENTE,
+    avisos: () => ["del calendario"],
+  });
+  const avisos: [string, string][] = [];
+  const plazo = crearCalendario({
+    autoridad: "sat",
+    cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
+    dias: [],
+    fuenteFinDeSemana: FUENTE,
+    respaldo: {
+      calendario: amplio,
+      aviso: (desde, resultado) => {
+        avisos.push([desde, resultado]);
+        return resultado > "2026-11-30" ? "fuera del plazo" : undefined;
+      },
+    },
+  });
+
+  it("sin permitirIncompleto no lo usa: fuera de la cobertura lanza", () => {
+    expect(() => sumarDiasHabiles({ calendario: plazo, desde: "2026-12-23", dias: 2 })).toThrow(
+      CalendarioIncompletoError,
+    );
+  });
+
+  it("con permitirIncompleto calcula con él y su aviso va antes que las demás advertencias", () => {
+    avisos.length = 0;
+    const r = sumarDiasHabiles({
+      calendario: plazo,
+      desde: "2026-12-23",
+      dias: 2,
+      permitirIncompleto: true,
+    });
+    expect(r.resultado).toBe("2026-12-28");
+    expect(r.inhabiles_saltados).toEqual([navidad]);
+    expect(r.advertencias).toEqual(["fuera del plazo", "del calendario"]);
+    expect(avisos).toEqual([["2026-12-23", "2026-12-28"]]);
+  });
+
+  it("después del respaldo, la advertencia de cada año va después de la suya", () => {
+    const r = sumarDiasHabiles({
+      calendario: plazo,
+      desde: "2026-12-30",
+      dias: 2,
+      permitirIncompleto: true,
+    });
+    expect(r.resultado).toBe("2027-01-01");
+    expect(r.advertencias).toEqual([
+      "fuera del plazo",
+      "Calendario incompleto: SAT 2027; solo se descontaron fines de semana.",
+      "del calendario",
+    ]);
+  });
+
+  it("si el aviso no dice nada, no agrega advertencia", () => {
+    const r = sumarDiasHabiles({
+      calendario: plazo,
+      desde: "2026-07-15",
+      dias: 1,
+      permitirIncompleto: true,
+    });
+    expect(r.advertencias).toEqual(["del calendario"]);
+  });
+
+  it("el respaldo debe ser de la misma autoridad y cubrir al menos lo mismo", () => {
+    const base = {
+      autoridad: "sat" as const,
+      cobertura: { desde: "2026-01-01", hasta: "2026-11-30" },
+      dias: [],
+      fuenteFinDeSemana: FUENTE,
+    };
+    const aviso = () => undefined;
+    expect(() =>
+      crearCalendario({ ...base, respaldo: { calendario: calendarioLft(), aviso } }),
+    ).toThrow(new RangeError("El respaldo debe ser un calendario de la misma autoridad."));
+    const corto = crearCalendario({
+      ...base,
+      cobertura: { desde: "2026-02-01", hasta: "2026-12-31" },
+    });
+    expect(() => crearCalendario({ ...base, respaldo: { calendario: corto, aviso } })).toThrow(
+      new RangeError("La cobertura del respaldo debe contener la del calendario."),
+    );
+    expect(Object.isFrozen(plazo.respaldo)).toBe(true);
+  });
+});

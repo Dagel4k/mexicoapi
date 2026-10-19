@@ -25,6 +25,7 @@ export type {
   PeriodoBanco,
   Plaza,
   ProblemaConsulta,
+  RespaldoCalendario,
   ResultadoDiasHabiles,
   ResultadoValidacion,
   ResultadoValidacionClabe,

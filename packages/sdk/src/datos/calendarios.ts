@@ -56,11 +56,11 @@ export function calendarioCurado(autoridad: AutoridadCurada): CalendarioCurado {
  * API: sin él lanza TypeError. Lanza RangeError si la autoridad no tiene ese plazo (la CNBV solo
  * tiene `general`, que es el de omisión).
  *
- * Con `permitirIncompleto`, fuera de la cobertura del plazo solo se descuentan fines de semana y
- * la advertencia nombra lo que puede faltar (en el SAT, los días del art. 12 y las vacaciones). No
- * sigue con el `respaldo` del plazo como la API: el respaldo no sabe hasta dónde están publicadas
- * las vacaciones y, usado solo, daría el resultado sin ese aviso. Para el resultado y las
- * advertencias de la API, usa el cliente (`crearCliente`, también sin red).
+ * Con `permitirIncompleto`, `sumarDiasHabiles` sigue con el `respaldo` del plazo, como la API: en
+ * el SAT con `general`, después de las vacaciones publicadas descuenta los días del art. 12 (el 25
+ * de diciembre, el 1 de enero) y avisa que pueden faltar vacaciones. Más allá de lo que se sabe
+ * solo descuenta fines de semana y la advertencia nombra lo que puede faltar. La prórroga del
+ * art. 12 en `declaraciones_pagos` solo la avisa el cliente (`crearCliente`, también sin red).
  */
 export function calendario(autoridad: "cnbv", tipoPlazo?: "general"): Calendario;
 export function calendario(autoridad: "sat", tipoPlazo: TipoPlazo): Calendario;
