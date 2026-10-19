@@ -18,7 +18,7 @@ Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin �
 | `GET /v1/estados` | Los 32 estados |
 | `GET /v1/estados/{cve_ent}` | Un estado |
 | `GET /v1/estados/{cve_ent}/municipios` | Municipios de un estado |
-| `GET /v1/municipios` | Todos los municipios (unos 300 KB) |
+| `GET /v1/municipios` | Todos los municipios (unos 240 KB; unos 35 KB con gzip) |
 | `GET /v1/municipios/{cvegeo}` | Un municipio |
 | `GET /v1/bancos` | Bancos y participantes del SPEI |
 | `GET /v1/bancos/{codigo}` | Un banco, con su historial |
@@ -65,7 +65,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 | Campo de `meta` | Significado |
 | --- | --- |
 | `dataset` | Identificador del dataset |
-| `as_of` | Fecha de la última corrida que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status). En los datos curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR), que no los baja un bot, es la fecha de publicación más reciente entre sus fuentes |
+| `as_of` | En los datasets automáticos, fecha de la última corrida del bot que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status). En los datos curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR), que no los baja un bot, es la fecha de publicación más reciente entre sus fuentes. En el calendario de la LFT (`dias-inhabiles.lft`), que se calcula por regla y no está en `data/`, es la fecha de la última reforma de la ley que se tomó en cuenta (hoy 2026-05-14) |
 | `sources` | Lista de fuentes: `name`, `url`, `license`, `license_url` y `citation`. Bancos tiene dos fuentes |
 | `docs` | Documentación del dataset o de la ruta |
 
@@ -257,7 +257,7 @@ Cada autoridad tiene su calendario de días inhábiles, además de los sábados 
 
 Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo. El artículo 715 también excluye los festivos que señale el calendario oficial y los días en que las autoridades laborales suspenden labores (la Semana Santa, sus vacaciones y otras suspensiones); cada tribunal y centro de conciliación publica los suyos y este calendario no los tiene. Por eso cada respuesta con `lft` trae esa advertencia, y el resultado puede ser anterior al vencimiento real de un plazo procesal: del martes 31 de marzo de 2026, 3 días hábiles dan el viernes 3 de abril, que es Viernes Santo. Para nómina (días de descanso obligatorio, art. 75) la lista del artículo 74 sí es la que aplica.
 
-`inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita (los fines de semana no se listan). Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
+`inhabiles_saltados` lista los de descanso obligatorio que se saltaron, con su cita. Los sábados y domingos no se listan por serlo, pero un día de la lista que cae en fin de semana sí aparece si queda dentro del cómputo: del viernes 24 de diciembre de 2027, 1 día hábil da el lunes 27 y `inhabiles_saltados` trae el sábado 25. Del 23 de diciembre de 2026, 3 días hábiles caen el 29 porque el 25 es de descanso:
 
 ```json
 {
@@ -282,6 +282,8 @@ Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligat
 ```
 
 El `fragmento` y la advertencia reales traen el texto completo; aquí se acortaron con "…".
+
+Con `lft`, la `meta` no sale de un dataset de `data/`: `dataset` es `dias-inhabiles.lft`, `as_of` es la fecha de la última reforma de la LFT que se tomó en cuenta (hoy 2026-05-14) y `sources` cita los artículos 74 y 715 de la ley.
 
 ### CNBV
 
@@ -620,7 +622,13 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10
 
 El ejemplo es un lunes: la víspera fue domingo, sin publicación, y se aplica el valor del viernes 16.
 
-`operacion` solo responde cuando la respuesta es cierta: cuando están cargados todos los días hasta la víspera de la operación en que pudo haber publicación. Los sábados y domingos no cuentan, porque el DOF no publica el FIX esos días. Tampoco cuentan los días de descanso del [calendario de la CNBV](../datos/dias-inhabiles-cnbv.md) dentro de su cobertura (hoy del 2025-01-01 al 2026-12-31), porque en un feriado bancario no hay publicación. Fuera de esa cobertura la API no sabe qué días son feriados, y un feriado entre semana cuenta como un día sin cargar. Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México, así que una consulta temprano por la operación de mañana da 404 hasta esa hora; vuelve a intentar después.
+`operacion` solo responde cuando la respuesta es cierta, es decir, cuando están cargados todos los días hasta la víspera de la operación en que pudo haber publicación:
+
+- no cuentan los sábados ni los domingos, porque el DOF no publica el FIX esos días;
+- tampoco los días de descanso del [calendario de la CNBV](../datos/dias-inhabiles-cnbv.md) dentro de su cobertura (hoy del 2025-01-01 al 2026-12-31), porque en un feriado bancario no hay publicación;
+- fuera de esa cobertura la API no sabe qué días son feriados, y un feriado entre semana cuenta como un día sin cargar.
+
+Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México y llega a la API cuando se fusiona su PR y termina el despliegue, así que una consulta temprano por la operación de mañana da 404 hasta entonces; vuelve a intentar después.
 
 La mañana después de un feriado bancario la respuesta ya es cierta. Por ejemplo, el lunes 16 de noviembre de 2026 es feriado bancario y no hay publicación. El martes 17 por la mañana, lo cargado termina en el viernes 13 y el lunes 16 es día de descanso de la CNBV, así que `operacion=2026-11-17` responde la publicación del viernes 13, que es la que aplica, sin esperar la corrida del martes. Por lo mismo, `publicado=2026-11-16` responde `no-encontrado`. En cambio, `operacion=2026-11-18` da `dato-no-disponible` hasta que se cargue la publicación del martes 17.
 
@@ -850,9 +858,9 @@ Frescura de cada dataset. Responde `{ "data": [...] }` sin `meta`:
       "as_of": "2026-10-17",
       "records": 32,
       "data_sha256": "6a21ed92ea0d892dd37db6b0b724db2bf681febe86eda7f662d87dcc1127d942",
-      "status": "unknown",
-      "last_attempt": null,
-      "last_success": null,
+      "status": "ok",
+      "last_attempt": "2026-10-18T22:50:40.695Z",
+      "last_success": "2026-10-18T22:50:40.695Z",
       "frescura_horas": 216
     },
     {
@@ -861,9 +869,9 @@ Frescura de cada dataset. Responde `{ "data": [...] }` sin `meta`:
       "records": 1710,
       "data_sha256": "ed5d51c0b2ecc8cda7ca984a3cae9fbe6f5d9daf989b7cf76863aa7c5b840f13",
       "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" },
-      "status": "unknown",
-      "last_attempt": null,
-      "last_success": null,
+      "status": "ok",
+      "last_attempt": "2026-10-18T22:50:04.366Z",
+      "last_success": "2026-10-18T22:50:04.366Z",
       "frescura_horas": 72
     }
   ]
@@ -874,13 +882,13 @@ La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.mun
 
 | Campo | Significado |
 | --- | --- |
-| `as_of`, `records`, `data_sha256` | Los del dataset publicado. `as_of` es la fecha de la última corrida que cambió los datos |
+| `as_of`, `records`, `data_sha256` | Los del dataset publicado. `as_of` es la fecha de la última corrida que cambió el dataset |
 | `cobertura` | Solo en las series (`tipo-cambio.fix` y `udis`): `desde` y `hasta`, la primera y la última fecha de la serie publicada. En las UDIS, `hasta` va por delante de la fecha de hoy porque se publican por adelantado |
 | `status` | `ok`; `stale` si el último éxito pasó de `frescura_horas` o si hay corridas pero ninguna exitosa (`last_success` es `null`); `unknown` si no hay registro de corridas |
 | `last_attempt`, `last_success` | Instantes UTC de la última corrida y del último éxito; `null` si no hay registro |
-| `frescura_horas` | Antigüedad máxima antes de considerar el dato desactualizado |
+| `frescura_horas` | Horas que pueden pasar desde el último éxito antes de considerar el dataset desactualizado: 72 en `bancos`, `tipo-cambio.fix` y `udis`, que el bot revisa cada día, y 216 en `inegi.estados` e `inegi.municipios`, que revisa cada lunes |
 
-El ejemplo es de una corrida local, sin registro de corridas, por eso `status` es `unknown`.
+`status` es `unknown` en un despliegue sin registro de corridas, como una copia local o uno nuevo antes de la primera corrida del bot. `/v1/status` solo trae los datasets automáticos: los curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR) no tienen bot ni plazo de frescura, y su fecha es el `as_of` de su `meta`.
 
 ## Caché y ETag
 
@@ -895,19 +903,19 @@ Los datos se actualizan como máximo una vez al día, así que una hora de cach�
 
 `/v1/tipo-cambio/fix/ultimo` cambia con cada publicación del FIX, así que su caché es de cinco minutos y sin `stale-while-revalidate` ni `stale-if-error`: con ellos, un cliente podría seguir viendo el FIX anterior hasta un día después de la actualización.
 
-Las rutas de estados, municipios y bancos, y `/v1/openapi.json`, traen `ETag`. Si lo mandas en `If-None-Match`, responde 304 sin cuerpo:
+Las rutas que sirven un archivo traen `ETag`: las de estados, municipios y bancos, las de constantes por año (`/v1/constantes/uma/{anio}`, `/v1/constantes/salario-minimo/{anio}` y `/v1/isr/tarifa/{periodo}/{anio}`) y `/v1/openapi.json`. Las que calculan la respuesta (`/v1`, CLABE, días hábiles e inhábiles, FIX, UDIS, UMA por fecha y status) no lo traen. Si mandas el `ETag` de una respuesta anterior en `If-None-Match`, responde 304 sin cuerpo:
 
 ```bash
-curl -i -H 'If-None-Match: "2124ff58da103db22f553c325831f0c5"' https://mexicoapi.dagel4k.workers.dev/v1/estados/25
+curl -i -H 'If-None-Match: "<ETag de una respuesta anterior>"' https://mexicoapi.dagel4k.workers.dev/v1/estados/25
 ```
 
 ```
 HTTP/1.1 304 Not Modified
 Cache-Control: public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800
-ETag: "2124ff58da103db22f553c325831f0c5"
+ETag: "<el mismo valor>"
 ```
 
-Se omiten los demás encabezados. El valor del `ETag` cambia cuando cambian los datos.
+Se omiten los demás encabezados. El `ETag` lo da el archivo publicado y cambia cuando cambian los datos; usa el de tu última respuesta, no uno copiado de esta guía.
 
 ## CORS
 
@@ -926,7 +934,7 @@ Los parámetros se validan antes de consultar el dato. Estas peticiones dan 400:
 
 Una ruta con `%` no se encuentra (404). Un cliente que agrega `?_=123` para saltarse el caché recibe 400.
 
-Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `status` y `detail`, más `instance` y, cuando aplica, `parametro`. El `type` es un enlace a la sección correspondiente de [problemas.md](problemas.md). Nunca llevan trazas internas.
+Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `status` y `detail`, más `instance` y, cuando aplica, `parametro`. El `type` es un enlace a la sección correspondiente de [problemas.md](problemas.md) y es un identificador estable: dentro de `/v1` no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el `type` completo o la parte después de `#` (`parametro-invalido`). Nunca llevan trazas internas.
 
 ```json
 {
@@ -941,7 +949,7 @@ Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `sta
 
 ## Límite de peticiones
 
-Cuando el despliegue lo tenga activado, una IP que rebasa el límite (en IPv6 cuenta el bloque /64 completo) recibe 429 (`demasiadas-peticiones`) con `Retry-After: 60`. Si necesitas todos los datos, no hace falta consultar uno por uno: baja las descargas.
+Lo que pasa por el Worker (`/v1`) tiene un límite de 600 peticiones por minuto por IP (en IPv6 cuenta el bloque /64 completo) en cada ubicación de Cloudflare. Quien lo rebasa recibe 429 (`demasiadas-peticiones`) con `Retry-After: 60`. Las descargas y el sitio no cuentan. Si necesitas todos los datos, no hace falta consultar uno por uno: baja las descargas.
 
 ## Descargas
 
@@ -989,6 +997,7 @@ Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que gener
 | `/estado/` | Si cada dataset automático está al día; la página consulta `/v1/status` |
 | `/llms.txt` | Resumen de la API en el formato de [llmstxt.org](https://llmstxt.org/): la ruta de cada dataset con sus parámetros obligatorios, su `as_of` y su documentación |
 | `/llms-full.txt` | Esta referencia, la de errores y la documentación de cada dataset en un solo archivo de texto, con los enlaces absolutos |
+| `/robots.txt` | Pide a los rastreadores que no entren a `/v1` ni a `/descargas/`; el resto del sitio queda abierto |
 
 Las sirven los assets de Cloudflare sin pasar por el Worker, así que no cuentan en el límite de peticiones. Las páginas llevan su propia política de seguridad de contenido y cinco minutos de caché; `llms.txt` y `llms-full.txt` se sirven como `text/plain; charset=utf-8`, con `Access-Control-Allow-Origin: *` y una hora de caché. `/estado` redirige a `/estado/`.
 
@@ -996,7 +1005,7 @@ Una dirección que no existe fuera de `/v1` (`/v2`, `/descargas/nada`) responde 
 
 ## Privacidad
 
-El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él) y cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` ([packages/sdk](../../packages/sdk/README.md)), que se publicará en npm.
+El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él), cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`) y cuando falla el límite de peticiones (la petición pasa). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` ([packages/sdk](../../packages/sdk/README.md)), que se publicará en npm.
 
 Los datos son públicos y la API no usa cookies.
 
