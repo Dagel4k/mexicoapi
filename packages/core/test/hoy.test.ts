@@ -32,10 +32,19 @@ describe("hoyEnMexico", () => {
     expect(hoyEnMexico(Date.parse("0999-06-15T18:00:00Z"))).toBe("0999-06-15");
   });
 
+  it("el 1 de enero del año 1 en la Ciudad de México es el primer día que da", () => {
+    expect(hoyEnMexico(Date.parse("0001-01-01T12:00:00Z"))).toBe("0001-01-01");
+  });
+
   it.each([
     ["una fecha inválida", new Date("no es fecha")],
     ["NaN", Number.NaN],
     ["un año después de 9999", Date.parse("+010000-01-01T12:00:00Z")],
+    // Antes de la era común: Intl da el año 1 (1 a. C.) o 101 (101 a. C.), no el 0 ni el -100.
+    ["el año 0", Date.parse("0000-06-15T18:00:00Z")],
+    ["un año antes de la era común", Date.parse("-000100-06-15T18:00:00Z")],
+    // 03:00 UTC del 1 de enero del año 1 todavía es 31 de diciembre de 1 a. C. en la Ciudad de México.
+    ["la víspera del año 1 en la Ciudad de México", Date.parse("0001-01-01T03:00:00Z")],
   ])("lanza RangeError con %s", (_nombre, ahora) => {
     expect(() => hoyEnMexico(ahora)).toThrow(RangeError);
   });
