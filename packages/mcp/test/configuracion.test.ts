@@ -38,8 +38,39 @@ describe("configurar", () => {
       expect((await cliente.udi("2026-10-01")).origen).toBe("paquete");
       expect(fetch).not.toHaveBeenCalled();
     }
-    // Solo 1 la apaga: otro valor no cambia nada.
-    expect(configurar({ MEXICOAPI_SIN_RED: "0" }).conApi).toBe(true);
+  });
+
+  // Antes solo "1" apagaba la red y cualquier otro valor ("true", "sí") la dejaba encendida sin
+  // decir nada. Ahora acepta los valores verdaderos y falsos comunes y rechaza los demás.
+  it("MEXICOAPI_SIN_RED acepta los valores verdaderos comunes, sin distinguir mayúsculas", () => {
+    for (const valor of ["1", "true", "TRUE", "yes", "Yes", "si", "sí", "SÍ", "on", " 1 ", "On"]) {
+      const fetch = vi.fn();
+      expect(configurar({ MEXICOAPI_SIN_RED: valor }, { fetch }).conApi, valor).toBe(false);
+    }
+  });
+
+  it("MEXICOAPI_SIN_RED con un valor falso o vacío deja la API", () => {
+    for (const valor of ["0", "false", "FALSE", "no", "NO", "off", "", "  "]) {
+      expect(configurar({ MEXICOAPI_SIN_RED: valor }).conApi, valor).toBe(true);
+    }
+    expect(configurar({}).conApi).toBe(true);
+  });
+
+  it("MEXICOAPI_SIN_RED con otro valor no arranca y no repite el valor", () => {
+    for (const valor of ["2", "verdadero", "y", "tal-vez", "SECRETO-123", "1 0"]) {
+      let error: unknown;
+      try {
+        configurar({ MEXICOAPI_SIN_RED: valor, MEXICOAPI_BASE: "https://api.example" });
+      } catch (e) {
+        error = e;
+      }
+      expect(error, valor).toBeInstanceOf(ErrorConfiguracion);
+      const mensaje = (error as Error).message;
+      expect(mensaje).toBe(
+        "MEXICOAPI_SIN_RED no es válida: usa 1, true, yes, si u on para responder sin red, o 0, false, no, off o nada para consultar la API.",
+      );
+      expect(mensaje).not.toContain("SECRETO");
+    }
   });
 
   it("con MEXICOAPI_BASE consulta la API con el fetch dado", async () => {

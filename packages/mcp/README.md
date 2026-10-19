@@ -32,7 +32,7 @@ Cada cliente guarda este bloque en su propio archivo; revisa su documentación p
 Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo e ISR) consultan la API pública de MéxicoAPI, https://mexicoapi.dagel4k.workers.dev, y si no responde usan los datos del paquete `mexicoapi` y lo advierten. Las demás nunca usan la red.
 
 - `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a un despliegue propio o a la API local de `wrangler dev`.
-- `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`.
+- `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`. También acepta `true`, `yes`, `si` u `on`, y `0`, `false`, `no`, `off` o vacía para consultar la API, sin distinguir mayúsculas.
 
 ```json
 {
@@ -46,7 +46,7 @@ Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, U
 }
 ```
 
-Una dirección inválida (con credenciales, query o fragmento) hace que el servidor no arranque: sale con código 2 y un mensaje en stderr que no repite la dirección.
+Una dirección inválida (con credenciales, query o fragmento) o un `MEXICOAPI_SIN_RED` con otro valor hacen que el servidor no arranque: sale con código 2 y un mensaje en stderr que no repite el valor.
 
 ## Herramientas
 

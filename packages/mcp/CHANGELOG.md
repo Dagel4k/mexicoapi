@@ -9,6 +9,7 @@
 - `sumar_dias_habiles`: con `declaraciones_pagos`, advertencia nueva si el resultado cae fuera de las vacaciones publicadas del SAT; con `sat` y `general` fuera de su cobertura, el error sugiere `permitir_incompleto`.
 - Si la API responde con una redirección, con un cuerpo de más de 8 MB o con `data` de otro tipo, las herramientas de datos que caducan responden con los datos del paquete y la advertencia de respaldo. Antes la redirección se seguía y `data` de otro tipo daba un error de la herramienta.
 - `dias_inhabiles` y `sumar_dias_habiles` con `lft`: los días anteriores al 2024-10-01 citan el texto del art. 74 vigente entonces, el de la reforma del DOF 17-01-2006, con su `fecha_publicacion`. Las fechas no cambian.
+- `MEXICOAPI_SIN_RED` acepta `1`, `true`, `yes`, `si` u `on` para no usar la red y `0`, `false`, `no`, `off` o vacía para consultar la API, sin distinguir mayúsculas. Otro valor hace que el servidor no arranque (código 2, con un mensaje en stderr). Antes solo `1` apagaba la red y cualquier otro valor la dejaba encendida sin avisar.
 - Nuevo: `avisos` en el `structuredContent` de cada herramienta (y en `datos` de `sumar_dias_habiles`), requerido en su `outputSchema`: las mismas advertencias con un código estable, como en la API. El texto no cambia.
 
 ## 0.1.0 (2026-10-18)
