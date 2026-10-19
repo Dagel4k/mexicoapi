@@ -890,6 +890,38 @@ describe("documento OpenAPI", () => {
     expect(p.properties.fecha.description).toContain("la serie");
     expect(p.properties.cobertura.description).toContain("la serie");
   });
+
+  // En un 422 `fecha` es el primer día sin cobertura, no la fecha pedida; en un 404 de una serie
+  // o de la UMA es la de la consulta, que puede estar cubierta (un día sin publicación del FIX).
+  it("Problema.fecha dice qué fecha lleva en el 422 y en el 404", () => {
+    const { description } = doc.components.schemas.Problema.properties.fecha;
+    expect(description).toContain("primer día del cálculo que el calendario no cubre");
+    expect(description).toContain("la fecha de la consulta (publicado, operacion o fecha)");
+    expect(description).toContain("puede estar dentro de la cobertura");
+    expect(description).not.toContain("Fecha pedida que el calendario o la serie no cubre");
+  });
+
+  // La ruta revisa longitud y caracteres antes (400): en la API, formato_valido en false solo
+  // significa un banco que no está en el catálogo.
+  it("ResultadoClabe dice qué revisa formato_valido y solo enumera los errores que da la API", () => {
+    const { properties } = doc.components.schemas.ResultadoClabe;
+    expect(properties.formato_valido.description).toContain("código de banco");
+    expect(properties.formato_valido.description).toContain("catálogo");
+    expect(properties.errores.items.enum).toEqual(["banco", "digito_verificador"]);
+    // Lo que solo da el paquete va en la descripción.
+    for (const codigo of ["vacio", "caracteres", "longitud"]) {
+      expect(properties.errores.description, codigo).toContain(codigo);
+    }
+    const plaza = properties.detalle.anyOf[0].properties.plaza;
+    expect(plaza.description).toContain("hoy siempre null");
+  });
+
+  it("DiaInhabil.tipo solo enumera los tipos que da la API; fin_de_semana es del paquete", () => {
+    const { tipo } = doc.components.schemas.DiaInhabil.properties;
+    expect(tipo.enum).toEqual(["descanso", "vacaciones"]);
+    expect(tipo.description).toContain("fin_de_semana");
+    expect(tipo.description).toContain("paquete");
+  });
 });
 
 // Las reglas de los parámetros son las del núcleo, las que aplican la API y el paquete: el
