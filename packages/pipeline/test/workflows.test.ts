@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { leerCoberturas, PREFIJO_TITULO, porVencer } from "../src/coberturas.js";
 import { DATASETS } from "../src/registro.js";
 
 // Los workflows del bot no corren código del repo para saber qué carpetas puede tocar cada grupo:
@@ -12,13 +13,24 @@ const RAIZ = fileURLToPath(new URL("../../../", import.meta.url));
 
 interface Paso {
   name?: string;
+  id?: string;
+  uses?: string;
+  with?: Record<string, unknown>;
   run?: string;
   env?: Record<string, string>;
 }
 
+interface Job {
+  needs?: string;
+  if?: string;
+  permissions?: Record<string, string>;
+  outputs?: Record<string, string>;
+  steps: Paso[];
+}
+
 interface Workflow {
   on: { workflow_dispatch: { inputs: { dataset: { options: string[] } } } };
-  jobs: Record<string, { steps: Paso[] }>;
+  jobs: Record<string, Job>;
 }
 
 async function workflow(nombre: string): Promise<Workflow> {
@@ -94,6 +106,97 @@ describe("carpetas del bot de datos en los workflows", () => {
         expect(ruta).toMatch(regla);
         expect(`/${ruta}/`, ruta).not.toMatch(/\/[/.]/);
       }
+    }
+  });
+});
+
+/** Una expresión de GitHub Actions: `${{ texto }}`. */
+const expresion = (texto: string): string => `\${{ ${texto} }}`;
+
+/** La función `nombre` de un bloque run, sin sangría: de `nombre() {` a su `}`. */
+function funcion(run: string, nombre: string): string {
+  const lineas = run.split("\n").map((l) => l.trimStart());
+  const inicio = lineas.indexOf(`${nombre}() {`);
+  const fin = lineas.indexOf("}", inicio);
+  if (inicio === -1 || fin === -1) throw new Error(`no se encontró ${nombre}`);
+  return lineas.slice(inicio, fin + 1).join("\n");
+}
+
+describe("alerta de coberturas en frescura.yml", () => {
+  it("coberturas instala y corre el pipeline sin poder escribir, con las acciones fijadas", async () => {
+    const frescura = await workflow("frescura.yml");
+    const datos = await workflow("datos.yml");
+    const job = frescura.jobs.coberturas as Job;
+    expect(job.permissions).toEqual({ contents: "read" });
+    expect(job.outputs).toEqual({ lista: expresion("steps.calcular.outputs.lista") });
+    // Las mismas versiones fijadas por SHA que el bot de datos.
+    const usos = (j: Job | undefined) => (j?.steps ?? []).flatMap((p) => p.uses ?? []);
+    expect(usos(job)).toEqual([
+      expect.stringMatching(/^actions\/checkout@[0-9a-f]{40}$/),
+      expect.stringMatching(/^pnpm\/action-setup@[0-9a-f]{40}$/),
+      expect.stringMatching(/^actions\/setup-node@[0-9a-f]{40}$/),
+    ]);
+    expect(usos(datos.jobs.generar)).toEqual(expect.arrayContaining(usos(job)));
+    expect(job.steps[0]?.with).toMatchObject({ "persist-credentials": false });
+    const calcular = job.steps.find((p) => p.id === "calcular");
+    expect(calcular?.env).toEqual({ DIAS_AVISO: "30" });
+    expect(calcular?.run).toContain(
+      `node packages/pipeline/dist/bin.js coberturas --dias "\${DIAS_AVISO}" --json`,
+    );
+  });
+
+  it("avisar-coberturas solo escribe issues, no instala nada y recibe la lista por env", async () => {
+    const frescura = await workflow("frescura.yml");
+    const job = frescura.jobs["avisar-coberturas"] as Job;
+    expect(job.needs).toBe("coberturas");
+    expect(job.if).toBe("needs.coberturas.outputs.lista != '[]'");
+    expect(job.permissions).toEqual({ issues: "write" });
+    expect(job.steps.flatMap((p) => p.uses ?? [])).toEqual([]);
+    const [unico] = job.steps;
+    expect(job.steps).toHaveLength(1);
+    expect(unico?.env).toEqual({
+      LISTA: expresion("needs.coberturas.outputs.lista"),
+      GH_TOKEN: expresion("github.token"),
+      GH_REPO: expresion("github.repository"),
+    });
+    // Nada se interpola en el script: todo llega por env.
+    for (const nombre of ["coberturas", "avisar-coberturas"]) {
+      for (const p of frescura.jobs[nombre]?.steps ?? []) {
+        expect(p.run ?? "", `${nombre} ${p.name}`).not.toContain("$" + "{{");
+      }
+    }
+    // Busca el issue abierto igual que la revisión de frescura, sin crear nada si falla.
+    const revisar = paso(frescura, "revisar", "Revisar frescura de los datos").run ?? "";
+    expect(funcion(unico?.run ?? "", "buscar_abierto")).toBe(funcion(revisar, "buscar_abierto"));
+    expect(unico?.run).toContain("blob/main/docs/operacion/datos-curados.md");
+    expect(unico?.run).not.toMatch(/gh issue (close|comment)/);
+  });
+
+  it("lee los campos que da el comando y acepta el título de cada cobertura real", async () => {
+    const frescura = await workflow("frescura.yml");
+    const run = frescura.jobs["avisar-coberturas"]?.steps[0]?.run ?? "";
+    const campos = /jq -r '\.\[\] \| \[([^\]]+)\] \| @tsv'/.exec(run)?.[1];
+    expect(campos).toBe(".id, .titulo, .resumen, .detalle");
+    const patron = /^\s*patron='([^']+)'$/m.exec(run)?.[1];
+    expect(patron).toBeDefined();
+    const lista = porVencer(await leerCoberturas(join(RAIZ, "data")), "2026-10-18");
+    expect(lista.length).toBeGreaterThan(0);
+    for (const c of lista) {
+      for (const campo of ["id", "titulo", "resumen", "detalle"]) {
+        expect(typeof c[campo as keyof typeof c], campo).toBe("string");
+      }
+      expect(c.titulo).toBe(`${PREFIJO_TITULO}${c.id}`);
+      expect(c.titulo, c.id).toMatch(new RegExp(patron as string));
+      // Un tabulador o un salto de línea romperían el renglón que lee el workflow.
+      expect(`${c.resumen}${c.detalle}`, c.id).not.toMatch(/[\t\n]/);
+    }
+    for (const malo of [
+      "Cobertura por vencer: ../x",
+      "Cobertura por vencer: a b c",
+      "Cobertura por vencer: $(x)",
+      "Otra cosa: dias-inhabiles.sat general",
+    ]) {
+      expect(malo).not.toMatch(new RegExp(patron as string));
     }
   });
 });
