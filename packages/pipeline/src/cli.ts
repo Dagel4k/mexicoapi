@@ -18,6 +18,7 @@ import {
 } from "./marco.js";
 import { DATASETS } from "./registro.js";
 import { type ErrorDeDataset, resumenMarkdown } from "./resumen.js";
+import { type ResultadoRevision, revisarDataset } from "./revision.js";
 import { construirSitio } from "./sitio/construir.js";
 import { verificarDatos } from "./verificar.js";
 
@@ -33,6 +34,7 @@ const USO = `Uso:
   actualizar <id...> [--seco] [--fecha AAAA-MM-DD] [--resumen <ruta-sin-extension>] [--datos <ruta>]
   bancos-historico [--desde AAAA-MM] [--fecha AAAA-MM-DD] [--intervalo <segundos, entero >= 1, 30 por omisión>] [--datos <ruta>]
   verificar [--datos <ruta>]
+  revisar --antes <ruta> [--datos <ruta>] [--fecha AAAA-MM-DD]
   curar [--datos <ruta>]
   construir --salida <ruta> [--datos <ruta>]
   coberturas [--dias <entero >= 0>] [--fecha AAAA-MM-DD] [--json] [--datos <ruta>]
@@ -44,6 +46,7 @@ const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   actualizar: ["seco", "fecha", "resumen", "datos"],
   "bancos-historico": ["desde", "fecha", "intervalo", "datos"],
   verificar: ["datos"],
+  revisar: ["antes", "datos", "fecha"],
   curar: ["datos"],
   construir: ["salida", "datos"],
   coberturas: ["dias", "fecha", "json", "datos"],
@@ -60,6 +63,7 @@ function leer(argumentos: readonly string[]) {
       desde: { type: "string" },
       intervalo: { type: "string" },
       datos: { type: "string" },
+      antes: { type: "string" },
       salida: { type: "string" },
       dias: { type: "string" },
       json: { type: "boolean" },
@@ -226,6 +230,48 @@ async function bancosHistorico(
 }
 
 /**
+ * Compara los datos de `--antes` (main) con los de `--datos` (un PR del bot) y decide, con las
+ * reglas de `actualizar`, si los cambios piden revisión: 0 si ninguno la pide, 3 si alguno sí y 1
+ * si un snapshot nuevo no se puede leer o no es válido.
+ */
+async function revisar(
+  valores: { antes?: string | undefined; fecha?: string | undefined },
+  entorno: Entorno,
+  raizDatos: string,
+): Promise<number> {
+  if (valores.antes === undefined) {
+    entorno.escribirError(`Falta --antes.
+${USO}`);
+    return 1;
+  }
+  const fecha = resolverFecha(valores.fecha, entorno);
+  if (fecha === null) {
+    entorno.escribirError(`Fecha inválida: ${valores.fecha}
+`);
+    return 1;
+  }
+  const resultados: ResultadoRevision[] = [];
+  let errores = 0;
+  for (const def of DATASETS.values()) {
+    try {
+      const r = await revisarDataset(def, valores.antes, raizDatos, fecha);
+      resultados.push(r);
+      entorno.escribir(`${r.dataset}: ${r.estado} (+${r.altas} -${r.bajas} ~${r.cambios})
+`);
+      for (const motivo of r.motivos)
+        entorno.escribir(`  - ${motivo}
+`);
+    } catch (error) {
+      errores++;
+      entorno.escribirError(`${def.id}: ${mensajeDe(error)}
+`);
+    }
+  }
+  if (errores > 0) return 1;
+  return resultados.some((r) => r.estado === "requiere_revision") ? 3 : 0;
+}
+
+/**
  * Las coberturas de los datos curados y los días que faltan para que terminen; con `--dias`, solo
  * las que terminan en ese plazo o ya terminaron. Con `--json`, la lista que usa la alerta de
  * frescura.yml.
@@ -323,6 +369,8 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
       if (problemas.length === 0) entorno.escribir("datos: sin problemas\n");
       return problemas.length === 0 ? 0 : 1;
     }
+    case "revisar":
+      return revisar(values, entorno, raizDatos);
     case "curar":
       return curar(entorno, raizDatos);
     case "coberturas":

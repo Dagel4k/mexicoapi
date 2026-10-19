@@ -142,6 +142,43 @@ function validarCrudos(def: { id: string }, fuentes: readonly FuenteCapturada[])
   }
 }
 
+/** Lanza ErrorDatos si hay claves repetidas o algún invariante del dataset no se cumple. */
+export function validarRegistros<T extends object>(
+  def: DefinicionDataset<T>,
+  registros: readonly T[],
+): void {
+  const vistas = new Set<string>();
+  const repetidas = new Set<string>();
+  for (const r of registros) {
+    const k = def.clave(r);
+    if (vistas.has(k)) repetidas.add(k);
+    vistas.add(k);
+  }
+  if (repetidas.size > 0) {
+    throw new ErrorDatos(`Claves duplicadas: ${[...repetidas].join(", ")}`, def.id);
+  }
+  const fallas = def.invariantes(registros);
+  if (fallas.length > 0) {
+    throw new ErrorDatos(`Invariantes violados: ${fallas.join("; ")}`, def.id);
+  }
+}
+
+/**
+ * Si unas diferencias (que las hay) piden revisión, sin contar los avisos de `construir`: sin
+ * snapshot anterior es el inicial y no la pide; con él decide `revisar` del dataset. La usan
+ * `actualizar` y `revisar`, que la repite en CI sobre los datos de un PR del bot.
+ */
+export async function revisionDe<T extends object>(
+  def: DefinicionDataset<T>,
+  anterior: readonly T[] | null,
+  diferencias: Diferencias<T>,
+  ctx: Contexto,
+): Promise<Revision> {
+  if (anterior === null) return { requiereRevision: false, motivos: ["snapshot inicial"] };
+  const revision = await def.revisar(diferencias, anterior, ctx);
+  return revision.requiereRevision ? revision : { requiereRevision: false, motivos: [] };
+}
+
 export async function ejecutarDataset<T extends object>(
   def: DefinicionDataset<T>,
   ctxCorrida: Contexto,
@@ -164,23 +201,8 @@ export async function ejecutarDataset<T extends object>(
 
   const validados = parsear(def, aNfc(construccion.registros));
   const registros = ordenarPorClave(validados, def.clave);
+  validarRegistros(def, registros);
 
-  const vistas = new Set<string>();
-  const repetidas = new Set<string>();
-  for (const r of registros) {
-    const k = def.clave(r);
-    if (vistas.has(k)) repetidas.add(k);
-    vistas.add(k);
-  }
-  if (repetidas.size > 0) {
-    throw new ErrorDatos(`Claves duplicadas: ${[...repetidas].join(", ")}`, def.id);
-  }
-  const fallas = def.invariantes(registros);
-  if (fallas.length > 0) {
-    throw new ErrorDatos(`Invariantes violados: ${fallas.join("; ")}`, def.id);
-  }
-
-  const hayAnterior = anteriorDisco !== null;
   const diferencias = diferenciar(anteriorDisco ?? [], registros, def.clave);
   const base = {
     dataset: def.id,
@@ -205,17 +227,9 @@ export async function ejecutarDataset<T extends object>(
     };
   }
 
-  const motivos: string[] = [];
-  let requiere = false;
-  if (!hayAnterior) {
-    motivos.push("snapshot inicial");
-  } else {
-    const revision = await def.revisar(diferencias, anteriorDisco, ctx);
-    if (revision.requiereRevision) {
-      requiere = true;
-      motivos.push(...revision.motivos);
-    }
-  }
+  const revision = await revisionDe(def, anteriorDisco, diferencias, ctx);
+  const motivos = [...revision.motivos];
+  let requiere = revision.requiereRevision;
   if (construccion.avisos.length > 0) {
     requiere = true;
     motivos.push(...construccion.avisos);
