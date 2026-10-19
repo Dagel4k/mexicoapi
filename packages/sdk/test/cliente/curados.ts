@@ -185,7 +185,7 @@ export function probarCuradosSinRed(cargar: () => Promise<ModulosCurados>): void
     );
     const pagos = sat.plazos.get("declaraciones_pagos")?.cobertura as CoberturaSerie;
     expect(corto.detail).toBe(
-      `El calendario del SAT para tipo_plazo=general no cubre ${siguiente(general.hasta)}; ${cubre(general)} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Con tipo_plazo=declaraciones_pagos, que no los cuenta, ${cubre(pagos)}.`,
+      `El calendario del SAT para tipo_plazo=general no cubre ${siguiente(general.hasta)}; ${cubre(general)} porque los días de tipo vacaciones posteriores no están publicados o no se han cargado. Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta. Solo si el plazo es para presentar declaraciones o pagar contribuciones, usa tipo_plazo=declaraciones_pagos, que no los cuenta y ${cubre(pagos)}.`,
     );
     expect(corto.problema.cobertura).toEqual(general);
   });

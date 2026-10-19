@@ -18,6 +18,7 @@ import {
 import { AYUDA, ayudaDe } from "./ayuda.js";
 import {
   bancoTexto,
+  conNombresCli,
   diasHabilesTexto,
   municipiosTexto,
   municipioTexto,
@@ -403,7 +404,9 @@ function falla(e: Entorno, error: unknown, depurar: boolean, enJson: boolean): v
     error instanceof RangeError;
   const sinCatalogo =
     nombre === "SepomexError" && (error as { tipo?: unknown }).tipo === "sin-datos";
-  const texto = sinCatalogo ? SIN_CATALOGO : conocido ? mensaje : `error inesperado: ${mensaje}`;
+  // Un problema de la API nombra sus parámetros; en texto se muestran las opciones de la CLI.
+  const deLaApi = nombre === "MexicoApiError" ? conNombresCli(mensaje) : mensaje;
+  const texto = sinCatalogo ? SIN_CATALOGO : conocido ? deLaApi : `error inesperado: ${mensaje}`;
   imprimirError(e, texto, enJson, nombre === "MexicoApiError" ? error : undefined);
   if (depurar) {
     e.errores(`${error instanceof Error ? (error.stack ?? mensaje) : String(error)}\n`);

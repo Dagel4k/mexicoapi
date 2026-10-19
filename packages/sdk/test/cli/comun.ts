@@ -78,6 +78,34 @@ async function apiLocal(
   };
 }
 
+/** Una API local que responde todo con un problem+json de `status` y `detail`. */
+async function apiProblema(
+  status: number,
+  tipo: string,
+  detail: string,
+): Promise<{ base: string; cerrar(): Promise<void> }> {
+  const servidor = createServer((_pedido, respuesta) => {
+    respuesta.writeHead(status, { "Content-Type": "application/problem+json" });
+    respuesta.end(
+      JSON.stringify({
+        type: `https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#${tipo}`,
+        title: "Calendario incompleto",
+        status,
+        detail,
+      }),
+    );
+  });
+  await new Promise<void>((listo) => servidor.listen(0, "127.0.0.1", listo));
+  return {
+    base: `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`,
+    cerrar: () =>
+      new Promise((listo) => {
+        servidor.closeAllConnections();
+        servidor.close(() => listo());
+      }),
+  };
+}
+
 export function probarCli(correr: Correr, version: string): void {
   it("--version imprime la versión y sale con 0", async () => {
     expect(await correr(["--version"])).toEqual({ codigo: 0, salida: `${version}\n`, errores: "" });
@@ -472,6 +500,42 @@ export function probarCli(correr: Correr, version: string): void {
     expect(no.salida).toBe("");
     expect(no.errores).toMatch(/^mexicoapi: 404/);
     expect(no.errores).not.toContain("    at ");
+  });
+
+  // Nuevo: el texto de la API nombra tipo_plazo=... y permitir_incompleto=true; la CLI muestra sus
+  // opciones. Con --json el problema va tal cual, con los nombres de la API.
+  it("un error de la API se imprime con los nombres de las opciones de la CLI", async () => {
+    const detail =
+      "El calendario del SAT para tipo_plazo=general no cubre 2026-12-01. Puedes calcular con permitir_incompleto=true: el resultado puede cambiar. Solo si el plazo es de declaraciones, usa tipo_plazo=declaraciones_pagos.";
+    const api = await apiProblema(422, "calendario-incompleto", detail);
+    try {
+      const argv = [
+        "dias-habiles",
+        "--autoridad",
+        "sat",
+        "--tipo-plazo",
+        "general",
+        "--desde",
+        "2026-11-27",
+        "--dias",
+        "5",
+        "--base",
+        api.base,
+      ];
+      const c = await correr(argv);
+      expect(c.codigo).toBe(1);
+      expect(c.errores).toContain(
+        "para --tipo-plazo general no cubre 2026-12-01. Puedes calcular con --permitir-incompleto: el resultado puede cambiar. Solo si el plazo es de declaraciones, usa --tipo-plazo declaraciones_pagos.",
+      );
+      expect(c.errores).not.toMatch(/tipo_plazo=|permitir_incompleto=/);
+      const enJson = await correr([...argv, "--json"]);
+      expect(enJson.codigo).toBe(1);
+      expect((JSON.parse(enJson.errores) as { error: { detail: string } }).error.detail).toBe(
+        detail,
+      );
+    } finally {
+      await api.cerrar();
+    }
   });
 
   it("con una API que no responde, dias-habiles cae al paquete y lo avisa", async () => {

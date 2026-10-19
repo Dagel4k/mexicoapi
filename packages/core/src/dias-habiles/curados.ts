@@ -531,11 +531,32 @@ export function avisoRespaldo(
   return `Calendario incompleto: ${SIGLAS_AUTORIDAD[autoridad]} con tipo_plazo=${tipoPlazo} ${cubre(cobertura)}; fuera de ese rango pueden faltar días de tipo ${tipos.join(" y ")}, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana.`;
 }
 
+/** Cuándo corresponde cada tipo de plazo, para sugerirlo sin invitar a cambiar de plazo. */
+const CUANDO_PLAZO: Readonly<Record<TipoPlazo, string>> = {
+  general: "Si el plazo no es para presentar declaraciones ni pagar contribuciones",
+  declaraciones_pagos: "Solo si el plazo es para presentar declaraciones o pagar contribuciones",
+};
+
+/**
+ * Qué hacer con una fecha que el plazo no cubre pero la cobertura amplia sí: calcular con
+ * `permitir_incompleto=true` (sigue con el respaldo y lo advierte) o, solo si el plazo es de ese
+ * tipo, usar otro tipo de plazo que no cuenta los días que faltan.
+ */
+export function sugerenciasCobertura(otros: readonly (readonly [TipoPlazo, Rango])[]): string[] {
+  return [
+    "Puedes calcular con permitir_incompleto=true: descuenta lo publicado y el resultado puede cambiar cuando se publique lo que falta.",
+    ...otros.map(
+      ([tipo, cobertura]) =>
+        `${CUANDO_PLAZO[tipo]}, usa tipo_plazo=${tipo}, que no los cuenta y ${cubre(cobertura)}.`,
+    ),
+  ];
+}
+
 /**
  * El texto de una fecha que el plazo no cubre. Si otro plazo sí la cubre, dice por qué este no
- * (qué tipos de día faltan) y hasta dónde llega el otro: con el SAT 2026, general termina el 30
- * de noviembre porque falta el segundo periodo de vacaciones, y declaraciones_pagos llega al 31
- * de diciembre.
+ * (qué tipos de día faltan) y qué hacer: calcular con `permitir_incompleto=true` o, solo si el
+ * plazo es de ese tipo, usar el otro, con hasta dónde llega. Con el SAT 2026, general termina el
+ * 30 de noviembre porque falta el segundo periodo de vacaciones, y declaraciones_pagos llega a 2100.
  */
 function detalleCurado(
   calendario: CalendarioCurado,
@@ -551,7 +572,7 @@ function detalleCurado(
   const lado = fecha > cobertura.hasta ? "posteriores" : "anteriores";
   return [
     `${base} porque los días de tipo ${tipos.join(" y ")} ${lado} no están publicados o no se han cargado.`,
-    ...otros.map(([t, p]) => `Con tipo_plazo=${t}, que no los cuenta, ${cubre(p.cobertura)}.`),
+    ...sugerenciasCobertura(otros.map(([t, p]) => [t, p.cobertura] as const)),
   ].join(" ");
 }
 
