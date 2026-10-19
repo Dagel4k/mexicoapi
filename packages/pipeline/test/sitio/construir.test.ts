@@ -5,6 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   crearCalendario,
   type DiaInhabilCurado,
+  diasDescansoLft,
   FUENTE_LFT_74,
   type FuenteDof,
   sumarDiasHabiles,
@@ -534,8 +535,13 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     const lft = await renglones("dias-inhabiles-lft.csv");
     expect(lft[0]).toBe(`fecha,autoridad,motivo,tipo,${fuente}`);
     expect(lft).toHaveLength(diasLft().length + 2);
+    // Antes del 2024-10-01, el texto de la reforma de 2006; después, el vigente.
+    const de2006 = diasDescansoLft(2007)[0]?.fuente;
     expect(lft[1]).toBe(
-      `2007-01-01,lft,1 de enero,descanso,"Ley Federal del Trabajo, artículo 74",https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf,${VIGENCIA_LFT},"${FUENTE_LFT_74.fragmento}"`,
+      `2007-01-01,lft,1 de enero,descanso,"Ley Federal del Trabajo, artículo 74",https://www.diputados.gob.mx/LeyesBiblio/ref/lft/LFT_ref24_17ene06.pdf,2006-01-17,"${de2006?.fragmento}"`,
+    );
+    expect(lft.find((r) => r.startsWith("2024-10-01,"))).toBe(
+      `2024-10-01,lft,"1 de octubre de cada seis años, transmisión del Poder Ejecutivo Federal",descanso,"Ley Federal del Trabajo, artículo 74",https://www.diputados.gob.mx/LeyesBiblio/pdf/LFT.pdf,${VIGENCIA_LFT},"${FUENTE_LFT_74.fragmento}"`,
     );
     expect(lft.at(-2)?.startsWith("2100-12-25,lft,25 de diciembre,descanso,")).toBe(true);
     const json = await readFile(join(salida, "descargas/dias-inhabiles-lft.json"), "utf8");

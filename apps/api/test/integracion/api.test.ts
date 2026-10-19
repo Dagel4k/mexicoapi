@@ -799,20 +799,24 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       (await leerPublico("descargas/dias-inhabiles-lft.json")).toString("utf8"),
     ) as { fecha: string; autoridad: string; fuente: Record<string, string> }[];
     expect(descarga).toHaveLength(673);
-    for (const anio of [2007, 2024, 2026, 2100]) {
+    for (const anio of [2007, 2012, 2024, 2026, 2100]) {
       const { data } = (await (
         await pedir(`/v1/dias-inhabiles?autoridad=lft&anio=${anio}`)
-      ).json()) as { data: unknown[] };
-      // La descarga agrega la autoridad y la fecha de la versión del texto citado.
-      const delAnio = descarga
-        .filter((d) => d.fecha.startsWith(`${anio}-`))
-        .map(({ autoridad, fuente: { fecha_publicacion, ...fuente }, ...resto }) => {
-          expect(autoridad).toBe("lft");
-          expect(fecha_publicacion).toBe(VIGENCIA_LFT);
-          return { ...resto, fuente };
-        });
-      expect(delAnio, String(anio)).toEqual(data);
+      ).json()) as { data: { fuente: Record<string, string> }[] };
+      // La descarga agrega la autoridad y, si la API no la trae (el texto vigente), la fecha de
+      // la última reforma; antes del 2024-10-01 la fuente es la reforma de 2006, con su fecha.
+      const esperados = data.map((d) => ({
+        ...d,
+        autoridad: "lft",
+        fuente: { ...d.fuente, fecha_publicacion: d.fuente.fecha_publicacion ?? VIGENCIA_LFT },
+      }));
+      const delAnio = descarga.filter((d) => d.fecha.startsWith(`${anio}-`));
+      expect(delAnio, String(anio)).toEqual(esperados);
     }
+    const fechaDe = (fecha: string) =>
+      descarga.find((d) => d.fecha === fecha)?.fuente.fecha_publicacion;
+    expect(fechaDe("2012-12-01")).toBe("2006-01-17");
+    expect(fechaDe("2024-10-01")).toBe(VIGENCIA_LFT);
   });
 
   it("declaraciones_pagos cruza a 2027 con el 1 de enero del art. 12, sin 422 ni calendario incompleto", async () => {

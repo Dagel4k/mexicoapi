@@ -37,6 +37,7 @@ import {
   COBERTURA_LISTA_LFT,
   type CoberturaCalendario,
   coberturasDe,
+  DATASET_LFT,
   diasLft,
 } from "./calendarios.js";
 import { porNombre } from "./comun.js";
@@ -411,7 +412,7 @@ export async function construirSitio(opciones: {
   descargas.set("dias-inhabiles-lft.json", jsonCanonico(lft));
   descargas.set(
     "dias-inhabiles-lft.csv",
-    aCsv(COLUMNAS_DIAS, lft.map(conFuentePlana), "dias-inhabiles.lft"),
+    aCsv(COLUMNAS_DIAS, lft.map(conFuentePlana), DATASET_LFT),
   );
   descargas.set("dias-inhabiles-coberturas.json", jsonCanonico(coberturasCalendario));
   descargas.set("dias-inhabiles-coberturas.csv", aCsv(COLUMNAS_COBERTURAS, coberturasCalendario));

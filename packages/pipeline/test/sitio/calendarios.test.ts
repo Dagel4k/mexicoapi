@@ -417,26 +417,35 @@ describe("calendarios de las descargas", () => {
     ).toEqual(["general", "declaraciones_pagos"]);
   });
 
+  // Cada día cita el texto en vigor ese día, como la API. La fecha de la fuente es la del texto
+  // citado: la de la reforma de 2006 en los días anteriores al 2024-10-01 y, en los demás, la de
+  // la última reforma de la ley (VIGENCIA_LFT), como los días del art. 12 del CFF en el SAT.
   it("diasLft son los del art. 74 de 2007 a 2100, los mismos que lista la API", () => {
     const dias = diasLft();
     expect(dias).toHaveLength(673);
+    const de2007 = diasDescansoLft(2007)[0]?.fuente;
+    expect(de2007?.fecha_publicacion).toBe("2006-01-17");
     expect(dias[0]).toEqual({
       fecha: "2007-01-01",
       autoridad: "lft",
       motivo: "1 de enero",
       tipo: "descanso",
-      fuente: { ...FUENTE_LFT_74, fecha_publicacion: VIGENCIA_LFT },
+      fuente: de2007,
+    });
+    expect(dias.find((d) => d.fecha === "2026-01-01")?.fuente).toEqual({
+      ...FUENTE_LFT_74,
+      fecha_publicacion: VIGENCIA_LFT,
     });
     expect(dias.at(-1)?.fecha).toBe("2100-12-25");
     for (let anio = COBERTURA_LFT_ANIOS[0]; anio <= COBERTURA_LFT_ANIOS[1]; anio++) {
-      const delAnio = dias
-        .filter((d) => d.fecha.startsWith(`${anio}-`))
-        .map(({ autoridad, fuente: { fecha_publicacion, ...fuente }, ...resto }) => {
-          expect(autoridad).toBe("lft");
-          expect(fecha_publicacion).toBe(VIGENCIA_LFT);
-          return { ...resto, fuente };
-        });
-      expect(delAnio, String(anio)).toEqual(diasDescansoLft(anio));
+      const delAnio = dias.filter((d) => d.fecha.startsWith(`${anio}-`));
+      expect(delAnio, String(anio)).toEqual(
+        diasDescansoLft(anio).map((d) => ({
+          ...d,
+          autoridad: "lft",
+          fuente: { ...d.fuente, fecha_publicacion: d.fuente.fecha_publicacion ?? VIGENCIA_LFT },
+        })),
+      );
     }
     // En orden de fecha y con la fuente en el orden de las de los curados.
     expect(dias.map((d) => d.fecha)).toEqual(dias.map((d) => d.fecha).sort());

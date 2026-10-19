@@ -386,6 +386,44 @@ describe("GET /v1/dias-inhabiles", () => {
     expect(cuerpo.meta).toEqual(META_INHABILES);
   });
 
+  // Antes del 2024-10-01 la fracción VII decía "1o. de diciembre": esos días citan el art. 74 de
+  // la reforma del DOF 17-01-2006, con su fecha. Los demás campos y los días vigentes no cambian.
+  it("los días anteriores a la reforma de la fracción VII citan el texto de 2006", async () => {
+    const r = await pedir(inhabiles("autoridad=lft&anio=2012"));
+    const { data } = (await r.json()) as {
+      data: { fecha: string; fuente: Record<string, string> }[];
+    };
+    expect(data.map((d) => d.fecha)).toContain("2012-12-01");
+    for (const d of data) {
+      expect(d.fuente, d.fecha).toEqual({
+        nombre: "Ley Federal del Trabajo, artículo 74",
+        url: "https://www.diputados.gob.mx/LeyesBiblio/ref/lft/LFT_ref24_17ene06.pdf",
+        fecha_publicacion: "2006-01-17",
+        fragmento: expect.stringContaining("VII. El 1o. de diciembre de cada seis años"),
+      });
+    }
+    const de2024 = (await (await pedir(inhabiles("autoridad=lft&anio=2024"))).json()) as {
+      data: { fecha: string; fuente: Record<string, string> }[];
+    };
+    const fuentes = Object.fromEntries(de2024.data.map((d) => [d.fecha, d.fuente]));
+    expect(fuentes["2024-09-16"]?.fecha_publicacion).toBe("2006-01-17");
+    expect(fuentes["2024-10-01"]).toEqual({ ...FUENTE_LFT_74 });
+    expect(fuentes["2024-12-25"]).toEqual({ ...FUENTE_LFT_74 });
+    // En un cálculo, el día saltado lleva la misma cita.
+    const habil = (await (
+      await pedir(habiles("autoridad=lft&desde=2012-11-30&dias=1"))
+    ).json()) as {
+      data: { resultado: string; inhabiles_saltados: { fecha: string; fuente: unknown }[] };
+    };
+    expect(habil.data.resultado).toBe("2012-12-03");
+    expect(habil.data.inhabiles_saltados).toEqual([
+      expect.objectContaining({
+        fecha: "2012-12-01",
+        fuente: expect.objectContaining({ fecha_publicacion: "2006-01-17" }),
+      }),
+    ]);
+  });
+
   it("acepta los extremos de la cobertura, 2007 y 2100", async () => {
     for (const anio of [2007, 2100]) {
       const r = await pedir(inhabiles(`autoridad=lft&anio=${anio}`));
