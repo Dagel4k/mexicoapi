@@ -65,7 +65,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 | Campo de `meta` | Significado |
 | --- | --- |
 | `dataset` | Identificador del dataset |
-| `as_of` | En los datasets automáticos, fecha de la última corrida del bot que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status). En los datos curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR), que no los baja un bot, es la fecha de publicación más reciente entre sus fuentes. En el calendario de la LFT (`dias-inhabiles.lft`), que se calcula por regla y no está en `data/`, es la fecha de la última reforma de la ley que se tomó en cuenta (hoy 2026-05-14) |
+| `as_of` | En los datasets automáticos, fecha de la última corrida del pipeline que cambió el dataset. No es la fecha del registro: en el FIX y las UDIS, la última fecha de la serie está en `cobertura.hasta` de [`/v1/status`](#status). En los datos curados (calendarios de la CNBV y el SAT, UMA, salario mínimo y tarifas de ISR), que no los baja un bot, es la fecha de publicación más reciente entre sus fuentes. En el calendario de la LFT (`dias-inhabiles.lft`), que se calcula por regla y no está en `data/`, es la fecha de la última reforma de la ley que se tomó en cuenta (hoy 2026-05-14) |
 | `sources` | Lista de fuentes: `name`, `url`, `license`, `license_url` y `citation`. Bancos tiene dos fuentes |
 | `docs` | Documentación del dataset o de la ruta |
 
@@ -882,7 +882,7 @@ La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.mun
 
 | Campo | Significado |
 | --- | --- |
-| `as_of`, `records`, `data_sha256` | Los del dataset publicado. `as_of` es la fecha de la última corrida que cambió el dataset |
+| `as_of`, `records`, `data_sha256` | Los del dataset publicado. `as_of` es la fecha de la última corrida del pipeline que cambió el dataset |
 | `cobertura` | Solo en las series (`tipo-cambio.fix` y `udis`): `desde` y `hasta`, la primera y la última fecha de la serie publicada. En las UDIS, `hasta` va por delante de la fecha de hoy porque se publican por adelantado |
 | `status` | `ok`; `stale` si el último éxito pasó de `frescura_horas` o si hay corridas pero ninguna exitosa (`last_success` es `null`); `unknown` si no hay registro de corridas |
 | `last_attempt`, `last_success` | Instantes UTC de la última corrida y del último éxito; `null` si no hay registro |
