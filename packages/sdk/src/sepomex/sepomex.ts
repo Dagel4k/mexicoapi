@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { avisosDe } from "@mexicoapi/core/avisos";
 import {
   cargarCodigos,
   conCandado,
@@ -258,6 +259,7 @@ function resumenDe(dir: string, meta: MetaGuardada): ResumenSepomex {
     municipios: meta.municipios,
     sin_municipio_inegi: meta.sin_municipio_inegi,
     advertencias: Object.freeze([...meta.advertencias]),
+    avisos: Object.freeze(avisosDe(meta.advertencias).map((a) => Object.freeze(a))),
     sha256: meta.sha256,
     json: join(dir, meta.json),
     sqlite: meta.sqlite === null ? null : join(dir, meta.sqlite),

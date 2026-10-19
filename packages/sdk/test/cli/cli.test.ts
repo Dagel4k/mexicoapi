@@ -164,6 +164,7 @@ const ESTADO: ResumenSepomex = {
   municipios: 3,
   sin_municipio_inegi: 1,
   advertencias: ["una advertencia"],
+  avisos: [{ codigo: "otro", texto: "una advertencia" }],
   sha256: "abc",
   json: "/cache/c.json",
   sqlite: null,

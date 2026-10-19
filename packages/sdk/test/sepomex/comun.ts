@@ -125,6 +125,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
       filas: lineasTxt().length - 2,
       sin_municipio_inegi: 0,
       advertencias: [],
+      avisos: [],
     });
     expect(Date.parse(estado.descargado)).toBeGreaterThan(Date.now() - 60_000);
     expect(estado.sha256).toMatch(/^[0-9a-f]{64}$/);
@@ -232,6 +233,13 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     expect(estado.advertencias).toEqual([
       expect.stringMatching(/^1 código postal tiene un municipio que no está/),
     ]);
+    // Las mismas, con su código estable.
+    expect(estado.avisos).toEqual([
+      { codigo: "municipio-sin-inegi", texto: estado.advertencias[0] },
+    ]);
+    expect(Object.isFrozen(estado.avisos)).toBe(true);
+    expect(Object.isFrozen(estado.avisos[0])).toBe(true);
+    expect((await m.resumen({ dir }))?.avisos).toEqual(estado.avisos);
     expect((await m.cp("80999", { dir }))?.municipio).toEqual({
       cvegeo: null,
       nombre: "Municipio Nuevo",
@@ -258,6 +266,7 @@ export function probarSepomex(cargar: () => Promise<ModuloSepomex>): void {
     const estado = await m.importar(await archivo("cp.txt", txt(lineas)), { dir, aviso });
     expect(estado.aviso).toBe("Nuevo aviso de uso de Correos de México.");
     expect(estado.advertencias[0]).toMatch(/aviso de uso del archivo es distinto/);
+    expect(estado.avisos.map((a) => a.codigo)).toEqual(["aviso-sepomex-distinto"]);
   });
 
   /** Una caché buena y su contenido, para revisar que un fallo no la toca. */
