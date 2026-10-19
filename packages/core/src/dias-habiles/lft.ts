@@ -14,6 +14,23 @@ export const FUENTE_LFT_74: Fuente = Object.freeze({
     "Artículo 74. Son días de descanso obligatorio: I. El 1o. de enero; II. El primer lunes de febrero en conmemoración del 5 de febrero; III. El tercer lunes de marzo en conmemoración del 21 de marzo; IV. El 1o. de mayo; V. El 16 de septiembre; VI. El tercer lunes de noviembre en conmemoración del 20 de noviembre; VII. El 1o. de octubre de cada seis años, cuando corresponda a la transmisión del Poder Ejecutivo Federal; VIII. El 25 de diciembre, y IX. El que determinen las leyes federales y locales electorales, en el caso de elecciones ordinarias, para efectuar la jornada electoral.",
 });
 
+/**
+ * Primer día en vigor de la fracción VII vigente ("1o. de octubre"): la reforma se publicó en el
+ * DOF el 30-09-2024 y entró en vigor al día siguiente. Los días anteriores citan
+ * `FUENTE_LFT_74_2006`.
+ */
+export const INICIO_LFT_74_VIGENTE: FechaISO = "2024-10-01";
+
+// Texto del art. 74 de la reforma publicada en el DOF el 17-01-2006, en vigor de 2007 (inicio de
+// la cobertura) al 30-09-2024; transcrito de la copia del decreto de la Cámara de Diputados.
+export const FUENTE_LFT_74_2006: Fuente = Object.freeze({
+  nombre: "Ley Federal del Trabajo, artículo 74",
+  url: "https://www.diputados.gob.mx/LeyesBiblio/ref/lft/LFT_ref24_17ene06.pdf",
+  fecha_publicacion: "2006-01-17",
+  fragmento:
+    "Artículo 74. Son días de descanso obligatorio: I. El 1o. de enero; II. El primer lunes de febrero en conmemoración del 5 de febrero; III. El tercer lunes de marzo en conmemoración del 21 de marzo; IV. El 1o. de mayo; V. El 16 de septiembre; VI. El tercer lunes de noviembre en conmemoración del 20 de noviembre; VII. El 1o. de diciembre de cada seis años, cuando corresponda a la transmisión del Poder Ejecutivo Federal; VIII. El 25 de diciembre, y IX. El que determinen las leyes federales y locales electorales, en el caso de elecciones ordinarias, para efectuar la jornada electoral.",
+});
+
 export const FUENTE_LFT_715: Fuente = Object.freeze({
   nombre: "Ley Federal del Trabajo, artículo 715",
   url: URL_LFT,
@@ -38,8 +55,10 @@ export const COBERTURA_LFT: { readonly desde: FechaISO; readonly hasta: FechaISO
 const ANIO_MIN = 2007;
 const ANIO_MAX = 2100;
 
+/** Cada día cita el texto del art. 74 que estaba en vigor ese día. */
 function dia(fecha: FechaISO, motivo: string): DiaInhabil {
-  return { fecha, motivo, tipo: "descanso", fuente: FUENTE_LFT_74 };
+  const fuente = fecha < INICIO_LFT_74_VIGENTE ? FUENTE_LFT_74_2006 : FUENTE_LFT_74;
+  return { fecha, motivo, tipo: "descanso", fuente };
 }
 
 /**

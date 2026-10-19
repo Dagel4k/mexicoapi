@@ -9,7 +9,11 @@ import {
   VIGENCIA_LFT,
 } from "@mexicoapi/core";
 import type { PlazoCalendario, ShardCalendario } from "../curado/calendario.js";
+import { ErrorDatos } from "../errores.js";
 import { anioDe } from "../fecha.js";
+
+/** Como la llama la API en `meta.dataset`, aunque no es un dataset de `data/`. */
+export const DATASET_LFT = "dias-inhabiles.lft";
 
 /**
  * Un renglón de `dias-inhabiles-coberturas` y de la tabla `coberturas_calendario`: el rango en
@@ -45,23 +49,31 @@ export function coberturasDe(
 
 /**
  * Los días de descanso obligatorio del art. 74 de la LFT de todos los años de su calendario, los
- * mismos que lista `/v1/dias-inhabiles?autoridad=lft`. Como en los días del art. 12 del CFF, la
- * fecha de la fuente es la de la última reforma de la ley: la de la versión del texto citado.
+ * mismos que lista `/v1/dias-inhabiles?autoridad=lft`, cada uno con el texto en vigor ese día. La
+ * fecha de la fuente es la del texto citado: la que trae el núcleo (la reforma de 2006 en los días
+ * anteriores a la de la fracción VII) o, en el texto vigente, la de la última reforma de la ley,
+ * como en los días del art. 12 del CFF.
  */
 export function diasLft(): DiaDescargable[] {
   const dias: DiaDescargable[] = [];
   for (let anio = anioDe(COBERTURA_LFT.desde); anio <= anioDe(COBERTURA_LFT.hasta); anio++) {
     for (const { fecha, motivo, tipo, fuente } of diasDescansoLft(anio)) {
-      if (fuente.fragmento === undefined) throw new Error(`${fecha}: la LFT sin fragmento`);
+      // Todos los del art. 74 son de descanso y traen su fragmento; si no, el núcleo cambió.
+      if (tipo !== "descanso" || fuente.fragmento === undefined) {
+        throw new ErrorDatos(
+          `${fecha}: día de la LFT sin tipo descanso o sin fragmento`,
+          DATASET_LFT,
+        );
+      }
       dias.push({
         fecha,
         autoridad: "lft",
         motivo,
-        tipo: tipo as DiaInhabilCurado["tipo"],
+        tipo,
         fuente: {
           nombre: fuente.nombre,
           url: fuente.url,
-          fecha_publicacion: VIGENCIA_LFT,
+          fecha_publicacion: fuente.fecha_publicacion ?? VIGENCIA_LFT,
           fragmento: fuente.fragmento,
         },
       });

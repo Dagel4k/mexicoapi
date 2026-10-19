@@ -4,12 +4,16 @@ import {
   COBERTURA_LFT,
   diasDescansoLft,
   FUENTE_LFT_74,
+  FUENTE_LFT_74_2006,
   FUENTE_LFT_715,
+  INICIO_LFT_74_VIGENTE,
   VIGENCIA_LFT,
 } from "../../src/dias-habiles/lft.js";
 import { esFechaIsoValida } from "../../src/fechas.js";
 
 const fechas = (anio: number) => diasDescansoLft(anio).map((d) => d.fecha);
+
+const COBERTURA_LFT_ANIOS = [2007, 2100] as const;
 
 describe("diasDescansoLft", () => {
   it("devuelve los días de 2026 ordenados", () => {
@@ -52,7 +56,7 @@ describe("diasDescansoLft", () => {
     }
   });
 
-  it("usa los motivos y la fuente del art. 74", () => {
+  it("usa los motivos del art. 74", () => {
     const dias = diasDescansoLft(2024);
     expect(dias.map((d) => d.motivo)).toEqual([
       "1 de enero",
@@ -67,10 +71,29 @@ describe("diasDescansoLft", () => {
     expect(diasDescansoLft(2018).map((d) => d.motivo)).toContain(
       "1 de diciembre de cada seis años, transmisión del Poder Ejecutivo Federal",
     );
-    for (const d of dias) {
-      expect(d.tipo).toBe("descanso");
-      expect(d.fuente).toBe(FUENTE_LFT_74);
+    for (const d of dias) expect(d.tipo).toBe("descanso");
+  });
+
+  // La fracción VII decía "1o. de diciembre" hasta la reforma del DOF 30-09-2024, vigente desde
+  // el día siguiente: los días anteriores citan el texto de la reforma del DOF 17-01-2006.
+  it("cita el texto del art. 74 vigente en cada fecha", () => {
+    expect(INICIO_LFT_74_VIGENTE).toBe("2024-10-01");
+    for (let anio = COBERTURA_LFT_ANIOS[0]; anio <= COBERTURA_LFT_ANIOS[1]; anio++) {
+      for (const d of diasDescansoLft(anio)) {
+        const esperada = d.fecha < INICIO_LFT_74_VIGENTE ? FUENTE_LFT_74_2006 : FUENTE_LFT_74;
+        expect(d.fuente, d.fecha).toBe(esperada);
+      }
     }
+    const de = (fecha: string) =>
+      diasDescansoLft(Number(fecha.slice(0, 4))).find((d) => d.fecha === fecha)?.fuente;
+    for (const fecha of ["2012-12-01", "2018-12-01"]) {
+      expect(de(fecha)?.fragmento, fecha).toContain(
+        "VII. El 1o. de diciembre de cada seis años, cuando corresponda a la transmisión del Poder Ejecutivo Federal;",
+      );
+    }
+    expect(de("2024-09-16")).toBe(FUENTE_LFT_74_2006);
+    expect(de("2024-10-01")?.fragmento).toContain("VII. El 1o. de octubre de cada seis años");
+    expect(de("2024-11-18")).toBe(FUENTE_LFT_74);
   });
 
   it("devuelve un arreglo nuevo en cada llamada", () => {
@@ -97,6 +120,24 @@ describe("fuentes y cobertura", () => {
     expect(FUENTE_LFT_715.nombre).toBe("Ley Federal del Trabajo, artículo 715");
     expect(FUENTE_LFT_715.fragmento).toContain("con excepción de los sábados y domingos");
     expect(FUENTE_LFT_715.url).toBe(FUENTE_LFT_74.url);
+  });
+
+  // Transcrito del decreto del DOF 17-01-2006 (copia de la Cámara de Diputados); solo la fracción
+  // VII es distinta del texto vigente.
+  it("cita el art. 74 de la reforma del DOF 17-01-2006 con su fecha", () => {
+    expect(FUENTE_LFT_74_2006).toEqual({
+      nombre: "Ley Federal del Trabajo, artículo 74",
+      url: "https://www.diputados.gob.mx/LeyesBiblio/ref/lft/LFT_ref24_17ene06.pdf",
+      fecha_publicacion: "2006-01-17",
+      fragmento: FUENTE_LFT_74.fragmento?.replace(
+        "VII. El 1o. de octubre de cada seis años",
+        "VII. El 1o. de diciembre de cada seis años",
+      ),
+    });
+    expect(FUENTE_LFT_74_2006.fragmento).not.toBe(FUENTE_LFT_74.fragmento);
+    expect(Object.isFrozen(FUENTE_LFT_74_2006)).toBe(true);
+    // El vigente no cambia: sin fecha de publicación, como responde hoy la API.
+    expect(FUENTE_LFT_74).not.toHaveProperty("fecha_publicacion");
   });
 
   it("el aviso dice qué se descuenta y qué no del art. 715", () => {
