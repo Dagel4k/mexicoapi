@@ -1,7 +1,14 @@
 // Worker mínimo que usa mexicoapi como un proyecto de Cloudflare: lo importa por su nombre desde el
 // paquete instalado y wrangler lo empaqueta, sin `nodejs_compat`. El cliente responde sin red, con
 // los datos del paquete.
-import { calendarioLft, fixPublicado, sumarDiasHabiles, udiDeFecha, validarClabe } from "mexicoapi";
+import {
+  calendarioLft,
+  fixPublicado,
+  hoyEnMexico,
+  sumarDiasHabiles,
+  udiDeFecha,
+  validarClabe,
+} from "mexicoapi";
 import { crearCliente, MexicoApiError } from "mexicoapi/cliente";
 import { buscarMunicipio, catalogoClabe, estados } from "mexicoapi/datos";
 import { calendario } from "mexicoapi/datos/calendarios";
@@ -21,6 +28,9 @@ async function responder(url) {
   switch (url.pathname) {
     case "/clabe":
       return validarClabe(q("valor") ?? "", { bancos: catalogoClabe() });
+    case "/hoy":
+      // La zona de la Ciudad de México con el Intl de workerd.
+      return { hoy: hoyEnMexico(Date.parse(q("ahora") ?? "")) };
     case "/municipios":
       return { estados: estados().length, encontrados: buscarMunicipio(q("texto") ?? "") };
     case "/dias-habiles":

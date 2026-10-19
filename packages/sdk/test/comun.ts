@@ -23,6 +23,8 @@ export const FUNCIONES = [
   "fixPublicado",
   "fixParaOperacion",
   "udiDeFecha",
+  // La fecha de hoy en la Ciudad de México, la de las fechas de la API.
+  "hoyEnMexico",
   // Las reglas de la API entre parámetros, la CLABE como la revisa validarClabe y el texto en una
   // línea: los usan la CLI y el MCP.
   "revisarTipoPlazo",
@@ -103,6 +105,11 @@ export function probarModulo(cargar: () => Promise<Modulo>): void {
     );
     expect(m.normalizarClabe("002 010-077777777771")).toBe("002010077777777771");
     expect(m.aUnaLinea("a\u001b[2Jb\nc")).toBe("a [2Jb c");
+  });
+
+  it("da la fecha de hoy en la Ciudad de México", () => {
+    expect(m.hoyEnMexico(Date.parse("2026-10-19T01:03:00Z"))).toBe("2026-10-18");
+    expect(m.hoyEnMexico()).toMatch(FECHA);
   });
 
   describe("validadores", () => {
