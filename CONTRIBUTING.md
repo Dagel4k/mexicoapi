@@ -34,7 +34,7 @@ La instalación activa el hook de pre-commit de `.githooks/`, que revisa formato
 
 ## Datos curados
 
-Los días inhábiles de la CNBV y el SAT, la UMA, el salario mínimo y las tarifas de ISR se transcriben a mano del DOF. El flujo:
+Los días inhábiles de la CNBV y el SAT, la UMA, el salario mínimo y las tarifas de ISR se transcriben a mano del DOF. Trabaja en una rama que no empiece con `datos/`, el prefijo del bot: el check `solo-datos` la rechaza, también si viene de un fork ([ver la nota](docs/operacion/datos-curados.md#pasos)). El flujo:
 
 1. Edita el YAML correspondiente en `data/curado/`, con la cita literal de la publicación.
 2. Corre `pnpm -r build` (una vez, para tener el comando) y después `pnpm datos:curar` para generar la carpeta de `data/`.
