@@ -262,7 +262,7 @@ Los tipos de problema están en [docs/api/problemas.md](https://github.com/Dagel
 - `esperaMaximaMs` (10 000 por omisión; 0 para no esperar nunca): lo más que espera una consulta en total entre reintentos. Nunca reintenta antes de lo que pide un `Retry-After` (lo respeta hasta 60 s). Si esa espera no cabe en lo que queda, no reintenta y responde de inmediato con el error, la caché o el paquete. La API pide 60 s en un 429, así que con los valores por omisión un 429 no se reintenta: una función serverless se cortaría antes.
 - `signal`: cancela la consulta, también durante las esperas.
 
-El cliente no sigue redirecciones: la API no redirige lo que pide el cliente, así que una redirección cuenta como fallo de conexión. Lee el cuerpo con un tope de 8 MB (la respuesta más grande, `/v1/municipios`, ronda los 250 KB) y revisa que `data` sea una lista o un objeto según la ruta. Un cuerpo más grande o con otra forma es una respuesta inesperada (`about:blank`, con el estado HTTP): como con un fallo de la API, las rutas que caducan responden con el paquete y una advertencia.
+El cliente no sigue redirecciones ni las reintenta: la API no redirige lo que pide el cliente. Lee el cuerpo con un tope de 8 MB (la respuesta más grande, `/v1/municipios`, ronda los 250 KB) y revisa que `data` sea una lista o un objeto según la ruta. Una redirección, o un cuerpo más grande o con otra forma, es una respuesta inesperada (`about:blank`, con el estado HTTP): como con un fallo de la API, las rutas que caducan responden con el paquete y una advertencia.
 
 ### Caché
 

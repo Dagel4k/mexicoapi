@@ -69,6 +69,8 @@ interface Leida {
   texto: string;
   /** Si el cuerpo pasó de TOPE_CUERPO_BYTES y se dejó de leer. */
   grande: boolean;
+  /** Si la API respondió con una redirección (que no se sigue): su cuerpo no se lee. */
+  redireccion: boolean;
   encabezado(nombre: string): string | null;
 }
 
@@ -116,6 +118,7 @@ async function deLaApi(
   if (guardado?.etag != null) encabezados["If-None-Match"] = guardado.etag;
 
   const r = await conReintentos(c, fetch, url, encabezados, p);
+  if (r.redireccion) throw inesperada(r.status, "La API respondió con una redirección.", p);
   if (r.grande) throw inesperada(r.status, `La respuesta pasa de ${TOPE_TEXTO}.`, p);
   if (r.status === 304 && guardado !== undefined) {
     guardar(c, url, guardado.respuesta, r, guardado.etag);
@@ -196,22 +199,47 @@ async function intentar(
     const init: InitFetch = {
       headers: encabezados,
       signal: control.signal as InitFetch["signal"],
-      redirect: "error",
+      // "manual" y no "error": workerd (Cloudflare Workers) rechaza "error". La redirección se
+      // reconoce abajo y no se sigue.
+      redirect: "manual",
     };
     // Las carreras con la señal cortan aunque un fetch propio no la respete.
     const respuesta = await hastaAbortar(fetch(url, init), control.signal);
+    const encabezado = (n: string): string | null => respuesta.headers.get(n);
+    if (esRedireccion(respuesta)) {
+      cancelarCuerpo(respuesta);
+      return { status: respuesta.status, texto: "", grande: false, redireccion: true, encabezado };
+    }
     const texto = await hastaAbortar(leerTexto(respuesta, control.signal), control.signal);
     return {
       status: respuesta.status,
       texto: texto ?? "",
       grande: texto === null,
-      encabezado: (n) => respuesta.headers.get(n),
+      redireccion: false,
+      encabezado,
     };
   } catch (error) {
     return agotado ? { falla: "tiempo" } : { falla: "red", error };
   } finally {
     entorno.clearTimeout(reloj);
     senal?.removeEventListener("abort", cancelar);
+  }
+}
+
+/**
+ * Con `redirect: "manual"`, los navegadores dan una respuesta `opaqueredirect` (estado 0) y
+ * Node y workerd, la 3xx tal cual. Un 304 no es redirección: es la revalidación con ETag.
+ */
+const esRedireccion = (r: RespuestaFetch): boolean =>
+  r.type === "opaqueredirect" || (r.status >= 300 && r.status < 400 && r.status !== 304);
+
+/** Cierra el cuerpo que no se va a leer, si es un stream. */
+function cancelarCuerpo(r: RespuestaFetch): void {
+  if (typeof r.body?.getReader === "function") {
+    r.body
+      .getReader()
+      .cancel()
+      .catch(() => undefined);
   }
 }
 
@@ -224,10 +252,7 @@ async function leerTexto(respuesta: RespuestaFetch, senal: SenalAborto): Promise
   // con text(), como antes.
   const cuerpo = typeof respuesta.body?.getReader === "function" ? respuesta.body : undefined;
   if (Number(respuesta.headers.get("Content-Length")) > TOPE_CUERPO_BYTES) {
-    cuerpo
-      ?.getReader()
-      .cancel()
-      .catch(() => undefined);
+    cancelarCuerpo(respuesta);
     return null;
   }
   if (!cuerpo) {

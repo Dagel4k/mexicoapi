@@ -159,8 +159,11 @@ type SenalDelEntorno = typeof globalThis extends { AbortSignal: { prototype: inf
 export interface InitFetch {
   headers: Record<string, string>;
   signal: SenalDelEntorno;
-  /** La API no redirige lo que pide el cliente: una redirección es un fallo de conexión. */
-  redirect: "error";
+  /**
+   * La API no redirige lo que pide el cliente: una redirección no se sigue y es una respuesta
+   * inesperada. "manual" porque workerd (Cloudflare Workers) no acepta "error".
+   */
+  redirect: "manual";
 }
 
 /** Lo que el cliente usa del lector de un cuerpo (el de un `ReadableStream`). */
@@ -176,6 +179,8 @@ export interface LectorCuerpo {
  */
 export interface RespuestaFetch {
   readonly status: number;
+  /** `opaqueredirect` en los navegadores cuando la API redirige. */
+  readonly type?: string | undefined;
   readonly headers: { get(nombre: string): string | null };
   readonly body?: { getReader(): LectorCuerpo } | null | undefined;
   text(): Promise<string>;

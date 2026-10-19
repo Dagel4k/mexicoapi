@@ -585,13 +585,13 @@ function cuerpoSinFin() {
 }
 
 describe("límites de la respuesta", () => {
-  it("pide sin seguir redirecciones", async () => {
+  it("pide sin seguir redirecciones (redirect manual, que aceptan todos los runtimes)", async () => {
     const { fetch, llamadas } = fetchFalso(respuestaDatos([SINALOA]));
     await conFetch(fetch).estados({ fuente: "api" });
-    expect(llamadas[0]?.init.redirect).toBe("error");
+    expect(llamadas[0]?.init.redirect).toBe("manual");
   });
 
-  it("con el fetch de Node, una redirección es un fallo de conexión y no se sigue", async () => {
+  it("con el fetch de Node, una redirección es una respuesta inesperada y no se sigue", async () => {
     const pedidas: string[] = [];
     const servidor = createServer((peticion, respuesta) => {
       pedidas.push(peticion.url ?? "");
@@ -605,16 +605,46 @@ describe("límites de la respuesta", () => {
     await new Promise<void>((listo) => servidor.listen(0, "127.0.0.1", listo));
     try {
       const { port } = servidor.address() as AddressInfo;
-      const api = crearCliente({ base: `http://127.0.0.1:${port}`, reintentos: 0 });
+      const api = crearCliente({ base: `http://127.0.0.1:${port}`, reintentos: 2 });
       const error = (await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError;
       expect(error).toBeInstanceOf(MexicoApiError);
-      expect(error.status).toBe(0);
-      expect(error.title).toBe("Sin respuesta de la API");
-      expect(error.detail).toBe("No se pudo conectar con la API.");
+      expect(error.status).toBe(301);
+      expect(error.type).toBe("about:blank");
+      expect(error.title).toBe("Respuesta inesperada de la API");
+      expect(error.detail).toBe("La API respondió con una redirección.");
+      // Ni se sigue ni se reintenta.
       expect(pedidas).toEqual(["/v1/estados"]);
     } finally {
       await new Promise((listo) => servidor.close(listo));
     }
+  });
+
+  it("una redirección opaca (navegadores) o cualquier 3xx salvo 304 también lo es", async () => {
+    const opaca = {
+      status: 0,
+      type: "opaqueredirect",
+      headers: { get: () => null },
+      body: null,
+      text: async () => "",
+    } as unknown as RespuestaFetch;
+    const { fetch } = fetchFalso(
+      opaca,
+      new Response(null, { status: 307, headers: { Location: "https://otra.example/" } }),
+      json({ data: [SINALOA], meta: META }, 302),
+    );
+    const api = conFetch(fetch);
+    for (const status of [0, 307, 302]) {
+      const error = (await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError;
+      expect(error.status).toBe(status);
+      expect(error.detail).toBe("La API respondió con una redirección.");
+    }
+  });
+
+  it("en una ruta que caduca, una redirección responde con el paquete", async () => {
+    const { fetch } = fetchFalso(new Response(null, { status: 301, headers: { Location: "/x" } }));
+    const r = await conFetch(fetch).fixUltimo();
+    expect(r.origen).toBe("paquete");
+    expect(r.advertencias[0]).toContain("La API respondió con una redirección.");
   });
 
   it("corta un cuerpo que pasa de 8 MB mientras llega y lo cancela", async () => {

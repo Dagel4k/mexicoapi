@@ -1,6 +1,6 @@
 // Worker mínimo que usa mexicoapi como un proyecto de Cloudflare: lo importa por su nombre desde el
 // paquete instalado y wrangler lo empaqueta, sin `nodejs_compat`. El cliente responde sin red, con
-// los datos del paquete.
+// los datos del paquete, y en /cliente/api con la red de workerd contra la API falsa de la prueba.
 import {
   calendarioLft,
   fixPublicado,
@@ -62,6 +62,17 @@ async function responder(url) {
         if (!(error instanceof MexicoApiError)) throw error;
         return { error: { status: error.status, tipo: error.tipo, origen: error.origen } };
       }
+    case "/cliente/api": {
+      // Con red: workerd rechaza algunas opciones de fetch que Node acepta (redirect: "error").
+      const conRed = crearCliente({ base: q("base") ?? "", reintentos: 0, esperaMaximaMs: 0 });
+      try {
+        const { data, origen } = await conRed.estados({ fuente: "api" });
+        return { origen, estados: data.length };
+      } catch (error) {
+        if (!(error instanceof MexicoApiError)) throw error;
+        return { error: { status: error.status, title: error.title, detail: error.detail } };
+      }
+    }
     default:
       return undefined;
   }
