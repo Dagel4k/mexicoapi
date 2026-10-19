@@ -11,6 +11,19 @@ import * as sepomexReal from "../../src/sepomex/index.js";
 import { SepomexError } from "../../src/sepomex/index.js";
 import { type Corrida, probarCli } from "./comun.js";
 
+// Lo que la CLI importa al usarse (los datos y el cliente del paquete) se carga al recoger el
+// archivo, que no tiene tope de tiempo: sobre src, el plugin de las pruebas arma cada módulo de
+// datos desde data/ (el de municipios lee y verifica 324 KB). Con la máquina cargada y la
+// cobertura activa, la primera prueba que los pedía llegó a pasar de 5 s solo por eso; así cada
+// prueba mide la CLI y no la carga de los módulos.
+await Promise.all([
+  import("../../src/index.js"),
+  import("../../src/cliente/paquete.js"),
+  import("../../src/datos/index.js"),
+  import("../../src/datos/calendarios.js"),
+  import("../../src/datos/constantes.js"),
+]);
+
 let dir: string;
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "mexicoapi-cli-cache-"));
