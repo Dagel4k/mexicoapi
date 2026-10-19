@@ -574,8 +574,12 @@ export function documentoOpenApi(): Record<string, unknown> {
         "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Las fechas (AAAA-MM-DD) son días de la Ciudad de México (America/Mexico_City): un servidor en UTC ya está en el día siguiente desde las 18:00 de la Ciudad de México. Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
       license: { name: "MIT", identifier: "MIT" },
     },
-    // `/` para quien lo lee del mismo origen; la pública, para quien lo baja e importa de un archivo.
-    servers: [{ url: "/" }, { url: URL_API, description: "API pública" }],
+    // Los clientes que importan el documento desde un archivo toman servers[0] como base: va
+    // primero la pública; `/` sirve a quien lo lee del mismo origen.
+    servers: [
+      { url: URL_API, description: "API pública" },
+      { url: "/", description: "El mismo origen" },
+    ],
     tags: [
       { name: "General", description: "Índice, estado y especificación." },
       { name: "Estados", description: "Catálogo de entidades de INEGI." },

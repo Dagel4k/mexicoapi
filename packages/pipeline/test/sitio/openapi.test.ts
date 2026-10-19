@@ -191,10 +191,13 @@ describe("documento OpenAPI", () => {
     expect(doc.info.description).toContain("UMA, salario mínimo y tarifas de ISR");
   });
 
-  // `/` vale cuando el documento se lee del mismo origen; quien lo baja para generar un cliente o
-  // importarlo desde un archivo necesita la base de la API pública.
-  it("declara el mismo origen y la API pública como servidores", () => {
-    expect(doc.servers).toEqual([{ url: "/" }, { url: URL_API, description: "API pública" }]);
+  // Postman, Insomnia y openapi-generator toman servers[0] como base: al importar el documento
+  // desde un archivo, `/` primero no sirve. `/` queda para quien lo lee del mismo origen.
+  it("declara primero la API pública y después el mismo origen", () => {
+    expect(doc.servers).toEqual([
+      { url: URL_API, description: "API pública" },
+      { url: "/", description: "El mismo origen" },
+    ]);
     expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
   });
 
