@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { URL_API } from "@mexicoapi/core/problemas";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../../../src/sitio/meta.js";
@@ -71,7 +72,8 @@ describe("llms.txt", () => {
     expect(intro).toContain("`dato-no-disponible`");
     expect(intro).toContain("`calendario-incompleto`");
     expect(intro).toContain("no lo inventes ni lo estimes");
-    expect(intro).toContain("`https://<base>`");
+    expect(intro).toContain(`La API pública es \`${URL_API}\``);
+    expect(intro).not.toContain("<base>");
   });
 
   it("Docs: la referencia, los errores, las rutas de cálculo, el OpenAPI y llms-full.txt", () => {
@@ -86,6 +88,9 @@ describe("llms.txt", () => {
       "/llms-full.txt",
     ]);
     expect(docs[2]).toMatch(/^- \[GET \/v1\/clabe\/\{clabe\}\]\(/);
+    // La plaza no se valida: no hay catálogo oficial y `detalle.plaza` siempre es null.
+    expect(docs[2]).toContain("formato, dígito verificador y banco");
+    expect(docs[2]).not.toContain("plaza");
     expect(docs[3]).toMatch(
       /^- \[GET \/v1\/dias-habiles\?autoridad=\{lft\|cnbv\|sat\}&desde=\{fecha\}&dias=\{n\}\]\(/,
     );

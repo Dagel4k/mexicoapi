@@ -1,3 +1,4 @@
+import { URL_API } from "@mexicoapi/core/problemas";
 import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
 import { describir } from "./catalogo.js";
@@ -50,8 +51,11 @@ export function tamanoLegible(bytes: number): string {
 export const formatearEntero = (n: number): string =>
   String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-/** El ejemplo de `https://<base>`: `sitio.js` lo cambia por el origen de la página. */
-const ORIGEN = "<span data-origen>https://&lt;base&gt;</span>";
+/**
+ * La base de los ejemplos: la API pública, que es la que funciona sin JavaScript. `sitio.js` la
+ * cambia por el origen de la página, que sirve la misma API (otro despliegue o `wrangler dev`).
+ */
+const ORIGEN = `<span data-origen>${escaparHtml(URL_API)}</span>`;
 
 const codigo = (texto: string): string =>
   `<pre tabindex="0"><code>${escaparHtml(texto)}</code></pre>`;
@@ -100,7 +104,6 @@ function empieza(publicado: boolean): string {
 <pre tabindex="0"><code>curl ${ORIGEN}/v1/estados/25
 curl ${ORIGEN}/v1/clabe/002010077777777771</code></pre>
 <p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code>.</p>
-<noscript><p>Cambia <code>https://&lt;base&gt;</code> por la dirección de este sitio.</p></noscript>
 </div>
 <div class="bloque">
 <h3>Paquete de npm</h3>
@@ -171,7 +174,7 @@ function datos(entrada: EntradaInicio): string {
   });
   return `<section id="datos" aria-labelledby="titulo-datos">
 <h2 id="titulo-datos">Datos</h2>
-<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es la fecha de su última actualización; en <a href="/estado/">Estado</a> se ve si cada uno está al día.</p>
+<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es, en los automáticos, la fecha de la última actualización que los cambió y, en los curados, la de su publicación oficial más reciente; en <a href="/estado/">Estado</a> se ve si cada dataset automático está al día.</p>
 <div class="tabla" role="region" aria-labelledby="tabla-datos" tabindex="0">
 <table>
 <caption id="tabla-datos">${entrada.datasets.length} datasets, con su fecha, fuente y licencia</caption>
@@ -234,7 +237,7 @@ const REFERENCIA = `<section id="referencia" aria-labelledby="titulo-referencia"
 <dt><a href="/llms.txt">/llms.txt</a></dt>
 <dd>Resumen del sitio en texto plano, con la documentación completa en <code>/llms-full.txt</code>.</dd>
 <dt><a href="/estado/">Estado</a></dt>
-<dd>Si cada dataset está al día y cuándo se actualizó por última vez.</dd>
+<dd>Si cada dataset automático está al día y cuándo se revisó por última vez.</dd>
 </dl>
 </section>`;
 
