@@ -212,6 +212,39 @@ describe("alerta de coberturas en frescura.yml", () => {
   });
 });
 
+describe("revision-datos de ci.yml", () => {
+  it("repite la revisión con el código de main, sin caché ni escritura, y verify la exige", async () => {
+    const ci = await workflow("ci.yml");
+    const job = ci.jobs["revision-datos"] as Job;
+    expect(job.needs).toBe("solo-datos");
+    expect(job.permissions).toEqual({ contents: "read", "pull-requests": "read" });
+    expect(ci.jobs["solo-datos"]?.outputs).toEqual({
+      es_bot: expresion("steps.bot.outputs.es_bot"),
+    });
+    const recalcular = paso(ci, "revision-datos", "Recalcular la revisión con el código de main");
+    expect(recalcular.run).toContain("git archive --format=tar 'HEAD^1' data");
+    expect(recalcular.run).toContain(`revisar --antes "\${antes}/data" || codigo=$?`);
+    expect(recalcular.run).toContain(`echo "::stop-commands::\${pausa}"`);
+    const exigir = paso(ci, "revision-datos", "Exigir la etiqueta revisar");
+    expect(exigir.env?.GH_TOKEN).toBe(expresion("github.token"));
+    expect(exigir.run).not.toContain("$" + "{{");
+    const verify = ci.jobs.verify as Job & { needs: string[] };
+    expect(verify.needs).toContain("revision-datos");
+    expect(paso(ci, "verify", "Revisar los jobs requeridos").run).toContain(
+      `"revision-datos=\${REVISION_DATOS}"`,
+    );
+  });
+
+  it("ningún job de ci.yml usa la caché de pnpm", async () => {
+    const ci = await workflow("ci.yml");
+    for (const [nombre, job] of Object.entries(ci.jobs)) {
+      for (const p of job.steps) {
+        expect(p.with?.cache, `${nombre} ${p.uses}`).toBeUndefined();
+      }
+    }
+  });
+});
+
 describe("estado-kv de datos.yml", () => {
   // El token de despliegue puede publicar el Worker: estado-kv solo debe recibir el de KV.
   it("usa solo CLOUDFLARE_KV_TOKEN, sin el respaldo del token de despliegue", async () => {
