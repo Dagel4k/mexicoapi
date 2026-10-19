@@ -1042,6 +1042,14 @@ La LFT no tiene dataset en `data/`: sus días de descanso obligatorio se calcula
 
 `mexicoapi.sqlite` tiene las tablas `estados`, `municipios`, `bancos`, `bancos_historial`, `tipo_cambio_fix`, `udis`, `dias_inhabiles` (LFT, CNBV y SAT), `coberturas_calendario` (la cobertura de cada autoridad y tipo de plazo, como `dias-inhabiles-coberturas`, con `tipo_plazo` en `NULL` en la LFT y la CNBV), `uma`, `salario_minimo`, `isr_tramos` y `datasets` (esta última con el `as_of`, el hash y el manifiesto de cada dataset).
 
+### Cambios en las descargas
+
+2026-10-18:
+
+- Archivos nuevos `dias-inhabiles-lft.json` y `.csv`, y renglones de la LFT (`autoridad = 'lft'`, 2007 a 2100) en la tabla `dias_inhabiles` del SQLite.
+- `dias-inhabiles-coberturas` y `coberturas_calendario`: renglón nuevo de la LFT, y `tipo_plazo` vacío (`null` en JSON, `NULL` en SQLite) en la LFT y la CNBV, que antes decía `general` en la CNBV.
+- `coberturas_calendario` ya no tiene llave primaria, porque `tipo_plazo` puede ser `NULL`. La unicidad de autoridad y tipo de plazo la da el índice único `coberturas_calendario_llave`.
+
 ## Sitio
 
 Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que genera el build a partir de los mismos manifiestos:
