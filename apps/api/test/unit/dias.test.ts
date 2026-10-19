@@ -89,6 +89,8 @@ describe("GET /v1/dias-habiles", () => {
         ],
         // Toda respuesta lft avisa que no tiene las suspensiones de labores del art. 715.
         advertencias: [AVISO_LFT_715],
+        // Las mismas, con su código estable.
+        avisos: [{ codigo: "lft-art-715", texto: AVISO_LFT_715 }],
       },
       meta: META_LFT,
     });
@@ -160,6 +162,13 @@ describe("GET /v1/dias-habiles", () => {
         advertencias: [
           "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
           AVISO_LFT_715,
+        ],
+        avisos: [
+          {
+            codigo: "calendario-incompleto",
+            texto: "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
+          },
+          { codigo: "lft-art-715", texto: AVISO_LFT_715 },
         ],
       },
       meta: META_LFT,
@@ -367,12 +376,14 @@ describe("GET /v1/dias-inhabiles", () => {
     const cuerpo = (await r.json()) as {
       data: Array<{ fecha: string }>;
       advertencias: unknown;
+      avisos: unknown;
       meta: unknown;
     };
-    expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "meta"]);
+    expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "avisos", "meta"]);
     // La LFT se calcula por regla: la lista del art. 74 siempre está completa, y avisa que no
     // tiene las suspensiones de labores del art. 715.
     expect(cuerpo.advertencias).toEqual([AVISO_LFT_715]);
+    expect(cuerpo.avisos).toEqual([{ codigo: "lft-art-715", texto: AVISO_LFT_715 }]);
     expect(cuerpo.data.map((d) => d.fecha)).toEqual([
       "2026-01-01",
       "2026-02-02",

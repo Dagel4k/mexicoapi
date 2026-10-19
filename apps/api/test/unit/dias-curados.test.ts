@@ -55,6 +55,9 @@ const FALTA_ART_12_Y_VACACIONES =
 const ADVERTENCIA_SAT_2026 =
   "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa.";
 
+/** Un aviso como lo da la API: el código estable y el mismo texto de advertencias. */
+const aviso = (codigo: string, texto: string) => ({ codigo, texto });
+
 type Cambios = Parameters<typeof assetsCurados>[0];
 
 // biome-ignore lint/suspicious/noExplicitAny: los cuerpos JSON se inspeccionan de forma dinámica.
@@ -185,6 +188,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     expect(declaraciones.cuerpo.data).toEqual({
       ...delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10),
       advertencias: [PRORROGA("2026-07-29", "día de vacaciones del SAT")],
+      avisos: [aviso("prorroga-art-12", PRORROGA("2026-07-29", "día de vacaciones del SAT"))],
     });
     expect(declaraciones.cuerpo.data).toMatchObject({
       resultado: "2026-07-29",
@@ -214,12 +218,18 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
     const vacaciones = declaraciones && ["2026-07-20", "2026-04-02"].includes(resultado);
     const sinPublicar = declaraciones && resultado > "2026-11-30";
     const nucleo = delNucleo(SHARD_SAT, tipo, desde, 1);
+    const avisos = [
+      ...(vacaciones
+        ? [aviso("prorroga-art-12", PRORROGA(resultado, "día de vacaciones del SAT"))]
+        : []),
+      ...(sinPublicar
+        ? [aviso("vacaciones-sin-publicar", VACACIONES_SIN_PUBLICAR("2026-11-30", resultado))]
+        : []),
+    ];
     expect(cuerpo.data).toEqual({
       ...nucleo,
-      advertencias: [
-        ...(vacaciones ? [PRORROGA(resultado, "día de vacaciones del SAT")] : []),
-        ...(sinPublicar ? [VACACIONES_SIN_PUBLICAR("2026-11-30", resultado)] : []),
-      ],
+      advertencias: avisos.map((a) => a.texto),
+      avisos,
     });
   });
 
@@ -294,6 +304,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
           { fecha: "2026-12-25", motivo: "25 de diciembre", tipo: "descanso", fuente: FUENTE_CFF },
         ],
         advertencias: [AVISO_GENERAL],
+        avisos: [aviso("tipo-plazo-incompleto", AVISO_GENERAL)],
       });
     });
 
@@ -361,6 +372,7 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       expect(r.cuerpo.data).toEqual({
         ...delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias),
         advertencias,
+        avisos: [aviso("vacaciones-sin-publicar", advertencias[0] as string)],
       });
       expect(fechas(r.cuerpo.data.inhabiles_saltados)).toContain("2027-01-01");
     }
@@ -602,10 +614,11 @@ describe("GET /v1/dias-habiles: carga de los calendarios", () => {
 describe("GET /v1/dias-inhabiles con calendarios curados", () => {
   it("cnbv: los días del año con su cita, sin advertencias", async () => {
     const { cuerpo, pedidas } = await datos(inhabiles("autoridad=cnbv&anio=2026"));
-    expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "meta"]);
+    expect(Object.keys(cuerpo)).toEqual(["data", "advertencias", "avisos", "meta"]);
     expect(cuerpo).toEqual({
       data: DIAS_CNBV.slice(1),
       advertencias: [],
+      avisos: [],
       meta: { ...META_CNBV, docs: DOCS_INHABILES },
     });
     expect(pedidas).toEqual([RUTA_META, RUTA_CNBV]);
@@ -619,6 +632,7 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
     expect(cuerpo).toEqual({
       data: DIAS_CALENDARIO_SAT.filter((d) => d.fecha.startsWith("2026-")),
       advertencias: [ADVERTENCIA_SAT_2026],
+      avisos: [aviso("lista-incompleta", ADVERTENCIA_SAT_2026)],
       meta: { ...META_SAT, docs: DOCS_INHABILES },
     });
   });
@@ -626,11 +640,12 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
   it("sat 2027: los días del art. 12, con la advertencia de las vacaciones que faltan", async () => {
     // Cambio: antes, 422 desde 2027.
     const { cuerpo } = await datos(inhabiles("autoridad=sat&anio=2027"));
+    const sat2027 =
+      "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa.";
     expect(cuerpo).toEqual({
       data: diasDelCff(2027, 2027),
-      advertencias: [
-        "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa.",
-      ],
+      advertencias: [sat2027],
+      avisos: [aviso("lista-incompleta", sat2027)],
       meta: { ...META_SAT, docs: DOCS_INHABILES },
     });
   });
@@ -647,6 +662,7 @@ describe("GET /v1/dias-inhabiles con calendarios curados", () => {
     };
     const { cuerpo } = await datos(inhabiles("autoridad=sat&anio=2026"), completo);
     expect(cuerpo.advertencias).toEqual([]);
+    expect(cuerpo.avisos).toEqual([]);
   });
 
   it("un declaraciones_pagos que cuenta las vacaciones no se carga: 500", async () => {

@@ -1,5 +1,6 @@
 import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
+import { avisosDe } from "../../src/avisos.js";
 import { crearCalendario } from "../../src/dias-habiles/calendario.js";
 import {
   avisoTransmisionCff,
@@ -21,7 +22,7 @@ import {
   sumarDiasHabilesCurado,
 } from "../../src/dias-habiles/curados.js";
 import { COBERTURA_LFT } from "../../src/dias-habiles/lft.js";
-import { sumarDiasHabiles } from "../../src/dias-habiles/sumar.js";
+import { type ResultadoDiasHabiles, sumarDiasHabiles } from "../../src/dias-habiles/sumar.js";
 import type { TipoPlazo } from "../../src/dias-habiles/tipos.js";
 import { CalendarioIncompletoError, FechaFueraDeRangoError } from "../../src/errores.js";
 import {
@@ -109,6 +110,16 @@ function delNucleo(datos: DatosCalendarioCurado, tipo: TipoPlazo, desde: string,
   });
   return sumarDiasHabiles({ calendario, desde, dias });
 }
+
+/** `r` con otras advertencias y sus avisos, como los agrega sumarDiasHabilesCurado. */
+const conAdvertencias = (
+  r: ResultadoDiasHabiles,
+  advertencias: string[],
+): ResultadoDiasHabiles => ({
+  ...r,
+  advertencias,
+  avisos: avisosDe(advertencias),
+});
 
 /** El error que lanza `hacer`, que debe ser CalendarioIncompletoError. */
 function incompleto(hacer: () => unknown): CalendarioIncompletoError {
@@ -580,10 +591,11 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     expect(fechas(general.inhabiles_saltados)).toEqual(PRIMER_PERIODO);
     const declaraciones = sat("declaraciones_pagos", "2026-07-15", 10);
     // Nuevo: el 29 de julio es de vacaciones del SAT (hábil en este plazo): avisa de la prórroga.
-    expect(declaraciones).toEqual({
-      ...delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10),
-      advertencias: [PRORROGA("2026-07-29", "día de vacaciones del SAT")],
-    });
+    expect(declaraciones).toEqual(
+      conAdvertencias(delNucleo(SHARD_SAT, "declaraciones_pagos", "2026-07-15", 10), [
+        PRORROGA("2026-07-29", "día de vacaciones del SAT"),
+      ]),
+    );
     expect(declaraciones).toMatchObject({ resultado: "2026-07-29", inhabiles_saltados: [] });
   });
 
@@ -606,13 +618,12 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     const vacaciones = declaraciones && ["2026-07-20", "2026-04-02"].includes(resultado);
     const sinPublicar = declaraciones && resultado > "2026-11-30";
     const nucleo = delNucleo(SHARD_SAT, tipo, desde, 1);
-    expect(r).toEqual({
-      ...nucleo,
-      advertencias: [
+    expect(r).toEqual(
+      conAdvertencias(nucleo, [
         ...(vacaciones ? [PRORROGA(resultado, "día de vacaciones del SAT")] : []),
         ...(sinPublicar ? [VACACIONES_SIN_PUBLICAR("2026-11-30", resultado)] : []),
-      ],
-    });
+      ]),
+    );
   });
 
   describe("declaraciones_pagos y la prórroga del quinto párrafo del art. 12", () => {
@@ -745,6 +756,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
           { fecha: "2026-12-25", motivo: "25 de diciembre", tipo: "descanso", fuente: FUENTE_CFF },
         ],
         advertencias: [AVISO_GENERAL],
+        avisos: [{ codigo: "tipo-plazo-incompleto", texto: AVISO_GENERAL }],
       });
     });
 
@@ -819,10 +831,9 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       const advertencias = [VACACIONES_SIN_PUBLICAR("2026-11-30", resultado)];
       expect(r, desde).toMatchObject({ resultado, advertencias });
       expect(fechas(r.inhabiles_saltados)).toContain("2027-01-01");
-      expect(r).toEqual({
-        ...delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias),
-        advertencias,
-      });
+      expect(r).toEqual(
+        conAdvertencias(delNucleo(SHARD_SAT, "declaraciones_pagos", desde, dias), advertencias),
+      );
     }
     const error = incompleto(() => sat("declaraciones_pagos", "2100-12-31", 1));
     expect(error).toMatchObject({ fecha: "2101-01-01", cobertura: COBERTURA_DECLARACIONES });

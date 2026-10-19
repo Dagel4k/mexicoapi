@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { FUENTE_CFF_20 } from "@mexicoapi/core";
+import { CODIGOS_AVISO, FUENTE_CFF_20 } from "@mexicoapi/core";
 import { PROBLEMAS, URL_API } from "@mexicoapi/core/problemas";
 import {
   CONSULTAS,
@@ -461,8 +461,13 @@ describe("documento OpenAPI", () => {
 
   it("listarDiasInhabiles responde la lista con advertencias y dice cuándo las hay", () => {
     const schema = esquema200("/v1/dias-inhabiles");
-    expect(schema.required).toEqual(["data", "advertencias", "meta"]);
-    expect(Object.keys(schema.properties)).toEqual(["data", "advertencias", "meta"]);
+    expect(schema.required).toEqual(["data", "advertencias", "avisos", "meta"]);
+    expect(Object.keys(schema.properties)).toEqual(["data", "advertencias", "avisos", "meta"]);
+    expect(schema.properties.avisos).toMatchObject({
+      type: "array",
+      items: { $ref: "#/components/schemas/Aviso" },
+    });
+    expect(schema.properties.avisos.description).toContain("advertencias");
     expect(schema.properties.data).toEqual({
       type: "array",
       items: { $ref: "#/components/schemas/DiaInhabil" },
@@ -476,6 +481,27 @@ describe("documento OpenAPI", () => {
     expect(op.description).toContain("advertencias");
     expect(op.description).toContain("calendario-incompleto");
     expect(op.description).toContain("vacaciones");
+  });
+
+  it("Aviso: el código es del catálogo cerrado y el texto, el de advertencias", () => {
+    const aviso = doc.components.schemas.Aviso as Obj;
+    expect(aviso.required).toEqual(["codigo", "texto"]);
+    expect(aviso.properties.codigo.enum).toEqual([...CODIGOS_AVISO]);
+    expect(aviso.properties.codigo.description).toContain("README.md#avisos");
+    expect(aviso.properties.codigo.description).toContain("otro");
+    expect(aviso.properties.texto.description).toContain("advertencias");
+  });
+
+  it("ResultadoDiasHabiles trae avisos justo después de advertencias", () => {
+    const resultado = doc.components.schemas.ResultadoDiasHabiles as Obj;
+    const campos = Object.keys(resultado.properties);
+    expect(campos.slice(-2)).toEqual(["advertencias", "avisos"]);
+    expect(resultado.required).toContain("avisos");
+    expect(resultado.properties.avisos).toMatchObject({
+      type: "array",
+      items: { $ref: "#/components/schemas/Aviso" },
+    });
+    expect(resultado.properties.avisos.description).toContain("advertencias");
   });
 
   it("sumarDiasHabiles explica tipo_plazo: obligatorio con sat y no aceptado con las demás", () => {
@@ -656,6 +682,7 @@ describe("documento OpenAPI", () => {
   it("registra los componentes con nombre PascalCase y sin $schema", () => {
     expect(Object.keys(doc.components.schemas).sort()).toEqual(
       [
+        "Aviso",
         "Banco",
         "DiaInhabil",
         "Estado",

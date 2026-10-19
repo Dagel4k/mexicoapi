@@ -9,6 +9,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./avisos": {
+      "@mexicoapi/source": "./src/avisos.ts",
+      "types": "./dist/avisos.d.ts",
+      "import": "./dist/avisos.js"
+    },
     "./curados": {
       "@mexicoapi/source": "./src/dias-habiles/curados.ts",
       "types": "./dist/dias-habiles/curados.d.ts",

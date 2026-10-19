@@ -1,5 +1,6 @@
 import {
   AUTORIDADES,
+  CODIGOS_AVISO,
   type FuenteDof,
   type SalarioMinimo,
   type TarifaIsr,
@@ -79,6 +80,19 @@ export const esquemaDiaInhabil = z.object({
   fuente: esquemaFuente.describe("Fuente que lo establece."),
 });
 
+/** Lo que dicen los avisos, en la descripción de cada campo `avisos`. */
+export const AVISOS_PARALELOS =
+  "Las mismas advertencias, en el mismo orden, cada una con su código estable: avisos[i].texto es advertencias[i]. Para decidir en un programa, usa codigo; texto es para mostrarlo.";
+
+export const esquemaAviso = z.object({
+  codigo: z
+    .enum(CODIGOS_AVISO)
+    .describe(
+      "Código estable del aviso, en kebab-case: dentro de /v1 no cambia de significado aunque cambie la redacción del texto. Qué significa cada uno y qué hacer: docs/api/README.md#avisos. La API da los de días hábiles e inhábiles; los demás los da el paquete mexicoapi (cliente y SEPOMEX) o el servidor MCP. Una versión nueva puede agregar códigos: trata uno que no conozcas como otro, que es el de un texto sin código.",
+    ),
+  texto: z.string().describe("El texto de la advertencia, el mismo que en advertencias."),
+});
+
 export const esquemaResultadoDiasHabiles = z.object({
   autoridad,
   desde: fechaIso.describe(
@@ -96,6 +110,7 @@ export const esquemaResultadoDiasHabiles = z.object({
     .describe(
       "Avisos: un calendario incompleto, lo que el calendario no descuenta (con lft, los festivos y las suspensiones de labores del art. 715) o la prórroga del art. 12 del CFF que el resultado no aplica.",
     ),
+  avisos: z.array(esquemaAviso).describe(AVISOS_PARALELOS),
 });
 
 export const esquemaFixOperacion = z.object({
