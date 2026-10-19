@@ -6,7 +6,7 @@ API de solo lectura con los datos de referencia de MéxicoAPI. Responde JSON en 
 
 La API pública está en `https://mexicoapi.dagel4k.workers.dev`, en `workers.dev` de Cloudflare; todavía no tiene dominio propio. Los ejemplos usan esa base. Todas las rutas cuelgan de `/v1`; un cambio incompatible irá a `/v2`. En la raíz del mismo origen está el [sitio](#sitio): la página de inicio, el estado de los datos y `llms.txt`.
 
-Las respuestas de ejemplo son las de la API el 2026-10-18, casi todas recortadas. Los valores que cambian con cada actualización (`as_of`, `cobertura`, `records`, `data_sha256`, `ETag`) pueden ser otros cuando lo leas.
+Las respuestas de ejemplo son las de la API el 2026-10-18, casi todas recortadas. Los valores que cambian con cada actualización (`as_of`, `cobertura`, `records`, `data_sha256`, `ETag`) pueden ser otros cuando lo leas, y también las respuestas que dependen de lo cargado: `/v1/tipo-cambio/fix/ultimo` cambia con cada publicación del FIX, una fecha que hoy da 404 `dato-no-disponible` responde 200 cuando se carga su dato, y la cobertura de los calendarios de la CNBV y el SAT crece con cada publicación que se captura.
 
 Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
@@ -696,7 +696,7 @@ En el ejemplo `sources` se muestra vacío por brevedad; la respuesta real trae l
 Los 404 son los mismos que en el FIX. Una fecha anterior al 2020-01-01 da `no-encontrado`; una posterior al último valor cargado da `dato-no-disponible`, porque una publicación próxima puede cubrirla:
 
 ```bash
-curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2026-12-01"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2027-12-01"
 ```
 
 ```json
@@ -704,9 +704,9 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/udis?fecha=2026-12-01"
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#dato-no-disponible",
   "title": "Dato todavía no disponible",
   "status": 404,
-  "detail": "El valor de la UDI del 2026-12-01 todavía no está cargado; el último cargado es del 2026-10-25.",
+  "detail": "El valor de la UDI del 2027-12-01 todavía no está cargado; el último cargado es del 2026-10-25.",
   "instance": "/v1/udis",
-  "fecha": "2026-12-01",
+  "fecha": "2027-12-01",
   "cobertura": { "desde": "2020-01-01", "hasta": "2026-10-25" }
 }
 ```
