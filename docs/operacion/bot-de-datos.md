@@ -79,14 +79,14 @@ Si `revision-datos` queda en rojo en un PR del bot que no lleva la etiqueta, `ge
 
 Lo que `revision-datos` no puede repetir son los avisos que `generar` saca de las fuentes y no quedan en los datos, como un banco del PDF de participantes que no aparece en el CEP.
 
-`publicar` agrega otra barrera que no corre nada del repositorio: después de aplicar el parche cuenta las líneas que cambiaron en el índice (`git diff --cached --numstat`, sin atributos ni filtros de diff, así que un archivo de texto enviado como parche binario cuenta igual; un binario no suma). Si pasan del umbral del grupo, o si el parche trae un cambio binario en algo que no es el PDF de participantes (`data/bancos/raw/*.pdf`, lo único binario que arma `generar`), abre el PR con la etiqueta `revisar` y sin auto-merge, y el issue de revisión lleva ese motivo primero, aunque `generar` haya terminado con el código 0. Los umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su manifiesto y sus crudos:
+`publicar` agrega otra barrera que no corre nada del repositorio: después de aplicar el parche cuenta las líneas y los bytes que cambiaron en el índice (`git diff --cached`, sin atributos ni filtros de diff, así que un archivo de texto enviado como parche binario cuenta igual). Los bytes son los de las líneas que se quitan o agregan, sin el PDF: un JSON de una sola línea cambia dos líneas aunque pese megas. Si las líneas o los bytes pasan del umbral del grupo, o si el parche trae un binario que no es el PDF de participantes (`data/bancos/raw/participantes-spei.pdf`, lo único binario que arma `generar`), o el PDF pasa de 5 MB (el real ronda los 400 KB), abre el PR con la etiqueta `revisar` y sin auto-merge, y el issue de revisión lleva ese motivo primero, aunque `generar` haya terminado con el código 0. Los umbrales dejan margen sobre lo más que cambia una corrida que no pide revisión, con su manifiesto y sus crudos:
 
 | Grupo | Umbral | Corrida grande sin revisión |
 | --- | --- | --- |
-| `inegi` | 400 líneas | 12 municipios nuevos (el 0.5 %): unas 220 |
-| `bancos` | 300 líneas | 3 bancos con cambios: unas 50 |
-| `fix` | 300 líneas | 31 FIX nuevos: unas 140 |
-| `udis` | 400 líneas | 45 UDIS nuevas: unas 200 |
+| `inegi` | 400 líneas o 2 MB | 12 municipios nuevos (el 0.5 %): unas 220 líneas; los 32 crudos de una línea, unos 940 KB entre lo que sale y lo que entra |
+| `bancos` | 300 líneas o 256 KB | 3 bancos con cambios: unas 50 líneas y unos 15 KB |
+| `fix` | 300 líneas o 256 KB | 31 FIX nuevos: unas 140 líneas; el crudo del año, unos 45 KB |
+| `udis` | 400 líneas o 256 KB | 45 UDIS nuevas: unas 200 líneas; los crudos de dos años, unos 130 KB |
 
 Es una barrera gruesa: un cambio chico pasa por debajo, y para eso está `revision-datos`. Los umbrales están en el paso "Revisar y aplicar el parche" de `datos.yml`; una prueba del pipeline revisa que cada grupo tenga el suyo.
 
