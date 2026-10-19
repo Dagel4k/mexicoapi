@@ -154,7 +154,7 @@ Status 404. Todavía no se cargan los datos necesarios para responder con certez
 Excepción: en el FIX con `publicado`, un fin de semana o día de descanso de la CNBV posterior al último dato, con solo días así de por medio, es [`no-encontrado`](#no-encontrado). La API no responde un valor anterior en su lugar. En el FIX, las UDIS y `/v1/constantes/uma?fecha=`, el problema trae `fecha` y `cobertura`; `cobertura.hasta` es el último dato cargado (en la UMA, el 31 de enero siguiente a la última UMA cargada).
 
 ```bash
-curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10-20"
+curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2027-10-20"
 ```
 
 ```json
@@ -162,9 +162,9 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/tipo-cambio/fix?operacion=2026-10
   "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#dato-no-disponible",
   "title": "Dato todavía no disponible",
   "status": 404,
-  "detail": "Todavía no está cargado el FIX que aplica a una operación del 2026-10-20; la última publicación cargada es del 2026-10-16.",
+  "detail": "Todavía no está cargado el FIX que aplica a una operación del 2027-10-20; la última publicación cargada es del 2026-10-16.",
   "instance": "/v1/tipo-cambio/fix",
-  "fecha": "2026-10-20",
+  "fecha": "2027-10-20",
   "cobertura": { "desde": "2020-01-02", "hasta": "2026-10-16" }
 }
 ```
