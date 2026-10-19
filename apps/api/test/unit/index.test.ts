@@ -182,6 +182,26 @@ describe("rutas hostiles", () => {
     }
   });
 
+  // Los patrones aceptan solo 0-9: un dígito de ancho completo o árabe-índico en la query se
+  // decodifica y no cumple la regla.
+  it("un dígito que no es ASCII en la query da 400 y nombra el parámetro", async () => {
+    for (const [ruta, parametro] of [
+      ["/v1/dias-inhabiles?autoridad=lft&anio=２０２６", "anio"],
+      ["/v1/dias-inhabiles?autoridad=lft&anio=٢٠٢٦", "anio"],
+      ["/v1/dias-habiles?autoridad=lft&desde=2026-01-05&dias=１０", "dias"],
+      ["/v1/dias-habiles?autoridad=lft&desde=２０２６-01-05&dias=10", "desde"],
+      ["/v1/udis?fecha=2026-01-0５", "fecha"],
+    ] as const) {
+      const { respuesta, assets } = await pedir(ruta);
+      expect(respuesta.status, ruta).toBe(400);
+      expect(await respuesta.json(), ruta).toMatchObject({
+        type: `${TIPO}parametro-invalido`,
+        parametro,
+      });
+      expect(assets.pedidas, ruta).toEqual([]);
+    }
+  });
+
   it("un valor con la estructura de una ruta conocida da 400 y nombra el parámetro", async () => {
     for (const [ruta, parametro] of [
       ["/v1/estados/2a", "cve_ent"],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DIAS_MAX } from "../../src/dias-habiles/sumar.js";
 import { CONSULTAS, revisarConsulta } from "../../src/rutas/consulta.js";
-import { cumpleRegla, type ReglaConsulta } from "../../src/rutas/parametros.js";
+import { cumpleRegla, REGLAS_RUTA, type ReglaConsulta } from "../../src/rutas/parametros.js";
 
 const REGLAS: Readonly<Record<string, ReglaConsulta>> = {
   a: { patron: /^\d+$/, detalle: "a debe ser un entero.", obligatorio: true },
@@ -202,9 +202,37 @@ describe("CONSULTAS", () => {
   it("solo las fechas necesitan una comprobación además del patrón", () => {
     for (const [ruta, reglas] of Object.entries(CONSULTAS)) {
       for (const [nombre, regla] of Object.entries(reglas)) {
-        const esFecha = regla.patron.source === /^\d{4}-\d{2}-\d{2}$/.source;
+        const esFecha = regla.patron.source === /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.source;
         expect(regla.cumple !== undefined, `${ruta} ${nombre}`).toBe(esFecha);
       }
+    }
+  });
+
+  // Los patrones son el `pattern` del OpenAPI. En Python o .NET, \d acepta cualquier dígito
+  // Unicode; con [0-9] un validador generado acepta lo mismo que la API.
+  it("los patrones solo aceptan dígitos ASCII: sin \\d y sin caracteres fuera de ASCII", () => {
+    const todas = [
+      ...Object.entries(REGLAS_RUTA),
+      ...Object.values(CONSULTAS).flatMap((reglas) => Object.entries(reglas)),
+    ];
+    for (const [nombre, regla] of todas) {
+      expect(regla.patron.source, nombre).not.toMatch(/\\[dDwWsSb]/);
+      expect(regla.patron.source, nombre).toMatch(/^[\x20-\x7e]+$/);
+    }
+    const dias = CONSULTAS["/v1/dias-habiles"].dias as ReglaConsulta;
+    const desde = CONSULTAS["/v1/dias-habiles"].desde as ReglaConsulta;
+    for (const [regla, valor] of [
+      [REGLAS_RUTA.anio, "２０２６"],
+      [REGLAS_RUTA.anio, "٢٠٢٦"],
+      [REGLAS_RUTA.cve_ent, "２５"],
+      [REGLAS_RUTA.cvegeo, "２５００６"],
+      [REGLAS_RUTA.codigo, "００２"],
+      [REGLAS_RUTA.clabe, "００２０１００７７７７７７７７７７１"],
+      [dias, "１０"],
+      [desde, "２０２６-01-05"],
+    ] as const) {
+      expect(regla.patron.test(valor), valor).toBe(false);
+      expect(cumpleRegla(regla, valor), valor).toBe(false);
     }
   });
 

@@ -18,7 +18,10 @@ const deConsulta = (regla: ReglaParametro, obligatorio: boolean): ReglaConsulta 
 
 /** Una fecha real con formato AAAA-MM-DD. */
 const fecha = (detalle: string, obligatorio: boolean): ReglaConsulta =>
-  deConsulta({ patron: /^\d{4}-\d{2}-\d{2}$/, cumple: esFechaIsoValida, detalle }, obligatorio);
+  deConsulta(
+    { patron: /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/, cumple: esFechaIsoValida, detalle },
+    obligatorio,
+  );
 
 const AUTORIDAD = deConsulta(
   enumeracion(AUTORIDADES, `Autoridades disponibles: ${enLista(AUTORIDADES)}.`),
@@ -33,7 +36,7 @@ const TIPO_PLAZO = deConsulta(
 // 3000-3599, 3600-3649 y 3650. Una prueba lo compara con DIAS_MAX.
 const DIAS = deConsulta(
   {
-    patron: /^(?:[1-9]\d{0,2}|[12]\d{3}|3[0-5]\d{2}|36[0-4]\d|3650)$/,
+    patron: /^(?:[1-9][0-9]{0,2}|[12][0-9]{3}|3[0-5][0-9]{2}|36[0-4][0-9]|3650)$/,
     detalle: `Los días hábiles (dias) deben ser un entero de 1 a ${DIAS_MAX}, sin ceros a la izquierda.`,
   },
   true,
