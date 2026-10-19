@@ -303,6 +303,11 @@ describe("issues de alerta", () => {
 });
 
 describe("estado-kv de datos.yml", () => {
+  it("no corre si la corrida se canceló", async () => {
+    const datos = await workflow("datos.yml");
+    expect(datos.jobs["estado-kv"]?.if).toMatch(/^!cancelled\(\) && /);
+  });
+
   // El token de despliegue puede publicar el Worker: estado-kv solo debe recibir el de KV.
   it("usa solo CLOUDFLARE_KV_TOKEN, sin el respaldo del token de despliegue", async () => {
     const datos = await workflow("datos.yml");
