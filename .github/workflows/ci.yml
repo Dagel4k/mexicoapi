@@ -2,10 +2,6 @@ name: CI
 
 on:
   pull_request:
-  # Aprobar un PR (o descartar una aprobación) vuelve a correr CI: revision-datos exige una
-  # aprobación en los PRs del bot que piden revisión. En los demás PRs corre igual que un push.
-  pull_request_review:
-    types: [submitted, dismissed]
   push:
     branches: [main]
 
@@ -314,9 +310,8 @@ jobs:
         id: bot
         env:
           EVENTO: ${{ github.event_name }}
-          # Del PR del evento: head_ref y base_ref solo existen con pull_request.
-          RAMA: ${{ github.event.pull_request.head.ref }}
-          BASE: ${{ github.event.pull_request.base.ref }}
+          RAMA: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
           AUTOR: ${{ github.event.pull_request.user.login }}
           AUTOR_TIPO: ${{ github.event.pull_request.user.type }}
           EMISOR: ${{ github.event.sender.login }}
@@ -324,7 +319,7 @@ jobs:
         run: |
           set -euo pipefail
           es_bot=no
-          if [ "${EVENTO}" = "pull_request" ] || [ "${EVENTO}" = "pull_request_review" ]; then
+          if [ "${EVENTO}" = "pull_request" ]; then
             case "${RAMA}" in
               datos/*) es_bot=si ;;
             esac
@@ -408,8 +403,11 @@ jobs:
   # que no está en el CEP, por ejemplo) no se pueden repetir aquí; los umbrales, sí. La etiqueta se
   # lee de la API al final y no del evento: gh pr create la agrega justo después de abrir el PR.
   # Con la etiqueta no basta, porque quien tenga el token de la App puede ponerla y fusionar: además
-  # hace falta una aprobación del commit actual de una persona con permiso de escritura. Aprobar
-  # vuelve a correr CI (pull_request_review), y este job pasa.
+  # hace falta una aprobación del commit actual de una persona con permiso de escritura. Después
+  # de aprobar, "Re-run failed jobs" en esta misma corrida vuelve a leer las revisiones (la App no
+  # tiene actions: write y no puede volver a correr nada). CI no escucha pull_request_review: en
+  # ese evento el emisor es quien revisa, y una revisión de una cuenta Bot marcaría como del bot
+  # el PR de una persona.
   revision-datos:
     name: revision-datos
     needs: solo-datos
@@ -507,7 +505,7 @@ jobs:
             esac
           done <<< "${aprobadores}"
           if [ "${aprobado}" != "si" ]; then
-            echo "::error::Los datos del PR piden revisión: hace falta que una persona con permiso de escritura apruebe este commit (${CABEZA}). Al aprobar, CI vuelve a correr."
+            echo "::error::Los datos del PR piden revisión: hace falta que una persona con permiso de escritura apruebe este commit (${CABEZA}). Después de aprobar, usa Re-run failed jobs en esta corrida."
             exit 1
           fi
 
