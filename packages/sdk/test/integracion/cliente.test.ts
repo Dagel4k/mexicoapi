@@ -516,11 +516,21 @@ describe("el cliente contra el Worker", () => {
       expect(dePaquete.meta, nombre).toEqual(deApi.meta);
       // Las mismas advertencias de primer nivel; la de antigüedad de una serie y la del último FIX
       // (cambio: pueden faltar publicaciones, como en el MCP) son solo del paquete.
-      const { AVISO_SIN_API } = await importar<{ AVISO_SIN_API: string }>("index.js");
+      const { AVISO_SIN_API, codigoAviso } = await importar<{
+        AVISO_SIN_API: string;
+        codigoAviso: (texto: string) => string;
+      }>("index.js");
       const propias = dePaquete.advertencias.filter(
         (a) => !/^Los datos de .* del paquete/.test(a) && a !== AVISO_SIN_API,
       );
       expect(propias, nombre).toEqual(deApi.advertencias);
+      // Con las dos fuentes, avisos son las advertencias con su código, ninguna sin código.
+      for (const r of [deApi, dePaquete]) {
+        expect(r.avisos, nombre).toEqual(
+          r.advertencias.map((texto) => ({ codigo: codigoAviso(texto), texto })),
+        );
+        for (const a of r.avisos ?? []) expect(a.codigo, a.texto).not.toBe("otro");
+      }
     }
   });
 
@@ -701,6 +711,9 @@ describe("el cliente contra el Worker", () => {
     expect(guardada.data).toBe(primera.data);
     expect(guardada.advertencias).toHaveLength(1);
     expect(guardada.advertencias[0]).toMatch(/^Respuesta guardada de la API, de hace \d+ s/);
+    expect(guardada.avisos).toEqual([
+      { codigo: "respuesta-guardada", texto: guardada.advertencias[0] },
+    ]);
   });
 
   it("los datos estables no salen a la red: la CLABE no viaja si no se pide la API", async () => {

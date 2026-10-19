@@ -101,6 +101,7 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       meta: m.datos.meta.estados,
       origen: "paquete",
       advertencias: [],
+      avisos: [],
     });
     expect(estados.data).toBe(m.datos.estados());
     esperarCongelado(estados, "respuesta");
@@ -227,6 +228,84 @@ export function probarClienteSinRed(cargar: () => Promise<Modulos>): void {
       AVISO_LFT,
     ]);
     expect(incompleto.advertencias).toEqual(incompleto.data.advertencias);
+  });
+
+  it("da en cada ruta avisos con los textos de advertencias y un código conocido", async () => {
+    const registro = m.fix.serie[Math.floor(m.fix.serie.length / 2)];
+    const dia = m.udis.serie[Math.floor(m.udis.serie.length / 2)];
+    if (registro === undefined || dia === undefined) throw new Error("Series vacías");
+    const respuestas = [
+      await api.estados(),
+      await api.estado("25"),
+      await api.municipios("25"),
+      await api.municipios(),
+      await api.municipio("25006"),
+      await api.bancos(),
+      await api.banco("002"),
+      await api.clabe(CLABE_VALIDA),
+      await api.diasHabiles({ desde: "2026-12-22", dias: 5 }),
+      await api.diasHabiles({ desde: "2100-12-30", dias: 2, permitirIncompleto: true }),
+      await api.diasHabiles({ autoridad: "cnbv", desde: "2026-10-30", dias: 1 }),
+      await api.diasHabiles({
+        autoridad: "sat",
+        tipoPlazo: "general",
+        desde: "2026-11-27",
+        dias: 5,
+        permitirIncompleto: true,
+      }),
+      await api.diasHabiles({
+        autoridad: "sat",
+        tipoPlazo: "declaraciones_pagos",
+        desde: "2030-09-27",
+        dias: 3,
+      }),
+      // Vence el 22 de julio, de vacaciones del SAT: la prórroga del art. 12.
+      await api.diasHabiles({
+        autoridad: "sat",
+        tipoPlazo: "declaraciones_pagos",
+        desde: "2026-07-17",
+        dias: 3,
+      }),
+      await api.diasInhabiles({ anio: 2026 }),
+      await api.diasInhabiles({ autoridad: "sat", anio: 2030 }),
+      await api.diasInhabiles({ autoridad: "cnbv", anio: 2026 }),
+      await api.fixPublicado(registro.fecha_publicacion),
+      await api.fixParaOperacion(mover(registro.fecha_publicacion, 1)),
+      await api.fixUltimo(),
+      await api.udi(dia.fecha),
+      await api.uma(2026),
+      await api.umaVigente("2026-10-16"),
+      await api.salarioMinimo(2026),
+      await api.tarifaIsr("mensual", 2026),
+    ];
+    const vistos = new Set<string>();
+    for (const r of respuestas) {
+      const conCodigo = (textos: readonly string[]) =>
+        textos.map((texto) => ({ codigo: m.mexicoapi.codigoAviso(texto), texto }));
+      expect(r.avisos).toEqual(conCodigo(r.advertencias));
+      const data = r.data as { advertencias?: string[]; avisos?: unknown };
+      if (Array.isArray(data.advertencias))
+        expect(data.avisos).toEqual(conCodigo(data.advertencias));
+      for (const aviso of r.avisos) {
+        expect(aviso.codigo, aviso.texto).not.toBe("otro");
+        vistos.add(aviso.codigo);
+      }
+      esperarCongelado(r, "respuesta");
+    }
+    // datos-viejos depende de la fecha de hoy y se prueba aparte.
+    vistos.delete("datos-viejos");
+    expect([...vistos].sort()).toEqual(
+      [
+        "calendario-incompleto",
+        "datos-del-paquete",
+        "lft-art-715",
+        "lista-incompleta",
+        "prorroga-art-12",
+        "tipo-plazo-incompleto",
+        "transmision-poder-ejecutivo",
+        "vacaciones-sin-publicar",
+      ].sort(),
+    );
   });
 
   it("da los problemas de días hábiles e inhábiles con su forma de la API", async () => {
