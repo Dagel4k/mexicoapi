@@ -344,6 +344,10 @@ jobs:
           CORRIDA: ${{ runner.temp }}/corrida
         run: |
           set -euo pipefail
+          if [ -z "${APP_SLUG}" ]; then
+            echo "::error::Falta el nombre de la App."
+            exit 1
+          fi
           # Ni el commit, ni el switch ni el push corren hooks del repo. El job verificacion del
           # PR (que exige el check verify) cubre biome y gitleaks.
           git config core.hooksPath /dev/null
@@ -352,13 +356,14 @@ jobs:
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           fecha="$(TZ=America/Mexico_City date +%F)"
 
-          # Abre un issue con el título exacto o, si ya hay uno abierto, comenta en él. Si la
-          # búsqueda falla, devuelve error sin crear nada: llamada con `|| …`, errexit no corre
-          # dentro de la función y sin este return abriría un issue repetido.
+          # Abre un issue con el título exacto o, si ya hay uno abierto de la App, comenta en él (un
+          # issue con ese título abierto por otra cuenta no cuenta). Si la búsqueda falla, devuelve
+          # error sin crear nada: llamada con `|| …`, errexit no corre dentro de la función y sin
+          # este return abriría un issue repetido.
           abrir_o_comentar() {
             local titulo="$1" cuerpo="$2" numero
-            numero="$(gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
-              --json number,title \
+            numero="$(gh issue list --state open --limit 100 --author "app/${APP_SLUG}" \
+              --search "in:title \"${titulo}\"" --json number,title \
               | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')" \
               || return 1
             if [ -n "${numero}" ]; then
@@ -536,10 +541,15 @@ jobs:
             || (failure() && !(needs.generar.outputs.codigo == '1' && steps.publicar.outcome == 'failure')))
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
+          APP_SLUG: ${{ steps.app.outputs.app-slug }}
           GH_REPO: ${{ github.repository }}
           GRUPO: ${{ needs.preparar.outputs.grupo }}
         run: |
           set -euo pipefail
+          if [ -z "${APP_SLUG}" ]; then
+            echo "::error::Falta el nombre de la App."
+            exit 1
+          fi
           url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           titulo="Falla en datos: ${GRUPO}"
           cuerpo="${RUNNER_TEMP}/issue-falla-previa.md"
@@ -548,8 +558,9 @@ jobs:
             echo
             echo "Corrida: ${url_corrida}"
           } > "${cuerpo}"
-          numero="$(gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
-            --json number,title \
+          # Solo cuenta un issue abierto por la App: uno con ese título de otra cuenta no.
+          numero="$(gh issue list --state open --limit 100 --author "app/${APP_SLUG}" \
+            --search "in:title \"${titulo}\"" --json number,title \
             | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty')"
           if [ -n "${numero}" ]; then
             gh issue comment "${numero}" --body-file "${cuerpo}"
