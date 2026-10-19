@@ -782,6 +782,10 @@ describe("documento OpenAPI", () => {
     const base = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
     const descripcion = doc.components.schemas.Problema.properties.type.description as string;
     expect(descripcion).toContain(`${base}<tipo>`);
+    // La misma frase de docs/api/problemas.md.
+    expect(descripcion).toContain(
+      "Es un identificador estable: dentro de /v1 no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el type completo o la parte después de #.",
+    );
     for (const tipo of Object.keys(PROBLEMAS)) expect(descripcion).toContain(tipo);
     expect(Object.keys(PROBLEMAS).sort()).toEqual([
       "calendario-incompleto",
