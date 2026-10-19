@@ -1,6 +1,7 @@
+import type { DetalleClabe, ResultadoValidacion } from "@mexicoapi/core";
 import { URL_API } from "@mexicoapi/core/problemas";
 import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
-import { URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
+import { type Meta, URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
 import { describir } from "./catalogo.js";
 import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
 
@@ -20,6 +21,8 @@ export interface DatasetInicio {
   /** Lo actualiza un bot desde su fuente o una persona desde publicaciones oficiales. */
   tipo: "automatico" | "curado";
   as_of: string;
+  /** En las series (FIX y UDIS), la fecha de su registro más reciente: `cobertura.hasta`. */
+  ultimo_dato?: string;
   registros: number;
   fuentes: readonly FuenteInicio[];
   docs: string;
@@ -29,6 +32,35 @@ export interface EntradaInicio {
   datasets: readonly DatasetInicio[];
   /** Cada archivo de `/descargas/` con su contenido. */
   descargas: ReadonlyMap<string, Uint8Array | string>;
+  /** Lo que se muestra de la respuesta de `/v1/clabe/{CLABE_EJEMPLO}` (`respuestaRecortada`). */
+  ejemplo: unknown;
+}
+
+/** La CLABE de los ejemplos: Banamex, con su dígito de control. */
+export const CLABE_EJEMPLO = "002010077777777771";
+
+/**
+ * Lo que la página muestra de la respuesta de `/v1/clabe/{clabe}`: el veredicto, el banco y la
+ * primera fuente, con los mismos valores y en la misma forma que la respuesta completa.
+ */
+export function respuestaRecortada(respuesta: {
+  data: ResultadoValidacion<DetalleClabe>;
+  meta: Pick<Meta, "dataset" | "as_of" | "sources">;
+}): unknown {
+  const { data, meta } = respuesta;
+  return {
+    data: {
+      valor: data.valor,
+      valido: data.valido,
+      errores: data.errores,
+      detalle: { banco: data.detalle?.banco ?? null },
+    },
+    meta: {
+      dataset: meta.dataset,
+      as_of: meta.as_of,
+      sources: meta.sources.slice(0, 1).map((s) => ({ name: s.name, license: s.license })),
+    },
+  };
 }
 
 const UNIDADES = ["KB", "MB", "GB"] as const;
@@ -60,12 +92,15 @@ const ORIGEN = `<span data-origen>${escaparHtml(URL_API)}</span>`;
 const codigo = (texto: string): string =>
   `<pre tabindex="0"><code>${escaparHtml(texto)}</code></pre>`;
 
-const pendiente = (que: string, extra = ""): string =>
-  `<p class="aviso"><strong>Pendiente:</strong> ${que} se publicará en npm; mientras tanto, usa la API.${extra}</p>`;
+/**
+ * Un comando copiable de un paquete que todavía no está en npm falla, o instala el de alguien que
+ * tomó el nombre: mientras no se publiquen, un solo aviso en lugar de sus bloques.
+ */
+const PENDIENTE = `<p class="aviso"><strong>Pendiente:</strong> el paquete <code>mexicoapi</code> y el servidor MCP <code>mexicoapi-mcp</code> se publicarán en npm; mientras tanto, usa la API. Lo que traen está en sus README: <a href="${URL_ARCHIVOS}/packages/sdk/README.md">paquete</a> y <a href="${URL_ARCHIVOS}/packages/mcp/README.md">servidor MCP</a>.</p>`;
 
 const EJEMPLO_CLABE = `import { validarClabe } from "mexicoapi";
 
-const r = validarClabe("002010077777777771");
+const r = validarClabe("${CLABE_EJEMPLO}");
 r.valido; // true`;
 
 const CONFIGURACION_MCP = `{
@@ -77,45 +112,40 @@ const CONFIGURACION_MCP = `{
   }
 }`;
 
-/**
- * Un comando copiable de un paquete que todavía no está en npm falla, o instala el de alguien que
- * tomó el nombre: mientras no se publique, el bloque solo avisa.
- */
-const paquete = (publicado: boolean): string =>
-  publicado
-    ? `${codigo("npm install mexicoapi")}\n${codigo(EJEMPLO_CLABE)}`
-    : pendiente(
-        "el paquete",
-        ` Lo que trae está en su <a href="${URL_ARCHIVOS}/packages/sdk/README.md">README</a>.`,
-      );
-
-const servidor = (publicado: boolean): string =>
-  publicado
-    ? `<p>Agrégalo a la configuración de tu cliente:</p>\n${codigo(CONFIGURACION_MCP)}`
-    : pendiente("el servidor");
-
-function empieza(publicado: boolean): string {
-  return `<section id="empieza" aria-labelledby="titulo-empieza">
-<h2 id="titulo-empieza">Empieza</h2>
-<div class="bloques">
-<div class="bloque">
+function bloqueApi(ejemplo: unknown): string {
+  return `<div class="bloque">
 <h3>API</h3>
 <p>Sin llave ni cuenta. Cada respuesta trae el dato en <code>data</code> y su fuente, licencia y fecha en <code>meta</code>.</p>
 <pre tabindex="0"><code>curl ${ORIGEN}/v1/estados/25
-curl ${ORIGEN}/v1/clabe/002010077777777771</code></pre>
-<p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code>.</p>
-</div>
+curl ${ORIGEN}/v1/clabe/${CLABE_EJEMPLO}</code></pre>
+<p>La respuesta de la CLABE, recortada:</p>
+${codigo(JSON.stringify(ejemplo, null, 2))}
+<p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code> y son días de la Ciudad de México.</p>
+</div>`;
+}
+
+/** Ya publicados, la API, el paquete y el servidor van en tres bloques; antes, la API y un aviso. */
+function empieza(publicado: boolean, ejemplo: unknown): string {
+  const contenido = publicado
+    ? `<div class="bloques">
+${bloqueApi(ejemplo)}
 <div class="bloque">
 <h3>Paquete de npm</h3>
 <p>Validadores, reglas y los mismos datos para JavaScript y TypeScript, sin dependencias y sin red.</p>
-${paquete(publicado)}
+${codigo("npm install mexicoapi")}
+${codigo(EJEMPLO_CLABE)}
 </div>
 <div class="bloque">
 <h3>Servidor MCP</h3>
 <p>Los mismos datos y validadores como herramientas de un servidor MCP por stdio.</p>
-${servidor(publicado)}
+<p>Agrégalo a la configuración de tu cliente:</p>
+${codigo(CONFIGURACION_MCP)}
 </div>
-</div>
+</div>`
+    : `${bloqueApi(ejemplo)}\n${PENDIENTE}`;
+  return `<section id="empieza" aria-labelledby="titulo-empieza">
+<h2 id="titulo-empieza">Empieza</h2>
+${contenido}
 </section>`;
 }
 
@@ -156,26 +186,50 @@ function descargasDe(
   return enlaces.join(" · ");
 }
 
+const tiempo = (fecha: string): string => {
+  const texto = escaparHtml(fecha);
+  return `<time datetime="${texto}">${texto}</time>`;
+};
+
+const conMayuscula = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1);
+
+/** Las rutas del dataset, la principal primero, cada una con lo que responde si el catálogo lo dice. */
+function rutasApi(id: string): string {
+  const { ruta, nota, otras = [] } = describir(id);
+  if (ruta === null) return "Solo en descargas";
+  return [{ ruta, nota }, ...otras]
+    .map(
+      (r) =>
+        `<code>${escaparHtml(r.ruta)}</code>${r.nota === undefined ? "" : `<span class="detalle">${escaparHtml(conMayuscula(r.nota))}</span>`}`,
+    )
+    .join("");
+}
+
 function datos(entrada: EntradaInicio): string {
   const existe = (archivo: string): boolean => entrada.descargas.has(archivo);
+  // data-etiqueta: debajo de 640 px cada renglón es una tarjeta y la hoja la usa como etiqueta.
+  const celda = (etiqueta: string, clase: string, contenido: string): string =>
+    `<td class="${clase}" data-etiqueta="${etiqueta}">${contenido}</td>`;
   const filas = entrada.datasets.map((d) => {
-    const { nombre, ruta } = describir(d.id);
+    const { nombre } = describir(d.id);
     const nombreHtml = escaparHtml(nombre);
-    const api = ruta === null ? "Solo en descargas" : `<code>${escaparHtml(ruta)}</code>`;
-    const fecha = escaparHtml(d.as_of);
+    const ultimo =
+      d.ultimo_dato === undefined
+        ? ""
+        : `<span class="detalle">último dato ${tiempo(d.ultimo_dato)}</span>`;
     return `<tr>
 <th scope="row">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span><span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
-<td class="junto"><time datetime="${fecha}">${fecha}</time></td>
-<td class="num">${formatearEntero(d.registros)}</td>
-<td class="fuentes">${fuentes(d.fuentes)}</td>
-<td class="junto">${api}</td>
-<td class="junto">${descargasDe(d, nombreHtml, existe)}</td>
+${celda("Datos al", "junto", `${tiempo(d.as_of)}${ultimo}`)}
+${celda("Registros", "num", formatearEntero(d.registros))}
+${celda("Fuente y licencia", "fuentes", fuentes(d.fuentes))}
+${celda("API", "rutas", rutasApi(d.id))}
+${celda("Descargas", "junto", descargasDe(d, nombreHtml, existe))}
 </tr>`;
   });
   return `<section id="datos" aria-labelledby="titulo-datos">
 <h2 id="titulo-datos">Datos</h2>
-<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es, en los automáticos, la fecha de la última actualización que los cambió y, en los curados, la de su publicación oficial más reciente; en <a href="/estado/">Estado</a> se ve si cada dataset automático está al día.</p>
-<div class="tabla" role="region" aria-labelledby="tabla-datos" tabindex="0">
+<p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es, en los automáticos, la fecha de la última actualización que los cambió y, en los curados, la de su publicación oficial más reciente; en <a href="/estado/">Estado</a> se ve si cada dataset automático está al día. En las series (FIX y UDIS), el <em>último dato</em> es la fecha de su registro más reciente: el FIX no se publica en fines de semana ni en feriados bancarios, y las UDIS se publican por adelantado.</p>
+<div class="tabla tarjetas" role="region" aria-labelledby="tabla-datos" tabindex="0">
 <table>
 <caption id="tabla-datos">${entrada.datasets.length} datasets, con su fecha, fuente y licencia</caption>
 <thead>
@@ -197,6 +251,9 @@ function descargas(entrada: EntradaInicio): string {
   };
   const sqlite = tamano("mexicoapi.sqlite");
   tamano("SHA256SUMS");
+  const lft = ["json", "csv"].every((e) => entrada.descargas.has(`dias-inhabiles-lft.${e}`))
+    ? ' Los días de descanso obligatorio de la LFT (art. 74), que se calculan por regla y no son un dataset, están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100.'
+    : "";
   const nombres = [...entrada.descargas.keys()].sort(porNombre);
   const filas = nombres.map((nombre) => {
     const archivo = escaparHtml(nombre);
@@ -204,7 +261,7 @@ function descargas(entrada: EntradaInicio): string {
   });
   return `<section id="descargas" aria-labelledby="titulo-descargas">
 <h2 id="titulo-descargas">Descargas</h2>
-<p>Todo junto en <a href="/descargas/mexicoapi.sqlite">mexicoapi.sqlite</a> (${sqlite}): una base SQLite con todos los datasets y el manifiesto de cada uno. Cada dataset también se descarga en JSON y CSV, con su manifiesto.</p>
+<p>Todo junto en <a href="/descargas/mexicoapi.sqlite">mexicoapi.sqlite</a> (${sqlite}): una base SQLite con todos los datasets y el manifiesto de cada uno. Cada dataset también se descarga en JSON y CSV, con su manifiesto.${lft}</p>
 <p><a href="/descargas/SHA256SUMS">SHA256SUMS</a> trae el sha256 de cada archivo. Para verificar lo que bajaste:</p>
 <pre tabindex="0"><code>curl -O ${ORIGEN}/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing</code></pre>
@@ -255,12 +312,12 @@ export function paginaInicio(entrada: EntradaInicio, publicado = PUBLICADO_EN_NP
 <div class="marco">
 <h1>MéxicoAPI</h1>
 <p class="lema">Datos de referencia de México con fuente oficial, licencia y sha256.</p>
-${navegacion(true)}
+${navegacion(true, URL_REPO)}
 </div>
 </header>
 <main id="contenido" class="marco">
 <p class="intro">Una API JSON de solo lectura, sin llave ni cuenta, con ${entrada.datasets.length} datasets oficiales y descargas completas en JSON, CSV y SQLite. Cada dato dice de qué fuente salió, con qué licencia y de qué fecha, y cada archivo publica su sha256.</p>
-${empieza(publicado)}
+${empieza(publicado, entrada.ejemplo)}
 ${datos(entrada)}
 ${descargas(entrada)}
 ${REFERENCIA}

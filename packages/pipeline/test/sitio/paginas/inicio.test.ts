@@ -10,9 +10,12 @@ import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 import { enlaceSeguro } from "../../../src/sitio/paginas/html.js";
 import {
+  CLABE_EJEMPLO,
   type DatasetInicio,
+  type EntradaInicio,
   formatearEntero,
   paginaInicio,
+  respuestaRecortada,
   tamanoLegible,
 } from "../../../src/sitio/paginas/inicio.js";
 import { atributos, desescapar, esperarDocumentoValido } from "./estructura.js";
@@ -80,7 +83,54 @@ const DATASETS: DatasetInicio[] = [
       },
     ],
   },
+  {
+    id: "tipo-cambio.fix",
+    directorio: "tipo-cambio-fix",
+    tipo: "automatico",
+    as_of: "2026-10-18",
+    ultimo_dato: "2026-10-16",
+    registros: 1710,
+    docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/datos/tipo-cambio-fix.md",
+    fuentes: [
+      {
+        name: "DOF (SIDOF)",
+        url: "https://sidof.segob.gob.mx/",
+        published_at: null,
+        ...LICENCIA_DOF,
+      },
+    ],
+  },
 ];
+
+/** Lo que responde la API a la CLABE de los ejemplos, con textos que hay que escapar. */
+const RESPUESTA_CLABE = {
+  data: validarClabe(CLABE_EJEMPLO, {
+    bancos: new Map([["002", { codigo: "002", nombre_corto: "BANAMEX", activo: true }]]),
+  }),
+  meta: {
+    dataset: "bancos",
+    as_of: "2026-10-17",
+    sources: [
+      {
+        name: "Banco de México <CEP>",
+        url: "https://www.banxico.org.mx/cep/",
+        license: "Reproducción con cita & fuente",
+        license_url: "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+        citation: "Banco de México. CEP.",
+      },
+      {
+        name: "Banco de México, SPEI",
+        url: "https://www.banxico.org.mx/servicios/",
+        license: "Reproducción con cita & fuente",
+        license_url: "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
+        citation: "Banco de México. SPEI.",
+      },
+    ],
+    docs: "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#clabe",
+  },
+};
+
+const EJEMPLO = respuestaRecortada(RESPUESTA_CLABE);
 
 const DESCARGAS = new Map<string, Uint8Array | string>([
   ["SHA256SUMS", "a".repeat(200)],
@@ -93,7 +143,9 @@ const DESCARGAS = new Map<string, Uint8Array | string>([
   ["nuevo-dataset.json", "[]"],
 ]);
 
-const html = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS });
+const ENTRADA: EntradaInicio = { datasets: DATASETS, descargas: DESCARGAS, ejemplo: EJEMPLO };
+
+const html = paginaInicio(ENTRADA);
 
 /** El cuerpo de la tabla de datasets, una cadena por renglón. */
 function renglones(pagina: string, idTabla: string): string[] {
@@ -126,10 +178,10 @@ describe("página de inicio", () => {
     expect(html).toContain('<script type="module" src="/sitio.js"></script>');
     expect(html).toContain("<h1>MéxicoAPI</h1>");
     expect(html).toContain("Datos de referencia de México con fuente oficial, licencia y sha256.");
-    expect(html).toContain("con 3 datasets oficiales y descargas completas en JSON, CSV y SQLite.");
+    expect(html).toContain("con 4 datasets oficiales y descargas completas en JSON, CSV y SQLite.");
   });
 
-  it("navega a las cinco secciones", () => {
+  it("navega a las cinco secciones y, desde la cabecera, al repositorio", () => {
     for (const [href, texto] of [
       ["#empieza", "Empieza"],
       ["#datos", "Datos"],
@@ -139,6 +191,53 @@ describe("página de inicio", () => {
     ]) {
       expect(html).toContain(`<a href="${href}">${texto}</a>`);
     }
+    const cabecera = html.slice(
+      html.indexOf('<header class="cabecera">'),
+      html.indexOf("</header>"),
+    );
+    expect(cabecera).toContain(`<li><a href="${URL_REPO}">GitHub</a></li>`);
+    // Las demás páginas solo navegan dentro del sitio.
+    expect(paginaEstado()).not.toContain(URL_REPO);
+  });
+
+  // "Datos al" es la última actualización; en el FIX no hay dato del domingo.
+  it("en las series muestra el último dato aparte de Datos al", () => {
+    const filas = renglones(html, "tabla-datos");
+    const fix = filas.find((f) => f.includes('<span class="id">tipo-cambio.fix</span>')) ?? "";
+    expect(fix).toContain(
+      '<td class="junto" data-etiqueta="Datos al"><time datetime="2026-10-18">2026-10-18</time><span class="detalle">último dato <time datetime="2026-10-16">2026-10-16</time></span></td>',
+    );
+    expect(filas.filter((f) => f.includes("último dato"))).toEqual([fix]);
+    expect(html).toContain(
+      "En las series (FIX y UDIS), el <em>último dato</em> es la fecha de su registro más reciente",
+    );
+  });
+
+  // Para un pago la ruta es operacion; publicado en un día sin publicación da 404.
+  it("en el FIX muestra primero operacion, con lo que responde, y luego /ultimo y publicado", () => {
+    const fix =
+      renglones(html, "tabla-datos").find((f) => f.includes("tipo-cambio.fix</span>")) ?? "";
+    expect(fix).toContain(
+      '<td class="rutas" data-etiqueta="API"><code>/v1/tipo-cambio/fix?operacion={fecha}</code><span class="detalle">El que aplica a un pago o una operación de esa fecha</span><code>/v1/tipo-cambio/fix/ultimo</code><span class="detalle">La publicación más reciente</span><code>/v1/tipo-cambio/fix?publicado={fecha}</code><span class="detalle">El que publicó el DOF ese día</span></td>',
+    );
+  });
+
+  // Debajo de 640 px cada renglón es una tarjeta y la etiqueta de cada celda sale de este atributo.
+  it("cada celda de la tabla de datos dice su columna, para verse como tarjeta", () => {
+    const columnas = ["Datos al", "Registros", "Fuente y licencia", "API", "Descargas"];
+    for (const fila of renglones(html, "tabla-datos")) {
+      expect(fila.match(/<td\b/g)).toHaveLength(columnas.length);
+      expect([...fila.matchAll(/<td\b[^>]*\sdata-etiqueta="([^"]*)"/g)].map((m) => m[1])).toEqual(
+        columnas,
+      );
+    }
+    expect(html).toContain(
+      '<div class="tabla tarjetas" role="region" aria-labelledby="tabla-datos" tabindex="0">',
+    );
+    // La de las descargas tiene dos columnas y cabe tal cual.
+    expect(html).toContain(
+      '<div class="tabla" role="region" aria-labelledby="tabla-descargas" tabindex="0">',
+    );
   });
 
   it("cada dataset aparece en un solo renglón de la tabla, con su as_of y sus registros", () => {
@@ -264,6 +363,14 @@ describe("página de inicio", () => {
     expect(filas.find((f) => f.includes("inegi-estados.csv"))).toContain(">1.5 KB</td>");
     expect(html).toContain('<a href="/descargas/mexicoapi.sqlite">mexicoapi.sqlite</a> (5.3 MB)');
     expect(html).toContain('<a href="/descargas/SHA256SUMS">SHA256SUMS</a> trae');
+    // Sin la lista de la LFT en las descargas, no la menciona.
+    expect(html).not.toContain("dias-inhabiles-lft");
+    const conLft = new Map(DESCARGAS);
+    conLft.set("dias-inhabiles-lft.json", "[]");
+    conLft.set("dias-inhabiles-lft.csv", "");
+    expect(paginaInicio({ ...ENTRADA, descargas: conLft })).toContain(
+      'Los días de descanso obligatorio de la LFT (art. 74), que se calculan por regla y no son un dataset, están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100.',
+    );
   });
 
   // Sin JavaScript se ve la API pública, que funciona tal cual; sitio.js pone el origen.
@@ -284,11 +391,17 @@ describe("página de inicio", () => {
   });
 
   it("Empieza muestra una consulta, una CLABE y cómo sumar días hábiles, con tipo_plazo en el SAT", () => {
-    const api = html.slice(html.indexOf("<h3>API</h3>"), html.indexOf("<h3>Paquete de npm</h3>"));
+    const api = html.slice(
+      html.indexOf("<h3>API</h3>"),
+      html.indexOf("</div>", html.indexOf("<h3>API</h3>")),
+    );
     expect(bloquesDeCodigo(api)).toEqual([
-      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/002010077777777771`,
+      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/${CLABE_EJEMPLO}`,
+      JSON.stringify(EJEMPLO, null, 2),
     ]);
+    expect(CLABE_EJEMPLO).toBe("002010077777777771");
     expect(validarClabe("002010077777777771").valido).toBe(true);
+    expect(api).toContain('<p>La respuesta de la CLABE, recortada:</p>\n<pre tabindex="0"><code>{');
     expect(api).toContain(
       "<code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>",
     );
@@ -297,10 +410,29 @@ describe("página de inicio", () => {
     expect(api).toContain("<code>AAAA-MM-DD</code>");
   });
 
+  // Un subconjunto de la respuesta real, con los mismos valores: la prueba de integración lo
+  // compara contra la del Worker.
+  it("respuestaRecortada deja el veredicto, el banco y la fuente, y escapa los textos", () => {
+    expect(EJEMPLO).toEqual({
+      data: {
+        valor: CLABE_EJEMPLO,
+        valido: true,
+        errores: [],
+        detalle: { banco: { codigo: "002", nombre_corto: "BANAMEX", activo: true } },
+      },
+      meta: {
+        dataset: "bancos",
+        as_of: "2026-10-17",
+        sources: [{ name: "Banco de México <CEP>", license: "Reproducción con cita & fuente" }],
+      },
+    });
+    expect(html).toContain("Banco de México &lt;CEP&gt;");
+    expect(html).toContain("Reproducción con cita &amp; fuente");
+    expect(html).not.toContain("<CEP>");
+  });
+
   it("ya publicados, trae el ejemplo del paquete y la configuración del servidor MCP", () => {
-    const codigo = bloquesDeCodigo(
-      paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, true),
-    );
+    const codigo = bloquesDeCodigo(paginaInicio(ENTRADA, true));
     expect(codigo).toContain("npm install mexicoapi");
     const ejemplo = [
       'import { validarClabe } from "mexicoapi";',
@@ -317,25 +449,26 @@ describe("página de inicio", () => {
   });
 
   // Un comando copiable de un paquete que no existe en npm falla, o instala el de otra persona.
-  it("mientras no estén en npm, solo avisa, sin comandos de instalación ni configuración", () => {
-    const html = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS }, false);
-    expect(html.match(/se publicará en npm/g)).toHaveLength(2);
+  it("mientras no estén en npm, solo avisa en una línea, sin comandos de instalación ni configuración", () => {
+    const html = paginaInicio(ENTRADA, false);
     const codigo = bloquesDeCodigo(html).join("\n");
     for (const texto of ["npm install", "npx", "mexicoapi-mcp", "mcpServers", 'from "mexicoapi"']) {
       expect(codigo, texto).not.toContain(texto);
     }
     expect(html).not.toContain("npm install");
     expect(html).not.toContain("npx -y");
+    // Un solo aviso para los dos, después del bloque de la API, que ocupa el ancho completo.
+    expect(html.match(/class="aviso"/g)).toHaveLength(1);
     expect(html).toContain(
-      `<p class="aviso"><strong>Pendiente:</strong> el paquete se publicará en npm; mientras tanto, usa la API. Lo que trae está en su <a href="${URL_ARCHIVOS}/packages/sdk/README.md">README</a>.</p>`,
+      `<p class="aviso"><strong>Pendiente:</strong> el paquete <code>mexicoapi</code> y el servidor MCP <code>mexicoapi-mcp</code> se publicarán en npm; mientras tanto, usa la API. Lo que traen está en sus README: <a href="${URL_ARCHIVOS}/packages/sdk/README.md">paquete</a> y <a href="${URL_ARCHIVOS}/packages/mcp/README.md">servidor MCP</a>.</p>`,
     );
-    expect(html).toContain(
-      '<p class="aviso"><strong>Pendiente:</strong> el servidor se publicará en npm; mientras tanto, usa la API.</p>',
-    );
+    expect(html).not.toContain("<h3>Paquete de npm</h3>");
+    expect(html).not.toContain('<div class="bloques">');
     // Ya están en npm (0.1.0, 2026-10-18): la página que se publica es la de los paquetes publicados.
     expect(PUBLICADO_EN_NPM).toBe(true);
-    const publicado = paginaInicio({ datasets: DATASETS, descargas: DESCARGAS });
-    expect(publicado).not.toContain("se publicará en npm");
+    const publicado = paginaInicio(ENTRADA);
+    expect(publicado).not.toContain("se publicarán en npm");
+    expect(publicado).toContain('<div class="bloques">');
     expect(publicado).not.toContain('class="aviso"');
     expect(publicado).toContain("npm install mexicoapi");
     expect(publicado).toContain("mexicoapi-mcp");
@@ -368,7 +501,7 @@ describe("página de inicio", () => {
     for (const falta of ["mexicoapi.sqlite", "SHA256SUMS"]) {
       const descargas = new Map(DESCARGAS);
       descargas.delete(falta);
-      expect(() => paginaInicio({ datasets: DATASETS, descargas })).toThrow(falta);
+      expect(() => paginaInicio({ ...ENTRADA, descargas })).toThrow(falta);
     }
   });
 });

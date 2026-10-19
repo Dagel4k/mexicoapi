@@ -37,8 +37,9 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/^[\x20-\x7e\n]*$/);
   });
 
+  // 7 KB desde que las tablas se ven como tarjetas en pantallas angostas (antes, 6 KB).
   it("es pequeña", () => {
-    expect(Buffer.byteLength(ESTILO)).toBeLessThan(6 * 1024);
+    expect(Buffer.byteLength(ESTILO)).toBeLessThan(7 * 1024);
   });
 
   // `.oculto` es absoluto: sin un contenedor posicionado sale del que se desplaza y la página gana
@@ -47,6 +48,28 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/\.tabla \{[^}]*position: relative;[^}]*overflow-x: auto;/);
     expect(ESTILO).toMatch(/\.oculto \{[^}]*position: absolute;/);
     expect(ESTILO).toMatch(/\npre \{[^}]*overflow-x: auto;/);
+  });
+
+  // El primer comando que uno copia no puede quedar cortado en una columna angosta.
+  it("los bloques de Empieza parten las líneas largas en vez de cortarlas", () => {
+    expect(ESTILO).toMatch(
+      /\n\.bloque pre \{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/,
+    );
+  });
+
+  // Debajo de 640 px una tabla de seis columnas no cabe: cada renglón es una tarjeta y cada celda
+  // lleva la etiqueta de su columna (data-etiqueta), sin estilos en línea.
+  it("debajo de 40rem las tablas .tarjetas se ven como tarjetas con la etiqueta de cada celda", () => {
+    const inicio = ESTILO.indexOf("@media (width < 40rem) {");
+    expect(inicio).toBeGreaterThan(0);
+    const bloque = ESTILO.slice(inicio, ESTILO.indexOf("\n}\n", inicio));
+    expect(bloque).toMatch(/\.tarjetas thead \{[^}]*display: none;/);
+    expect(bloque).toMatch(/\.tarjetas tr, \.tarjetas th, \.tarjetas td \{[^}]*display: block;/);
+    expect(bloque).toMatch(
+      /\.tarjetas td::before \{[^}]*content: attr\(data-etiqueta\);[^}]*display: block;/,
+    );
+    expect(bloque).toMatch(/\.tarjetas \.junto, [^{]*\{[^}]*white-space: normal;/);
+    expect(ESTILO).not.toMatch(/style=/);
   });
 
   // El caption es tan ancho como la tabla: sin esto, a 320 px se desplaza con ella y se corta.

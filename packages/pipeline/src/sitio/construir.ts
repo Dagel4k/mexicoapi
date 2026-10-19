@@ -1,20 +1,21 @@
 import { readdir, readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import type {
-  Banco,
-  CoberturaCurada,
-  CoberturaSerie,
-  DiaInhabilCurado,
-  Estado,
-  FechaISO,
-  FuenteDof,
-  Manifiesto,
-  Municipio,
-  SalarioMinimo,
-  TarifaIsr,
-  TipoCambioFix,
-  Udi,
-  Uma,
+import {
+  type Banco,
+  type CoberturaCurada,
+  type CoberturaSerie,
+  type DiaInhabilCurado,
+  type Estado,
+  type FechaISO,
+  type FuenteDof,
+  type Manifiesto,
+  type Municipio,
+  type SalarioMinimo,
+  type TarifaIsr,
+  type TipoCambioFix,
+  type Udi,
+  type Uma,
+  validarClabe,
 } from "@mexicoapi/core";
 import { jsonCanonico, sha256Hex } from "../canonico.js";
 import { coberturasDeLaLista, shardCalendario } from "../curado/calendario.js";
@@ -52,7 +53,7 @@ import { archivoEncabezados } from "./paginas/encabezados.js";
 import { paginaEstado } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
 import { FAVICON } from "./paginas/favicon.js";
-import { paginaInicio } from "./paginas/inicio.js";
+import { CLABE_EJEMPLO, paginaInicio, respuestaRecortada } from "./paginas/inicio.js";
 import {
   archivoLlms,
   archivoLlmsCompleto,
@@ -206,6 +207,27 @@ function validarSalida(raizDatos: string, salida: string): void {
 }
 
 const json = (valor: unknown): string => JSON.stringify(valor);
+
+/**
+ * La respuesta de `/v1/clabe/{CLABE_EJEMPLO}` que muestra la página, armada como en el Worker: el
+ * mismo validador con el catálogo de bancos. Si la CLABE deja de ser válida, el build falla.
+ */
+function ejemploClabe(bancos: Cargado<Banco>): unknown {
+  const catalogo = new Map(
+    bancos.registros.map(({ codigo, nombre_corto, activo }) => [
+      codigo,
+      { codigo, nombre_corto, activo },
+    ]),
+  );
+  const data = validarClabe(CLABE_EJEMPLO, { bancos: catalogo });
+  if (!data.valido) {
+    throw new ErrorDatos(
+      `la CLABE de los ejemplos (${CLABE_EJEMPLO}) ya no es válida con el catálogo: ${data.errores.join(", ")}`,
+      "bancos",
+    );
+  }
+  return respuestaRecortada({ data, meta: bancos.meta });
+}
 
 const ultimoDato = (cobertura: CoberturaSerie | undefined): { ultimo_dato?: FechaISO } =>
   cobertura === undefined ? {} : { ultimo_dato: cobertura.hasta };
@@ -449,7 +471,7 @@ export async function construirSitio(opciones: {
     fuentes: c.manifiesto.sources,
     docs: c.meta.docs,
   }));
-  archivos.set("index.html", paginaInicio({ datasets, descargas }));
+  archivos.set("index.html", paginaInicio({ datasets, descargas, ejemplo: ejemploClabe(bancos) }));
   archivos.set("estado/index.html", paginaEstado());
   archivos.set("sitio.js", await readFile(CLIENTE));
   archivos.set("404.html", paginaNoEncontrada());
