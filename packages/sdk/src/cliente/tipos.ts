@@ -259,7 +259,8 @@ interface ConsultaDiasHabilesComun {
 
 /**
  * Parámetros de `diasHabiles`, con los nombres del núcleo (`consultar` usa los de la API). Con
- * `sat`, `tipoPlazo` es obligatorio; con las demás autoridades no se acepta.
+ * `sat`, `tipoPlazo` es obligatorio; con las demás autoridades no se acepta. `diasHabiles` lo
+ * revisa antes de ir a la red o al paquete y, si no cumple, lanza TypeError que nombra `tipoPlazo`.
  */
 export type ConsultaDiasHabiles = ConsultaDiasHabilesComun &
   (

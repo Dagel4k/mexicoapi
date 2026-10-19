@@ -1310,6 +1310,33 @@ describe("de dónde sale cada respuesta", () => {
     expect(llamadas).toHaveLength(0);
   });
 
+  it("diasHabiles revisa tipoPlazo antes de ir a la red y lo nombra así", async () => {
+    const { fetch, llamadas } = fetchFalso();
+    const api = conFetch(fetch);
+    await expect(
+      api.diasHabiles({ autoridad: "sat", desde: "2026-07-17", dias: 3 } as never),
+    ).rejects.toThrow(
+      new TypeError("Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos."),
+    );
+    await expect(
+      api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never),
+    ).rejects.toThrow(new TypeError("tipoPlazo solo se acepta con autoridad=sat."));
+    expect(llamadas).toHaveLength(0);
+    // Una autoridad que no existe la rechaza la regla de la API, como antes.
+    const { fetch: otro } = fetchFalso(
+      problema("parametro-invalido", 400, "Parámetro inválido", "Autoridades disponibles."),
+    );
+    const error = (await rechazo(
+      conFetch(otro).diasHabiles({
+        autoridad: "imss",
+        tipoPlazo: "general",
+        desde: "2026-07-17",
+        dias: 3,
+      } as never),
+    )) as MexicoApiError;
+    expect(error).toBeInstanceOf(MexicoApiError);
+  });
+
   it("un parámetro de ruta que falta es un TypeError", async () => {
     const api = crearCliente({ offline: true });
     await expect(api.consultar("/v1/estados/{cve_ent}", {} as never)).rejects.toThrow(

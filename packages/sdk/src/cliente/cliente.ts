@@ -7,6 +7,7 @@ import { type ConfigHttp, esDefinitivo, type Pedido, pedirApi } from "./http.js"
 import type { Contexto } from "./paquete-comun.js";
 import type {
   Cliente,
+  ConsultaDiasHabiles,
   OpcionesCliente,
   OpcionesConsulta,
   RespuestaSinMeta,
@@ -265,6 +266,20 @@ async function responder(
 }
 
 /**
+ * La regla de la API entre la autoridad y el tipo de plazo con el nombre del método (`tipoPlazo`):
+ * TypeError antes de ir a la red o al paquete. Una autoridad que no existe la rechaza después la
+ * regla de la API, como en la API. La regla se carga al usarla: importar el cliente no la carga.
+ */
+async function revisarDiasHabiles({
+  autoridad = "lft",
+  tipoPlazo,
+}: ConsultaDiasHabiles): Promise<void> {
+  const { NOMBRES_SDK, revisarTipoPlazoConocida } = await import("@mexicoapi/core/combinaciones");
+  const combinacion = revisarTipoPlazoConocida(autoridad, tipoPlazo, NOMBRES_SDK);
+  if (combinacion !== null) throw new TypeError(combinacion.detalle);
+}
+
+/**
  * Cliente de la API de MéxicoAPI. Los datos estables (estados, municipios, bancos, validación de
  * la CLABE) salen del paquete sin red; los que caducan (días hábiles e inhábiles, FIX, UDIS, UMA,
  * salario mínimo y tarifas de ISR) se piden a la API (sin `base`, la pública: `URL_API`) y, si
@@ -292,12 +307,15 @@ export function crearCliente(opciones: OpcionesCliente = {}): Cliente {
     bancos: (op) => pedir("/v1/bancos", {}, op),
     banco: (codigo, op) => pedir("/v1/bancos/{codigo}", { codigo }, op),
     clabe: (clabe, op) => pedir("/v1/clabe/{clabe}", { clabe }, op),
-    diasHabiles: ({ desde, dias, autoridad = "lft", tipoPlazo, permitirIncompleto }, op) =>
-      pedir(
+    diasHabiles: async (consulta, op) => {
+      await revisarDiasHabiles(consulta);
+      const { desde, dias, autoridad = "lft", tipoPlazo, permitirIncompleto } = consulta;
+      return pedir(
         "/v1/dias-habiles",
         { autoridad, tipo_plazo: tipoPlazo, desde, dias, permitir_incompleto: permitirIncompleto },
         op,
-      ),
+      );
+    },
     diasInhabiles: ({ anio, autoridad = "lft" }, op) =>
       pedir("/v1/dias-inhabiles", { autoridad, anio }, op),
     fixPublicado: (fecha, op) => pedir("/v1/tipo-cambio/fix", { publicado: fecha }, op),
