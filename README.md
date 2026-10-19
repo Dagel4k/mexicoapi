@@ -10,18 +10,18 @@ Cualquier sistema que se hace en México termina necesitando lo mismo:
 - días inhábiles del SAT o de los bancos;
 - UMA, salario mínimo y tablas de ISR.
 
-Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, y los mantiene al día de forma automática.
+Hoy cada quien descarga esos datos por su cuenta, los limpia a mano y deja de actualizarlos. MéxicoAPI los publica una sola vez, bien hechos, con su fuente. Un bot revisa las fuentes de los datos automáticos, a diario o cada semana, y los actualiza cuando cambian; los que se transcriben del DOF los captura una persona con cada publicación.
 
-> En desarrollo. Los primeros datos ya están en [`data/`](data/), la API v1 está construida y documentada pero todavía no está desplegada, y los paquetes de npm (`mexicoapi` y el servidor MCP `mexicoapi-mcp`) están listos pero sin publicar. No hay versión publicada.
+> La API v1 ya está en línea en https://mexicoapi.dagel4k.workers.dev, con las descargas y el sitio. Los paquetes de npm (`mexicoapi` y el servidor MCP `mexicoapi-mcp`) están listos y se publicarán en npm como 0.1.0; todavía no hay versión publicada.
 
-## Qué va a incluir
+## Qué incluye
 
-- **API pública** de solo lectura: rápida (archivos estáticos en el borde) y gratuita.
-- **Paquete de npm** (`mexicoapi`) con cliente, validadores y datos para usar sin conexión.
-- **Servidor MCP** ([`mexicoapi-mcp`](packages/mcp/README.md)) para que los asistentes de IA consulten el dato oficial en vez de inventarlo.
-- **Descargas completas** en JSON, CSV y SQLite.
+- API pública de solo lectura, rápida (archivos estáticos en el borde) y gratuita.
+- Paquete de npm (`mexicoapi`) con cliente, validadores y datos para usar sin conexión (se publicará en npm).
+- Servidor MCP ([`mexicoapi-mcp`](packages/mcp/README.md)) para que los asistentes de IA consulten el dato oficial en vez de inventarlo (se publicará en npm).
+- Descargas completas en JSON, CSV y SQLite.
 
-Cada respuesta indica de dónde salió el dato, su licencia y la fecha en que se verificó.
+Cada respuesta indica de dónde salió el dato, su licencia y la fecha de su última actualización.
 
 ## Datos de la primera versión
 
@@ -56,14 +56,14 @@ Cada carpeta incluye `manifest.json` con la fuente, la licencia y el hash, y los
 
 ## API
 
-API de solo lectura, con respuestas JSON `{ data, meta }`, descargas completas y especificación OpenAPI. Se publicará primero en `workers.dev` y después en un dominio propio; el despliegue público viene después (los pasos están en [docs/operacion/cloudflare.md](docs/operacion/cloudflare.md)). La referencia está en [docs/api/README.md](docs/api/README.md) y los errores en [docs/api/problemas.md](docs/api/problemas.md).
+API de solo lectura, con respuestas JSON `{ data, meta }`, descargas completas y especificación OpenAPI, en https://mexicoapi.dagel4k.workers.dev (`workers.dev` de Cloudflare; todavía sin dominio propio). No pide llave ni cuenta. La referencia está en [docs/api/README.md](docs/api/README.md) y los errores en [docs/api/problemas.md](docs/api/problemas.md); el despliegue, en [docs/operacion/cloudflare.md](docs/operacion/cloudflare.md).
 
 ```bash
-curl https://<base>/v1/estados/25
-curl https://<base>/v1/clabe/002010077777777771
+curl https://mexicoapi.dagel4k.workers.dev/v1/estados/25
+curl https://mexicoapi.dagel4k.workers.dev/v1/clabe/002010077777777771
 ```
 
-El mismo despliegue sirve el sitio, que genera el build con los datos: en `/` la página de inicio con los datasets, su fuente y las descargas; en `/estado/`, si cada dataset está al día; y en `/llms.txt`, un resumen de la API para herramientas que leen ese formato, con la documentación completa en `/llms-full.txt` ([detalles](docs/api/README.md#sitio)).
+El mismo despliegue sirve el sitio, que genera el build con los datos: en `/` la página de inicio con los datasets, su fuente y las descargas; en `/estado/`, si cada dataset automático está al día; y en `/llms.txt`, un resumen de la API para herramientas que leen ese formato, con la documentación completa en `/llms-full.txt` ([detalles](docs/api/README.md#sitio)).
 
 ## Documentación
 
@@ -74,6 +74,7 @@ El mismo despliegue sirve el sitio, que genera el build con los datos: en `/` la
 - [Bot de datos](docs/operacion/bot-de-datos.md)
 - [Datos curados](docs/operacion/datos-curados.md): cómo se transcriben del DOF los calendarios y las constantes
 - [Publicación en npm](docs/operacion/publicacion-npm.md): cómo se arman y se publican los paquetes
+- [Cómo contribuir](CONTRIBUTING.md) y [política de seguridad](SECURITY.md)
 
 ## Licencia
 
