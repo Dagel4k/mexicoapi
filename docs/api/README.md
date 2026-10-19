@@ -73,6 +73,8 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
 
 Una respuesta puede ganar campos nuevos dentro de `/v1`: los esquemas del documento OpenAPI son abiertos y no prohíben campos adicionales, así que tu cliente debe ignorar los que no conozca. Quitar o cambiar un campo sí es un cambio incompatible e iría a `/v2`.
 
+Las rutas de días hábiles e inhábiles traen además `advertencias` y `avisos`: lo que conviene revisar antes de usar el dato, en texto y con un código estable (ver [Avisos](#avisos)).
+
 Dos rutas tienen otra forma: `/v1/status` responde `{ "data": [...] }` sin `meta`, y `/v1` responde un objeto de índice:
 
 ```json
@@ -97,6 +99,38 @@ const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }
 ```
 
 En el paquete `mexicoapi`, `hoyEnMexico()` hace lo mismo.
+
+## Avisos
+
+Toda respuesta que trae `advertencias` trae también `avisos`, justo después: las mismas advertencias, en el mismo orden, cada una como `{ "codigo": …, "texto": … }`. `avisos[i].texto` es igual a `advertencias[i]`. El texto es para mostrarlo y puede cambiar de redacción o traer fechas; el código no cambia de significado dentro de `/v1`. Para decidir en un programa (mostrar el aviso, detener el cálculo, mandarlo a revisión), usa `codigo`.
+
+En `/v1/dias-habiles` van dentro de `data`, junto a `data.advertencias`; en `/v1/dias-inhabiles`, en el primer nivel, junto a `advertencias`.
+
+```json
+"avisos": [
+  { "codigo": "lft-art-715", "texto": "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …" }
+]
+```
+
+| `codigo` | Qué significa | Cuándo sale | Qué hacer |
+| --- | --- | --- | --- |
+| `calendario-incompleto` | El cálculo pasó por un año que el calendario no cubre y ahí solo descontó sábados y domingos | Con `permitir_incompleto=true`, fuera de la [cobertura](#cobertura-del-calendario) | El resultado puede ser anterior al real: no lo uses como vencimiento sin revisar el calendario de ese año |
+| `tipo-plazo-incompleto` | El cálculo pasó por fechas que el calendario de ese `tipo_plazo` no cubre: se descontaron los días publicados y los fines de semana, pero pueden faltar días de algún tipo | Con `permitir_incompleto=true`; hoy, `sat` con `general` después del 2026-11-30 | El resultado puede cambiar cuando se publique lo que falta: revísalo entonces |
+| `lista-incompleta` | La lista del año solo está completa para algunos tipos de plazo | `dias-inhabiles` con `sat` en un año que `general` no cubre completo | Para `declaraciones_pagos` la lista está completa; para `general` pueden faltar vacaciones |
+| `lft-art-715` | El calendario de la LFT no tiene los festivos del calendario oficial ni las suspensiones de labores de los tribunales | Siempre con `lft` | Revisa el calendario del tribunal o del centro de conciliación: el vencimiento real puede ser posterior |
+| `transmision-poder-ejecutivo` | En un año de [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo) no se descuentan el 1o. de octubre ni el 1o. de diciembre | `sat`, en un cálculo que pasa por esos días o en la lista de ese año | Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después |
+| `prorroga-art-12` | El resultado cae en viernes, en vacaciones del SAT o en un cierre bancario, y el [quinto párrafo del artículo 12](#prórroga-del-artículo-12-del-cff) puede prorrogarlo | `sat` con `declaraciones_pagos` | El resultado no incluye la prórroga: aplícala si corresponde según dónde se presenta o se paga |
+| `vacaciones-sin-publicar` | El resultado cae fuera de las vacaciones del SAT publicadas; si ese día resulta ser de vacaciones, puede aplicar la prórroga | `sat` con `declaraciones_pagos`; hoy, después del 2026-11-30 | Revisa el resultado cuando el SAT publique el periodo |
+| `api-sin-respuesta` | La API falló y la respuesta sale de los datos del paquete | Cliente de `mexicoapi` | Los datos pueden no estar al día |
+| `respuesta-guardada` | La API falló y la respuesta es una guardada en la caché del cliente, ya caducada | Cliente de `mexicoapi` con caché | El texto dice qué tan vieja es |
+| `datos-viejos` | La serie del paquete (FIX o UDIS) termina hace más de 7 días | Cliente de `mexicoapi` | La API puede tener datos más recientes: actualiza el paquete o consulta la API |
+| `datos-del-paquete` | La serie sale del paquete y no de la API: pueden faltar publicaciones recientes | Cliente de `mexicoapi` (último FIX del paquete) y servidor MCP sin red | Para el dato más reciente, consulta la API |
+| `municipio-sin-inegi` | Un código postal de Correos de México tiene un municipio que no está en el catálogo de INEGI del paquete | `mexicoapi/sepomex` y la herramienta `codigo_postal` del MCP | El municipio va con `cvegeo` null y el nombre de Correos de México |
+| `cp-varios-municipios` | Hay códigos postales que aparecen en más de un municipio | `mexicoapi/sepomex` | Se usa el municipio de su primera fila |
+| `aviso-sepomex-distinto` | El aviso de uso del archivo de Correos de México no es el que conoce `mexicoapi` | `mexicoapi/sepomex` | Lee el aviso nuevo antes de usar los datos |
+| `otro` | Un texto que esta versión no conoce | Un calendario propio de `crearCalendario`, o una API más nueva que el paquete | Lee el texto |
+
+La API da los siete primeros. Los demás son del paquete `mexicoapi` (el cliente y `mexicoapi/sepomex`) y del servidor MCP, que usan el mismo catálogo. Una versión nueva puede agregar códigos: trata uno que no conozcas como `otro`. El catálogo está en `CODIGOS_AVISO` de `mexicoapi` y en el documento OpenAPI (`components.schemas.Aviso`).
 
 ## Estados
 
@@ -242,10 +276,18 @@ Suma días hábiles a una fecha según el calendario de una autoridad: `lft`, `c
     "inhabiles_saltados": [],
     "advertencias": [
       "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; no incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (art. 715), como la Semana Santa o sus vacaciones. Revisa el calendario del tribunal o del centro de conciliación."
+    ],
+    "avisos": [
+      {
+        "codigo": "lft-art-715",
+        "texto": "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …"
+      }
     ]
   }
 }
 ```
+
+`avisos` repite cada advertencia con su [código estable](#avisos); en los ejemplos su `texto` se acorta con "…".
 
 En un plazo que corre desde una notificación, `desde` es el día en que la notificación surte efectos, no el día en que se hizo. Por ejemplo, una notificación del SAT hecha el lunes 2 de marzo de 2026 surte efectos el día hábil siguiente (CFF, art. 135), así que `desde=2026-03-03`. En materia laboral los términos corren desde el día siguiente al en que surte efectos la notificación (LFT, art. 733). Si se pasa la fecha en que se hizo la notificación, el vencimiento sale un día hábil antes.
 
@@ -289,7 +331,8 @@ Con `lft`, los días inhábiles son sábados, domingos y los de descanso obligat
       }
     }
   ],
-  "advertencias": ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …"]
+  "advertencias": ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …"],
+  "avisos": [{ "codigo": "lft-art-715", "texto": "…" }]
 }
 ```
 
@@ -326,7 +369,8 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=cnbv&desde
       }
     }
   ],
-  "advertencias": []
+  "advertencias": [],
+  "avisos": []
 }
 ```
 
@@ -359,7 +403,8 @@ Con `general` el resultado es el miércoles 2026-08-05 y `inhabiles_saltados` tr
   "inhabiles_saltados": [],
   "advertencias": [
     "El resultado (2026-07-22) es día de vacaciones del SAT. El art. 12 del CFF, quinto párrafo, prorroga el plazo al siguiente día hábil si ese día están cerradas las oficinas donde se hace el trámite, incluidos los bancos que reciben el pago, o si es viernes y el pago se hace en una institución de crédito autorizada. El resultado no incluye esa prórroga."
-  ]
+  ],
+  "avisos": [{ "codigo": "prorroga-art-12", "texto": "El resultado (2026-07-22) es día de vacaciones del SAT. …" }]
 }
 ```
 
@@ -383,9 +428,9 @@ Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
 ```
 
-El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos.
+El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". Su código en `avisos` es `prorroga-art-12`. La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos.
 
-Si el resultado cae fuera de las vacaciones del SAT publicadas (después de su fin o antes de su inicio), no se sabe si ese día es de vacaciones, y `advertencias` lo dice. Del 22 de diciembre de 2026, 5 días hábiles con `declaraciones_pagos` dan el 2026-12-30, mientras falte el segundo periodo de vacaciones:
+Si el resultado cae fuera de las vacaciones del SAT publicadas (después de su fin o antes de su inicio), no se sabe si ese día es de vacaciones, y `advertencias` lo dice (en `avisos`, con el código `vacaciones-sin-publicar`). Del 22 de diciembre de 2026, 5 días hábiles con `declaraciones_pagos` dan el 2026-12-30, mientras falte el segundo periodo de vacaciones:
 
 ```bash
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-12-22&dias=5"
@@ -407,7 +452,8 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_p
   ],
   "advertencias": [
     "Las vacaciones del SAT posteriores al 2026-11-30 no están publicadas: si el 2026-12-30 resulta ser día de vacaciones, el art. 12 del CFF, quinto párrafo, puede prorrogar el plazo al siguiente día hábil. El resultado no incluye esa prórroga."
-  ]
+  ],
+  "avisos": [{ "codigo": "vacaciones-sin-publicar", "texto": "Las vacaciones del SAT posteriores al 2026-11-30 no están publicadas: …" }]
 }
 ```
 
@@ -434,7 +480,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&desde=
 }
 ```
 
-Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo los fines de semana, y lo avisa en `advertencias` con la autoridad en mayúsculas:
+Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo los fines de semana, y lo avisa en `advertencias` con la autoridad en mayúsculas, antes del aviso de siempre de la LFT:
 
 ```json
 {
@@ -443,7 +489,17 @@ Con `permitir_incompleto=true` calcula fuera de la cobertura descontando solo lo
   "dias": 3,
   "resultado": "2101-01-04",
   "inhabiles_saltados": [],
-  "advertencias": ["Calendario incompleto: LFT 2101; solo se descontaron fines de semana."]
+  "advertencias": [
+    "Calendario incompleto: LFT 2101; solo se descontaron fines de semana.",
+    "Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; …"
+  ],
+  "avisos": [
+    {
+      "codigo": "calendario-incompleto",
+      "texto": "Calendario incompleto: LFT 2101; solo se descontaron fines de semana."
+    },
+    { "codigo": "lft-art-715", "texto": "…" }
+  ]
 }
 ```
 
@@ -502,7 +558,8 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_p
   ],
   "advertencias": [
     "Calendario incompleto: SAT con tipo_plazo=general cubre del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar días de tipo vacaciones, que no están publicados o no se han cargado, y solo se descontaron los días publicados y los fines de semana."
-  ]
+  ],
+  "avisos": [{ "codigo": "tipo-plazo-incompleto", "texto": "Calendario incompleto: SAT con tipo_plazo=general …" }]
 }
 ```
 
@@ -523,7 +580,8 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=cnbv&desde
   "inhabiles_saltados": [],
   "advertencias": [
     "Calendario incompleto: CNBV 2027; solo se descontaron fines de semana. Pueden faltar días de cierre bancario, como el 1 de enero."
-  ]
+  ],
+  "avisos": [{ "codigo": "calendario-incompleto", "texto": "Calendario incompleto: CNBV 2027; …" }]
 }
 ```
 
@@ -537,7 +595,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=cnbv&ani
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=sat&anio=2026"
 ```
 
-Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene tres campos de primer nivel: `data`, `advertencias` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`, y la LFT también en los días anteriores al 2024-10-01, que citan el texto de 2006: ver [dias-habiles](#dias-habiles)).
+Lista los días inhábiles de un año: los que salen de una regla (los del artículo 74 de la LFT y los del artículo 12 del CFF) y los publicados (los de la CNBV y las vacaciones del SAT). Los sábados y domingos no se listan por serlo, pero un día publicado que cae en fin de semana sí aparece: el 12 de diciembre de 2026 de la CNBV es sábado, y los periodos de vacaciones del SAT traen sus sábados y domingos. Los parámetros son `autoridad` (`lft`, `cnbv` o `sat`) y `anio` (cuatro dígitos, de `0001` a `9999`), los dos obligatorios. La respuesta tiene cuatro campos de primer nivel: `data`, `advertencias`, `avisos` y `meta`. Cada elemento de `data` trae `fecha`, `motivo`, `tipo` y `fuente` (con `nombre`, `url` y `fragmento`; los calendarios de la CNBV y el SAT agregan `fecha_publicacion`, y la LFT también en los días anteriores al 2024-10-01, que citan el texto de 2006: ver [dias-habiles](#dias-habiles)).
 
 | `autoridad` | Para 2026 devuelve |
 | --- | --- |
@@ -564,7 +622,7 @@ Un año que la cobertura del calendario no alcanza da 422 `calendario-incompleto
 
 ### Advertencias de la lista
 
-`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo o de lo que no incluye. Es `[]` cuando la lista está completa, como en `cnbv`. Con `lft` siempre trae el aviso de que la lista no tiene los festivos ni las suspensiones de labores del artículo 715; con `sat`, en 2030 y cada seis años, el de la [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo).
+`advertencias` es un campo de primer nivel de esta ruta, junto a `data` y `meta`. No es lo mismo que `data.advertencias` de [`/v1/dias-habiles`](#dias-habiles), que avisa de un cálculo. Aquí avisa de que la lista de un año puede estar incompleta para algún tipo de plazo o de lo que no incluye. Es `[]` cuando la lista está completa, como en `cnbv`. Con `lft` siempre trae el aviso de que la lista no tiene los festivos ni las suspensiones de labores del artículo 715; con `sat`, en 2030 y cada seis años, el de la [transmisión del Poder Ejecutivo](#transmisión-del-poder-ejecutivo). `avisos` trae las mismas con su [código](#avisos): `lista-incompleta`, `lft-art-715` o `transmision-poder-ejecutivo`.
 
 El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha publicado, y la lista de vacaciones solo está completa hasta el 30 de noviembre. La lista de 2026 se responde igual, con los 23 días publicados, y la advertencia dice qué puede faltar:
 
@@ -574,6 +632,7 @@ El SAT 2026 es el caso hoy: el segundo periodo general de vacaciones no se ha pu
   "advertencias": [
     "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2026 está completa."
   ],
+  "avisos": [{ "codigo": "lista-incompleta", "texto": "Los días de tipo vacaciones del SAT solo están completos …" }],
   "meta": { "dataset": "dias-inhabiles.sat", "…": "…" }
 }
 ```
@@ -590,6 +649,7 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-inhabiles?autoridad=sat&anio
   "advertencias": [
     "Los días de tipo vacaciones del SAT solo están completos del 2026-01-01 al 2026-11-30; fuera de ese rango pueden faltar. Para tipo_plazo=declaraciones_pagos, que no los cuenta, la lista de 2027 está completa."
   ],
+  "avisos": [{ "codigo": "lista-incompleta", "texto": "Los días de tipo vacaciones del SAT solo están completos …" }],
   "meta": { "dataset": "dias-inhabiles.sat", "…": "…" }
 }
 ```
