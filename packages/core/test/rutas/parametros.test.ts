@@ -2,9 +2,12 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Autoridad, TipoPlazo } from "../../src/dias-habiles/tipos.js";
 import * as core from "../../src/index.js";
 import {
+  NOMBRES_SDK,
   revisarFix,
   revisarTipoPlazo,
   revisarTipoPlazoCon,
+  revisarTipoPlazoConocida,
+  revisarValorTipoPlazo,
 } from "../../src/rutas/combinaciones.js";
 import { cumpleRegla, REGLAS_RUTA, type ReglaParametro } from "../../src/rutas/parametros.js";
 
@@ -141,6 +144,36 @@ describe("revisarTipoPlazo", () => {
     expect(revisarTipoPlazoCon("sat", undefined, sdk)?.detalle).toBe(
       "Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.",
     );
+  });
+
+  it("revisarValorTipoPlazo rechaza un valor que no es un tipo de plazo, con cada nombre", () => {
+    const cli = { autoridad: (a: string) => `--autoridad ${a}`, tipoPlazo: "--tipo-plazo" };
+    expect(revisarValorTipoPlazo("anual", cli)).toEqual({
+      tipo: "parametro-invalido",
+      detalle: "--tipo-plazo debe ser general o declaraciones_pagos.",
+      extras: { parametro: "tipo_plazo" },
+    });
+    expect(revisarValorTipoPlazo("anual", NOMBRES_SDK)?.detalle).toBe(
+      "tipoPlazo debe ser general o declaraciones_pagos.",
+    );
+    expect(revisarValorTipoPlazo("general", NOMBRES_SDK)).toBeNull();
+    expect(revisarValorTipoPlazo(undefined, NOMBRES_SDK)).toBeNull();
+  });
+
+  it("revisarTipoPlazoConocida revisa el valor y luego la combinación, como la API", () => {
+    // El valor antes que la combinación: la regla de la query va antes que revisarTipoPlazo.
+    expect(revisarTipoPlazoConocida("lft", "anual", NOMBRES_SDK)?.detalle).toBe(
+      "tipoPlazo debe ser general o declaraciones_pagos.",
+    );
+    expect(revisarTipoPlazoConocida("sat", "anual", NOMBRES_SDK)?.detalle).toBe(
+      "tipoPlazo debe ser general o declaraciones_pagos.",
+    );
+    expect(revisarTipoPlazoConocida("lft", "general", NOMBRES_SDK)?.detalle).toBe(
+      "tipoPlazo solo se acepta con autoridad=sat.",
+    );
+    expect(revisarTipoPlazoConocida("sat", "general", NOMBRES_SDK)).toBeNull();
+    // Una autoridad que no existe la rechaza antes su propia regla: aquí no se revisa nada.
+    expect(revisarTipoPlazoConocida("imss", "anual", NOMBRES_SDK)).toBeNull();
   });
 });
 

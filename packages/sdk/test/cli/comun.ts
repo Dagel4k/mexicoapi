@@ -329,9 +329,14 @@ export function probarCli(correr: Correr, version: string): void {
     expect(sinTipo.errores).toContain(
       "Con --autoridad sat falta --tipo-plazo: general o declaraciones_pagos.",
     );
+    // Cambio: un valor que no es un tipo de plazo lo nombra como la CLI (antes, el texto de la API
+    // con tipo_plazo); sigue saliendo con 1, como un valor que la API rechaza.
     const raro = await correr([...sat, "--tipo-plazo", "anual"]);
     expect(raro.codigo).toBe(1);
-    expect(raro.errores).toContain("general o declaraciones_pagos");
+    expect(raro.errores).toContain("--tipo-plazo debe ser general o declaraciones_pagos.");
+    const raroLft = await correr([...DIAS, "--tipo-plazo", "anual"]);
+    expect(raroLft.codigo).toBe(1);
+    expect(raroLft.errores).toContain("--tipo-plazo debe ser general o declaraciones_pagos.");
     // La regla de la API con los nombres de la CLI (revisarTipoPlazo): una opción que no aplica a
     // la autoridad es uso incorrecto, como --fecha en banco. Antes salía con 1 y el texto de la API.
     const sobra = await correr([...DIAS, "--tipo-plazo", "general"]);

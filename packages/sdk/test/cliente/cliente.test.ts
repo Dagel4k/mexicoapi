@@ -1345,6 +1345,14 @@ describe("de dónde sale cada respuesta", () => {
     await expect(
       api.diasHabiles({ tipoPlazo: "general", desde: "2026-07-17", dias: 3 } as never),
     ).rejects.toThrow(new TypeError("tipoPlazo solo se acepta con autoridad=sat."));
+    await expect(
+      api.diasHabiles({
+        autoridad: "sat",
+        tipoPlazo: "anual",
+        desde: "2026-07-17",
+        dias: 3,
+      } as never),
+    ).rejects.toThrow(new TypeError("tipoPlazo debe ser general o declaraciones_pagos."));
     expect(llamadas).toHaveLength(0);
     // Una autoridad que no existe la rechaza la regla de la API, como antes.
     const { fetch: otro } = fetchFalso(
