@@ -442,7 +442,7 @@ function operaciones(): Operacion[] {
         parametroFecha(
           "/v1/tipo-cambio/fix",
           "operacion",
-          "Fecha de una operación o de un pago (AAAA-MM-DD, día de la Ciudad de México): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20). Para una obligación en dólares es la misma publicación que manda el art. 172 de la Circular 3/2012 del Banco de México: la del día hábil bancario inmediato anterior al pago.",
+          "Fecha de una operación o de un pago (AAAA-MM-DD, día de la Ciudad de México): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20). Para una obligación en dólares es la misma publicación que manda el art. 172 de la Circular 3/2012 del Banco de México: la del día hábil bancario inmediato anterior al pago. Solo se separarían si el DOF no publicara el FIX un día hábil bancario o lo publicara uno inhábil; entonces sigue al CFF.",
         ),
       ],
       ok: respuestaDatos(

@@ -131,6 +131,9 @@ describe("llms.txt", () => {
     expect(docs[4]).toContain("el FIX que aplica a un pago o una operación de esa fecha");
     expect(docs[4]).toContain("CFF art. 20");
     expect(docs[4]).toContain("art. 172 de la Circular 3/2012 del Banco de México");
+    expect(docs[4]).toContain(
+      "solo se separarían si el DOF no publicara el FIX un día hábil bancario o lo publicara uno inhábil, y entonces la ruta sigue al CFF",
+    );
     expect(docs[4]).toContain('cuando pregunten por "el FIX de hoy"');
     expect(docs[5]).toMatch(/^- \[GET \/v1\/tipo-cambio\/fix\/ultimo\]\(/);
     expect(docs[5]).toContain("no es el FIX de hoy");
