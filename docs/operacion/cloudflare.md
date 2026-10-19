@@ -38,7 +38,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 | Workflow | Con los secretos y la variable | Sin ellos |
 | --- | --- | --- |
 | `despliegue.yml` (cada merge a `main` y a mano desde `main`) | Compila, despliega a staging, corre la prueba de humo, despliega a producción, corre el humo otra vez y, si falla, revierte | Deja un aviso y termina en verde sin desplegar |
-| `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` (o, si falta, `CLOUDFLARE_API_TOKEN`) | Deja un aviso y sigue; el bot de datos funciona igual |
+| `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` y nunca con el token de despliegue | Sin `CLOUDFLARE_KV_TOKEN` o `CLOUDFLARE_ACCOUNT_ID`, deja un aviso y no escribe; el bot de datos funciona igual |
 | `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues | Sin `API_URL`, deja un aviso y termina en verde |
 
 ### Despliegue
@@ -79,7 +79,7 @@ Lee `/v1/status` con `GITHUB_TOKEN`, sin secretos de Cloudflare.
 
 ### Estado en KV
 
-El job `estado-kv` de `datos.yml` guarda `estado:<dataset>` con la última corrida. Va aparte de los jobs que generan y publican los datos: recibe el resumen de la corrida como artefacto, no instala dependencias y es el único que ve un token de Cloudflare. Usa `CLOUDFLARE_KV_TOKEN`, que solo puede escribir en KV; si ese secreto no existe, usa `CLOUDFLARE_API_TOKEN` y deja un aviso. Si falla, deja una advertencia y no cambia el resultado de la corrida de datos.
+El job `estado-kv` de `datos.yml` guarda `estado:<dataset>` con la última corrida. Va aparte de los jobs que generan y publican los datos: recibe el resumen de la corrida como artefacto, no instala dependencias y es el único que ve un token de Cloudflare. Usa solo `CLOUDFLARE_KV_TOKEN`, que solo puede escribir en KV; si ese secreto o `CLOUDFLARE_ACCOUNT_ID` no existen, deja un aviso y no escribe nada. Si falla, deja una advertencia y no cambia el resultado de la corrida de datos.
 
 `last_success` avanza con `sin_cambios` siempre y con `actualizado` solo si la corrida publicó el cambio: el paso "Publicar resultado" del job `publicar` terminó bien y la corrida salió con código 0. Sin cambios y con código 0, `publicar` no corre, y no hace falta: todos los datasets quedaron `sin_cambios`. Con código 3 el PR lleva la etiqueta `revisar` y no se fusiona solo, así que ni los datasets `actualizado` de ese grupo cuentan como publicados. Si la corrida falló, no se publica nada y no avanza. Con `requiere_revision` tampoco avanza: lo publicado se queda atrás hasta que una persona revisa, y pasada su ventana de frescura el dataset pasa a desactualizado, que es lo esperado.
 
