@@ -18,12 +18,13 @@ import { curadoDiasCnbv, DIRECTORIO_CURADO } from "../curado/registro.js";
 import { ErrorDatos } from "../errores.js";
 import { esquemaTipoCambioFix, esquemaUdi } from "../esquemas.js";
 import { anioDe } from "../fecha.js";
-import type {
-  Construccion,
-  CrudoCapturado,
-  DefinicionDataset,
-  FuenteCapturada,
-  Revision,
+import {
+  type Construccion,
+  type CrudoCapturado,
+  type DefinicionDataset,
+  type FuenteCapturada,
+  fuentesFijas,
+  type Revision,
 } from "../marco.js";
 
 /** Primer año de las dos series. */
@@ -415,6 +416,8 @@ function crearDatasetSidof<T extends { valor: string }>(c: ConfigSidof<T>): Defi
       }
       return fallas;
     },
+
+    revisarFuentes: fuentesFijas({ name: c.name, ...FUENTE, citation: c.citation }),
 
     async revisar(diferencias, anterior, ctx): Promise<Revision> {
       const motivos: string[] = [];

@@ -41,6 +41,43 @@ export interface Revision {
   motivos: string[];
 }
 
+/** Lo que llega de cada fuente del manifiesto a meta.sources, al sitio y al MCP. */
+export type FuenteEsperada = Omit<FuenteManifiesto, "raw">;
+
+/** Los campos de una fuente que se comparan, en orden alfabético (así salen en los motivos). */
+const CAMPOS_FUENTE = [
+  "citation",
+  "license",
+  "license_url",
+  "name",
+  "published_at",
+  "url",
+] as const;
+
+/** Los campos de `fuente` distintos de los de `esperada`. */
+export function camposDistintos(fuente: FuenteEsperada, esperada: FuenteEsperada): string[] {
+  return CAMPOS_FUENTE.filter((c) => fuente[c] !== esperada[c]);
+}
+
+/** El motivo de revisión de la fuente `i` (desde 0) cuando no es la que arma el código. */
+export const fuenteDistinta = (i: number, nombre: string, campos: readonly string[]): string =>
+  `la fuente ${i + 1} (${nombre}) no es la que arma el código: ${campos.join(", ")}`;
+
+/** `revisarFuentes` de un dataset cuyas fuentes son fijas en el código. */
+export function fuentesFijas(
+  ...esperadas: FuenteEsperada[]
+): (fuentes: readonly FuenteEsperada[]) => string[] {
+  return (fuentes) => {
+    if (fuentes.length !== esperadas.length) {
+      return [`el manifiesto trae ${fuentes.length} fuentes y el código arma ${esperadas.length}`];
+    }
+    return esperadas.flatMap((e, i) => {
+      const campos = camposDistintos(fuentes[i] as FuenteEsperada, e);
+      return campos.length > 0 ? [fuenteDistinta(i, e.name, campos)] : [];
+    });
+  };
+}
+
 export interface DefinicionDataset<T extends object> {
   id: string;
   /**
@@ -59,6 +96,11 @@ export interface DefinicionDataset<T extends object> {
     ctx: Contexto,
   ): Promise<Construccion<T>>;
   invariantes(registros: readonly T[]): string[];
+  /**
+   * Revisa las fuentes de un manifiesto (las de un PR del bot) contra las que arma este código:
+   * los campos que llegan a meta.sources, al sitio y al MCP. Devuelve los motivos de revisión.
+   */
+  revisarFuentes(fuentes: readonly FuenteEsperada[]): string[];
   /** Puede leer otros datos de `ctx.raizDatos` (el FIX lee el calendario de la CNBV). */
   revisar(
     diferencias: Diferencias<T>,

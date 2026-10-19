@@ -228,10 +228,15 @@ FIX y UDIS se guardan como un dataset por serie: toda la historia en un archivo 
 
 Si un dataset cambia más que su umbral, el PR se abre sin auto-merge, con la etiqueta `revisar` y un issue. Por ejemplo:
 
-- municipios: más de 0.5 % de altas, bajas o cambios;
-- bancos: más de 3 cambios;
-- FIX: valor fuera de ±5 % del día anterior, o una publicación en sábado, en domingo o en un día de descanso de la CNBV dentro de su calendario (la regla de certeza de la consulta supone que no las hay; el bot lee el calendario del YAML curado);
-- FIX y UDIS: un alta con fecha anterior a la última ya publicada, porque rellena la serie y la API pudo haber respondido antes otra cosa para ese día.
+- estados: cualquier cambio;
+- municipios: un cambio de nombre o de cabecera, una baja, o más de 0.5 % de altas, bajas o cambios; además, un nombre fuera del alfabeto latino (letras con los acentos del español, dígitos y puntuación común) detiene la corrida;
+- bancos: un alta, una baja o una reactivación; un cambio de nombre, razón social, código SPEI o historial; un directo que sale del PDF, o más de 3 cambios en otros campos;
+- FIX: un alta con fecha posterior a la de la corrida, o fuera de ±5 % de la última publicación, o una publicación en sábado, en domingo o en un día de descanso de la CNBV dentro de su calendario (la regla de certeza de la consulta supone que no las hay; el bot lee el calendario del YAML curado);
+- UDIS: un alta más de 25 días después de la corrida (Banxico publica hacia el 10 y el 25 los valores hasta el 25 o el 10 siguientes: de 2020 a 2026, a lo más 19 días por adelantado) o que se aleja más de 0.1 % por cada día desde la última publicada (de 2020 a 2026 nunca cambió más de 0.052 % en un día);
+- FIX y UDIS: un alta con fecha anterior a la última ya publicada, porque rellena la serie y la API pudo haber respondido antes otra cosa para ese día. Cada alta se compara con la última publicada, no con otra alta de la misma corrida: una deriva en pasos chicos no se encadena;
+- las fuentes del manifiesto (nombre, URL, licencia, cita y fecha de publicación, lo que llega a `meta.sources`, al sitio y al MCP) distintas de las que arma el código; la URL del PDF de participantes de bancos cambia con cada versión y vale si es de `https://www.banxico.org.mx/servicios/d/` con la cita armada con ella. Esta revisión la hace `revisar` en CI (`revision-datos`), no `generar`.
+
+Repasadas con la historia real (1,709 publicaciones del FIX de 2020 a 2026, una por corrida, y 166 lotes de UDIS con su fecha de publicación), estas reglas piden revisión una sola vez: el FIX del 18 de marzo de 2020, que se movió 5.15 %.
 
 Es la defensa contra fuentes rotas o manipuladas.
 

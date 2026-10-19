@@ -5,7 +5,7 @@ Los municipios y alcaldías con su clave geoestadística (CVEGEO), del Catálogo
 - Identificador: `inegi.municipios`
 - Registros: uno por municipio o alcaldía; el total está en `records` del manifiesto y en `/v1/status`
 - Clave: `cvegeo`
-- Se actualiza: cada semana (lunes); si más del 0.5 % de los municipios tiene altas, bajas o cambios, el cambio va a revisión humana. En `/v1/status` cuenta como desactualizado si pasan 216 horas sin una revisión correcta
+- Se actualiza: cada semana (lunes); un municipio que cambia de nombre o de cabecera, o que desaparece, va a revisión humana, igual que más del 0.5 % de altas, bajas o cambios. En `/v1/status` cuenta como desactualizado si pasan 216 horas sin una revisión correcta
 - Datos en el repositorio: `data/inegi-municipios/`
 
 ## Campos
