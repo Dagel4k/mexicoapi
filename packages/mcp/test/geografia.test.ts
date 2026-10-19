@@ -196,14 +196,13 @@ describe("municipios_de_estado", () => {
     const datos = c.datos as Array<Record<string, unknown>>;
     expect(c.total).toBe(20);
     expect(datos).toHaveLength(20);
-    expect(datos[0]).toEqual({
-      cvegeo: "25001",
-      cve_ent: "25",
-      cve_mun: "001",
-      nombre: "Ahome",
-      cve_cabecera: "0001",
+    // Solo la clave y el nombre: cve_ent va en estado y municipio da el registro completo. Así el
+    // estado con más municipios cabe en el tope de resultado de los clientes.
+    expect(datos[0]).toEqual({ cvegeo: "25001", nombre: "Ahome" });
+    expect(datos.find((m) => m.cvegeo === "25006")).toEqual({
+      cvegeo: "25006",
+      nombre: "Culiacán",
     });
-    expect(datos.find((m) => m.cvegeo === "25006")).toMatchObject({ nombre: "Culiacán" });
     expect(c.estado).toEqual({
       cve_ent: "25",
       nombre: "Sinaloa",
@@ -224,10 +223,13 @@ describe("municipios_de_estado", () => {
     expect(urls).toEqual([]);
   });
 
-  it("no corta la lista: el estado con más municipios trae todos", async () => {
-    const c = contenido(await llamar("municipios_de_estado", { cve_ent: "20" }));
+  it("no corta la lista: el estado con más municipios trae todos, en menos de 50 000 caracteres", async () => {
+    const r = await llamar("municipios_de_estado", { cve_ent: "20" });
+    const c = contenido(r);
     expect(c.total).toBe(570);
     expect(c.datos as unknown[]).toHaveLength(570);
+    expect(JSON.stringify(c).length).toBeLessThan(50_000);
+    expect(texto(r).length).toBeLessThan(50_000);
   });
 
   it("en la Ciudad de México dice alcaldías", async () => {
