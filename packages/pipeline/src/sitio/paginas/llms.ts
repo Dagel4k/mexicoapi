@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { URL_API } from "@mexicoapi/core/problemas";
 import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../meta.js";
 import { describir } from "./catalogo.js";
@@ -61,9 +62,9 @@ export function archivoLlms(
 
 > Datos de referencia de México con fuente oficial, licencia y sha256: catálogos, indicadores, calendarios y constantes, en una API JSON de solo lectura y en descargas completas en JSON, CSV y SQLite.
 
-La API no pide llave ni cuenta y vive en \`/v1\`, en el mismo origen que este archivo; \`GET /v1\` responde un índice en JSON. Los ejemplos de la documentación usan \`https://<base>\`: cámbialo por ese origen. Las rutas de datos responden \`{ "data": …, "meta": … }\`: \`meta\` trae \`dataset\`, \`as_of\`, \`sources\` (nombre, URL, licencia y cita de cada fuente oficial) y \`docs\`. Los errores responden \`application/problem+json\`. Las fechas van en \`AAAA-MM-DD\`. La API también valida CLABE y suma días hábiles: esas rutas están en Docs.
+La API no pide llave ni cuenta y vive en \`/v1\`, en el mismo origen que este archivo; \`GET /v1\` responde un índice en JSON. La API pública es \`${URL_API}\`, la base de los ejemplos de la documentación. Las rutas de datos responden \`{ "data": …, "meta": … }\`: \`meta\` trae \`dataset\`, \`as_of\`, \`sources\` (nombre, URL, licencia y cita de cada fuente oficial) y \`docs\`. Los errores responden \`application/problem+json\`. Las fechas van en \`AAAA-MM-DD\`. La API también valida CLABE y suma días hábiles: esas rutas están en Docs.
 
-Si la API responde 404 \`dato-no-disponible\` o 422 \`calendario-incompleto\`, ese dato todavía no está cargado: no lo inventes ni lo estimes. Dilo así y remite a la fuente oficial que nombra la documentación del dataset.
+Si la API responde 404 \`dato-no-disponible\` o 422 \`calendario-incompleto\`, ese dato no está en MéxicoAPI (todavía no se carga o queda fuera de la cobertura del calendario): no lo inventes ni lo estimes. Dilo así y remite a la fuente oficial que nombra la documentación del dataset.
 
 ${paquetes(publicado)}
 
@@ -71,7 +72,7 @@ ${paquetes(publicado)}
 
 - [Referencia de la API](${URL_DOCS}/api/README.md): rutas, parámetros, ejemplos de respuesta, caché, CORS y límite de peticiones
 - [Errores](${URL_DOCS}/api/problemas.md): cada tipo de \`application/problem+json\` y qué significa
-- [GET /v1/clabe/{clabe}](${URL_DOCS}/api/README.md#clabe): valida una CLABE de 18 dígitos: formato, dígito verificador, banco y plaza
+- [GET /v1/clabe/{clabe}](${URL_DOCS}/api/README.md#clabe): valida una CLABE de 18 dígitos: formato, dígito verificador y banco
 - [GET /v1/dias-habiles?autoridad={lft|cnbv|sat}&desde={fecha}&dias={n}](${URL_DOCS}/api/README.md#dias-habiles): suma días hábiles a una fecha con el calendario de la LFT (sábados, domingos y art. 74; no incluye los festivos ni las suspensiones de labores del art. 715), la CNBV (calendario bancario) o el SAT; con \`autoridad=sat\`, \`tipo_plazo\` (\`general\` o \`declaraciones_pagos\`) es obligatorio. \`desde\` es el día en que surte efectos la notificación, no el día en que se hizo, y \`advertencias\` dice lo que el cálculo no descuenta
 - [GET /v1/tipo-cambio/fix/ultimo](${URL_DOCS}/api/README.md#último): la publicación más reciente del tipo de cambio FIX
 - [OpenAPI](/v1/openapi.json): especificación OpenAPI 3.1 de todas las rutas

@@ -23,7 +23,7 @@ ${navegacion(false)}
 <p>La dirección no corresponde a ninguna página ni descarga de MéxicoAPI. Revisa que esté bien escrita o empieza desde aquí:</p>
 <ul>
 <li><a href="/">Inicio</a>: qué datos hay, cómo usarlos y las descargas.</li>
-<li><a href="/v1">Índice de la API</a>: las rutas de <code>/v1</code> en JSON.</li>
+<li><a href="/v1">Índice de la API</a>: los enlaces principales de <code>/v1</code>, en JSON.</li>
 </ul>
 </main>`,
   });

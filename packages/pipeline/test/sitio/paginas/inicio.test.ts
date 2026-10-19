@@ -1,6 +1,7 @@
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { validarClabe } from "@mexicoapi/core";
+import { URL_API } from "@mexicoapi/core/problemas";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
@@ -179,6 +180,9 @@ describe("página de inicio", () => {
     expect(html).not.toContain("Actualizado");
     expect(paginaEstado()).toContain('<th scope="col">Datos al</th>');
     expect(html).toContain("<em>Datos al</em>");
+    // /estado/ y /v1/status solo traen los automáticos; en los curados la fecha es la publicación.
+    expect(html).toContain("en los curados, la de su publicación oficial más reciente");
+    expect(html).toContain("si cada dataset automático está al día");
   });
 
   it("muestra el nombre y la ruta de la API del catálogo, y un dataset nuevo con su id", () => {
@@ -262,23 +266,27 @@ describe("página de inicio", () => {
     expect(html).toContain('<a href="/descargas/SHA256SUMS">SHA256SUMS</a> trae');
   });
 
-  it("los ejemplos con URL usan https://<base> dentro de [data-origen]", () => {
+  // Sin JavaScript se ve la API pública, que funciona tal cual; sitio.js pone el origen.
+  it("los ejemplos con URL usan la API pública dentro de [data-origen], sin aviso en noscript", () => {
+    expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
     const origenes = [...html.matchAll(/<span data-origen>([^<]*)<\/span>/g)].map((m) => m[1]);
     expect(origenes.length).toBeGreaterThanOrEqual(2);
-    for (const texto of origenes) expect(texto).toBe("https://&lt;base&gt;");
+    for (const texto of origenes) expect(texto).toBe(URL_API);
     const codigo = bloquesDeCodigo(html);
     expect(codigo).toContain(
-      "curl https://<base>/v1/estados/25\ncurl https://<base>/v1/clabe/002010077777777771",
+      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/002010077777777771`,
     );
     expect(codigo).toContain(
-      "curl -O https://<base>/descargas/SHA256SUMS\nsha256sum -c SHA256SUMS --ignore-missing",
+      `curl -O ${URL_API}/descargas/SHA256SUMS\nsha256sum -c SHA256SUMS --ignore-missing`,
     );
+    expect(html).not.toContain("&lt;base&gt;");
+    expect(html).not.toContain("<noscript>");
   });
 
   it("Empieza muestra una consulta, una CLABE y cómo sumar días hábiles, con tipo_plazo en el SAT", () => {
     const api = html.slice(html.indexOf("<h3>API</h3>"), html.indexOf("<h3>Paquete de npm</h3>"));
     expect(bloquesDeCodigo(api)).toEqual([
-      "curl https://<base>/v1/estados/25\ncurl https://<base>/v1/clabe/002010077777777771",
+      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/002010077777777771`,
     ]);
     expect(validarClabe("002010077777777771").valido).toBe(true);
     expect(api).toContain(

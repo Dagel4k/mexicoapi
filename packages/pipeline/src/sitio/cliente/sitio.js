@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * El script del sitio, servido tal cual como `/sitio.js` (módulo). En cualquier página cambia el
- * `https://<base>` de los ejemplos por el origen real; en `/estado/` consulta `/v1/status` y
+ * El script del sitio, servido tal cual como `/sitio.js` (módulo). En cualquier página cambia la
+ * base de los ejemplos (la API pública) por el origen real; en `/estado/` consulta `/v1/status` y
  * pinta la tabla. Todo texto entra con `textContent` o como nodo de texto, nunca como HTML.
  */
 
@@ -424,7 +424,7 @@ function paginaDeEstado(documento) {
  * @param {{ origin: string }} ubicacion
  */
 function arrancar(documento, { origin }) {
-  // Abierta desde un archivo, el origen es "null": el ejemplo se queda con https://<base>.
+  // Abierta desde un archivo, el origen es "null": el ejemplo se queda con la API pública.
   if (/^https?:\/\//.test(origin)) rellenarOrigen(documento, origin);
   const pagina = paginaDeEstado(documento);
   // Envuelto: `fetch` llamado como método de otro objeto falla en el navegador.
