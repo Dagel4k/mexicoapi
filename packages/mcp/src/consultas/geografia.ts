@@ -13,8 +13,7 @@ import {
   resultado,
 } from "../respuesta.js";
 
-/** Un municipio tal como viene en el catálogo. */
-const MUNICIPIO_INEGI = {
+const MUNICIPIO = {
   type: "object",
   properties: {
     cvegeo: { type: "string" },
@@ -22,18 +21,20 @@ const MUNICIPIO_INEGI = {
     cve_mun: { type: "string" },
     nombre: { type: "string" },
     cve_cabecera: { type: ["string", "null"] },
-  },
-  required: ["cvegeo", "cve_ent", "cve_mun", "nombre", "cve_cabecera"],
-} as const;
-
-/** Un municipio con el nombre de su estado. */
-const MUNICIPIO = {
-  type: "object",
-  properties: {
-    ...MUNICIPIO_INEGI.properties,
     estado: { type: "string", description: "Nombre del estado." },
   },
-  required: [...MUNICIPIO_INEGI.required, "estado"],
+  required: ["cvegeo", "cve_ent", "cve_mun", "nombre", "cve_cabecera", "estado"],
+} as const;
+
+/**
+ * Un municipio en la lista de su estado: solo la clave y el nombre. cve_ent va en `estado`, cve_mun
+ * son los últimos 3 dígitos de cvegeo y `municipio` da el registro completo; así el estado con más
+ * municipios (570) cabe en el tope de resultado de los clientes.
+ */
+const MUNICIPIO_DE_ESTADO = {
+  type: "object",
+  properties: { cvegeo: { type: "string" }, nombre: { type: "string" } },
+  required: ["cvegeo", "nombre"],
 } as const;
 
 const ESTADO = {
@@ -187,7 +188,7 @@ export function municipiosDeEstadoHerramienta(): Herramienta {
     name: "municipios_de_estado",
     title: "Municipios de un estado",
     description:
-      "Todos los municipios y alcaldías de un estado, con el total, del catálogo de INEGI que trae el paquete, sin red. Úsala para preguntas como qué municipios tiene un estado o cuántos son: buscar_municipio solo da los que coinciden con un texto. Indica el estado con cve_ent (su clave de 2 dígitos) o con estado (su nombre o abreviatura, sin distinguir mayúsculas ni acentos), no con los dos. Si el nombre no es de un solo estado, responde con error; estados da los nombres y las claves.",
+      "Todos los municipios y alcaldías de un estado, con el total, del catálogo de INEGI que trae el paquete, sin red: de cada uno, su clave geoestadística (cvegeo) y su nombre; municipio da el registro completo. Úsala para preguntas como qué municipios tiene un estado o cuántos son: buscar_municipio solo da los que coinciden con un texto. Indica el estado con cve_ent (su clave de 2 dígitos) o con estado (su nombre o abreviatura, sin distinguir mayúsculas ni acentos), no con los dos. Si el nombre no es de un solo estado, responde con error; estados da los nombres y las claves.",
     inputSchema: {
       type: "object",
       properties: {
@@ -206,7 +207,7 @@ export function municipiosDeEstadoHerramienta(): Herramienta {
       additionalProperties: false,
     },
     outputSchema: esquemaSalida(
-      { type: "array", items: MUNICIPIO_INEGI },
+      { type: "array", items: MUNICIPIO_DE_ESTADO },
       {
         origenes: ["paquete"],
         extra: {
@@ -259,7 +260,7 @@ export function municipiosDeEstadoHerramienta(): Herramienta {
           "Indica cve_ent (la clave de 2 dígitos) o estado (el nombre).",
         );
       }
-      const datos = municipios(elegido.cve_ent);
+      const datos = municipios(elegido.cve_ent).map(({ cvegeo, nombre }) => ({ cvegeo, nombre }));
       const total = datos.length;
       // Las demarcaciones de la Ciudad de México son alcaldías, no municipios.
       const que = elegido.cve_ent === "09" ? "alcaldías" : "municipios";

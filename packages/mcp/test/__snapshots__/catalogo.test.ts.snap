@@ -656,7 +656,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
       "openWorldHint": false,
       "readOnlyHint": true,
     },
-    "description": "Todos los municipios y alcaldías de un estado, con el total, del catálogo de INEGI que trae el paquete, sin red. Úsala para preguntas como qué municipios tiene un estado o cuántos son: buscar_municipio solo da los que coinciden con un texto. Indica el estado con cve_ent (su clave de 2 dígitos) o con estado (su nombre o abreviatura, sin distinguir mayúsculas ni acentos), no con los dos. Si el nombre no es de un solo estado, responde con error; estados da los nombres y las claves.",
+    "description": "Todos los municipios y alcaldías de un estado, con el total, del catálogo de INEGI que trae el paquete, sin red: de cada uno, su clave geoestadística (cvegeo) y su nombre; municipio da el registro completo. Úsala para preguntas como qué municipios tiene un estado o cuántos son: buscar_municipio solo da los que coinciden con un texto. Indica el estado con cve_ent (su clave de 2 dígitos) o con estado (su nombre o abreviatura, sin distinguir mayúsculas ni acentos), no con los dos. Si el nombre no es de un solo estado, responde con error; estados da los nombres y las claves.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -713,18 +713,6 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
         "datos": {
           "items": {
             "properties": {
-              "cve_cabecera": {
-                "type": [
-                  "string",
-                  "null",
-                ],
-              },
-              "cve_ent": {
-                "type": "string",
-              },
-              "cve_mun": {
-                "type": "string",
-              },
               "cvegeo": {
                 "type": "string",
               },
@@ -734,10 +722,7 @@ exports[`catálogo de herramientas > fija nombre, título, descripción, esquema
             },
             "required": [
               "cvegeo",
-              "cve_ent",
-              "cve_mun",
               "nombre",
-              "cve_cabecera",
             ],
             "type": "object",
           },
