@@ -72,8 +72,8 @@ export interface Documento {
   /** Módulos del mismo origen (`/sitio.js`), sin scripts en línea: la CSP no los permite. */
   scripts?: readonly string[];
   /**
-   * Para la página que se sirve sin reglas de `_headers` (el 404): su CSP y su política de
-   * referrer van en `<meta>`, antes de cualquier recurso.
+   * Para la página que no tiene regla propia en `_headers` (el 404, que solo recibe la de `/*`):
+   * su CSP y su política de referrer van en `<meta>`, antes de cualquier recurso.
    */
   seguridadEnMeta?: boolean;
   /** `false` pide a los buscadores no indexarla (el 404 se sirve en cualquier URL). */

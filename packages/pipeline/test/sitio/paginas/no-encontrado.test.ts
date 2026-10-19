@@ -14,7 +14,8 @@ describe("404.html", () => {
     expect(html).toContain("<h1>No existe esta página</h1>");
   });
 
-  // Se sirve en URL sin regla en _headers: su CSP y su referrer van en meta, antes de cargar nada.
+  // Se sirve en URL sin regla propia en _headers (solo la de /*, sin CSP): su CSP y su referrer
+  // van en meta, antes de cargar nada.
   // frame-ancestors no vale en una meta (el navegador lo ignora y avisa en la consola).
   it("lleva su CSP y su política de referrer en meta, justo después del charset", () => {
     expect(html).toContain(

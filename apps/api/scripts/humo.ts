@@ -198,12 +198,16 @@ const COMPROBACIONES: readonly Comprobacion[] = [
       String(cuerpo).startsWith("# MéxicoAPI\n") ? undefined : "no empieza con # MéxicoAPI",
   },
   {
-    // Fuera de /v1, lo que no existe es 404.html de los assets, sin reglas de _headers. Si lo
-    // respondiera el Worker (problem+json), el despliegue habría perdido `not_found_handling`.
+    // Fuera de /v1, lo que no existe es 404.html de los assets, solo con la regla `/*` de
+    // _headers (sin CORS). Si lo respondiera el Worker (problem+json), el despliegue habría
+    // perdido `not_found_handling`.
     ruta: "/v2",
     estado: 404,
     tipo: "html",
-    encabezados: [],
+    encabezados: [
+      ["x-content-type-options", "nosniff"],
+      ["x-frame-options", "DENY"],
+    ],
     validar: (cuerpo) =>
       String(cuerpo).includes("<h1>No existe esta página</h1>") ? undefined : "no es 404.html",
   },

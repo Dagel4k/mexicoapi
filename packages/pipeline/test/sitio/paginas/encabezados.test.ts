@@ -26,7 +26,12 @@ const efectivos = (ruta: string): Record<string, string> => {
   return Object.fromEntries([...encabezados].map(([nombre, valores]) => [nombre, valores.join()]));
 };
 
-const SEGURIDAD = { "x-content-type-options": "nosniff", "referrer-policy": "no-referrer" };
+/** Lo que pone la regla `/*` en toda URL de los assets, también en el 404. */
+const SEGURIDAD = {
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+  "x-frame-options": "DENY",
+};
 const NINGUNO = "default-src 'none'";
 
 describe("_headers", () => {
@@ -105,7 +110,7 @@ describe("_headers", () => {
   it("las descargas conservan sus encabezados y no reciben los del sitio", () => {
     const comunes = {
       "access-control-allow-origin": "*",
-      "x-content-type-options": "nosniff",
+      ...SEGURIDAD,
       "content-security-policy": NINGUNO,
       "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
     };
@@ -125,23 +130,42 @@ describe("_headers", () => {
       "content-type": "text/plain; charset=utf-8",
       ...comunes,
     });
-    expect(
-      texto.startsWith("/descargas/SHA256SUMS\n  Content-Type: text/plain; charset=utf-8\n"),
-    ).toBe(true);
+    expect(texto.startsWith("/*\n  X-Content-Type-Options: nosniff\n")).toBe(true);
+    expect(texto).toContain("\n/descargas/SHA256SUMS\n  Content-Type: text/plain; charset=utf-8\n");
   });
 
-  it("cada descarga tiene una sola regla, con todo lo suyo, y ninguna regla usa comodines", () => {
+  it("cada descarga tiene una sola regla, con todo lo suyo, y el único comodín es /*", () => {
     expect(reglas.map((r) => r.ruta)).toEqual([
+      "/*",
       ...DESCARGAS.map((n) => `/descargas/${n}`),
       ...RUTAS_SITIO,
     ]);
-    expect(reglas.filter((r) => r.ruta.includes("*"))).toEqual([]);
+    expect(reglas.filter((r) => r.ruta.includes("*")).map((r) => r.ruta)).toEqual(["/*"]);
   });
 
-  // Una regla con comodín (`/*` o `/descargas/*`) alcanzaría también al 404: chocaría con su CSP
-  // en meta o, bajo /descargas/, le bloquearía la hoja de estilo y le daría la caché de las
-  // descargas. El 404 lleva su CSP y su referrer en meta (prueba de no-encontrado).
-  it("las rutas que no existen no reciben reglas, tampoco bajo /descargas/", () => {
+  // `/*` alcanza también al 404 y a las redirecciones: solo lleva lo que vale en cualquier URL.
+  // Una CSP o una caché ahí se juntarían con las de cada ruta y, bajo /descargas/, le bloquearían
+  // la hoja de estilo al 404, que lleva su CSP en meta (prueba de no-encontrado).
+  it("/* solo pone nosniff, referrer y X-Frame-Options, y ninguna otra regla los repite", () => {
+    const comodin = reglas.find((r) => r.ruta === "/*");
+    expect(comodin).toEqual({
+      ruta: "/*",
+      poner: [
+        ["X-Content-Type-Options", "nosniff"],
+        ["Referrer-Policy", "no-referrer"],
+        ["X-Frame-Options", "DENY"],
+      ],
+      quitar: [],
+    });
+    const nombres = new Set(Object.keys(SEGURIDAD));
+    for (const regla of reglas.filter((r) => r.ruta !== "/*")) {
+      for (const [nombre] of regla.poner) {
+        expect(nombres.has(nombre.toLowerCase()), `${regla.ruta} ${nombre}`).toBe(false);
+      }
+    }
+  });
+
+  it("las rutas que no existen solo reciben lo de /*, tampoco bajo /descargas/", () => {
     for (const ruta of [
       "/wp-admin",
       "/v2",
@@ -153,7 +177,7 @@ describe("_headers", () => {
       "/descargas/nada.csv",
       "/descargas/bancos.csv/x",
     ]) {
-      expect(efectivos(ruta), ruta).toEqual({});
+      expect(efectivos(ruta), ruta).toEqual(SEGURIDAD);
     }
   });
 });
