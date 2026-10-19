@@ -146,3 +146,124 @@ jobs:
             echo "::error::No se pudo gestionar el issue de ${fallos} dataset(s)."
             exit 1
           fi
+
+  # Coberturas de los datos curados (los plazos de los calendarios de la CNBV y el SAT, la vigencia
+  # de la última UMA y el último año del salario mínimo y de las tarifas de ISR) que terminan en
+  # DIAS_AVISO días o menos, o que ya terminaron. Va en dos jobs: el que instala y corre el
+  # pipeline no puede escribir, y el que abre los issues no instala ni corre nada del repositorio.
+  coberturas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      lista: ${{ steps.calcular.outputs.lista }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Instalar y compilar
+        run: |
+          set -euo pipefail
+          # Solo el pipeline y lo que usa (el núcleo).
+          pnpm install --frozen-lockfile --filter "@mexicoapi/pipeline..."
+          pnpm --filter "@mexicoapi/pipeline..." build
+
+      - name: Calcular coberturas por vencer
+        id: calcular
+        env:
+          DIAS_AVISO: "30"
+        run: |
+          set -euo pipefail
+          resumen="${GITHUB_STEP_SUMMARY:-/dev/null}"
+          # Lee solo data/ del repositorio; la fecha es la civil de la Ciudad de México.
+          lista="$(node packages/pipeline/dist/bin.js coberturas --dias "${DIAS_AVISO}" --json)"
+          {
+            echo "## Coberturas de los datos curados"
+            echo
+            echo "Se abre un issue por cada una que termine en ${DIAS_AVISO} días o menos."
+            echo
+            echo "| Cobertura | Hasta | Días que faltan |"
+            echo "| --- | --- | --- |"
+            node packages/pipeline/dist/bin.js coberturas --json \
+              | jq -r '.[] | "| \(.id) | \(.hasta) | \(.dias_restantes) |"'
+          } >> "${resumen}"
+          # En una sola línea: un JSON compacto no lleva saltos de línea.
+          echo "lista=$(jq -c . <<< "${lista}")" >> "${GITHUB_OUTPUT}"
+
+  avisar-coberturas:
+    needs: coberturas
+    if: needs.coberturas.outputs.lista != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Abrir o actualizar un issue por cobertura
+        env:
+          LISTA: ${{ needs.coberturas.outputs.lista }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          url_corrida="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          procedimiento="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/datos-curados.md"
+
+          # Número del issue abierto con el título exacto, o vacío. Si la búsqueda falla,
+          # devuelve error: llamada con `|| …`, errexit no corre dentro de la función.
+          buscar_abierto() {
+            local titulo="$1"
+            gh issue list --state open --limit 100 --search "in:title \"${titulo}\"" \
+              --json number,title \
+              | jq -r --arg t "${titulo}" '[.[] | select(.title == $t)][0].number // empty'
+          }
+
+          # Un issue por cobertura, con el título exacto. Si ya hay uno abierto, se reescribe su
+          # descripción con los días que faltan, sin un comentario por día. Ninguno se cierra
+          # solo: lo cierra quien integra la publicación nueva.
+          patron='^Cobertura por vencer: [a-z0-9.-]+( [a-z_]+)?$'
+          fallos=0
+          while IFS=$'\t' read -r id titulo texto detalle <&3; do
+            if ! [[ "${titulo}" =~ ${patron} ]] || [ "${titulo}" != "Cobertura por vencer: ${id}" ]; then
+              echo "::warning::Cobertura con un nombre no válido, se omite: ${id}"
+              continue
+            fi
+            cuerpo="${RUNNER_TEMP}/cobertura.md"
+            {
+              echo "${texto}"
+              echo
+              echo "${detalle}"
+              echo
+              echo "Procedimiento: ${procedimiento}"
+              echo
+              echo "Este issue se actualiza cada día mientras la cobertura no cambie y no se cierra solo: ciérralo al integrar la publicación nueva."
+              echo
+              echo "Corrida: ${url_corrida}"
+            } > "${cuerpo}"
+            # Sin sustituir la búsqueda por `|| true`: si falla, no se crea nada para no duplicar.
+            if ! numero="$(buscar_abierto "${titulo}")"; then
+              echo "::warning::No se pudo buscar el issue de ${id}."
+              fallos=$((fallos + 1))
+              continue
+            fi
+            if [ -n "${numero}" ]; then
+              gh issue edit "${numero}" --body-file "${cuerpo}" \
+                || { echo "::warning::No se pudo actualizar el issue de ${id}."; fallos=$((fallos + 1)); }
+            else
+              gh issue create --title "${titulo}" --body-file "${cuerpo}" \
+                || { echo "::warning::No se pudo abrir el issue de ${id}."; fallos=$((fallos + 1)); }
+            fi
+          done 3< <(jq -r '.[] | [.id, .titulo, .resumen, .detalle] | @tsv' <<< "${LISTA}")
+
+          if [ "${fallos}" -gt 0 ]; then
+            echo "::error::No se pudo gestionar el issue de ${fallos} cobertura(s)."
+            exit 1
+          fi

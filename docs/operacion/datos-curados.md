@@ -14,6 +14,8 @@ Cada YAML genera su carpeta en `data/` (por ejemplo `data/dias-inhabiles-sat/`) 
 
 Los días del primer párrafo del artículo 12 del CFF (1o. de enero, primer lunes de febrero, etc.) no se capturan: los calcula una regla del núcleo (`diasDescansoCff`) de 2026 a 2100, con el texto y la fecha de la última reforma del CFF que guarda el núcleo (`FUENTE_CFF_12` y `VIGENCIA_CFF`). `curar` los agrega a la lista publicada del SAT en los años que cubre el YAML. Si se reforma el artículo 12, se cambia la regla del núcleo y su prueba, no el YAML.
 
+Treinta días antes de que termine una cobertura (cada tipo de plazo de los calendarios, la vigencia de la última UMA y el último año del salario mínimo y de las tarifas de ISR), el workflow Frescura abre un issue "Cobertura por vencer: …" que enlaza este documento, y cada día actualiza su descripción con los días que faltan. No lo cierra solo: se cierra al integrar el PR con la publicación nueva. Con el pipeline compilado, `pnpm --filter @mexicoapi/pipeline coberturas` lista cada cobertura y los días que faltan; con `--dias 30`, solo las que terminan en ese plazo.
+
 ## Pasos
 
 1. Crear una rama para la tarea (`curado/sat-vacaciones-2026-2`, por ejemplo; no `datos/…`: ese prefijo es el del bot, y `solo-datos` deja `verify` en rojo si la rama toca algo fuera de las carpetas de sus datasets) y compilar una vez para tener el comando de curado:
