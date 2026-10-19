@@ -197,22 +197,70 @@ describe("municipios", () => {
     expect(municipiosInegi.invariantes(mal).join(" ")).toContain("cvegeo distinto");
   });
 
-  it("revisar: 13 cambios sobre 2,478 piden revisión y 12 no", async () => {
+  const revisarMunicipios = (antes: Municipio[], despues: Municipio[]) =>
+    municipiosInegi.revisar(diferenciar(antes, despues, municipiosInegi.clave), antes, ctxVacio);
+
+  it("revisar: un cambio de nombre o de cabecera, o una baja, pide revisión", async () => {
     const r = await municipios();
-    const con = (n: number) => r.map((m, i) => (i < n ? { ...m, nombre: `${m.nombre} X` } : m));
-    const rev13 = await municipiosInegi.revisar(
-      diferenciar(r, con(13), municipiosInegi.clave),
-      r,
-      ctxVacio,
-    );
+    const [primero, segundo] = r as [Municipio, Municipio];
+    const nombre = r.map((m) => (m === primero ? { ...m, nombre: "Otro" } : m));
+    expect(await revisarMunicipios(r, nombre)).toEqual({
+      requiereRevision: true,
+      motivos: [`cambio en nombre: ${primero.cvegeo} Otro`],
+    });
+    const cabecera = r.map((m) => (m === segundo ? { ...m, cve_cabecera: "0002" } : m));
+    expect((await revisarMunicipios(r, cabecera)).motivos).toEqual([
+      `cambio en cve_cabecera: ${segundo.cvegeo} ${segundo.nombre}`,
+    ]);
+    expect((await revisarMunicipios(r, r.slice(1))).motivos).toEqual([
+      `baja: ${primero.cvegeo} ${primero.nombre}`,
+    ]);
+  });
+
+  it("revisar: muchos cambios dan los primeros 20 y cuántos más", async () => {
+    const r = await municipios();
+    const con = r.map((m, i) => (i < 25 ? { ...m, nombre: `${m.nombre} X` } : m));
+    const { motivos } = await revisarMunicipios(r, con);
+    expect(motivos).toHaveLength(22);
+    expect(motivos[20]).toBe("y 5 cambios más");
+    expect(motivos[21]).toContain("1.01 %");
+  });
+
+  it("revisar: las altas piden revisión solo sobre 0.5 %", async () => {
+    const r = await municipios();
+    const alta = (i: number): Municipio => ({
+      cvegeo: `32${String(900 + i)}`,
+      cve_ent: "32",
+      cve_mun: String(900 + i),
+      nombre: `Nuevo ${i}`,
+      cve_cabecera: "0001",
+    });
+    const con = (n: number) => [...r, ...Array.from({ length: n }, (_, i) => alta(i))];
+    expect(await revisarMunicipios(r, con(12))).toEqual({ requiereRevision: false, motivos: [] });
+    const rev13 = await revisarMunicipios(r, con(13));
     expect(rev13.requiereRevision).toBe(true);
-    expect(rev13.motivos[0]).toContain("0.52 %");
-    const rev12 = await municipiosInegi.revisar(
-      diferenciar(r, con(12), municipiosInegi.clave),
-      r,
-      ctxVacio,
-    );
-    expect(rev12).toEqual({ requiereRevision: false, motivos: [] });
+    expect(rev13.motivos).toEqual([
+      "cambio de 0.52 % en municipios (13 de 2478), sobre el umbral de 0.5 %",
+    ]);
+  });
+
+  it("los nombres solo llevan letras latinas con acentos del español, dígitos y puntuación común", async () => {
+    const r = await municipios();
+    expect(municipiosInegi.invariantes(r)).toEqual([]);
+    const [primero] = r as [Municipio];
+    // "а" cirílica en lugar de "a".
+    const cirilico = r.map((m) => (m === primero ? { ...m, nombre: "Аguascalientes" } : m));
+    expect(municipiosInegi.invariantes(cirilico)).toEqual([
+      `nombres con caracteres fuera del alfabeto latino: ${primero.cvegeo}`,
+    ]);
+    const control = r.map((m) => (m === primero ? { ...m, nombre: "A\u202eB" } : m));
+    expect(municipiosInegi.invariantes(control)).toHaveLength(1);
+    const e = await estados();
+    expect(estadosInegi.invariantes(e)).toEqual([]);
+    const otro = e.map((x) => (x.cve_ent === "25" ? { ...x, nombre: "Sinаloa" } : x));
+    expect(estadosInegi.invariantes(otro)).toEqual([
+      "nombres con caracteres fuera del alfabeto latino: 25",
+    ]);
   });
 });
 

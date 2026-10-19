@@ -64,6 +64,7 @@ const def = (): DefinicionDataset<Reg> => ({
   ],
   construir: async (): Promise<Construccion<Reg>> => ({ registros: entrada, avisos }),
   invariantes: () => invariantesFalla,
+  revisarFuentes: () => [],
   revisar: () => ({
     requiereRevision: marcaRevision,
     motivos: marcaRevision ? ["revisa esto"] : [],

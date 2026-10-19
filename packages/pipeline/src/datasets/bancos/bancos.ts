@@ -1,16 +1,20 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Banco, PeriodoBanco, TipoBanco } from "@mexicoapi/core";
+import { type Banco, esFechaIsoValida, type PeriodoBanco, type TipoBanco } from "@mexicoapi/core";
 import { jsonCanonico, limpiarTexto } from "../../canonico.js";
 import { ErrorDatos } from "../../errores.js";
 import { esquemaBanco } from "../../esquemas.js";
-import type {
-  Construccion,
-  Contexto,
-  CrudoCapturado,
-  DefinicionDataset,
-  FuenteCapturada,
-  Revision,
+import {
+  type Construccion,
+  type Contexto,
+  type CrudoCapturado,
+  camposDistintos,
+  type DefinicionDataset,
+  type FuenteCapturada,
+  type FuenteEsperada,
+  fuenteDistinta,
+  fuentesFijas,
+  type Revision,
 } from "../../marco.js";
 import { codigoClabe, type EntradaCep, interpretarCep, tipoBanco, urlCep } from "./cep.js";
 import {
@@ -38,11 +42,37 @@ const ARCHIVO_CEP = "raw/cep-instituciones.json";
 const ARCHIVO_HISTORICO = "raw/cep-historico.json";
 const ARCHIVO_PDF = "raw/participantes-spei.pdf";
 const MAXIMO_CAMBIOS = 3;
+/** Campos de un banco ya publicado cuyo cambio siempre pide revisión. */
+const CAMPOS_IDENTIDAD: ReadonlySet<string> = new Set([
+  "nombre_corto",
+  "razon_social",
+  "codigo_spei",
+  "historial",
+]);
 
 const LICENCIA = {
   license: "Banco de México: autorización general de reproducción con cita de la fuente",
   license_url: "https://www.banxico.org.mx/footer-es/salvedad-politicas-uso-banco-.html",
 } as const;
+
+const FUENTE_CEP: FuenteEsperada = {
+  name: "Banco de México, Comprobante Electrónico de Pago: instituciones participantes",
+  url: "https://www.banxico.org.mx/cep/",
+  ...LICENCIA,
+  citation:
+    "Banco de México. Comprobante Electrónico de Pago, instituciones participantes. https://www.banxico.org.mx/cep/",
+  published_at: null,
+};
+const NOMBRE_PARTICIPANTES = "Banco de México, Participantes directos en el SPEI";
+/** La cita del PDF de participantes, que lleva su URL. */
+export const citaParticipantes = (url: string): string =>
+  `Banco de México. Participantes directos en el SPEI. ${url}`;
+/**
+ * La URL del PDF de participantes cambia con cada versión; Banxico lo publica en
+ * www.banxico.org.mx/servicios/d/ (hoy, `/servicios/d/{C24C7DBC-9ABF-6F41-DA38-561CEB1401B3}.pdf`).
+ */
+const URL_PARTICIPANTES =
+  /^https:\/\/www\.banxico\.org\.mx\/servicios\/d\/[A-Za-z0-9{}%._-]+\.pdf$/;
 
 async function pedir(ctx: Contexto, file: string, url: string): Promise<CrudoCapturado> {
   const r = await ctx.cliente.obtener(url);
@@ -197,20 +227,12 @@ export function crearBancos(
       }
 
       return [
+        { ...FUENTE_CEP, crudos: crudosCep },
         {
-          name: "Banco de México, Comprobante Electrónico de Pago: instituciones participantes",
-          url: "https://www.banxico.org.mx/cep/",
-          ...LICENCIA,
-          citation:
-            "Banco de México. Comprobante Electrónico de Pago, instituciones participantes. https://www.banxico.org.mx/cep/",
-          published_at: null,
-          crudos: crudosCep,
-        },
-        {
-          name: "Banco de México, Participantes directos en el SPEI",
+          name: NOMBRE_PARTICIPANTES,
           url: urlPdf,
           ...LICENCIA,
-          citation: `Banco de México. Participantes directos en el SPEI. ${urlPdf}`,
+          citation: citaParticipantes(urlPdf),
           published_at: listado.actualizado_al,
           crudos: [pdf],
         },
@@ -331,6 +353,29 @@ export function crearBancos(
       return registros.flatMap(invariantesBanco);
     },
 
+    revisarFuentes(fuentes): string[] {
+      if (fuentes.length !== 2) {
+        return [`el manifiesto trae ${fuentes.length} fuentes y el código arma 2`];
+      }
+      const motivos = fuentesFijas(FUENTE_CEP)(fuentes.slice(0, 1));
+      // El PDF cambia de URL con cada versión: vale una URL de Banxico con la forma de siempre, la
+      // cita armada con ella y una fecha (o null) en published_at.
+      const pdf = fuentes[1] as FuenteEsperada;
+      const esperada: FuenteEsperada = {
+        name: NOMBRE_PARTICIPANTES,
+        ...LICENCIA,
+        url: URL_PARTICIPANTES.test(pdf.url)
+          ? pdf.url
+          : "una URL de www.banxico.org.mx/servicios/d/",
+        citation: citaParticipantes(pdf.url),
+        published_at:
+          pdf.published_at === null || esFechaIsoValida(pdf.published_at) ? pdf.published_at : null,
+      };
+      const campos = camposDistintos(pdf, esperada);
+      if (campos.length > 0) motivos.push(fuenteDistinta(1, NOMBRE_PARTICIPANTES, campos));
+      return motivos;
+    },
+
     revisar(diferencias): Revision {
       const motivos: string[] = [];
       const nombre = (b: Banco) => `${b.codigo} ${b.nombre_corto}`;
@@ -348,6 +393,12 @@ export function crearBancos(
         ) {
           // El CEP y el PDF ya no coinciden en membresía.
           motivos.push(`sale del PDF de participantes: ${nombre(c.despues)}`);
+        } else {
+          // Lo que identifica a un banco ya publicado (cómo se llama, su razón social y su
+          // código del SPEI, hoy y antes) no cambia sin que alguien lo vea.
+          const campos = c.campos.filter((x) => CAMPOS_IDENTIDAD.has(x));
+          if (campos.length > 0)
+            motivos.push(`cambio en ${campos.join(", ")}: ${nombre(c.despues)}`);
         }
       }
       const total =

@@ -301,7 +301,11 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
     });
     const d = diferenciar(base, registros, (b) => b.codigo);
     expect(d.cambios).toHaveLength(1);
-    expect(await bancos.revisar(d, base, ctx())).toEqual({ requiereRevision: false, motivos: [] });
+    // Un renombre se empareja bien, pero pide revisión como cualquier cambio de nombre.
+    expect(await bancos.revisar(d, base, ctx())).toEqual({
+      requiereRevision: true,
+      motivos: ["cambio en historial, nombre_corto: 012 BBVA"],
+    });
   });
 
   it("no empareja por el nombre anterior si hoy es el nombre de otro código", async () => {
@@ -459,13 +463,38 @@ describe("revisar", () => {
     });
   });
 
-  it("2 cambios de nombre no, 4 sí", async () => {
+  it("un cambio de nombre, razón social, código SPEI o historial pide revisión", async () => {
+    const a = mk("001", { razon_social: "Banco Uno, S.A." });
+    const periodo = a.historial[0] as Banco["historial"][number];
+    const casos: [Banco, string][] = [
+      [{ ...a, nombre_corto: "BANCO FALSO" }, "cambio en nombre_corto: 001 BANCO FALSO"],
+      [{ ...a, razon_social: "Falso, S.A." }, "cambio en razon_social: 001 B001"],
+      [{ ...a, codigo_spei: "90001" }, "cambio en codigo_spei: 001 B001"],
+      [{ ...a, historial: [{ ...periodo, desde: "2010-01-01" }] }, "cambio en historial: 001 B001"],
+      [
+        {
+          ...a,
+          nombre_corto: "B001 NUEVO",
+          historial: [
+            { ...periodo, hasta: "2026-10-17" },
+            { ...periodo, nombre_corto: "B001 NUEVO", desde: "2026-10-18" },
+          ],
+        },
+        "cambio en historial, nombre_corto: 001 B001 NUEVO",
+      ],
+    ];
+    for (const [despues, motivo] of casos) {
+      expect(await rev([a], [despues])).toEqual({ requiereRevision: true, motivos: [motivo] });
+    }
+  });
+
+  it("2 cambios en otros campos no, 4 sí", async () => {
     const a = ["001", "002", "003", "004"].map((c) => mk(c));
-    const ren = (b: Banco) => ({ ...b, nombre_corto: `${b.nombre_corto}X` });
+    const otro = (b: Banco) => ({ ...b, sector: "BANCA MÚLTIPLE" });
     expect(
-      (await rev(a, [ren(a[0] as Banco), ren(a[1] as Banco), ...a.slice(2)])).requiereRevision,
+      (await rev(a, [otro(a[0] as Banco), otro(a[1] as Banco), ...a.slice(2)])).requiereRevision,
     ).toBe(false);
-    const r = await rev(a, a.map(ren));
+    const r = await rev(a, a.map(otro));
     expect(r.requiereRevision).toBe(true);
     expect(r.motivos).toEqual(["más de 3 cambios (4)"]);
   });
@@ -599,7 +628,7 @@ describe("corridas diarias", { timeout: PRUEBA_LENTA }, () => {
     expect(await bytes()).toBe(antes);
   });
 
-  it("un cambio de nombre es actualizado, sin revisión", async () => {
+  it("un cambio de nombre se escribe y pide revisión", async () => {
     await ejecutar("2026-10-17");
     cep = new TextEncoder().encode(
       JSON.stringify({
@@ -609,7 +638,12 @@ describe("corridas diarias", { timeout: PRUEBA_LENTA }, () => {
       }),
     );
     const { resultado } = await ejecutar("2026-10-18");
-    expect(resultado).toMatchObject({ estado: "actualizado", cambios: 1, escrito: true });
+    expect(resultado).toMatchObject({
+      estado: "requiere_revision",
+      cambios: 1,
+      escrito: true,
+      motivos: ["cambio en historial, nombre_corto: 001 BANXICO CENTRAL"],
+    });
     const r = JSON.parse(await bytes()) as Banco[];
     expect(por(r, "001").historial).toEqual([
       { codigo_spei: "2001", nombre_corto: "BANXICO", desde: HOY, hasta: "2026-10-18" },

@@ -3,13 +3,14 @@ import { z } from "zod";
 import { limpiarTexto } from "../canonico.js";
 import { ErrorDatos } from "../errores.js";
 import { esquemaEstado, esquemaMunicipio } from "../esquemas.js";
-import type {
-  Construccion,
-  Contexto,
-  CrudoCapturado,
-  DefinicionDataset,
-  FuenteCapturada,
-  Revision,
+import {
+  type Construccion,
+  type Contexto,
+  type CrudoCapturado,
+  type DefinicionDataset,
+  type FuenteCapturada,
+  fuentesFijas,
+  type Revision,
 } from "../marco.js";
 
 const BASE = "https://gaia.inegi.org.mx/wscatgeo/v2/";
@@ -17,6 +18,25 @@ const HOSTS = [new URL(BASE).host];
 const CLAVES_ESTADO = Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MINIMO_MUNICIPIOS = 2400;
 const UMBRAL_REVISION = 0.005;
+/** Motivos de revisión que se listan uno por uno; del resto solo se dice cuántos son. */
+const MAXIMO_MOTIVOS = 20;
+/**
+ * Un nombre de estado o municipio: letras latinas con los acentos del español, dígitos, espacio y
+ * puntuación común. Fuera quedan otros alfabetos (una "а" cirílica parece una "a") y los
+ * caracteres de control o de formato.
+ */
+const NOMBRE_LATINO = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,'()-]+$/;
+
+/** Las claves de los registros cuyo nombre no cumple NOMBRE_LATINO. */
+function nombresNoLatinos<T extends { nombre: string }>(
+  registros: readonly T[],
+  clave: (r: T) => string,
+): string[] {
+  const fuera = registros.filter((r) => !NOMBRE_LATINO.test(r.nombre)).map(clave);
+  return fuera.length === 0
+    ? []
+    : [`nombres con caracteres fuera del alfabeto latino: ${fuera.join(", ")}`];
+}
 
 const FUENTE = {
   name: "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
@@ -114,8 +134,11 @@ export const estadosInegi: DefinicionDataset<Estado> = {
     if (fuera.length > 0) fallas.push(`cve_ent fuera de 01 a 32: ${fuera.join(", ")}`);
     const distintas = registros.filter((e) => e.cvegeo !== e.cve_ent).map((e) => e.cve_ent);
     if (distintas.length > 0) fallas.push(`cvegeo distinto de cve_ent en: ${distintas.join(", ")}`);
+    fallas.push(...nombresNoLatinos(registros, (e) => e.cve_ent));
     return fallas;
   },
+
+  revisarFuentes: fuentesFijas(FUENTE),
 
   revisar(): Revision {
     return { requiereRevision: true, motivos: ["cambio en el catálogo de estados"] };
@@ -185,20 +208,32 @@ export const municipiosInegi: DefinicionDataset<Municipio> = {
     const estados = new Set(registros.map((m) => m.cve_ent));
     const sin = CLAVES_ESTADO.filter((c) => !estados.has(c));
     if (sin.length > 0) fallas.push(`estados sin municipios: ${sin.join(", ")}`);
+    fallas.push(...nombresNoLatinos(registros, (m) => m.cvegeo));
     return fallas;
   },
 
+  revisarFuentes: fuentesFijas(FUENTE),
+
   revisar(diferencias, anterior): Revision {
+    // Un municipio ya publicado no cambia de nombre o de cabecera, ni desaparece, sin que alguien
+    // lo vea; las altas (municipios nuevos) solo piden revisión si son muchas.
+    const uno = [
+      ...diferencias.cambios.map(
+        (c) => `cambio en ${c.campos.join(", ")}: ${c.clave} ${c.despues.nombre}`,
+      ),
+      ...diferencias.bajas.map((m) => `baja: ${m.cvegeo} ${m.nombre}`),
+    ];
+    const motivos = uno.slice(0, MAXIMO_MOTIVOS);
+    if (uno.length > MAXIMO_MOTIVOS) motivos.push(`y ${uno.length - MAXIMO_MOTIVOS} cambios más`);
     const cambios =
       diferencias.altas.length + diferencias.bajas.length + diferencias.cambios.length;
     const proporcion = anterior.length === 0 ? 1 : cambios / anterior.length;
-    if (proporcion <= UMBRAL_REVISION) return { requiereRevision: false, motivos: [] };
-    const pct = (proporcion * 100).toFixed(2);
-    return {
-      requiereRevision: true,
-      motivos: [
+    if (proporcion > UMBRAL_REVISION) {
+      const pct = (proporcion * 100).toFixed(2);
+      motivos.push(
         `cambio de ${pct} % en municipios (${cambios} de ${anterior.length}), sobre el umbral de 0.5 %`,
-      ],
-    };
+      );
+    }
+    return { requiereRevision: motivos.length > 0, motivos };
   },
 };
