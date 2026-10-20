@@ -177,7 +177,7 @@ describe("publicacionesPorCapturar", () => {
 
   it("no distingue mayúsculas, acentos ni espacios repetidos", () => {
     const lista = publicacionesPorCapturar(
-      notas("UNIDAD DE MEDIDA Y ACTUALIZACION", "Comisión de los salarios   minimos"),
+      notas("UNIDAD DE MEDIDA Y ACTUALIZACION", "Comisión de los salarios   mí\u00adnimos"),
       FECHA,
     );
     expect(lista.map((p) => p.capturas)).toEqual([["uma"], ["salario-minimo"]]);
