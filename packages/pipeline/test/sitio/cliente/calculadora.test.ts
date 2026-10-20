@@ -1,9 +1,10 @@
 // La calculadora de /calculadora-dias-habiles/: arma la consulta a /v1/dias-habiles del mismo
 // origen y muestra lo que responde, siempre con textContent.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consultarDiasHabiles,
   instalarCalculadora,
+  nodosDelResultado,
   urlDiasHabiles,
 } from "../../../src/sitio/cliente/sitio.js";
 
@@ -243,5 +244,89 @@ describe("instalarCalculadora", () => {
     await enviar(p);
     expect(llamadas).toBe(0);
     expect(p.resultado.texto).toMatch(/fecha/);
+  });
+});
+
+describe("nodosDelResultado", () => {
+  const documento = { createElement: (etiqueta: string) => new Nodo(etiqueta) };
+  const texto = (cuerpo: unknown) =>
+    nodosDelResultado(documento, cuerpo)
+      .map((n) => n.texto)
+      .join(" | ");
+
+  it("tolera una respuesta sin saltados, avisos ni fuentes", () => {
+    const t = texto({ data: { resultado: "2026-12-29" } });
+    expect(t).toContain("2026-12-29");
+    expect(t).toMatch(/No se saltó ningún día/);
+    expect(t).not.toMatch(/Avisos|Fuente/);
+  });
+
+  it("muestra un saltado sin tipo y una fuente sin cita con su nombre", () => {
+    const t = texto({
+      data: { resultado: "2026-12-29", inhabiles_saltados: [{ fecha: "2026-12-25", motivo: "M" }] },
+      meta: { sources: [{ name: "Solo nombre" }] },
+    });
+    expect(t).toContain("2026-12-25: M");
+    expect(t).not.toContain("(");
+    expect(t).toContain("Solo nombre");
+  });
+});
+
+describe("consultarDiasHabiles con problemas sin detail", () => {
+  it("usa el motivo del estado HTTP", async () => {
+    const r = await consultarDiasHabiles(
+      async () => new Response(JSON.stringify({ title: "x" }), { status: 429 }),
+      {
+        autoridad: "lft",
+        tipoPlazo: "",
+        desde: "2026-01-01",
+        dias: "1",
+        permitirIncompleto: false,
+      },
+    );
+    expect(r).toMatchObject({ tipo: "falla", mensaje: expect.stringMatching(/429/) });
+  });
+});
+
+describe("al cargarse en /calculadora-dias-habiles/", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("muestra el formulario y consulta la API; en otra página no hace nada", async () => {
+    const p = pagina();
+    const porId: Record<string, unknown> = {
+      "form-dias": p.formulario,
+      "dias-autoridad": p.autoridad,
+      "campo-tipo-plazo": p.campoTipo,
+      "dias-tipo-plazo": p.tipoPlazo,
+      "dias-desde": p.desde,
+      "dias-dias": p.dias,
+      "dias-incompleto": p.incompleto,
+      "resultado-dias": p.resultado,
+    };
+    const pedidas: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      pedidas.push(url);
+      return new Response(JSON.stringify(CUERPO), { status: 200 });
+    });
+    vi.stubGlobal("location", { origin: "null" });
+    vi.stubGlobal("document", {
+      querySelectorAll: () => [],
+      getElementById: (id: string) => porId[id] ?? null,
+      createElement: (etiqueta: string) => new Nodo(etiqueta),
+    });
+    vi.resetModules();
+    await import("../../../src/sitio/cliente/sitio.js");
+    expect(p.formulario.hidden).toBe(false);
+    await enviar(p);
+    expect(pedidas).toEqual(["/v1/dias-habiles?autoridad=lft&desde=2026-12-23&dias=3"]);
+
+    pedidas.length = 0;
+    vi.stubGlobal("document", { querySelectorAll: () => [], getElementById: () => null });
+    vi.resetModules();
+    await import("../../../src/sitio/cliente/sitio.js");
+    expect(pedidas).toEqual([]);
   });
 });
