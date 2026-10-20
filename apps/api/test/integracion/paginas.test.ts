@@ -48,10 +48,18 @@ const INDICADORES = [
   "/tarifas-isr/",
 ];
 
+/** Las páginas de los catálogos de arriba; /municipios/ trae además una página por estado. */
+const CATALOGOS = ["/bancos-clabe/", "/validar-clabe/", "/municipios/"];
+
+/** Las páginas hijas de /municipios/: `/municipios/{cve_ent}-{estado}/`. */
+const esHija = (ruta: string): boolean => /^\/municipios\/\d\d-[a-z-]+\/$/.test(ruta);
+
 describe("páginas de datos en el Worker local", () => {
   it("cada página del sitemap es la del build, con la CSP de las páginas", async () => {
     const rutas = await paginasDeDatos();
-    expect(rutas).toEqual([...Object.keys(AUTORIDADES), ...INDICADORES]);
+    const hijas = rutas.filter(esHija);
+    expect(hijas).toHaveLength(32);
+    expect(rutas).toEqual([...Object.keys(AUTORIDADES), ...INDICADORES, ...CATALOGOS, ...hijas]);
     for (const ruta of rutas) {
       const respuesta = await pedir(ruta);
       expect(respuesta.status, ruta).toBe(200);
@@ -73,10 +81,15 @@ describe("páginas de datos en el Worker local", () => {
     for (const ruta of await paginasDeDatos()) {
       const html = (await leerPublico(`${ruta.slice(1)}index.html`)).toString("utf8");
       const [dataset] = nodos(html).filter((n) => n["@type"] === "Dataset");
+      // El validador y las páginas de cada estado no declaran Dataset: el de /municipios/ las cubre.
+      if (ruta === "/validar-clabe/" || esHija(ruta)) {
+        expect(dataset, ruta).toBeUndefined();
+        continue;
+      }
       const distribucion = (
         dataset as { distribution: { contentUrl: string; encodingFormat: string }[] }
       ).distribution;
-      expect(distribucion.length, ruta).toBe(2);
+      expect(distribucion.length, ruta).toBe(ruta === "/municipios/" ? 4 : 2);
       for (const { contentUrl, encodingFormat } of distribucion) {
         const respuesta = await pedir(new URL(contentUrl).pathname, { method: "HEAD" });
         expect(respuesta.status, contentUrl).toBe(200);
