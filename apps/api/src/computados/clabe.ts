@@ -2,7 +2,7 @@ import { validarClabe } from "@mexicoapi/core";
 import { catalogoBancos, metaInterna } from "../cargas.js";
 import { requerido } from "../parametros.js";
 import { URL_DOCS } from "../problemas.js";
-import { CACHE_DATOS, respuestaJson } from "../respuestas.js";
+import { CACHE_CLABE, respuestaJson } from "../respuestas.js";
 import type { Contexto } from "../rutas.js";
 
 const DOCS_CLABE = `${URL_DOCS}/api/README.md#clabe`;
@@ -18,6 +18,6 @@ export async function clabe(c: Contexto): Promise<Response> {
   const data = validarClabe(requerido(c.parametros, "clabe"), { bancos });
   return respuestaJson(
     { data, meta: { ...dataset.meta, docs: DOCS_CLABE } },
-    { cache: CACHE_DATOS },
+    { cache: CACHE_CLABE },
   );
 }
