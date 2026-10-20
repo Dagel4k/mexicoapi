@@ -1,19 +1,35 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { principal, probarHumo } from "../../scripts/humo.ts";
 
 const BASE = "https://api.ejemplo.mx";
 const SCRIPT = fileURLToPath(new URL("../../scripts/humo.ts", import.meta.url));
-const SEGURIDAD = { "access-control-allow-origin": "*", "x-content-type-options": "nosniff" };
+const HSTS = "max-age=31536000";
+const SEGURIDAD = {
+  "access-control-allow-origin": "*",
+  "x-content-type-options": "nosniff",
+  "strict-transport-security": HSTS,
+  vary: "Accept-Encoding",
+};
 /** La regla `/*` de `_headers`, la única que alcanza al 404 de los assets. */
-const DE_TODAS = { "x-content-type-options": "nosniff", "x-frame-options": "DENY" };
+const DE_TODAS = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "strict-transport-security": HSTS,
+  vary: "Accept-Encoding",
+};
 const UDIS = "/v1/udis?fecha=2024-06-03";
 const DIAS = "/v1/dias-habiles?autoridad=lft&desde=2026-11-13&dias=1";
 const DIAS_SAT = "/v1/dias-habiles?autoridad=sat&tipo_plazo=general&desde=2026-07-15&dias=10";
 const UMA = "/v1/constantes/uma/2026";
 const UMA_2015 = "/v1/constantes/uma/2015";
 const PROBLEMAS = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md";
+/** La llave de `falso` para `/v1/estados` pedido por http. */
+const HTTP = "http:/v1/estados";
+/** El renglón de la comprobación por http en las fallas y los tiempos. */
+const ETIQUETA_HTTP = "http:// /v1/estados";
 
 interface Ruta {
   estado?: number;
@@ -61,15 +77,35 @@ function rutasBuenas(): Record<string, Ruta> {
       cuerpo: "<h1>No existe esta página</h1>",
       encabezados: DE_TODAS,
     },
+    // La misma API por http: el Worker responde 403 sin redirigir.
+    [HTTP]: {
+      estado: 403,
+      tipo: "application/problem+json; charset=utf-8",
+      cuerpo: { type: `${PROBLEMAS}#https-requerido`, status: 403 },
+    },
   };
 }
 
+/** Cada petición que recibió un `falso`: la URL completa y su `redirect`. */
+interface Pedida {
+  url: string;
+  redirect: RequestInit["redirect"];
+}
+
+/**
+ * fetch falso que responde `rutas`. La llave es la ruta con su query, y `http:<ruta>` si se pidió
+ * por http. `extra` se agrega a toda respuesta.
+ */
 function falso(
   rutas: Record<string, Ruta>,
   alterar?: (ruta: string) => Response | undefined,
+  extra: Record<string, string> = {},
+  pedidas: Pedida[] = [],
 ): typeof fetch {
-  return (async (entrada: string | URL | Request) => {
-    const ruta = String(entrada).slice(BASE.length);
+  return (async (entrada: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(String(entrada));
+    pedidas.push({ url: url.href, redirect: init?.redirect });
+    const ruta = `${url.protocol === "http:" ? "http:" : ""}${url.pathname}${url.search}`;
     const propia = alterar?.(ruta);
     if (propia) return propia;
     const r = rutas[ruta];
@@ -80,6 +116,7 @@ function falso(
       headers: {
         "content-type": r.tipo ?? "application/json; charset=utf-8",
         ...(r.sinSeguridad === true ? {} : (r.encabezados ?? SEGURIDAD)),
+        ...extra,
       },
     });
   }) as typeof fetch;
@@ -90,7 +127,8 @@ describe("probarHumo", () => {
     const r = await probarHumo(`${BASE}/`, { fetch: falso(rutasBuenas()) });
     expect(r.fallas).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(Object.keys(r.tiempos)).toHaveLength(17);
+    expect(Object.keys(r.tiempos)).toHaveLength(18);
+    expect(Object.keys(r.tiempos)).toContain(ETIQUETA_HTTP);
   });
 
   it("un 200 con HTML es una falla", async () => {
@@ -141,7 +179,7 @@ describe("probarHumo", () => {
   it("un fetch que ignora la señal también vence", async () => {
     const mudo = (() => new Promise(() => {})) as typeof fetch;
     const r = await probarHumo(BASE, { fetch: mudo, timeoutMs: 5 });
-    expect(r.fallas).toHaveLength(17);
+    expect(r.fallas).toHaveLength(18);
   });
 
   it("un error de red es una falla con su mensaje", async () => {
@@ -163,6 +201,56 @@ describe("probarHumo", () => {
     const r = await probarHumo(BASE, { fetch: falso(rutasBuenas(), sin) });
     expect(r.fallas).toEqual([`/descargas/SHA256SUMS: ${nombre}: ausente, se esperaba ${valor}`]);
   });
+
+  it.each(["/v1/estados", "/descargas/SHA256SUMS", "/", "/v2"])(
+    "%s: HSTS de un año exacto, o falla",
+    async (ruta) => {
+      for (const [valor, falla] of [
+        [undefined, "ausente"],
+        ["max-age=0", "max-age=0"],
+        ["max-age=31536000; includeSubDomains", "max-age=31536000; includeSubDomains"],
+      ] as const) {
+        const rutas = rutasBuenas();
+        const propia = rutas[ruta] as Ruta;
+        const encabezados: Record<string, string> = { ...(propia.encabezados ?? SEGURIDAD) };
+        if (valor === undefined) delete encabezados["strict-transport-security"];
+        else encabezados["strict-transport-security"] = valor;
+        rutas[ruta] = { ...propia, encabezados };
+        const r = await probarHumo(BASE, { fetch: falso(rutas) });
+        expect(r.fallas).toEqual([
+          `${ruta}: strict-transport-security: ${falla}, se esperaba ${HSTS}`,
+        ]);
+      }
+    },
+  );
+
+  // La plataforma puede agregar su propio Vary: basta con que nombre Accept-Encoding.
+  it.each(["/v1/estados", "/descargas/SHA256SUMS", "/", "/v2"])(
+    "%s: Vary debe nombrar Accept-Encoding",
+    async (ruta) => {
+      for (const [valor, bien] of [
+        ["Accept-Encoding", true],
+        ["accept-encoding", true],
+        ["Origin, Accept-Encoding", true],
+        ["Accept-Encoding,Cookie", true],
+        [undefined, false],
+        ["Accept", false],
+        ["Accept-Encodings", false],
+        ["Origin", false],
+      ] as const) {
+        const rutas = rutasBuenas();
+        const propia = rutas[ruta] as Ruta;
+        const encabezados: Record<string, string> = { ...(propia.encabezados ?? SEGURIDAD) };
+        if (valor === undefined) delete encabezados.vary;
+        else encabezados.vary = valor;
+        rutas[ruta] = { ...propia, encabezados };
+        const r = await probarHumo(BASE, { fetch: falso(rutas) });
+        if (bien) expect(r.fallas, valor).toEqual([]);
+        else
+          expect(r.fallas, valor).toEqual([expect.stringMatching(new RegExp(`^${ruta}: vary: `))]);
+      }
+    },
+  );
 
   it("valida el cuerpo de cada ruta", async () => {
     const malas: [string, unknown, string][] = [
@@ -294,13 +382,155 @@ describe("el sitio de los assets", () => {
   });
 });
 
+describe("la API por http", () => {
+  it("con una base https pide /v1/estados por http, sin seguir redirecciones", async () => {
+    const pedidas: Pedida[] = [];
+    const r = await probarHumo(BASE, { fetch: falso(rutasBuenas(), undefined, {}, pedidas) });
+    expect(r.fallas).toEqual([]);
+    expect(pedidas.filter((p) => p.url.startsWith("http:"))).toEqual([
+      { url: "http://api.ejemplo.mx/v1/estados", redirect: "manual" },
+    ]);
+  });
+
+  // Las pruebas de integración corren el humo contra el Worker local por http, que no da 403.
+  it("con una base http no la pide", async () => {
+    const pedidas: Pedida[] = [];
+    const local = "http://127.0.0.1:8787";
+    const reenviar = falso(rutasBuenas(), undefined, {}, pedidas);
+    const r = await probarHumo(local, {
+      fetch: ((entrada: string, init?: RequestInit) =>
+        reenviar(String(entrada).replace(local, BASE), init)) as typeof fetch,
+    });
+    expect(r.fallas).toEqual([]);
+    expect(Object.keys(r.tiempos)).toHaveLength(17);
+    expect(Object.keys(r.tiempos)).not.toContain(ETIQUETA_HTTP);
+    expect(pedidas.filter((p) => p.url.startsWith("http:"))).toEqual([]);
+  });
+
+  it("debe ser 403 https-requerido en problem+json, sin Location", async () => {
+    const casos: [Ruta, string][] = [
+      [{ cuerpo: { data: ESTADOS, meta: { as_of: "2026-10-01" } } }, "estado 200, se esperaba 403"],
+      [
+        { estado: 301, cuerpo: "", encabezados: { ...SEGURIDAD, location: `${BASE}/v1/estados` } },
+        "estado 301, se esperaba 403",
+      ],
+      [
+        { estado: 403, tipo: "text/html", cuerpo: "<h1>Forbidden</h1>" },
+        "tipo de contenido text/html, se esperaba application/problem+json",
+      ],
+      [
+        {
+          estado: 403,
+          tipo: "application/problem+json",
+          cuerpo: { type: `${PROBLEMAS}#metodo-no-permitido`, status: 403 },
+        },
+        "type metodo-no-permitido, no https-requerido",
+      ],
+      [
+        {
+          estado: 403,
+          tipo: "application/problem+json",
+          cuerpo: { type: `${PROBLEMAS}#https-requerido`, status: 403 },
+          encabezados: { ...SEGURIDAD, location: `${BASE}/v1/estados` },
+        },
+        `location: ${BASE}/v1/estados, se esperaba ausente`,
+      ],
+    ];
+    for (const [ruta, falla] of casos) {
+      const rutas = rutasBuenas();
+      rutas[HTTP] = ruta;
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas, falla).toEqual([`${ETIQUETA_HTTP}: ${falla}`]);
+    }
+  });
+});
+
+describe("X-Robots-Tag", () => {
+  const NOINDEX = { "x-robots-tag": "noindex" };
+
+  it("sin la opción no se revisa", async () => {
+    for (const extra of [{}, NOINDEX]) {
+      const r = await probarHumo(BASE, { fetch: falso(rutasBuenas(), undefined, extra) });
+      expect(r.fallas).toEqual([]);
+    }
+  });
+
+  it("noindex (staging): toda respuesta lo trae", async () => {
+    const r = await probarHumo(BASE, {
+      fetch: falso(rutasBuenas(), undefined, NOINDEX),
+      robots: "noindex",
+    });
+    expect(r.fallas).toEqual([]);
+    for (const ruta of ["/v1/estados", "/", "/llms.txt", "/v2", "/descargas/SHA256SUMS"]) {
+      const rutas = rutasBuenas();
+      const sin = (pedida: string) => {
+        if (pedida !== ruta) return undefined;
+        const propia = rutas[ruta] as Ruta;
+        const texto =
+          typeof propia.cuerpo === "string" ? propia.cuerpo : JSON.stringify(propia.cuerpo);
+        return new Response(texto, {
+          status: propia.estado ?? 200,
+          headers: {
+            "content-type": propia.tipo ?? "application/json",
+            ...(propia.encabezados ?? SEGURIDAD),
+          },
+        });
+      };
+      const conFalla = await probarHumo(BASE, {
+        fetch: falso(rutas, sin, NOINDEX),
+        robots: "noindex",
+      });
+      expect(conFalla.fallas).toEqual([`${ruta}: x-robots-tag: ausente, se esperaba noindex`]);
+    }
+  });
+
+  it("ninguno (producción): / y /v1 no lo traen", async () => {
+    const r = await probarHumo(BASE, { fetch: falso(rutasBuenas()), robots: "ninguno" });
+    expect(r.fallas).toEqual([]);
+    for (const ruta of ["/", "/v1/estados", "/v1/status"]) {
+      const con = (pedida: string) => {
+        if (pedida !== ruta) return undefined;
+        const propia = rutasBuenas()[ruta] as Ruta;
+        const texto =
+          typeof propia.cuerpo === "string" ? propia.cuerpo : JSON.stringify(propia.cuerpo);
+        return new Response(texto, {
+          headers: { "content-type": propia.tipo ?? "application/json", ...SEGURIDAD, ...NOINDEX },
+        });
+      };
+      const conFalla = await probarHumo(BASE, {
+        fetch: falso(rutasBuenas(), con),
+        robots: "ninguno",
+      });
+      expect(conFalla.fallas).toEqual([`${ruta}: x-robots-tag: noindex, se esperaba ausente`]);
+    }
+  });
+});
+
+describe("despliegue.yml", () => {
+  const flujo = readFileSync(
+    fileURLToPath(new URL("../../../../.github/workflows/despliegue.yml", import.meta.url)),
+    "utf8",
+  );
+
+  it("corre el humo de staging con --robots noindex y el de producción con --robots ninguno", () => {
+    // La variable de la URL y lo que sigue hasta la redirección de la salida.
+    const llamadas = [
+      ...flujo.matchAll(/node apps\/api\/scripts\/humo\.ts "\$\{(\w+)\}"([^>\n]*)/g),
+    ].map(([, variable, resto]) => [variable, resto?.trim()]);
+    expect(llamadas).toEqual([
+      ["URL_STAGING", "--robots noindex"],
+      ["URL_PROD", "--robots ninguno"],
+    ]);
+  });
+});
+
 describe("principal", () => {
   it("imprime un renglón por ruta y sale con 0", async () => {
     const salida: string[] = [];
     const codigo = await principal([BASE], (t) => salida.push(t), { fetch: falso(rutasBuenas()) });
     expect(codigo).toBe(0);
     const texto = salida.join("");
-    expect(texto.match(/^ok /gm)).toHaveLength(17);
+    expect(texto.match(/^ok /gm)).toHaveLength(18);
     expect(texto).toContain("Prueba de humo correcta.");
   });
 
@@ -315,14 +545,32 @@ describe("principal", () => {
     expect(texto).toContain("falla: /v1/status: estado 503, se esperaba 200");
   });
 
-  it.each([[[]], [["no-es-url"]], [[BASE, "otro"]]])(
-    "argumentos %j: uso y código 2",
-    async (args) => {
-      const salida: string[] = [];
-      expect(await principal(args, (t) => salida.push(t))).toBe(2);
-      expect(salida.join("")).toContain("Uso:");
-    },
-  );
+  it("--robots pasa la revisión de X-Robots-Tag", async () => {
+    const salida: string[] = [];
+    const sinTag = falso(rutasBuenas());
+    expect(
+      await principal([BASE, "--robots", "ninguno"], (t) => salida.push(t), { fetch: sinTag }),
+    ).toBe(0);
+    expect(
+      await principal([BASE, "--robots", "noindex"], (t) => salida.push(t), { fetch: sinTag }),
+    ).toBe(1);
+    expect(salida.join("")).toContain("x-robots-tag: ausente, se esperaba noindex");
+    const conTag = falso(rutasBuenas(), undefined, { "x-robots-tag": "noindex" });
+    expect(await principal(["--robots", "noindex", BASE], () => {}, { fetch: conTag })).toBe(0);
+  });
+
+  it.each([
+    [[]],
+    [["no-es-url"]],
+    [[BASE, "otro"]],
+    [[BASE, "--robots"]],
+    [[BASE, "--robots", "otro"]],
+    [[BASE, "--otra"]],
+  ])("argumentos %j: uso y código 2", async (args) => {
+    const salida: string[] = [];
+    expect(await principal(args, (t) => salida.push(t))).toBe(2);
+    expect(salida.join("")).toContain("Uso:");
+  });
 
   it("el script corre con Node: sin base sale con 2", () => {
     const r = spawnSync(process.execPath, [SCRIPT], { encoding: "utf8", timeout: 30_000 });

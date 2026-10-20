@@ -1,10 +1,12 @@
 // Prueba de humo de una API desplegada: pide las rutas principales y las páginas del sitio y
-// comprueba estado, tipo de contenido, forma mínima del cuerpo y los encabezados de seguridad. Lo
-// usa el flujo de despliegue tras cada publicación y las pruebas de integración contra el Worker
-// local.
+// comprueba estado, tipo de contenido, forma mínima del cuerpo y los encabezados de seguridad.
+// Con una base https, también que `/v1` por http da 403 https-requerido; con `--robots`, el
+// `X-Robots-Tag` de cada entorno. Lo usa el flujo de despliegue tras cada publicación y las
+// pruebas de integración contra el Worker local.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 
 export interface ResultadoHumo {
   ok: boolean;
@@ -13,15 +15,26 @@ export interface ResultadoHumo {
   tiempos: Record<string, number>;
 }
 
+/**
+ * El `X-Robots-Tag` que se espera: `noindex` en staging (en toda respuesta) y `ninguno` en
+ * producción (ausente en `/` y en `/v1`).
+ */
+export type Robots = "noindex" | "ninguno";
+
 export interface OpcionesHumo {
   fetch?: typeof fetch;
   /** Tope por petición; por omisión 10 s. */
   timeoutMs?: number;
+  /** Sin él no se revisa `X-Robots-Tag`. */
+  robots?: Robots;
 }
 
 type Tipo = "json" | "problema" | "texto" | "html";
 
-type Encabezados = readonly (readonly [string, string])[];
+/** Valor exacto, un patrón que debe cumplir, o `null` si no debe venir. */
+type Esperado = string | RegExp | null;
+
+type Encabezados = readonly (readonly [string, Esperado])[];
 
 interface Comprobacion {
   ruta: string;
@@ -32,9 +45,15 @@ interface Comprobacion {
    * recibe el texto del cuerpo.
    */
   validar?: (cuerpo: unknown) => string | undefined;
-  /** Los encabezados que debe traer; por omisión, CORS y nosniff. */
+  /** Los encabezados que debe traer; por omisión, CORS, nosniff, HSTS y Vary. */
   encabezados?: Encabezados;
+  /** Se pide por http, sin seguir redirecciones; en los resultados va como `http:// <ruta>`. */
+  porHttp?: boolean;
 }
+
+const HSTS: readonly [string, Esperado] = ["strict-transport-security", "max-age=31536000"];
+// La plataforma puede agregar su propio Vary: basta con que nombre Accept-Encoding.
+const VARY: readonly [string, Esperado] = ["vary", /(?:^|,)\s*accept-encoding\s*(?:,|$)/i];
 
 const TIEMPO_MAXIMO_MS = 10_000;
 
@@ -186,7 +205,7 @@ const COMPROBACIONES: readonly Comprobacion[] = [
     ruta: "/",
     estado: 200,
     tipo: "html",
-    encabezados: [["x-content-type-options", "nosniff"]],
+    encabezados: [["x-content-type-options", "nosniff"], HSTS, VARY],
     validar: (cuerpo) =>
       String(cuerpo).includes("<h1>MéxicoAPI</h1>") ? undefined : "no es la página de inicio",
   },
@@ -204,14 +223,24 @@ const COMPROBACIONES: readonly Comprobacion[] = [
     ruta: "/v2",
     estado: 404,
     tipo: "html",
-    encabezados: [
-      ["x-content-type-options", "nosniff"],
-      ["x-frame-options", "DENY"],
-    ],
+    encabezados: [["x-content-type-options", "nosniff"], ["x-frame-options", "DENY"], HSTS, VARY],
     validar: (cuerpo) =>
       String(cuerpo).includes("<h1>No existe esta página</h1>") ? undefined : "no es 404.html",
   },
 ];
+
+/** `/v1` por http: 403 https-requerido, sin redirigir. Solo con una base https. */
+const POR_HTTP: Comprobacion = {
+  ruta: "/v1/estados",
+  estado: 403,
+  tipo: "problema",
+  porHttp: true,
+  validar(cuerpo) {
+    const tipo = objeto(cuerpo)?.type;
+    const nombre = typeof tipo === "string" ? tipo.slice(tipo.lastIndexOf("#") + 1) : String(tipo);
+    return nombre === "https-requerido" ? undefined : `type ${nombre}, no https-requerido`;
+  },
+};
 
 const TIPOS: Record<Tipo, string> = {
   json: "application/json",
@@ -223,7 +252,43 @@ const TIPOS: Record<Tipo, string> = {
 const ENCABEZADOS: Encabezados = [
   ["access-control-allow-origin", "*"],
   ["x-content-type-options", "nosniff"],
+  HSTS,
+  VARY,
 ];
+
+const etiqueta = (caso: Comprobacion): string =>
+  caso.porHttp === true ? `http:// ${caso.ruta}` : caso.ruta;
+
+/** Lo que se espera de `X-Robots-Tag` en `caso`, o undefined si no se revisa. */
+function robotsDe(caso: Comprobacion, robots: Robots | undefined): Esperado | undefined {
+  if (robots === "noindex") return "noindex";
+  if (robots === "ninguno" && (caso.ruta === "/" || caso.ruta.startsWith("/v1"))) return null;
+  return undefined;
+}
+
+/** Los encabezados que se revisan en `caso`, con el `X-Robots-Tag` del entorno. */
+function encabezadosDe(caso: Comprobacion, robots: Robots | undefined): Encabezados {
+  const base = caso.encabezados ?? ENCABEZADOS;
+  const conHttp: Encabezados = caso.porHttp === true ? [...base, ["location", null]] : base;
+  const tag = robotsDe(caso, robots);
+  return tag === undefined ? conHttp : [...conHttp, ["x-robots-tag", tag]];
+}
+
+/** La falla de un encabezado, o undefined si cumple lo esperado. */
+function revisarEncabezado(
+  nombre: string,
+  actual: string | null,
+  esperado: Esperado,
+): string | undefined {
+  const cumple =
+    esperado === null
+      ? actual === null
+      : typeof esperado === "string"
+        ? actual === esperado
+        : actual !== null && esperado.test(actual);
+  if (cumple) return undefined;
+  return `${nombre}: ${actual ?? "ausente"}, se esperaba ${esperado ?? "ausente"}`;
+}
 
 const mensajeDe = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -248,7 +313,11 @@ async function acotar<T>(timeoutMs: number, tarea: (señal: AbortSignal) => Prom
   }
 }
 
-async function revisar(respuesta: Response, caso: Comprobacion): Promise<string | undefined> {
+async function revisar(
+  respuesta: Response,
+  caso: Comprobacion,
+  encabezados: Encabezados,
+): Promise<string | undefined> {
   if (respuesta.status !== caso.estado) {
     return `estado ${respuesta.status}, se esperaba ${caso.estado}`;
   }
@@ -256,9 +325,9 @@ async function revisar(respuesta: Response, caso: Comprobacion): Promise<string 
   if (medio.toLowerCase() !== TIPOS[caso.tipo]) {
     return `tipo de contenido ${medio || "ausente"}, se esperaba ${TIPOS[caso.tipo]}`;
   }
-  for (const [nombre, valor] of caso.encabezados ?? ENCABEZADOS) {
-    const actual = respuesta.headers.get(nombre);
-    if (actual !== valor) return `${nombre}: ${actual ?? "ausente"}, se esperaba ${valor}`;
+  for (const [nombre, esperado] of encabezados) {
+    const falla = revisarEncabezado(nombre, respuesta.headers.get(nombre), esperado);
+    if (falla !== undefined) return falla;
   }
   if (caso.tipo === "texto" || caso.tipo === "html") {
     const texto = await respuesta.text();
@@ -278,11 +347,17 @@ async function comprobar(
   base: string,
   caso: Comprobacion,
   pedidor: typeof fetch,
-  timeoutMs: number,
+  opciones: { timeoutMs: number; robots: Robots | undefined },
 ): Promise<string | undefined> {
+  const origen = caso.porHttp === true ? base.replace(/^https:/, "http:") : base;
+  const init: RequestInit = caso.porHttp === true ? { redirect: "manual" } : {};
   try {
-    return await acotar(timeoutMs, async (signal) =>
-      revisar(await pedidor(`${base}${caso.ruta}`, { signal }), caso),
+    return await acotar(opciones.timeoutMs, async (signal) =>
+      revisar(
+        await pedidor(`${origen}${caso.ruta}`, { ...init, signal }),
+        caso,
+        encabezadosDe(caso, opciones.robots),
+      ),
     );
   } catch (error) {
     return mensajeDe(error);
@@ -299,14 +374,23 @@ export async function probarHumo(
   const timeoutMs = opciones.timeoutMs ?? TIEMPO_MAXIMO_MS;
   const fallas: string[] = [];
   const tiempos: Record<string, number> = {};
-  for (const caso of COMPROBACIONES) {
+  // Por http solo si la base es https: el Worker local de las pruebas va por http y no da 403.
+  const casos = origen.startsWith("https://") ? [...COMPROBACIONES, POR_HTTP] : COMPROBACIONES;
+  for (const caso of casos) {
     const inicio = performance.now();
-    const falla = await comprobar(origen, caso, pedidor, timeoutMs);
-    tiempos[caso.ruta] = Math.round(performance.now() - inicio);
-    if (falla !== undefined) fallas.push(`${caso.ruta}: ${falla}`);
+    const falla = await comprobar(origen, caso, pedidor, { timeoutMs, robots: opciones.robots });
+    tiempos[etiqueta(caso)] = Math.round(performance.now() - inicio);
+    if (falla !== undefined) fallas.push(`${etiqueta(caso)}: ${falla}`);
   }
   return { ok: fallas.length === 0, fallas, tiempos };
 }
+
+const leerArgumentos = (argumentos: string[]) =>
+  parseArgs({
+    args: argumentos,
+    allowPositionals: true,
+    options: { robots: { type: "string" } },
+  });
 
 /** Punto de entrada del CLI: imprime un renglón por ruta y devuelve el código de salida. */
 export async function principal(
@@ -314,12 +398,24 @@ export async function principal(
   escribir: (texto: string) => void,
   opciones: OpcionesHumo = {},
 ): Promise<number> {
-  const [base, ...sobran] = argumentos;
-  if (base === undefined || sobran.length > 0 || !/^https?:\/\/\S+$/.test(base)) {
-    escribir("Uso: node apps/api/scripts/humo.ts <url-base>\n");
+  const uso = (): number => {
+    escribir("Uso: node apps/api/scripts/humo.ts <url-base> [--robots noindex|ninguno]\n");
     return 2;
+  };
+  let leidos: ReturnType<typeof leerArgumentos>;
+  try {
+    leidos = leerArgumentos(argumentos);
+  } catch {
+    return uso();
   }
-  const { ok, fallas, tiempos } = await probarHumo(base, opciones);
+  const [base, ...sobran] = leidos.positionals;
+  const robots = leidos.values.robots;
+  if (base === undefined || sobran.length > 0 || !/^https?:\/\/\S+$/.test(base)) return uso();
+  if (robots !== undefined && robots !== "noindex" && robots !== "ninguno") return uso();
+  const { ok, fallas, tiempos } = await probarHumo(base, {
+    ...opciones,
+    ...(robots === undefined ? {} : { robots }),
+  });
   for (const [ruta, ms] of Object.entries(tiempos)) {
     const falla = fallas.some((f) => f.startsWith(`${ruta}: `));
     escribir(`${falla ? "FALLA" : "ok   "} ${String(ms).padStart(5)} ms  ${ruta}\n`);
