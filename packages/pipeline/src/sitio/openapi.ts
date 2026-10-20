@@ -195,30 +195,40 @@ const parametroRuta = (
   example,
 });
 
-/** Un parámetro de la query de `ruta` con su regla del núcleo y si es obligatorio. */
+/**
+ * Un parámetro de la query de `ruta` con su regla del núcleo y si es obligatorio. Sin `example`
+ * cuando no vale junto a los de los demás parámetros: Swagger UI y Postman llenan cada uno con su
+ * ejemplo, y la petición que arman debe ser válida.
+ */
 function parametroConsulta(
   ruta: RutaConConsulta,
   name: string,
   description: string,
-  example: string,
+  example: string | undefined,
   format?: "date",
 ): Json {
   const regla = CONSULTAS[ruta][name];
   if (regla === undefined) throw new Error(`El núcleo no tiene la regla de ${name} en ${ruta}.`);
-  return {
+  const parametro: Json = {
     name,
     in: "query",
     required: regla.obligatorio === true,
     description,
     schema: esquemaDe(regla, format),
-    example,
   };
+  if (example !== undefined) parametro.example = example;
+  return parametro;
 }
 
 const FECHA_EJEMPLO = "2026-01-05";
 
-const parametroFecha = (ruta: RutaConConsulta, name: string, description: string): Json =>
-  parametroConsulta(ruta, name, description, FECHA_EJEMPLO, "date");
+const parametroFecha = (
+  ruta: RutaConConsulta,
+  name: string,
+  description: string,
+  conEjemplo = true,
+): Json =>
+  parametroConsulta(ruta, name, description, conEjemplo ? FECHA_EJEMPLO : undefined, "date");
 
 const autoridad = (ruta: "/v1/dias-habiles" | "/v1/dias-inhabiles"): Json =>
   parametroConsulta(
@@ -393,7 +403,8 @@ function operaciones(): Operacion[] {
           "/v1/dias-habiles",
           "tipo_plazo",
           "Obligatorio con autoridad=sat y no se acepta con las demás. general cuenta las vacaciones generales del SAT como inhábiles; declaraciones_pagos no, porque en los plazos para presentar declaraciones y pagar contribuciones las vacaciones no son inhábiles (CFF art. 12, segundo párrafo).",
-          "general",
+          // Sin example: el de autoridad es lft, que no acepta tipo_plazo.
+          undefined,
         ),
         parametroFecha(
           "/v1/dias-habiles",
@@ -450,6 +461,8 @@ function operaciones(): Operacion[] {
           "/v1/tipo-cambio/fix",
           "operacion",
           "Fecha de una operación o de un pago (AAAA-MM-DD, día de la Ciudad de México): responde el último FIX publicado en el DOF antes de ese día y su fundamento (CFF art. 20). Para una obligación en dólares es la misma publicación que manda el art. 172 de la Circular 3/2012 del Banco de México: la del día hábil bancario inmediato anterior al pago. Solo se separarían si el DOF no publicara el FIX un día hábil bancario o lo publicara uno inhábil; entonces sigue al CFF.",
+          // Sin example: publicado ya lo lleva y no se aceptan los dos juntos.
+          false,
         ),
       ],
       ok: respuestaDatos(
