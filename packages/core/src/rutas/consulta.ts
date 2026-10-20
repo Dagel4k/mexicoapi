@@ -109,8 +109,12 @@ const conParametro = (
 ): ProblemaConsulta => ({ tipo, detalle, extras: { parametro } });
 
 const NOMBRE_SIMPLE = /^[A-Za-z0-9_.-]+$/;
-/** Lo que JSON.stringify deja tal cual y no se ve: DEL y controles C1, formato y separadores. */
-const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+/**
+ * Lo que JSON.stringify deja tal cual y no se ve: DEL y controles C1, formato, separadores de
+ * línea y lo que se ignora por omisión (U+034F, los rellenos de Hangul, los selectores de
+ * variante).
+ */
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/gu;
 
 const escapar = (caracter: string): string =>
   Array.from(
