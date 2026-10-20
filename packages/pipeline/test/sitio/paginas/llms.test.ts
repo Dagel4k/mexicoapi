@@ -391,3 +391,36 @@ describe("llms-full.txt", () => {
     );
   });
 });
+
+describe("páginas de datos en llms", () => {
+  const PAGINAS = [
+    { ruta: "/uma/", titulo: "UMA vigente" },
+    { ruta: "/municipios/", titulo: "Municipios de México" },
+    {
+      ruta: "/municipios/01-aguascalientes/",
+      titulo: "Municipios de Aguascalientes",
+      superior: "/municipios/",
+    },
+  ];
+
+  it("llms.txt lista las de primer nivel con su URL absoluta, antes de Optional", () => {
+    const con = archivoLlms(DATASETS, PUBLICADO_EN_NPM, PAGINAS);
+    const encabezados = con.split("\n").filter((n) => n.startsWith("## "));
+    expect(encabezados).toEqual(["## Docs", "## Datos", "## Páginas", "## Optional"]);
+    expect(con).toContain(`- [UMA vigente](${URL_API}/uma/)\n`);
+    expect(con).toContain(`- [Municipios de México](${URL_API}/municipios/)\n`);
+    expect(con).not.toContain("01-aguascalientes");
+  });
+
+  it("sin páginas no agrega la sección", () => {
+    expect(texto).not.toContain("## Páginas");
+  });
+
+  it("llms-full.txt las lista al final", () => {
+    const completo = archivoLlmsCompleto([{ ruta: "docs/a.md", texto: "# A\n" }], PAGINAS);
+    expect(completo).toContain(
+      `# Páginas de datos del sitio\n\n- [UMA vigente](${URL_API}/uma/)\n`,
+    );
+    expect(completo).not.toContain("01-aguascalientes");
+  });
+});

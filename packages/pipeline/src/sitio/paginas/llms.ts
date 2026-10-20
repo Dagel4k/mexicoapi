@@ -3,6 +3,7 @@ import { URL_API } from "@mexicoapi/core/problemas";
 import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { URL_ARCHIVOS, URL_DOCS } from "../meta.js";
 import { describir } from "./catalogo.js";
+import type { PaginaDatos } from "./pagina-datos.js";
 
 /**
  * `llms.txt` (formato de llmstxt.org) y `llms-full.txt`: lo que una herramienta que lee esos
@@ -62,6 +63,14 @@ function renglonDataset(d: DatasetLlms): string {
   return `- ${enlaceMd(d.docs, nombre)}: ${codigoMd(d.id)}, as_of ${textoMd(d.as_of)}${ultimo}, ${api}${tambien}`;
 }
 
+type PaginaLlms = Pick<PaginaDatos, "ruta" | "titulo" | "superior">;
+
+/** Las páginas de datos de primer nivel (las de /municipios/ solo con el índice), con su URL absoluta. */
+const paginasDeDatos = (paginas: readonly PaginaLlms[]): string[] =>
+  paginas
+    .filter((p) => p.superior === undefined)
+    .map((p) => `- ${enlaceMd(`${URL_API}${p.ruta}`, p.titulo)}`);
+
 function paquetes(publicado: boolean): string {
   return publicado
     ? "También hay un paquete de npm con validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo; en el RFC, el dígito es informativo), los mismos datos sin red y un cliente de la API (`npm install mexicoapi`), y un servidor MCP por stdio con los mismos datos y validadores como herramientas (`npx -y mexicoapi-mcp`)."
@@ -72,7 +81,10 @@ function paquetes(publicado: boolean): string {
 export function archivoLlms(
   datasets: readonly DatasetLlms[],
   publicado: boolean = PUBLICADO_EN_NPM,
+  paginas: readonly PaginaLlms[] = [],
 ): string {
+  const seccionPaginas =
+    paginas.length === 0 ? "" : `## Páginas\n\n${paginasDeDatos(paginas).join("\n")}\n\n`;
   return `# MéxicoAPI
 
 > Datos de referencia de México con fuente oficial, licencia y sha256: catálogos, indicadores, calendarios y constantes, en una API JSON de solo lectura y en descargas completas en JSON, CSV y SQLite.
@@ -102,7 +114,7 @@ ${paquetes(publicado)}
 
 ${datasets.map(renglonDataset).join("\n")}
 
-## Optional
+${seccionPaginas}## Optional
 
 - [Descargas](/descargas/SHA256SUMS): cada dataset en JSON y CSV, todo junto en \`/descargas/mexicoapi.sqlite\`; SHA256SUMS trae el sha256 de cada archivo
 - [Diseño técnico](${URL_DOCS}/diseno/arquitectura-v1.md): arquitectura, fuentes, pipeline de datos y decisiones
@@ -148,10 +160,16 @@ export function ordenLlmsCompleto(docsDeDatos: readonly string[]): string[] {
 }
 
 /** `llms-full.txt`: cada archivo precedido de `# <ruta>`, con los enlaces absolutos. */
-export function archivoLlmsCompleto(documentos: readonly DocumentoMarkdown[]): string {
+export function archivoLlmsCompleto(
+  documentos: readonly DocumentoMarkdown[],
+  paginas: readonly PaginaLlms[] = [],
+): string {
   const partes = documentos.map(({ ruta, texto }) => {
     const limpio = texto.replace(/\r\n/g, "\n").trimEnd();
     return `# ${ruta}\n\n${enlacesAbsolutos(ruta, limpio)}\n`;
   });
+  if (paginas.length > 0) {
+    partes.push(`# Páginas de datos del sitio\n\n${paginasDeDatos(paginas).join("\n")}\n`);
+  }
   return partes.join("\n");
 }
