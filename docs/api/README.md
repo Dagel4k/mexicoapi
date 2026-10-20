@@ -100,7 +100,7 @@ Las fechas de los parámetros y de las respuestas van en `AAAA-MM-DD`, sin hora,
 const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date());
 ```
 
-En el paquete `mexicoapi`, `hoyEnMexico()` hace lo mismo.
+`hoyEnMexico()` hace lo mismo (paquete `mexicoapi` 0.2.0 o posterior).
 
 ## Avisos
 
@@ -132,7 +132,7 @@ En `/v1/dias-habiles` van dentro de `data`, junto a `data.advertencias`; en `/v1
 | `aviso-de-uso-sepomex-distinto` | El aviso de uso del archivo de Correos de México no es el que conoce `mexicoapi` | `mexicoapi/sepomex` | Lee el aviso nuevo antes de usar los datos |
 | `otro` | Un texto que esta versión no conoce | Un calendario propio de `crearCalendario`, o una API más nueva que el paquete | Lee el texto |
 
-La API da los siete primeros. Los demás son del paquete `mexicoapi` (el cliente y `mexicoapi/sepomex`) y del servidor MCP, que usan el mismo catálogo. Una versión nueva puede agregar códigos: trata uno que no conozcas como `otro`. Por eso el documento OpenAPI publica `codigo` como texto abierto (`components.schemas.Aviso`), con los de la API en `x-extensible-enum`; el catálogo completo está en `CODIGOS_AVISO` de `mexicoapi`.
+La API da los siete primeros. Los demás son del paquete `mexicoapi` (el cliente y `mexicoapi/sepomex`) y del servidor MCP, que usan el mismo catálogo (paquete 0.2.0 o posterior, en los dos; la 0.1.0 no trae `avisos`). Una versión nueva puede agregar códigos: trata uno que no conozcas como `otro`. Por eso el documento OpenAPI publica `codigo` como texto abierto (`components.schemas.Aviso`), con los de la API en `x-extensible-enum`; el catálogo completo está en `CODIGOS_AVISO` de `mexicoapi` 0.2.0 o posterior.
 
 ## Estados
 
@@ -248,7 +248,7 @@ Valida una CLABE de 18 dígitos: formato, dígito verificador y banco contra el 
 | `valido` | `true` solo si no hay errores |
 | `formato_valido` | 18 dígitos y un banco que existe en el catálogo |
 | `digito_verificador_valido` | Resultado del dígito de control; `null` si el formato no es válido |
-| `banco_revisado` | Si el código de banco se revisó contra el catálogo de bancos. En la API siempre es `true`. `validarClabe` del paquete `mexicoapi` da `false` si se llama sin el catálogo: entonces `valido` no garantiza que el banco exista |
+| `banco_revisado` | Si el código de banco se revisó contra el catálogo de bancos. En la API siempre es `true`. `validarClabe` del paquete `mexicoapi` da `false` si se llama sin el catálogo: entonces `valido` no garantiza que el banco exista (paquete 0.2.0 o posterior; la 0.1.0 no trae el campo) |
 | `errores` | Lista de motivos: `digito_verificador`, `banco` |
 | `detalle` | Las partes de la CLABE; `null` si no se pudo descomponer |
 | `detalle.banco.activo` | `false` si el banco ya no aparece en el SPEI |
@@ -1138,6 +1138,8 @@ Una dirección que no existe fuera de `/v1` (`/v2`, `/descargas/nada`) responde 
 ## Privacidad
 
 El Worker no guarda ni registra las consultas: la observabilidad de Cloudflare está desactivada y no hay base de datos. Ante un error interno (500) escribe una sola línea con el tipo de error y la plantilla de la ruta (por ejemplo `/v1/clabe/{clabe}`), nunca la URL, la query ni la IP. Fuera de eso solo escribe avisos fijos, sin datos de la petición: cuando no carga el calendario de la CNBV (el FIX y la advertencia de la prórroga del artículo 12 siguen sin él), cuando KV no responde el estado de un dataset en `/v1/status` (queda `unknown`) y cuando falla el límite de peticiones (la petición pasa). Aun así, una CLABE viaja en la ruta de la URL. Si no quieres enviarla a un servidor, valídala sin red con el paquete `mexicoapi` de npm ([packages/sdk](../../packages/sdk/README.md)).
+
+Lo anterior es lo que hace el Worker. Cloudflare, como plataforma, agrega a las respuestas de `workers.dev` los encabezados `Report-To` y `NEL`: si el navegador tiene un error de red al llamar la API o el sitio, puede mandarle a Cloudflare un reporte con la URL y el tipo de error. MéxicoAPI no recibe esos reportes ni puede quitar los encabezados en `workers.dev`.
 
 Los datos son públicos y la API no usa cookies.
 
