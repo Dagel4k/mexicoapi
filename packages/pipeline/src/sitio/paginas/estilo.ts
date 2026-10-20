@@ -115,8 +115,9 @@ pre {
 pre code { font-size: 1em; }
 /* en un telefono de 375 px, API= y la URL de produccion caben en un renglon */
 @media (max-width: 39.99rem) { pre { font-size: 0.8125rem; padding-inline: 0.75rem; } }
-/* las tablas de dias caben a 375 px con menos relleno */
-@media (max-width: 39.99rem) { .compacta th, .compacta td { padding-inline: 0.5rem; } }
+/* las tablas de pocas columnas no ocupan todo el ancho y caben a 375 px */
+.compacta { max-width: 48rem; }
+@media (max-width: 39.99rem) { .compacta th, .compacta td { padding-inline: 0.5rem; white-space: normal; } }
 .aviso {
   background: var(--aviso);
   border-left: 4px solid var(--aviso-borde);
