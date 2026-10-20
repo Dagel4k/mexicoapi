@@ -19,6 +19,7 @@ export type TipoProblema =
   | "parametro-invalido"
   | "parametro-desconocido"
   | "parametro-faltante"
+  | "https-requerido"
   | "no-encontrado"
   | "dato-no-disponible"
   | "metodo-no-permitido"
@@ -35,6 +36,7 @@ export const PROBLEMAS: Readonly<
   "parametro-invalido": problema("Parámetro inválido", 400),
   "parametro-desconocido": problema("Parámetro desconocido", 400),
   "parametro-faltante": problema("Falta un parámetro obligatorio", 400),
+  "https-requerido": problema("Se requiere HTTPS", 403),
   "no-encontrado": problema("Recurso no encontrado", 404),
   "dato-no-disponible": problema("Dato todavía no disponible", 404),
   "metodo-no-permitido": problema("Método no permitido", 405),

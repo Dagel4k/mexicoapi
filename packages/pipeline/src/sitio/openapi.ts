@@ -250,6 +250,7 @@ interface Operacion {
 const CODIGOS: Record<number, string> = {
   308: "Redireccion",
   400: "ParametroInvalido",
+  403: "HttpsRequerido",
   404: "NoEncontrado",
   405: "MetodoNoPermitido",
   422: "CalendarioIncompleto",
@@ -258,10 +259,11 @@ const CODIGOS: Record<number, string> = {
 };
 
 /**
- * Lo que puede responder cualquier ruta: la 308 de la misma ruta con `/` al final, y el 400 de
- * la query, que toda ruta valida aunque no declare ningún parámetro.
+ * Lo que puede responder cualquier ruta: la 308 de la misma ruta con `/` al final, el 400 de la
+ * query, que toda ruta valida aunque no declare ningún parámetro, y el 403 de una petición por
+ * http.
  */
-const COMUNES = [308, 400, 405, 429, 500];
+const COMUNES = [308, 400, 403, 405, 429, 500];
 
 function operacion(o: Operacion): [string, Json] {
   const responses: Record<string, Json> = { "200": o.ok };
@@ -576,7 +578,7 @@ export function documentoOpenApi(): Record<string, unknown> {
       version: "1.0.0",
       summary: "Datos de referencia oficiales de México.",
       description:
-        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Las fechas (AAAA-MM-DD) son días de la Ciudad de México (America/Mexico_City): un servidor en UTC ya está en el día siguiente desde las 18:00 de la Ciudad de México. Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
+        "API de solo lectura con catálogos oficiales de México (estados, municipios y bancos), indicadores publicados en el DOF (tipo de cambio FIX y UDIS), constantes publicadas en el DOF (UMA, salario mínimo y tarifas de ISR) y cálculos sobre ellos (validación de CLABE, días hábiles). Las fechas (AAAA-MM-DD) son días de la Ciudad de México (America/Mexico_City): un servidor en UTC ya está en el día siguiente desde las 18:00 de la Ciudad de México. Los datos conservan la licencia de su fuente: consulta meta.sources en cada respuesta. Cada ruta declara su GET. Toda ruta acepta también HEAD, que responde lo mismo que GET sin cuerpo (el mismo estado y los mismos encabezados, ETag y 304 incluidos), y OPTIONS, que responde 204 sin cuerpo con Access-Control-Allow-Methods: GET, HEAD, OPTIONS, Access-Control-Allow-Headers: If-None-Match y Access-Control-Max-Age: 86400, y no cuenta en el límite de peticiones. Otro método da 405. Por http://, salvo en localhost, 127.0.0.1 y [::1], toda petición (HEAD y OPTIONS incluidas) responde 403 https-requerido: no redirige y no cuenta en el límite de peticiones. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.",
       license: { name: "MIT", identifier: "MIT" },
     },
     // Los clientes que importan el documento desde un archivo toman servers[0] como base: va
@@ -603,6 +605,9 @@ export function documentoOpenApi(): Record<string, unknown> {
       responses: {
         ParametroInvalido: respuestaProblema(
           "Un parámetro es inválido, desconocido o falta (tipos parametro-invalido, parametro-desconocido y parametro-faltante). Toda ruta rechaza los parámetros de consulta que no declara.",
+        ),
+        HttpsRequerido: respuestaProblema(
+          "La petición llegó por http:// (tipo https-requerido). La API no redirige: repite la petición con https:// y la misma ruta. localhost, 127.0.0.1 y [::1] aceptan http://.",
         ),
         NoModificado: {
           description: "El If-None-Match coincide con el ETag actual: la respuesta no trae cuerpo.",

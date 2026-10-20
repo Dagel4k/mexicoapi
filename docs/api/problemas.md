@@ -9,6 +9,7 @@ Campos de siempre: `type`, `title`, `status`, `detail` (el motivo, en español) 
 | [`parametro-invalido`](#parametro-invalido) | 400 | Un valor no cumple su formato |
 | [`parametro-desconocido`](#parametro-desconocido) | 400 | La ruta no acepta ese parámetro |
 | [`parametro-faltante`](#parametro-faltante) | 400 | Falta un parámetro obligatorio |
+| [`https-requerido`](#https-requerido) | 403 | La petición llegó por `http://` |
 | [`no-encontrado`](#no-encontrado) | 404 | No existe la ruta o el recurso |
 | [`dato-no-disponible`](#dato-no-disponible) | 404 | El dato de esa fecha todavía no se carga |
 | [`metodo-no-permitido`](#metodo-no-permitido) | 405 | Método distinto de GET, HEAD u OPTIONS |
@@ -80,6 +81,26 @@ curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=lft&dias=3
 ```
 
 Qué hacer: agrega el parámetro que indica `parametro`.
+
+## https-requerido
+
+Status 403. La petición a `/v1` llegó por `http://`. La API no redirige a `https://`: con una redirección, cada petición del cliente seguiría saliendo sin cifrar (con la ruta y la query) antes de redirigirse, y nadie lo notaría. Vale para cualquier método, `HEAD` y `OPTIONS` incluidos, y se responde antes del [límite de peticiones](README.md#límite-de-peticiones), así que no cuenta en él. `localhost`, `127.0.0.1` y `[::1]` sí aceptan `http://`, para el desarrollo local con `wrangler dev`.
+
+```bash
+curl http://mexicoapi.dagel4k.workers.dev/v1/estados
+```
+
+```json
+{
+  "type": "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#https-requerido",
+  "title": "Se requiere HTTPS",
+  "status": 403,
+  "detail": "La API solo acepta HTTPS; repite la petición con https:// y la misma ruta.",
+  "instance": "/v1/estados"
+}
+```
+
+Qué hacer: cambia `http://` por `https://` en la base de tu cliente.
 
 ## no-encontrado
 

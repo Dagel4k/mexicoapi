@@ -233,6 +233,19 @@ describe("documento OpenAPI", () => {
     expect(description).toContain("no es problem+json");
   });
 
+  it("la descripción general y la 403 dicen que por http la respuesta es https-requerido", () => {
+    expect(doc.info.description).toContain(
+      "Por http://, salvo en localhost, 127.0.0.1 y [::1], toda petición (HEAD y OPTIONS incluidas) responde 403 https-requerido: no redirige y no cuenta en el límite de peticiones.",
+    );
+    const { HttpsRequerido } = doc.components.responses;
+    expect(HttpsRequerido.description).toBe(
+      "La petición llegó por http:// (tipo https-requerido). La API no redirige: repite la petición con https:// y la misma ruta. localhost, 127.0.0.1 y [::1] aceptan http://.",
+    );
+    expect(HttpsRequerido.content["application/problem+json"].schema).toEqual({
+      $ref: "#/components/schemas/Problema",
+    });
+  });
+
   it("documenta exactamente las rutas y operationId esperados", () => {
     const esperado = [
       ["/v1", "indiceV1"],
@@ -299,9 +312,9 @@ describe("documento OpenAPI", () => {
     expect(doc.components.responses.SinAnio.description).toContain("%");
   });
 
-  it("toda operación declara 400, 405, 429 y 500 como problem+json", () => {
+  it("toda operación declara 400, 403, 405, 429 y 500 como problem+json", () => {
     for (const { op } of operaciones) {
-      for (const codigo of ["400", "405", "429", "500"]) {
+      for (const codigo of ["400", "403", "405", "429", "500"]) {
         const resp = op.responses[codigo];
         expect(resp, codigo).toBeDefined();
         const real = resp.$ref ? (resolverRef(resp.$ref) as Obj) : resp;
@@ -320,38 +333,68 @@ describe("documento OpenAPI", () => {
       "304",
       "308",
       "400",
+      "403",
       "404",
       "405",
       "429",
       "500",
     ]);
-    expect(codigos("/v1/clabe/{clabe}")).toEqual(["200", "308", "400", "404", "405", "429", "500"]);
-    expect(codigos("/v1/dias-habiles")).toEqual(["200", "308", "400", "405", "422", "429", "500"]);
+    expect(codigos("/v1/clabe/{clabe}")).toEqual([
+      "200",
+      "308",
+      "400",
+      "403",
+      "404",
+      "405",
+      "429",
+      "500",
+    ]);
+    expect(codigos("/v1/dias-habiles")).toEqual([
+      "200",
+      "308",
+      "400",
+      "403",
+      "405",
+      "422",
+      "429",
+      "500",
+    ]);
     expect(codigos("/v1/dias-inhabiles")).toEqual([
       "200",
       "308",
       "400",
+      "403",
       "405",
       "422",
       "429",
       "500",
     ]);
     for (const ruta of ["/v1/tipo-cambio/fix", "/v1/udis", "/v1/constantes/uma"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "404", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "403", "404", "405", "429", "500"]);
     }
     for (const ruta of [
       "/v1/constantes/uma/{anio}",
       "/v1/constantes/salario-minimo/{anio}",
       "/v1/isr/tarifa/{periodo}/{anio}",
     ]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "304", "308", "400", "404", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual([
+        "200",
+        "304",
+        "308",
+        "400",
+        "403",
+        "404",
+        "405",
+        "429",
+        "500",
+      ]);
     }
     // Las rutas sin parámetros también responden 400 a cualquier parámetro de consulta.
     for (const ruta of ["/v1", "/v1/status", "/v1/tipo-cambio/fix/ultimo"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "308", "400", "403", "405", "429", "500"]);
     }
     for (const ruta of ["/v1/estados", "/v1/municipios", "/v1/bancos", "/v1/openapi.json"]) {
-      expect(codigos(ruta), ruta).toEqual(["200", "304", "308", "400", "405", "429", "500"]);
+      expect(codigos(ruta), ruta).toEqual(["200", "304", "308", "400", "403", "405", "429", "500"]);
     }
   });
 
@@ -855,6 +898,7 @@ describe("documento OpenAPI", () => {
       "dato-no-disponible",
       "demasiadas-peticiones",
       "error-interno",
+      "https-requerido",
       "metodo-no-permitido",
       "no-encontrado",
       "parametro-desconocido",

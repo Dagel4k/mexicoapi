@@ -12,6 +12,9 @@ import { RUTAS, resolver } from "./rutas.js";
 
 const METODOS = "GET, HEAD, OPTIONS";
 
+/** Hosts que aceptan http: `wrangler dev` y las pruebas de integración corren así. */
+const HOSTS_LOCALES: ReadonlySet<string> = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 /** Lo que se sabe de la petición para registrar un error sin datos del usuario. */
 interface Rastro {
   plantilla?: string;
@@ -34,6 +37,16 @@ async function atender(
   opciones: Opciones,
   rastro: Rastro,
 ): Promise<Response> {
+  // Sin redirigir: con una 301 el cliente seguiría mandando cada petición sin cifrar y no se
+  // enteraría. Va antes que todo, también del límite: no gasta cuota.
+  if (url.protocol === "http:" && !HOSTS_LOCALES.has(url.hostname)) {
+    return respuestaProblema(
+      "https-requerido",
+      "La API solo acepta HTTPS; repite la petición con https:// y la misma ruta.",
+      undefined,
+      url.pathname,
+    );
+  }
   // El preflight va antes del límite: con un 429 el navegador solo vería un error CORS, sin el
   // Retry-After. No toca datos.
   if (peticion.method === "OPTIONS") {
