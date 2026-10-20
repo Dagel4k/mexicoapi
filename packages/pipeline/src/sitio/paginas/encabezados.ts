@@ -71,6 +71,10 @@ const REGLAS_SITIO: readonly Regla[] = [
   sitio("/sitio.js", CSP_ARCHIVOS, CACHE_SITIO),
   sitio("/favicon.svg", CSP_ARCHIVOS, "public, max-age=86400"),
   sitio("/robots.txt", CSP_ARCHIVOS, "public, max-age=86400"),
+  // Su lastmod cambia con los datos.
+  sitio("/sitemap.xml", CSP_ARCHIVOS, "public, max-age=3600", [
+    ["Content-Type", "application/xml; charset=utf-8"],
+  ]),
   sitio("/llms.txt", CSP_ARCHIVOS, "public, max-age=3600", TEXTO_PARA_TODOS),
   sitio("/llms-full.txt", CSP_ARCHIVOS, "public, max-age=3600", TEXTO_PARA_TODOS),
 ];

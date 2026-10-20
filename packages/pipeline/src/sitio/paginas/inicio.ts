@@ -298,9 +298,11 @@ const REFERENCIA = `<section id="referencia" aria-labelledby="titulo-referencia"
 </dl>
 </section>`;
 
+export const RUTA_INICIO = "/";
+
 /** `index.html`: qué es, cómo empezar, qué datos hay, las descargas y la referencia. */
 export function paginaInicio(entrada: EntradaInicio, publicado = PUBLICADO_EN_NPM): string {
-  const ruta = "/";
+  const ruta = RUTA_INICIO;
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">

@@ -332,6 +332,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "llms-full.txt",
       "llms.txt",
       "robots.txt",
+      "sitemap.xml",
       "sitio.js",
       "v1",
     ]);

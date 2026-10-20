@@ -235,6 +235,7 @@ describe("con los datos reales del repositorio", () => {
       "estilo.css",
       "favicon.svg",
       "robots.txt",
+      "sitemap.xml",
       "llms.txt",
       "llms-full.txt",
       "_headers",

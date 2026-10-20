@@ -12,6 +12,7 @@ import {
   VIGENCIA_LFT,
   validarClabe,
 } from "@mexicoapi/core";
+import { URL_API } from "@mexicoapi/core/problemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonCanonico, sha256Hex } from "../../src/canonico.js";
 import { type ShardCalendario, shardCalendario } from "../../src/curado/calendario.js";
@@ -241,6 +242,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "llms-full.txt",
         "llms.txt",
         "robots.txt",
+        "sitemap.xml",
         "sitio.js",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
@@ -852,6 +854,30 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "estilo.css"), "utf8")).toBe(ESTILO);
     expect(await readFile(join(salida, "robots.txt"), "utf8")).toBe(ROBOTS);
     expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
+  });
+
+  // Lo que se indexa: cada página que declara canónica está en el sitemap, y solo esas.
+  it("escribe sitemap.xml con cada página canónica y la fecha más reciente de los datos", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
+    const locs = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1] as string);
+    expect(locs).toEqual([`${URL_API}/`, `${URL_API}/estado/`]);
+    const canonicas: string[] = [];
+    for (const archivo of (await listar(salida)).filter((n) => n.endsWith(".html"))) {
+      const html = await readFile(join(salida, archivo), "utf8");
+      const canonica = /<link rel="canonical" href="([^"]*)">/.exec(html)?.[1];
+      if (canonica !== undefined) canonicas.push(canonica);
+    }
+    expect([...locs].sort()).toEqual(canonicas.sort());
+    const interna = (await leerJson(join(salida, "v1/_internos/meta.json"))) as MetaInterna;
+    const fechas = [...Object.values(interna.datasets), ...Object.values(interna.curados)].map(
+      (d) => d.meta.as_of,
+    );
+    const masReciente = [...fechas].sort().at(-1);
+    expect(masReciente).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(sitemap.match(/<lastmod>[^<]*<\/lastmod>/g)).toEqual(
+      locs.map(() => `<lastmod>${masReciente}</lastmod>`),
+    );
   });
 
   // El ejemplo sale de los datos del build con el mismo validador que usa el Worker; la prueba de

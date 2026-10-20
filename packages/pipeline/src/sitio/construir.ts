@@ -51,10 +51,10 @@ import {
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
 import { archivoEncabezados } from "./paginas/encabezados.js";
-import { paginaEstado } from "./paginas/estado.js";
+import { paginaEstado, RUTA_ESTADO } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
 import { FAVICON } from "./paginas/favicon.js";
-import { CLABE_EJEMPLO, paginaInicio, respuestaRecortada } from "./paginas/inicio.js";
+import { CLABE_EJEMPLO, paginaInicio, RUTA_INICIO, respuestaRecortada } from "./paginas/inicio.js";
 import {
   archivoLlms,
   archivoLlmsCompleto,
@@ -63,6 +63,7 @@ import {
 } from "./paginas/llms.js";
 import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
 import { ROBOTS } from "./paginas/robots.js";
+import { archivoSitemap, fechaMasReciente } from "./paginas/sitemap.js";
 import { partirPorAnio } from "./series.js";
 import { construirSqlite, type FilaDataset } from "./sqlite.js";
 
@@ -479,6 +480,12 @@ export async function construirSitio(opciones: {
   archivos.set("estilo.css", ESTILO);
   archivos.set("favicon.svg", FAVICON);
   archivos.set("robots.txt", ROBOTS);
+  // Las páginas que se indexan, con la fecha más reciente de los datos que muestra el sitio.
+  const lastmod = fechaMasReciente(datasets.map((d) => d.as_of));
+  archivos.set(
+    "sitemap.xml",
+    archivoSitemap([RUTA_INICIO, RUTA_ESTADO].map((ruta) => ({ ruta, lastmod }))),
+  );
   archivos.set("llms.txt", archivoLlms(datasets));
   archivos.set("llms-full.txt", archivoLlmsCompleto(await docsCompletas()));
 
