@@ -323,8 +323,9 @@ function retryAfter(valor: string | null): number | undefined {
 
 /**
  * Guarda la respuesta según su Cache-Control. `no-cache` exige revalidar antes de cada uso: como
- * `no-store`, no se guarda (ni para stale-if-error). La frescura y la ventana de stale-if-error
- * descuentan la edad con la que llega (`Age`, RFC 9111 §4.2.3).
+ * `no-store`, no se guarda (ni para stale-if-error), y lo que ya había de esa URL queda inservible.
+ * Con `max-age`, la frescura y la ventana de stale-if-error descuentan la edad con la que llega
+ * (`Age`, RFC 9111 §4.2.3); sin él, `ttlMs` cuenta desde que llega.
  */
 function guardar(
   c: ConfigHttp,
@@ -333,8 +334,22 @@ function guardar(
   r: Leida,
   etag: string | null,
 ): void {
+  if (c.cache === undefined) return;
   const control = r.encabezado("Cache-Control") ?? "";
-  if (c.cache === undefined || /no-store|no-cache/i.test(control)) return;
+  if (/no-store|no-cache/i.test(control)) {
+    const previo = c.cache.leer(url);
+    // La caché no tiene cómo borrar: la entrada queda caducada desde siempre, sin ETag ni
+    // stale-if-error, para no servirla ni revalidarla (tampoco en el mismo milisegundo).
+    if (previo !== undefined) {
+      c.cache.guardar(url, {
+        ...previo,
+        etag: null,
+        expira: Number.NEGATIVE_INFINITY,
+        rancioMs: 0,
+      });
+    }
+    return;
+  }
   const segundos = (directiva: string): number | undefined => {
     const valor = new RegExp(`(?:^|[\\s,])${directiva}=(\\d+)`, "i").exec(control)?.[1];
     return valor === undefined ? undefined : Number(valor) * 1000;
