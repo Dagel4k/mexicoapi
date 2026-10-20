@@ -274,7 +274,10 @@ describe("vigía del DOF en frescura.yml", () => {
     const job = frescura.jobs.dof as Job;
     expect(job.permissions).toEqual({ contents: "read" });
     expect(job.if).toBe("github.ref == 'refs/heads/main'");
-    expect(job.outputs).toEqual({ lista: expresion("steps.buscar.outputs.lista") });
+    expect(job.outputs).toEqual({
+      lista: expresion("steps.buscar.outputs.lista"),
+      otra_forma: expresion("steps.buscar.outputs.otra_forma"),
+    });
     // Las mismas acciones fijadas por SHA que la alerta de coberturas.
     const usos = (j: Job | undefined) => (j?.steps ?? []).flatMap((p) => p.uses ?? []);
     expect(usos(job)).toEqual(usos(frescura.jobs.coberturas));
@@ -291,8 +294,19 @@ describe("vigía del DOF en frescura.yml", () => {
     // interpreta comandos de workflow.
     expect(run.indexOf(`echo "::stop-commands::\${pausa}"`)).toBeLessThan(comando);
     expect(run.indexOf(`echo "::\${pausa}::"`)).toBeGreaterThan(comando);
-    // Si el SIDOF no respondió el paso sigue en verde, con un aviso.
-    expect(run).toContain(`if ! jq -e '.revisado == true' "\${salida}" > /dev/null; then`);
+    // Solo un error del comando deja el paso en rojo. Un índice que el SIDOF no respondió, o que
+    // respondió con otra forma, deja un aviso y el paso sigue en verde; las fechas con otra forma
+    // salen en otra_forma para el issue de avisar-dof.
+    expect(run).toContain(`if [ "\${codigo}" -ne 0 ]; then`);
+    expect(run.match(/\bexit 1\b/g)?.length).toBe(3);
+    expect(run).toContain("jq -r '.indices[] | [.fecha, .estado] | @tsv'");
+    expect(run).toMatch(/sin_respuesta\) echo "::warning::/);
+    expect(run).toContain(`otra_forma="\${otra_forma:+\${otra_forma} }\${fecha}"`);
+    expect(run).toContain(`echo "otra_forma=\${otra_forma}"`);
+    // La forma de la lista de índices se revisa antes del bucle.
+    expect(run.indexOf('jq -e \'.indices | type == "array"')).toBeLessThan(
+      run.indexOf("while IFS="),
+    );
     expect(run).toContain(
       `lista="$(jq -ce '.publicaciones | if type == "array" then . else error("no es un arreglo") end' "\${salida}")"`,
     );
@@ -302,13 +316,16 @@ describe("vigía del DOF en frescura.yml", () => {
     const frescura = await workflow("frescura.yml");
     const job = frescura.jobs["avisar-dof"] as Job;
     expect(job.needs).toBe("dof");
-    expect(job.if).toBe("github.ref == 'refs/heads/main' && needs.dof.outputs.lista != '[]'");
+    expect(job.if).toBe(
+      "github.ref == 'refs/heads/main' && (needs.dof.outputs.lista != '[]' || needs.dof.outputs.otra_forma != '')",
+    );
     expect(job.permissions).toEqual({ issues: "write" });
     expect(job.steps.flatMap((p) => p.uses ?? [])).toEqual([]);
     const [unico] = job.steps;
     expect(job.steps).toHaveLength(1);
     expect(unico?.env).toEqual({
       LISTA: expresion("needs.dof.outputs.lista"),
+      OTRA_FORMA: expresion("needs.dof.outputs.otra_forma"),
       GH_TOKEN: expresion("github.token"),
       GH_REPO: expresion("github.repository"),
     });
@@ -325,6 +342,15 @@ describe("vigía del DOF en frescura.yml", () => {
     );
     expect(run).not.toMatch(/gh issue (close|comment|edit|reopen)/);
     expect(run).toContain("blob/main/docs/operacion/datos-curados.md");
+    // Si el SIDOF respondió con otra forma, un solo issue abierto a la vez, buscado igual que los
+    // de la revisión de frescura: si alguien lo cierra y vuelve a pasar, se abre otro.
+    const revisar = paso(frescura, "revisar", "Revisar frescura de los datos").run ?? "";
+    expect(funcion(run, "buscar_abierto")).toBe(funcion(revisar, "buscar_abierto"));
+    expect(run).toContain('titulo_forma="Vigía del DOF: el SIDOF respondió con otra forma"');
+    expect(run).toContain(`if ! numero="$(buscar_abierto "\${titulo_forma}")"; then`);
+    expect(run).toContain(
+      `if ! [[ "\${OTRA_FORMA}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}( [0-9]{4}-[0-9]{2}-[0-9]{2})?$ ]]; then`,
+    );
     // La forma de la lista se revisa antes del bucle, y cada publicación dentro de él.
     const guardia = run.indexOf('jq -e \'type == "array"');
     expect(guardia).toBeGreaterThan(-1);
