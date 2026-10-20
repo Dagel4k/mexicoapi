@@ -118,6 +118,10 @@ pre code { font-size: 1em; }
 /* las tablas de pocas columnas no ocupan todo el ancho y caben a 375 px */
 .compacta { max-width: 48rem; }
 @media (max-width: 39.99rem) { .compacta th, .compacta td { padding-inline: 0.5rem; white-space: normal; } }
+@media (max-width: 39.99rem) { .compacta table { font-size: 0.875rem; } }
+/* la fila de hoy en la tabla de las UDIS; la marca sitio.js */
+tr.hoy th, tr.hoy td { background: var(--aviso); font-weight: 600; }
+tr.hoy th { box-shadow: inset 4px 0 0 var(--aviso-borde); }
 .aviso {
   background: var(--aviso);
   border-left: 4px solid var(--aviso-borde);

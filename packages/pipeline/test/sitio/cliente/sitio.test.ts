@@ -6,10 +6,12 @@ import {
   ErrorEstado,
   ESPERA_MS,
   filasDeEstado,
+  hoyEnMexico,
   instalarEstado,
   NOMBRES_STATUS,
   nombresDeDatasets,
   rellenarOrigen,
+  resaltarHoy,
 } from "../../../src/sitio/cliente/sitio.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
@@ -294,6 +296,55 @@ describe("rellenarOrigen", () => {
       "https://mexicoapi.example",
     ]);
     rellenarOrigen({ querySelectorAll: () => [] }, "https://otro.example");
+  });
+});
+
+describe("hoyEnMexico", () => {
+  it("es el día de la Ciudad de México, no el de UTC", () => {
+    // 21:00 del 19 en la Ciudad de México ya es el 20 en UTC.
+    expect(hoyEnMexico(new Date("2026-10-20T03:00:00Z"))).toBe("2026-10-19");
+    expect(hoyEnMexico(new Date("2026-10-20T06:00:00Z"))).toBe("2026-10-20");
+  });
+});
+
+describe("resaltarHoy", () => {
+  const fila = (fecha: string | undefined) => {
+    const atributos: Record<string, string> = {};
+    return {
+      dataset: { fecha },
+      className: "",
+      atributos,
+      setAttribute(nombre: string, valor: string) {
+        atributos[nombre] = valor;
+      },
+    };
+  };
+
+  it("marca solo la fila de hoy y busca las que traen data-fecha", () => {
+    const filas = [fila("2026-10-18"), fila("2026-10-19"), fila("2026-10-20"), fila(undefined)];
+    const selectores: string[] = [];
+    resaltarHoy(
+      {
+        querySelectorAll(selector: string) {
+          selectores.push(selector);
+          return filas;
+        },
+      },
+      "2026-10-19",
+    );
+    expect(selectores).toEqual(["tr[data-fecha]"]);
+    expect(filas.map((f) => f.className)).toEqual(["", "hoy", "", ""]);
+    expect(filas.map((f) => f.atributos)).toEqual([{}, { "aria-current": "date" }, {}, {}]);
+  });
+
+  it("sin la fecha de hoy en la tabla no marca nada", () => {
+    const filas = [fila("2026-10-18")];
+    resaltarHoy({ querySelectorAll: () => filas }, "2027-01-01");
+    expect(filas[0]?.className).toBe("");
+  });
+
+  it("el estilo resalta la fila marcada", () => {
+    expect(ESTILO).toMatch(/tr.hoy th/);
   });
 });
 

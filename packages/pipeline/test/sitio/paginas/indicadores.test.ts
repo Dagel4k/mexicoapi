@@ -176,7 +176,8 @@ describe("tipo de cambio FIX", () => {
   it("muestra el último FIX con su fecha de publicación y la de determinación", () => {
     const { html } = dePagina(RUTA_FIX);
     const serie = entrada.fix.registros;
-    const [ultimo, anterior] = [serie.at(-1), serie.at(-2)] as TipoCambioFix[];
+    const ultimo = serie.at(-1) as TipoCambioFix;
+    const anterior = serie.at(-2) as TipoCambioFix;
     const fila = filas(html, "fix-ultimo");
     expect(valores(fila[0] as string)).toEqual([ultimo.valor]);
     expect(html).toContain(`<time datetime="${ultimo.fecha_publicacion}">`);
@@ -198,7 +199,8 @@ describe("tipo de cambio FIX", () => {
 
   it("explica operación y publicación y dice cuál FIX aplica a un día", () => {
     const { html, pagina } = dePagina(RUTA_FIX);
-    const [ultimo, anterior] = entrada.fix.registros.slice(-2).reverse() as TipoCambioFix[];
+    const ultimo = entrada.fix.registros.at(-1) as TipoCambioFix;
+    const anterior = entrada.fix.registros.at(-2) as TipoCambioFix;
     const siguiente = sumar(ultimo.fecha_publicacion, 1);
     const f = filas(html, "fix-operacion");
     // Un pago del día de la última publicación usa la anterior; el siguiente usa la última.

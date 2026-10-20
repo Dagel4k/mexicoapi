@@ -174,6 +174,27 @@ export function rellenarOrigen(raiz, origen) {
   for (const elemento of raiz.querySelectorAll("[data-origen]")) elemento.textContent = origen;
 }
 
+const DIA_MEXICO = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" });
+
+/**
+ * El día de la Ciudad de México (`AAAA-MM-DD`) de un instante, sin importar la zona del equipo.
+ * @param {Date} ahora
+ */
+export const hoyEnMexico = (ahora) => DIA_MEXICO.format(ahora);
+
+/**
+ * Resalta la fila de la tabla de las UDIS que es la de `hoy`. Sin JavaScript la tabla se lee igual.
+ * @param {{ querySelectorAll(selector: string): Iterable<{ dataset: Readonly<Record<string, string | undefined>>, className: string, setAttribute(nombre: string, valor: string): void }> }} raiz
+ * @param {string} hoy
+ */
+export function resaltarHoy(raiz, hoy) {
+  for (const fila of raiz.querySelectorAll("tr[data-fecha]")) {
+    if (fila.dataset.fecha !== hoy) continue;
+    fila.className = "hoy";
+    fila.setAttribute("aria-current", "date");
+  }
+}
+
 /**
  * El mapa id → nombre que el HTML trae en `data-nombres`. Sin él, la tabla muestra el id.
  * @param {string | undefined} texto
@@ -427,7 +448,7 @@ export function instalarEstado(pagina, pedir, reloj) {
  * Lo que este módulo usa de `document`.
  * @template N
  * @typedef {object} Documento
- * @property {(selector: string) => Iterable<{ textContent: string | null }>} querySelectorAll
+ * @property {(selector: string) => Iterable<{ textContent: string | null, dataset: Readonly<Record<string, string | undefined>>, className: string, setAttribute(nombre: string, valor: string): void }>} querySelectorAll
  * @property {(id: string) => ElementoDePagina<N> | null} getElementById
  * @property {(etiqueta: string) => N} createElement
  */
