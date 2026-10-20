@@ -10,6 +10,8 @@ Las respuestas de ejemplo son las de la API el 2026-10-18, casi todas recortadas
 
 Dentro de `/v1`, un `/` al final de la ruta redirige (308) a la misma ruta sin él.
 
+Usa siempre `https://`. Una petición a `/v1` por `http://` da 403 [`https-requerido`](problemas.md#https-requerido), sin redirigir y sin contar en el [límite de peticiones](#límite-de-peticiones); `localhost`, `127.0.0.1` y `[::1]` aceptan `http://` para el desarrollo local con `wrangler dev`. Las respuestas de la API y del sitio llevan `Strict-Transport-Security: max-age=31536000`. El sitio y las descargas los sirve la plataforma directamente y, en `workers.dev`, también responden por `http://`; ahí nada protege lo que bajas, así que pide los archivos y `SHA256SUMS` por `https://`.
+
 ## Rutas
 
 | Ruta | Qué devuelve |
@@ -1007,6 +1009,7 @@ La respuesta trae un elemento por dataset (`bancos`, `inegi.estados`, `inegi.mun
 | Respuesta | `Cache-Control` |
 | --- | --- |
 | Datos, cálculos, índice y OpenAPI | `public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800` |
+| `/v1/clabe/{clabe}` | `private, max-age=3600` |
 | `/v1/tipo-cambio/fix/ultimo` | `public, max-age=300` |
 | `/v1/status` | `public, max-age=60` |
 | Errores (problem+json) | `no-store` |
@@ -1015,7 +1018,11 @@ Los datos se actualizan como máximo una vez al día, así que una hora de cach�
 
 `/v1/tipo-cambio/fix/ultimo` cambia con cada publicación del FIX, así que su caché es de cinco minutos y sin `stale-while-revalidate` ni `stale-if-error`: con ellos, un cliente podría seguir viendo el FIX anterior hasta un día después de la actualización.
 
-Las rutas que sirven un archivo traen `ETag`: las de estados, municipios y bancos, las de constantes por año (`/v1/constantes/uma/{anio}`, `/v1/constantes/salario-minimo/{anio}` y `/v1/isr/tarifa/{periodo}/{anio}`) y `/v1/openapi.json`. Las que calculan la respuesta (`/v1`, CLABE, días hábiles e inhábiles, FIX, UDIS, UMA por fecha y status) no lo traen. Si mandas el `ETag` de una respuesta anterior en `If-None-Match`, responde 304 sin cuerpo:
+La validación de CLABE lleva `private`: la CLABE va en la URL y es de la cuenta de una persona, así que la guarda el navegador o tu cliente, pero no un caché compartido (un proxy o una CDN delante de tu aplicación).
+
+Todas las respuestas llevan `Vary: Accept-Encoding`: la plataforma comprime según lo que pide el cliente (gzip o br), y un caché compartido debe guardar cada versión aparte.
+
+Las rutas que sirven un archivo traen `ETag`: las de estados, municipios y bancos, las de constantes por año (`/v1/constantes/uma/{anio}`, `/v1/constantes/salario-minimo/{anio}` y `/v1/isr/tarifa/{periodo}/{anio}`) y `/v1/openapi.json`. Las que calculan la respuesta (`/v1`, CLABE, días hábiles e inhábiles, FIX, UDIS, UMA por fecha y status) no lo traen e ignoran `If-None-Match`, también `If-None-Match: *`: responden 200 con el cuerpo completo. En las que sí lo traen, si mandas el `ETag` de una respuesta anterior en `If-None-Match`, responde 304 sin cuerpo:
 
 ```bash
 curl -i -H 'If-None-Match: "<ETag de una respuesta anterior>"' https://mexicoapi.dagel4k.workers.dev/v1/estados/25
@@ -1029,9 +1036,11 @@ ETag: "<el mismo valor>"
 
 Se omiten los demás encabezados. El `ETag` lo da el archivo publicado y cambia cuando cambian los datos; usa el de tu última respuesta, no uno copiado de esta guía.
 
+Si la respuesta llega comprimida, la plataforma marca el `ETag` como débil: `W/"<el mismo valor>"`. Puedes mandarlo así en `If-None-Match`: la API compara sin el `W/` y el 304 llega igual, con el `ETag` sin él.
+
 ## CORS
 
-Todas las respuestas de `/v1` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204 y no cuentan en el límite de peticiones. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405.
+Todas las respuestas de `/v1` llevan `Access-Control-Allow-Origin: *`, así que puedes llamar la API desde el navegador. Se exponen los encabezados `ETag` y `Retry-After`. Las peticiones `OPTIONS` responden 204 y no cuentan en el límite de peticiones. Solo se aceptan `GET`, `HEAD` y `OPTIONS`; otro método da 405. `HEAD` responde lo mismo que `GET` sin cuerpo: el mismo estado y los mismos encabezados, `ETag` y 304 incluidos, salvo `Content-Length`, que no trae.
 
 Los archivos estáticos de `/descargas/`, `/llms.txt` y `/llms-full.txt` también llevan `Access-Control-Allow-Origin: *`, pero solo aceptan `GET` y `HEAD`: otro método, `OPTIONS` incluido, da 405 sin cuerpo. Como no piden encabezados propios, un `fetch` simple desde el navegador no necesita `OPTIONS`.
 
@@ -1044,7 +1053,7 @@ Los parámetros se validan antes de consultar el dato. Estas peticiones dan 400:
 - un parámetro vacío o un segmento vacío en la query (`?&`);
 - un valor que no cumple su formato.
 
-Una ruta con `%` no se encuentra (404). Un cliente que agrega `?_=123` para saltarse el caché recibe 400. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json.
+Una ruta con `%` no se encuentra (404). Un cliente que agrega `?_=123` para saltarse el caché recibe 400. Una URL demasiado larga la rechaza la plataforma antes de llegar a la API, con un 414 o un 431 que no es problem+json. Lo mismo pasa con `TRACE` y con los métodos que no son de HTTP: la plataforma responde un 405 en HTML o un 501, sin `Allow` ni problem+json.
 
 Los errores usan `application/problem+json` (RFC 9457) con `type`, `title`, `status` y `detail`, más `instance` y, cuando aplica, `parametro`. El `type` es un enlace a la sección correspondiente de [problemas.md](problemas.md) y es un identificador estable: dentro de `/v1` no cambia, aunque la API llegue a un dominio propio. Para distinguir un error, compara el `type` completo o la parte después de `#` (`parametro-invalido`). Nunca llevan trazas internas.
 
