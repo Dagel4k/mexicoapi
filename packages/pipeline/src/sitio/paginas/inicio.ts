@@ -11,6 +11,7 @@ import {
   VARIABLE_API,
 } from "./bloques.js";
 import { describir } from "./catalogo.js";
+import { nodosDelSitio } from "./datos-estructurados.js";
 import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
 
 export { formatearEntero, tamanoLegible } from "./bloques.js";
@@ -44,6 +45,17 @@ export interface EntradaInicio {
   descargas: ReadonlyMap<string, Uint8Array | string>;
   /** Lo que se muestra de la respuesta de `/v1/clabe/{CLABE_EJEMPLO}` (`respuestaRecortada`). */
   ejemplo: unknown;
+  /** Las páginas de datos, en el orden del registro; la portada enlaza cada una. */
+  paginas?: readonly PaginaEnPortada[];
+}
+
+/** Lo que la portada dice de una página de datos (`PaginaDatos` lo cumple). */
+export interface PaginaEnPortada {
+  ruta: string;
+  h1: string;
+  descripcion: string;
+  /** El dataset de la tabla cuyo renglón la enlaza, si tiene. */
+  dataset: string | null;
 }
 
 /** La CLABE de los ejemplos: Banamex, con su dígito de control. */
@@ -210,13 +222,18 @@ function datos(entrada: EntradaInicio): string {
     `<th scope="col"${clase === "" ? "" : ` class="${clase}"`} role="columnheader">${texto}</th>`;
   const filas = entrada.datasets.map((d) => {
     const { nombre } = describir(d.id);
+    const pagina = (entrada.paginas ?? []).find((p) => p.dataset === d.id);
+    const enlacePagina =
+      pagina === undefined
+        ? ""
+        : `<span class="detalle"><a href="${escaparHtml(pagina.ruta)}">${escaparHtml(pagina.h1)}</a></span>`;
     const nombreHtml = escaparHtml(nombre);
     const ultimo =
       d.ultimo_dato === undefined
         ? ""
         : `<span class="detalle">último dato ${tiempo(d.ultimo_dato)}</span>`;
     return `<tr role="row">
-<th scope="row" role="rowheader">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span><span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
+<th scope="row" role="rowheader">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span>${enlacePagina}<span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
 ${celda("Datos al", "junto", `${tiempo(d.as_of)}${ultimo}`)}
 ${celda("Registros", "num", formatearEntero(d.registros))}
 ${celda("Fuente y licencia", "fuentes", fuentes(d.fuentes))}
@@ -239,6 +256,24 @@ ${filas.join("\n")}
 </table>
 </div>
 </section>`;
+}
+
+/** "Consultar los datos": cada página de datos con su descripción; nada si no hay ninguna. */
+function consultarDatos(paginas: readonly PaginaEnPortada[]): string {
+  if (paginas.length === 0) return "";
+  const entradas = paginas.map(
+    (p) =>
+      `<dt><a href="${escaparHtml(p.ruta)}">${escaparHtml(p.h1)}</a></dt>
+<dd>${escaparHtml(p.descripcion)}</dd>`,
+  );
+  return `<section id="consultar-datos" aria-labelledby="titulo-consultar-datos">
+<h2 id="titulo-consultar-datos">Consultar los datos</h2>
+<p>Una página por tema, con los datos completos, su fuente oficial y cómo pedirlos por API, npm o descarga.</p>
+<dl>
+${entradas.join("\n")}
+</dl>
+</section>
+`;
 }
 
 function descargas(entrada: EntradaInicio): string {
@@ -314,7 +349,7 @@ ${navegacion(ruta, URL_REPO)}
 <main id="contenido" class="marco">
 <p class="intro">Una API JSON de solo lectura, sin llave ni cuenta, con ${entrada.datasets.length} datasets oficiales y descargas completas en JSON, CSV y SQLite. Cada dato dice de qué fuente salió, con qué licencia y de qué fecha, y cada archivo publica su sha256.</p>
 ${empieza(publicado, entrada.ejemplo)}
-${datos(entrada)}
+${consultarDatos(entrada.paginas ?? [])}${datos(entrada)}
 ${descargas(entrada)}
 ${REFERENCIA}
 </main>`;
@@ -325,5 +360,6 @@ ${REFERENCIA}
     cuerpo,
     ruta,
     scripts: ["/sitio.js"],
+    datosEstructurados: nodosDelSitio(),
   });
 }

@@ -6,6 +6,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
 import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
+import { nodosDelSitio } from "../../../src/sitio/paginas/datos-estructurados.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 import { enlaceSeguro } from "../../../src/sitio/paginas/html.js";
@@ -18,7 +19,7 @@ import {
   respuestaRecortada,
   tamanoLegible,
 } from "../../../src/sitio/paginas/inicio.js";
-import { atributos, desescapar, esperarDocumentoValido } from "./estructura.js";
+import { atributos, datosEstructurados, desescapar, esperarDocumentoValido } from "./estructura.js";
 
 const LICENCIA_INEGI = {
   license: "Términos de libre uso de la información del INEGI",
@@ -212,6 +213,49 @@ describe("página de inicio", () => {
     expect(descripcion?.length).toBeLessThanOrEqual(155);
     expect(html).toContain(`<meta property="og:description" content="${descripcion}">`);
     expect(html).toContain('<meta name="twitter:card" content="summary">');
+  });
+
+  it("declara el sitio y la organización en JSON-LD", () => {
+    expect(datosEstructurados(html)).toEqual(nodosDelSitio());
+  });
+
+  // La portada lleva a cada página de datos: desde el renglón de su dataset y desde una lista.
+  it("enlaza cada página de datos desde el renglón de su dataset y desde Consultar los datos", () => {
+    const paginas = [
+      {
+        ruta: "/uma/",
+        h1: "UMA 2026 & 2025",
+        descripcion: "La UMA <diaria>, mensual y anual.",
+        dataset: "constantes.uma",
+      },
+      {
+        ruta: "/dias-de-descanso-obligatorio/",
+        h1: "Días de descanso obligatorio 2026 y 2027 (LFT)",
+        descripcion: "Los del artículo 74.",
+        dataset: null,
+      },
+    ];
+    const conPaginas = paginaInicio({ ...ENTRADA, paginas });
+    esperarDocumentoValido(conPaginas);
+    const [estados, uma] = renglones(conPaginas, "tabla-datos") as [string, string];
+    expect(uma).toContain(
+      '<span class="id">constantes.uma</span><span class="detalle"><a href="/uma/">UMA 2026 &amp; 2025</a></span><span class="detalle">Curado</span></th>',
+    );
+    expect(estados).not.toContain("/uma/");
+    const inicio = conPaginas.indexOf('<section id="consultar-datos"');
+    const seccion = conPaginas.slice(inicio, conPaginas.indexOf("</section>", inicio));
+    expect(seccion).toContain('<h2 id="titulo-consultar-datos">Consultar los datos</h2>');
+    expect(seccion).toContain(
+      '<dt><a href="/uma/">UMA 2026 &amp; 2025</a></dt>\n<dd>La UMA &lt;diaria&gt;, mensual y anual.</dd>',
+    );
+    expect(seccion).toContain(
+      '<dt><a href="/dias-de-descanso-obligatorio/">Días de descanso obligatorio 2026 y 2027 (LFT)</a></dt>',
+    );
+    // Antes de la tabla de datos; sin páginas no hay sección.
+    expect(inicio).toBeLessThan(conPaginas.indexOf('<section id="datos"'));
+    expect(html).not.toContain("consultar-datos");
+    const clases = new Set(atributos(conPaginas, "class").flatMap((c) => c.split(" ")));
+    for (const clase of clases) expect(ESTILO, clase).toMatch(new RegExp(`\\.${clase}\\b`));
   });
 
   it("cierra con el pie y un solo footer", () => {
