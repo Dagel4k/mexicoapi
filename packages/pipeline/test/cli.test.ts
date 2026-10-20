@@ -325,6 +325,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "404.html",
       "_headers",
       "bancos-clabe",
+      "calculadora-dias-habiles",
       "descargas",
       "dias-de-descanso-obligatorio",
       "dias-inhabiles-bancarios",
