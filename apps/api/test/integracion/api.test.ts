@@ -121,6 +121,12 @@ describe("datos reales del build", () => {
     expect(malDigito.data).toMatchObject({ valido: false, errores: ["digito_verificador"] });
   });
 
+  it("/v1/clabe/{clabe} solo se guarda en el caché del cliente, no en uno compartido", async () => {
+    const respuesta = await pedir("/v1/clabe/002010077777777771");
+    await respuesta.arrayBuffer();
+    expect(respuesta.headers.get("Cache-Control")).toBe("private, max-age=3600");
+  });
+
   it("/v1/dias-habiles salta el descanso obligatorio de febrero", async () => {
     // 2026-02-02 es el primer lunes de febrero (art. 74 LFT).
     const { data, meta } = await datos("/v1/dias-habiles?autoridad=lft&desde=2026-01-30&dias=1");

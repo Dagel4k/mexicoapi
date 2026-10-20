@@ -7,6 +7,9 @@ export const CACHE_STATUS = "public, max-age=60";
 // `/v1/tipo-cambio/fix/ultimo` cambia con cada publicación: sin stale, un cliente no se queda
 // horas con el FIX de ayer.
 export const CACHE_ULTIMO = "public, max-age=300";
+// La CLABE va en la URL y es de la cuenta de una persona: la guarda el navegador o el cliente,
+// no un caché compartido.
+export const CACHE_CLABE = "private, max-age=3600";
 
 const SEGURIDAD: ReadonlyArray<readonly [string, string]> = [
   ["Access-Control-Allow-Origin", "*"],

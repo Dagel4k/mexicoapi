@@ -4,7 +4,7 @@ import bancos from "../../../../data/bancos/bancos.json" with { type: "json" };
 import manifiesto from "../../../../data/bancos/manifest.json" with { type: "json" };
 import { reiniciarCargas } from "../../src/cargas.js";
 import { manejar } from "../../src/index.js";
-import { CACHE_DATOS } from "../../src/respuestas.js";
+import { CACHE_CLABE } from "../../src/respuestas.js";
 import {
   type AssetFalso,
   crearAssets,
@@ -78,7 +78,9 @@ describe("GET /v1/clabe/{clabe}", () => {
     const { respuesta, assets } = await pedir(`/v1/clabe/${clabe}`);
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("content-type")).toBe("application/json; charset=utf-8");
-    expect(respuesta.headers.get("cache-control")).toBe(CACHE_DATOS);
+    // La CLABE es de la cuenta de una persona y va en la URL: solo la guarda el cliente.
+    expect(respuesta.headers.get("cache-control")).toBe("private, max-age=3600");
+    expect(CACHE_CLABE).toBe("private, max-age=3600");
     expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
     const texto = await respuesta.text();
     expect(Object.keys(JSON.parse(texto))).toEqual(["data", "meta"]);
