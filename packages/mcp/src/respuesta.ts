@@ -2,13 +2,7 @@
 // (as_of, fuente, origen y advertencias con sus avisos), sus esquemas, el texto legible y cómo se
 // traducen los errores esperables del paquete y de la API.
 import { AVISO_SIN_API, type Aviso, aUnaLinea, codigoAviso, esFechaIsoValida } from "mexicoapi";
-import {
-  type Cliente,
-  type Meta,
-  MexicoApiError,
-  URL_DOCS,
-  URL_REPOSITORIO,
-} from "mexicoapi/cliente";
+import { type Cliente, type Meta, MexicoApiError, URL_DOCS } from "mexicoapi/cliente";
 import { compilarEsquema, type EsquemaJson, type Validador } from "./esquema.js";
 import {
   ErrorHerramienta,
@@ -62,10 +56,13 @@ export { AVISO_SIN_API };
 export const RESPALDO_API =
   "Consulta la API de MéxicoAPI (la pública, o la de MEXICOAPI_BASE) y, si no responde, usa los datos del paquete y lo advierte. Con MEXICOAPI_SIN_RED=1 responde con los datos del paquete, sin red.";
 
-/** Documentación de los validadores, la fuente de las validaciones por algoritmo. */
+/**
+ * Documentación de los validadores, la fuente de las validaciones por algoritmo. Es la página de
+ * npm: muestra el README de la versión publicada, la que instala `npx -y`, y no el de `main`.
+ */
 export const FUENTE_VALIDADORES: Fuente = {
   nombre: "MéxicoAPI, validadores de formato y dígito verificador",
-  url: `${URL_REPOSITORIO}/tree/main/packages/sdk#validadores`,
+  url: "https://www.npmjs.com/package/mexicoapi",
 };
 
 const FUENTE_API: Fuente = {
