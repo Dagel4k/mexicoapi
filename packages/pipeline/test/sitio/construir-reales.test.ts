@@ -335,7 +335,11 @@ describe("con los datos reales del repositorio", () => {
       ["/dias-de-descanso-obligatorio/", "lft"],
       ["/dias-inhabiles-bancarios/", "cnbv"],
     ] as const;
-    expect(rutas).toEqual(["/", "/estado/", ...autoridades.map(([ruta]) => ruta)]);
+    expect(rutas.slice(0, 2 + autoridades.length)).toEqual([
+      "/",
+      "/estado/",
+      ...autoridades.map(([ruta]) => ruta),
+    ]);
     const listaDe = async (autoridad: "sat" | "lft" | "cnbv", anio: number) => {
       if (autoridad === "lft") return diasInhabilesLft(anio).dias;
       const shard = await leerJson(join(salida, `v1/_internos/calendarios/${autoridad}.json`));
@@ -398,6 +402,64 @@ describe("con los datos reales del repositorio", () => {
       expect(html, ruta).toContain(`<p class="datos-al">Datos al <time datetime="${as_of}">`);
       const lastmod = as_of > enero ? as_of : enero;
       expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc><lastmod>${lastmod}</lastmod>`);
+    }
+  }, 120_000);
+
+  // Lo que sirve el Worker para lo mismo: los shards del build, que son los que lee la API. Cada
+  // página muestra el valor de su registro, el que responde `/v1` para esa fecha o ese año.
+  it("las cifras de las páginas de indicadores y constantes son las que sirve la API con el build", async () => {
+    const leer = async <T>(ruta: string) =>
+      ((await leerJson(join(salida, ruta))) as { data: T }).data;
+    const pagina = (ruta: string) => readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
+    const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
+    for (const ruta of [
+      "/tipo-de-cambio-fix/",
+      "/udis/",
+      "/uma/",
+      "/salario-minimo/",
+      "/tarifas-isr/",
+    ]) {
+      expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc>`);
+    }
+    // FIX: el último valor del último año, el de `/v1/tipo-cambio/fix/ultimo`.
+    const fixes = (await leerJson(join(salida, "v1/_internos/fix/2026.json"))) as {
+      datos: { fecha_publicacion: string; valor: string }[];
+    };
+    const ultimo = fixes.datos.at(-1) as { fecha_publicacion: string; valor: string };
+    const htmlFix = await pagina("/tipo-de-cambio-fix/");
+    expect(htmlFix).toContain(`<data value="${ultimo.valor}">${ultimo.valor}</data>`);
+    expect(htmlFix).toContain(`<time datetime="${ultimo.fecha_publicacion}">`);
+    // UDIS: el último valor cargado.
+    const udis = (await leerJson(join(salida, "v1/_internos/udis/2026.json"))) as {
+      datos: { fecha: string; valor: string }[];
+    };
+    const udi = udis.datos.at(-1) as { fecha: string; valor: string };
+    const htmlUdis = await pagina("/udis/");
+    expect(htmlUdis).toContain(`<tr data-fecha="${udi.fecha}">`);
+    expect(htmlUdis).toContain(`<data value="${udi.valor}">${udi.valor}</data>`);
+    // UMA, salario mínimo e ISR del año del FIX.
+    const uma = await leer<Record<"diaria" | "mensual" | "anual", string>>(
+      "v1/constantes/uma/2026.json",
+    );
+    const htmlUma = await pagina("/uma/");
+    for (const campo of ["diaria", "mensual", "anual"] as const) {
+      expect(htmlUma, campo).toContain(`<data value="${uma[campo]}">`);
+    }
+    const salario = await leer<
+      {
+        diario: string;
+      }[]
+    >("v1/constantes/salario-minimo/2026.json");
+    const htmlSalario = await pagina("/salario-minimo/");
+    for (const { diario } of salario) expect(htmlSalario).toContain(`<data value="${diario}">`);
+    const mensual = await leer<{
+      tramos: { cuota_fija: string; tasa_excedente: string }[];
+    }>("v1/isr/tarifa/mensual/2026.json");
+    const htmlIsr = await pagina("/tarifas-isr/");
+    const mensualHtml = htmlIsr.slice(htmlIsr.indexOf('<caption id="isr-mensual-2026">'));
+    for (const t of mensual.tramos) {
+      expect(mensualHtml).toContain(`<data value="${t.cuota_fija}">`);
+      expect(mensualHtml).toContain(`<data value="${t.tasa_excedente}">`);
     }
   }, 120_000);
 });
