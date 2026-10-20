@@ -1,6 +1,6 @@
 import { access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { validarClabe } from "@mexicoapi/core";
+import { validarClabe, validarRfc } from "@mexicoapi/core";
 import { URL_API } from "@mexicoapi/core/problemas";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -628,12 +628,15 @@ describe("página de inicio", () => {
     }
   });
 
-  // La API solo valida CLABE; el paquete también RFC, CURP y NSS, sin mandar el dato a la red.
-  it("dice qué valida el paquete y que lo hace en el equipo de quien lo usa", () => {
+  // La API solo valida CLABE; el paquete también RFC, CURP y NSS, sin mandar el dato a la red. En
+  // el RFC un mal dígito verificador no hace falso `valido`: solo se avisa.
+  it("dice qué valida el paquete, que lo hace en el equipo y que en el RFC el dígito es informativo", () => {
     const inicio = html.indexOf("<h3>Paquete de npm</h3>");
     expect(html.slice(inicio, html.indexOf("</div>", inicio))).toContain(
-      "Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo)",
+      "Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo; en el RFC, el dígito es informativo)",
     );
+    const rfc = validarRfc("XAXX010101001");
+    expect([rfc.valido, rfc.digito_verificador_valido]).toEqual([true, false]);
   });
 
   // Un comando copiable de un paquete que no existe en npm falla, o instala el de otra persona.

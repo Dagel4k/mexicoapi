@@ -158,7 +158,7 @@ function empieza(publicado: boolean, ejemplo: unknown): string {
 ${bloqueApi(ejemplo)}
 <div class="bloque">
 <h3>Paquete de npm</h3>
-<p>Para JavaScript y TypeScript, sin dependencias. Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo), días hábiles y los mismos datos, sin red.</p>
+<p>Para JavaScript y TypeScript, sin dependencias. Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo; en el RFC, el dígito es informativo), días hábiles y los mismos datos, sin red.</p>
 ${codigo("npm install mexicoapi")}
 ${codigo(EJEMPLO_CLABE)}
 ${documentacion("mexicoapi", "sdk")}
