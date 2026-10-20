@@ -356,6 +356,19 @@ describe("query", () => {
     }
   });
 
+  it("un nombre desconocido con un carácter de control va entre comillas y escapado en el detail", async () => {
+    const { respuesta } = await pedir("/v1/udis?fecha=2026-01-05&fecha%00=1");
+    expect(respuesta.status).toBe(400);
+    expect(await respuesta.json()).toEqual({
+      type: `${TIPO}parametro-desconocido`,
+      title: "Parámetro desconocido",
+      status: 400,
+      detail: 'Esta ruta no acepta el parámetro "fecha\\u0000".',
+      instance: "/v1/udis",
+      parametro: "fecha\u0000",
+    });
+  });
+
   it("una query con segmentos vacíos da 400 sin tocar ASSETS", async () => {
     for (const ruta of ["/v1/estados?&", "/v1/estados?&&", "/v1?a=1&&b=2", "/v1?=1"]) {
       const { respuesta, assets } = await pedir(ruta);
