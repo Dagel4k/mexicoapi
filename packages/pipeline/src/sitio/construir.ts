@@ -61,6 +61,7 @@ import { archivoEncabezados } from "./paginas/encabezados.js";
 import { paginaEstado, RUTA_ESTADO } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
 import { FAVICON } from "./paginas/favicon.js";
+import { paginasDeIndicadores } from "./paginas/indicadores.js";
 import { CLABE_EJEMPLO, paginaInicio, RUTA_INICIO, respuestaRecortada } from "./paginas/inicio.js";
 import {
   archivoLlms,
@@ -477,13 +478,14 @@ export async function construirSitio(opciones: {
   // Las páginas de datos. "Año actual" es el de la fecha más reciente del FIX en los datos y no el
   // del día del build: dos builds de los mismos datos dan las mismas páginas.
   const anio = anioDe((coberturas.get(fix.manifiesto.dataset) as CoberturaSerie).hasta);
-  const registro = registrarPaginas(
-    paginasDeCalendarios({
+  const registro = registrarPaginas([
+    ...paginasDeCalendarios({
       anio,
       sat: calendarios.get("sat") as CalendarioDePagina,
       cnbv: calendarios.get("cnbv") as CalendarioDePagina,
     }),
-  );
+    ...paginasDeIndicadores({ fix, udis, uma, salarioMinimo: salario, isr }),
+  ]);
   for (const pagina of registro.values()) {
     archivos.set(`${pagina.ruta.slice(1)}index.html`, paginaDeDatos(pagina, registro, descargas));
   }

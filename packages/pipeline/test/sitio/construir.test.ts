@@ -45,6 +45,13 @@ import { paginaEstado } from "../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../src/sitio/paginas/estilo.js";
 import { FAVICON } from "../../src/sitio/paginas/favicon.js";
 import { escaparHtml } from "../../src/sitio/paginas/html.js";
+import {
+  RUTA_FIX,
+  RUTA_ISR,
+  RUTA_SALARIO_MINIMO,
+  RUTA_UDIS,
+  RUTA_UMA,
+} from "../../src/sitio/paginas/indicadores.js";
 import { CLABE_EJEMPLO, respuestaRecortada } from "../../src/sitio/paginas/inicio.js";
 import { paginaNoEncontrada } from "../../src/sitio/paginas/no-encontrado.js";
 import { ROBOTS } from "../../src/sitio/paginas/robots.js";
@@ -55,7 +62,16 @@ import { datosEstructurados } from "./paginas/estructura.js";
 import { encabezadosDe, leerReglas } from "./paginas/reglas-cloudflare.js";
 
 /** Las páginas de datos del build, en el orden del registro. */
-const PAGINAS_DE_DATOS = [RUTA_DIAS_SAT, RUTA_DIAS_LFT, RUTA_DIAS_CNBV];
+const PAGINAS_DE_DATOS = [
+  RUTA_DIAS_SAT,
+  RUTA_DIAS_LFT,
+  RUTA_DIAS_CNBV,
+  RUTA_FIX,
+  RUTA_UDIS,
+  RUTA_UMA,
+  RUTA_SALARIO_MINIMO,
+  RUTA_ISR,
+];
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -255,7 +271,12 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "llms.txt",
         "robots.txt",
         "sitemap.xml",
+        "salario-minimo/index.html",
         "sitio.js",
+        "tarifas-isr/index.html",
+        "tipo-de-cambio-fix/index.html",
+        "udis/index.html",
+        "uma/index.html",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
         "v1/_internos/constantes.json",
@@ -903,6 +924,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     // anterior al 1 de enero de ese año, aunque sus datos sí (la CNBV, del 2025-12-10).
     const asOf = (id: string): string => interna.curados[id]?.meta.as_of as string;
     expect(asOf("dias-inhabiles.cnbv") < "2026-01-01").toBe(true);
+    const asOfDe = (id: string): string =>
+      (interna.datasets[id] ?? interna.curados[id])?.meta.as_of as string;
     const delAnio = (fecha: string): string => (fecha > "2026-01-01" ? fecha : "2026-01-01");
     expect(sitemap.match(/<lastmod>[^<]*<\/lastmod>/g)).toEqual(
       [
@@ -911,6 +934,12 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         delAnio(asOf("dias-inhabiles.sat")),
         delAnio(VIGENCIA_LFT),
         "2026-01-01",
+        // Las páginas de indicadores no cambian con el año: la fecha de sus datos.
+        asOfDe("tipo-cambio.fix"),
+        asOfDe("udis"),
+        asOfDe("constantes.uma"),
+        asOfDe("constantes.salario-minimo"),
+        asOfDe("isr.tarifas"),
       ].map((fecha) => `<lastmod>${fecha}</lastmod>`),
     );
   });
