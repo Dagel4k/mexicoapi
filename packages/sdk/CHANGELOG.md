@@ -18,7 +18,8 @@ Cambios de comportamiento. Revisa tu código si usas lo que nombran:
 - CLI: un error de uso (código 2) termina con la ayuda de su comando, `Usa mexicoapi dias-habiles --help para ver su uso.` (o `mexicoapi sepomex cp --help`); solo sin comando, o con uno que no existe, con `Usa mexicoapi --help para ver los comandos.` Antes siempre con la general.
 - Textos más claros: el 422 del SAT `general` fuera de su cobertura sugiere `permitir_incompleto=true` y nombra `declaraciones_pagos` solo para plazos de declaraciones o pagos; el 404 del FIX con `publicado` en un día sin publicación sugiere `operacion`. La CLI muestra esos errores con sus opciones (`--tipo-plazo`, `--permitir-incompleto`) y rechaza con su nombre un `--tipo-plazo` que no existe.
 - `validarCurp`: la posición 17 (el diferenciador) solo acepta un dígito o una letra de la A a la J, como dice el Instructivo Normativo de la CURP (DOF 18-06-2018). Con una letra de la K a la Z da `valido: false` y `errores: ["estructura"]`; antes se aceptaba cualquier letra.
-- `crearCliente` lanza `TypeError` con una `base` `http://` que no sea `localhost`, `127.0.0.1` o `[::1]`, con puerto o sin él; para otro host, usa `https://`. La CLI da el mismo error (sale con 1) con `--base` o `MEXICOAPI_BASE` así, salvo en los validadores, que no usan el cliente.
+- `crearCliente` lanza `TypeError` con una `base` `http://` que no sea `localhost`, `127.0.0.1` o `[::1]`, con puerto o sin él; para otro host, usa `https://`. La CLI da el mismo error (sale con 1) con `--base` o `MEXICOAPI_BASE` así, salvo en los comandos que no usan el cliente (los validadores, `sepomex` y `municipio` con un nombre) o, con `MEXICOAPI_BASE`, sin red (`MEXICOAPI_SIN_RED`).
+- `TipoProblema` (de `mexicoapi` y `mexicoapi/cliente`) y `PROBLEMAS` (de `mexicoapi/cliente`) suman el tipo `https-requerido`: la API responde 403 con él a una petición por `http://` a un host que no es local. Un `switch` exhaustivo sobre `TipoProblema` tiene un caso más.
 
 Nuevo:
 
@@ -33,7 +34,7 @@ Correcciones:
 
 - Caché del cliente: descuenta de `max-age` y de la ventana de `stale-if-error` la edad con la que llega la respuesta (`Age`), así que una respuesta que pasó por otra caché no se usa más tiempo del que permite la API. No guarda las respuestas `no-cache`, y una respuesta `no-store` o `no-cache` deja sin usar lo que había guardado de esa consulta, también para `stale-if-error`.
 - El aviso `transmision-poder-ejecutivo` (SAT, 2030 y cada seis años) solo sale por el 1o. de octubre o el 1o. de diciembre que caen de lunes a viernes, y su texto nombra solo esos. En 2030 un cálculo que cruza el 1o. de diciembre, que es domingo, ya no lo trae, y el texto dice "no se descuenta el 1o. de octubre". `codigoAviso` reconoce el texto nuevo y el anterior.
-- El `detail` del error por un parámetro desconocido muestra su nombre entre comillas, con los caracteres invisibles escapados, cuando tiene caracteres que no son letras, dígitos, `_`, `.` ni `-`. La API, el cliente sin red y el servidor MCP dan el mismo texto.
+- El `detail` del error por un parámetro desconocido da el nombre tal cual solo si tiene letras sin acento (A-Z, a-z), dígitos, `_`, `.` o `-`. Si no, lo da entre comillas y con lo invisible escapado (por ejemplo, `​`): controles, caracteres de formato, separadores de línea y los que se ignoran por omisión (`\p{Default_Ignorable_Code_Point}`). La API, el cliente sin red y el servidor MCP dan el mismo texto.
 
 ## 0.1.0 (2026-10-18)
 

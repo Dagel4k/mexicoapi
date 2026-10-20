@@ -2,7 +2,7 @@
 
 ## 0.2.0 (sin publicar)
 
-Cambios de comportamiento. Revisa tu configuración si usas lo que nombran:
+Cambios de comportamiento. Revisa tu configuración o tu uso si dependes de lo que nombran:
 
 - `validar_curp`: la posición 17 (el diferenciador) solo acepta un dígito o una letra de la A a la J, como dice el Instructivo Normativo de la CURP (DOF 18-06-2018). Con una letra de la K a la Z la CURP es inválida, con el error `estructura`; antes se aceptaba cualquier letra.
 - `MEXICOAPI_BASE` con `http://` solo se acepta para `localhost`, `127.0.0.1` o `[::1]`, con puerto o sin él. Con otro host el servidor no arranca (código 2, con un mensaje en stderr que pide `https://`).
@@ -22,7 +22,7 @@ Otros cambios:
 - Nuevo: `avisos` en el `structuredContent` de cada herramienta (y en `datos` de `sumar_dias_habiles`), requerido en su `outputSchema`: las mismas advertencias con un código estable, como en la API. El texto no cambia.
 - `dias_inhabiles` y `sumar_dias_habiles` con `sat`: el aviso de la transmisión del Poder Ejecutivo (2030 y cada seis años) solo sale por el 1o. de octubre o el 1o. de diciembre que caen de lunes a viernes, y su texto nombra solo esos. En 2030 un cálculo que cruza el 1o. de diciembre, que es domingo, ya no lo trae.
 - La caché de las respuestas de la API descuenta la edad con la que llegan (`Age`), no guarda las `no-cache` y deja de usar lo guardado de una consulta si la API responde `no-store` o `no-cache`, también como respaldo cuando la API falla.
-- El error por un parámetro desconocido muestra su nombre entre comillas, con los caracteres invisibles escapados, cuando tiene caracteres que no son letras, dígitos, `_`, `.` ni `-`. Es el mismo texto del `detail` de la API y del cliente de `mexicoapi`.
+- El error por un parámetro desconocido da el mismo texto que el `detail` de la API: el nombre tal cual si solo tiene letras sin acento (A-Z, a-z), dígitos, `_`, `.` o `-`, y si no, entre comillas y con lo invisible escapado, también lo que se ignora por omisión (`\p{Default_Ignorable_Code_Point}`). Como los argumentos de cada herramienta son fijos, casi nunca se ve.
 - La fuente que citan los validadores es la página de `mexicoapi` en npm (https://www.npmjs.com/package/mexicoapi) en lugar del README de `main`, que puede describir otra versión.
 - `mcpName` en el `package.json` y `server.json` en el repositorio, para el registro oficial de servidores MCP (`io.github.Dagel4k/mexicoapi-mcp`).
 
