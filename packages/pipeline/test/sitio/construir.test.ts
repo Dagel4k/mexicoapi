@@ -32,6 +32,11 @@ import { coberturasDe, diasLft } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import {
+  RUTA_DIAS_CNBV,
+  RUTA_DIAS_LFT,
+  RUTA_DIAS_SAT,
+} from "../../src/sitio/paginas/dias-inhabiles.js";
+import {
   archivoEncabezados,
   CSP_PAGINAS,
   RUTAS_SITIO,
@@ -46,7 +51,11 @@ import { ROBOTS } from "../../src/sitio/paginas/robots.js";
 import * as verificar from "../../src/verificar.js";
 import { PRUEBA_LENTA } from "../ayudas.js";
 import { YAML_CNBV, YAML_ISR, YAML_SALARIO, YAML_SAT, YAML_UMA } from "../curado/ejemplos.js";
+import { datosEstructurados } from "./paginas/estructura.js";
 import { encabezadosDe, leerReglas } from "./paginas/reglas-cloudflare.js";
+
+/** Las páginas de datos del build, en el orden del registro. */
+const PAGINAS_DE_DATOS = [RUTA_DIAS_SAT, RUTA_DIAS_LFT, RUTA_DIAS_CNBV];
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -235,6 +244,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.csv",
         "descargas/udis.json",
         "descargas/udis.manifest.json",
+        "dias-de-descanso-obligatorio/index.html",
+        "dias-inhabiles-bancarios/index.html",
+        "dias-inhabiles-sat/index.html",
         "estado/index.html",
         "estilo.css",
         "favicon.svg",
@@ -791,14 +803,23 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     await construirSitio({ raizDatos: datos, salida });
     const texto = await readFile(join(salida, "_headers"), "utf8");
     const descargas = await listar(join(salida, "descargas"));
-    expect(texto).toBe(archivoEncabezados(descargas));
+    expect(texto).toBe(archivoEncabezados(descargas, PAGINAS_DE_DATOS));
     const reglas = leerReglas(texto);
     expect(reglas.length).toBeLessThanOrEqual(100);
     for (const linea of texto.split("\n")) expect(linea.length).toBeLessThanOrEqual(2000);
     const rutas = descargas.map((n) => `/descargas/${n}`);
-    expect(reglas.map((r) => r.ruta)).toEqual(["/*", ...rutas, ...RUTAS_SITIO]);
+    expect(reglas.map((r) => r.ruta)).toEqual([
+      "/*",
+      ...rutas,
+      ...RUTAS_SITIO,
+      ...PAGINAS_DE_DATOS,
+    ]);
+    // Cada página de datos lleva la CSP de las páginas: sin su regla, solo tendría la de /*.
+    for (const ruta of PAGINAS_DE_DATOS) {
+      expect(texto, ruta).toContain(`\n${ruta}\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
+    }
     // Ninguna ruta recibe el mismo encabezado de dos reglas (Cloudflare los juntaría con coma).
-    for (const ruta of [...rutas, ...RUTAS_SITIO]) {
+    for (const ruta of [...rutas, ...RUTAS_SITIO, ...PAGINAS_DE_DATOS]) {
       for (const [nombre, valores] of encabezadosDe(reglas, ruta)) {
         expect(valores, `${ruta} ${nombre}`).toHaveLength(1);
       }
@@ -858,12 +879,13 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
   });
 
-  // Lo que se indexa: cada página que declara canónica está en el sitemap, y solo esas.
-  it("escribe sitemap.xml con cada página canónica y la fecha más reciente de los datos", async () => {
+  // Lo que se indexa: cada página que declara canónica está en el sitemap, y solo esas. La portada
+  // y /estado/ llevan la fecha más reciente de los datos; cada página de datos, la de los suyos.
+  it("escribe sitemap.xml con cada página canónica y la fecha de sus datos", async () => {
     await construirSitio({ raizDatos: datos, salida });
     const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
     const locs = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1] as string);
-    expect(locs).toEqual([`${URL_API}/`, `${URL_API}/estado/`]);
+    expect(locs).toEqual(["/", "/estado/", ...PAGINAS_DE_DATOS].map((ruta) => `${URL_API}${ruta}`));
     const canonicas: string[] = [];
     for (const archivo of (await listar(salida)).filter((n) => n.endsWith(".html"))) {
       const html = await readFile(join(salida, archivo), "utf8");
@@ -877,9 +899,72 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     );
     const masReciente = [...fechas].sort().at(-1);
     expect(masReciente).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const asOf = (id: string): string => interna.curados[id]?.meta.as_of as string;
     expect(sitemap.match(/<lastmod>[^<]*<\/lastmod>/g)).toEqual(
-      locs.map(() => `<lastmod>${masReciente}</lastmod>`),
+      [
+        masReciente,
+        masReciente,
+        asOf("dias-inhabiles.sat"),
+        VIGENCIA_LFT,
+        asOf("dias-inhabiles.cnbv"),
+      ].map((fecha) => `<lastmod>${fecha}</lastmod>`),
     );
+  });
+
+  // El año de las páginas es el del FIX más reciente de los datos, no el del día del build.
+  it("escribe una página por calendario con el año del FIX más reciente y el siguiente", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const h1 = async (ruta: string): Promise<string | undefined> =>
+      /<h1>([^<]*)<\/h1>/.exec(
+        await readFile(join(salida, ruta.slice(1), "index.html"), "utf8"),
+      )?.[1];
+    expect(fix.at(-1)?.fecha_publicacion).toBe("2026-10-16");
+    expect(await h1(RUTA_DIAS_SAT)).toBe("Días inhábiles del SAT 2026 y 2027");
+    expect(await h1(RUTA_DIAS_LFT)).toBe("Días de descanso obligatorio 2026 y 2027 (LFT)");
+    // La CNBV de los datos de prueba solo trae 2026.
+    expect(await h1(RUTA_DIAS_CNBV)).toBe("Días inhábiles bancarios 2026 (CNBV)");
+
+    const conOtroAnio = [...fix, { fecha_publicacion: "2027-01-04", valor: "18.0000" }];
+    await writeFile(join(datos, "tipo-cambio-fix/fix.json"), jsonCanonico(conOtroAnio));
+    await construirSitio({ raizDatos: datos, salida });
+    expect(await h1(RUTA_DIAS_SAT)).toBe("Días inhábiles del SAT 2027 y 2028");
+    expect(await h1(RUTA_DIAS_LFT)).toBe("Días de descanso obligatorio 2027 y 2028 (LFT)");
+    expect(await h1(RUTA_DIAS_CNBV)).toBe("Días inhábiles bancarios 2026 (CNBV)");
+  });
+
+  // La portada lleva a cada página; cada página a la portada, y su JSON-LD a descargas que existen.
+  it("la portada enlaza cada página de datos, y cada Dataset descarga archivos del build", async () => {
+    await construirSitio({ raizDatos: datos, salida });
+    const inicio = await readFile(join(salida, "index.html"), "utf8");
+    const seccion = inicio.slice(
+      inicio.indexOf('<section id="consultar-datos"'),
+      inicio.indexOf('<section id="datos"'),
+    );
+    for (const ruta of PAGINAS_DE_DATOS) {
+      expect(seccion, ruta).toContain(`<dt><a href="${ruta}">`);
+      const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
+      expect(html, ruta).toContain('<li><a href="/">MéxicoAPI</a></li>');
+      const datasets = datosEstructurados(html).filter((n) => n["@type"] === "Dataset");
+      expect(datasets, ruta).toHaveLength(1);
+      const distribucion = (datasets[0] as { distribution: { contentUrl: string }[] }).distribution;
+      const descargas = distribucion.map((d) => d.contentUrl);
+      expect(descargas.length, ruta).toBe(2);
+      for (const url of descargas) {
+        expect(url.startsWith(`${URL_API}/descargas/`), url).toBe(true);
+        await expect(
+          readFile(join(salida, url.slice(URL_API.length + 1))),
+          url,
+        ).resolves.toBeDefined();
+      }
+    }
+    // Los renglones de la tabla de datos del SAT y la CNBV llevan a su página.
+    for (const [id, ruta] of [
+      ["dias-inhabiles.sat", RUTA_DIAS_SAT],
+      ["dias-inhabiles.cnbv", RUTA_DIAS_CNBV],
+    ]) {
+      const renglon = inicio.slice(inicio.indexOf(`<span class="id">${id}</span>`));
+      expect(renglon.slice(0, renglon.indexOf("</th>")), id).toContain(`<a href="${ruta}">`);
+    }
   });
 
   // El ejemplo sale de los datos del build con el mismo validador que usa el Worker; la prueba de
