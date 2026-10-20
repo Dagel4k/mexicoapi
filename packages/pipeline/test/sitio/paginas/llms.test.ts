@@ -268,10 +268,11 @@ describe("llms.txt", () => {
     expect(publicado).toContain("`npx -y mexicoapi-mcp`");
   });
 
-  // La API solo valida CLABE: quien pida validar un RFC tiene que saber que el paquete lo hace.
-  it("dice qué valida el paquete y que lo hace en el equipo de quien lo usa", () => {
+  // La API solo valida CLABE: quien pida validar un RFC tiene que saber que el paquete lo hace, y
+  // que ahí un mal dígito verificador no hace falso `valido`.
+  it("dice qué valida el paquete, que lo hace en el equipo y que en el RFC el dígito es informativo", () => {
     expect(texto).toContain(
-      "validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo)",
+      "validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo; en el RFC, el dígito es informativo)",
     );
   });
 
