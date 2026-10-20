@@ -1129,7 +1129,10 @@ Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que gener
 | `/estado/` | Si cada dataset automático está al día; la página consulta `/v1/status` |
 | `/llms.txt` | Resumen de la API en el formato de [llmstxt.org](https://llmstxt.org/): cómo pedir el FIX de un pago, y la ruta de cada dataset con sus parámetros obligatorios, su `as_of` (en las series, también su último dato) y su documentación |
 | `/llms-full.txt` | Esta referencia, la de errores y la documentación de cada dataset en un solo archivo de texto, con los enlaces absolutos |
-| `/robots.txt` | Pide a los rastreadores que no entren a `/v1` ni a `/descargas/`; el resto del sitio queda abierto |
+| `/robots.txt` | Pide a los rastreadores que no entren a `/v1` ni a `/descargas/`; el resto del sitio queda abierto. Declara el sitemap |
+| `/sitemap.xml` | Las páginas que se indexan (`/` y `/estado/`), con la fecha más reciente de los datos como `lastmod` |
+
+Cada página declara como URL canónica la de la API pública (`https://mexicoapi.dagel4k.workers.dev`), también en staging, y lleva una tarjeta de Open Graph para cuando se comparte el enlace.
 
 Las sirven los assets de Cloudflare sin pasar por el Worker, así que no cuentan en el límite de peticiones. Las páginas llevan su propia política de seguridad de contenido y cinco minutos de caché; `llms.txt` y `llms-full.txt` se sirven como `text/plain; charset=utf-8`, con `Access-Control-Allow-Origin: *` y una hora de caché. `/estado` redirige a `/estado/`.
 
