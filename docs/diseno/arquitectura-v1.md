@@ -145,7 +145,7 @@ mexicoapi/
   "sources": [
     {
       "name": "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
-      "url": "https://gaia.inegi.org.mx/wscatgeo/v2/",
+      "url": "https://www.inegi.org.mx/app/ageeml/",
       "license": "Términos de libre uso de la información del INEGI",
       "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
       "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas…",
@@ -164,7 +164,7 @@ El estado operativo (última corrida, último éxito, `ok` o `stale`) vive en Cl
 
 La frescura no va en `meta` de las respuestas de datos, solo en `/v1/status`. Así los shards son estáticos y su `ETag` no cambia con la hora.
 
-Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan 3 escrituras al día (5 los lunes, con estados y municipios), una por dataset en cada corrida programada, más las de las corridas a mano.
+Así una corrida sin cambios no genera commit, PR ni despliegue, y la frescura sigue siendo visible. KV gratis permite 100 mil lecturas y mil escrituras al día; se usan 4 escrituras al día (6 los lunes, con estados y municipios), una por dataset en cada corrida programada (bancos, UDIS y el FIX con su corrida de respaldo), más las de las corridas a mano.
 
 Originales crudos: el último original de cada fuente se guarda en `data/<dataset>/raw/` (todos los de v1 pesan menos de 1 MB) y su sha256 va en el manifiesto. El historial de git conserva las versiones anteriores, así que cualquiera puede comprobar el hash y reconstruir un dato.
 
@@ -404,10 +404,11 @@ El sitio son páginas estáticas que genera el mismo build (`packages/pipeline/s
 
 - `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. Mientras los paquetes no estén en npm, la constante `PUBLICADO_EN_NPM` hace que la página y `llms.txt` solo lo avisen, sin comandos de instalación ni configuración que copiar.
 - `/estado/`: la frescura de cada dataset automático; un módulo propio (`sitio.js`) consulta `/v1/status` desde el navegador.
+- `/sitemap.xml` y `/robots.txt`: el mapa del sitio con las páginas indexables y su `lastmod`, y las reglas para rastreadores. Cada página indexable declara su URL canónica en un `<link rel="canonical">`.
 - `/llms.txt` (formato de llmstxt.org) y `/llms-full.txt`: la ruta de cada dataset con su `as_of`, y la referencia de la API, la de errores y las docs de cada dataset en un solo archivo, con los enlaces relativos cambiados por su URL en GitHub.
 - `404.html`: con `not_found_handling: "404-page"`, los assets la sirven en cualquier dirección fuera de `/v1` que no es un asset, sin invocar al Worker. Dentro de `/v1`, una ruta que no existe sigue siendo un 404 problem+json del Worker.
 
-En `_headers`, una regla `/*` pone `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` y `X-Frame-Options: DENY` en todo lo que sirven los assets, también en el 404 y en las redirecciones; no lleva CSP, porque Cloudflare junta con coma los valores de todas las reglas que coinciden. Cada ruta del sitio y cada descarga tiene además su regla con su CSP y su caché (CORS en las descargas). El 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. Todo texto que viene de los datos se escapa y solo una URL `https://` entra a un enlace.
+En `_headers`, una regla `/*` pone `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000`, `Vary: Accept-Encoding`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` y `Cross-Origin-Opener-Policy: same-origin` en todo lo que sirven los assets, también en el 404 y en las redirecciones; no lleva CSP, porque Cloudflare junta con coma los valores de todas las reglas que coinciden. Cada ruta del sitio y cada descarga tiene además su regla con su CSP y su caché (CORS en las descargas). El 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. En staging, el despliegue publica una copia de `public/` con `X-Robots-Tag: noindex` agregado a esa regla, para que no se indexe; producción no lo lleva. Todo texto que viene de los datos se escapa y solo una URL `https://` entra a un enlace.
 
 ### Validación de entradas
 
