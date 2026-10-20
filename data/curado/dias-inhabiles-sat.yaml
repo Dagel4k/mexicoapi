@@ -1,8 +1,9 @@
 # Días inhábiles del SAT que se transcriben del DOF: los de la regla 2.1.6 de la RMF 2026
 # (vacaciones). Los del primer párrafo del artículo 12 del CFF (1o. de enero, primer lunes de
 # febrero, etc.) no se capturan: los calcula el núcleo por regla de 2026 a 2100, y `curar` los
-# agrega a la lista publicada de los años que cubre este archivo. Los sábados y domingos tampoco
-# se listan: el calendario los agrega solo.
+# agrega a la lista publicada de los años que cubre este archivo. Los sábados y domingos fuera de
+# un periodo de vacaciones no se listan (el calendario los agrega solo); dentro de un periodo se
+# listan todos los días.
 #
 # Las vacaciones generales cuentan como días hábiles en los plazos para presentar declaraciones y
 # pagar contribuciones (art. 12, segundo párrafo). El 2 y 3 de abril (regla 2.1.6, fracción II) se
