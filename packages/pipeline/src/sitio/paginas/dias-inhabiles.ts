@@ -29,6 +29,7 @@ import type { CitaPagina, PaginaDatos, PaquetePagina } from "./pagina-datos.js";
 export const RUTA_DIAS_SAT = "/dias-inhabiles-sat/";
 export const RUTA_DIAS_LFT = "/dias-de-descanso-obligatorio/";
 export const RUTA_DIAS_CNBV = "/dias-inhabiles-bancarios/";
+export const RUTA_CALCULADORA = "/calculadora-dias-habiles/";
 
 type Rango = { readonly desde: FechaISO; readonly hasta: FechaISO };
 
@@ -328,7 +329,7 @@ ${tablaPlazos(calendario)}
       coberturaTemporal: `${lista.desde}/${lista.hasta}`,
       distribucion: ["dias-inhabiles-sat.json", "dias-inhabiles-sat.csv"],
     },
-    relacionadas: [RUTA_DIAS_LFT, RUTA_DIAS_CNBV],
+    relacionadas: [RUTA_DIAS_LFT, RUTA_DIAS_CNBV, RUTA_CALCULADORA],
   };
 }
 
@@ -424,7 +425,7 @@ diasDescansoLft(${anio}); // los días del artículo 74, cada uno con su cita`,
       coberturaTemporal: `${COBERTURA_LISTA_LFT.desde}/${COBERTURA_LISTA_LFT.hasta}`,
       distribucion: ["dias-inhabiles-lft.json", "dias-inhabiles-lft.csv"],
     },
-    relacionadas: [RUTA_DIAS_SAT, RUTA_DIAS_CNBV],
+    relacionadas: [RUTA_DIAS_SAT, RUTA_DIAS_CNBV, RUTA_CALCULADORA],
   };
 }
 
@@ -514,6 +515,6 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
       coberturaTemporal: `${lista.desde}/${lista.hasta}`,
       distribucion: ["dias-inhabiles-cnbv.json", "dias-inhabiles-cnbv.csv"],
     },
-    relacionadas: [RUTA_DIAS_SAT, RUTA_DIAS_LFT],
+    relacionadas: [RUTA_DIAS_SAT, RUTA_DIAS_LFT, RUTA_CALCULADORA],
   };
 }

@@ -38,10 +38,10 @@ describe("estilo.css", () => {
   });
 
   // Un presupuesto contra el crecimiento sin querer, no un requisito de rendimiento: la hoja es una
-  // sola, se guarda en caché y comprimida pesa una fracción. 9 KB desde las páginas de datos (migas,
+  // sola, se guarda en caché y comprimida pesa una fracción. 10 KB desde la calculadora; 9 KB desde las páginas de datos (migas,
   // citas y tablas compactas); antes 7 KB, desde que las tablas se ven como tarjetas, y 6 KB.
   it("no crece sin que se decida", () => {
-    expect(Buffer.byteLength(ESTILO)).toBeLessThan(9 * 1024);
+    expect(Buffer.byteLength(ESTILO)).toBeLessThan(10 * 1024);
   });
 
   // Las migas se leen como texto: la diagonal entre una y otra es contenido, no un color.

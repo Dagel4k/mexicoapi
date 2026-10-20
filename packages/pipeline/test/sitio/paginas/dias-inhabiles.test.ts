@@ -19,6 +19,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { leerCurado } from "../../../src/curado/leer.js";
 import { curadoDiasCnbv, curadoDiasSat } from "../../../src/curado/registro.js";
 import { metaDesdeManifiesto, URL_DOCS } from "../../../src/sitio/meta.js";
+import { paginaCalculadora } from "../../../src/sitio/paginas/calculadora.js";
 import { DESCRIPCION_DATASET } from "../../../src/sitio/paginas/datos-estructurados.js";
 import {
   type CalendarioDePagina,
@@ -27,6 +28,7 @@ import {
   paginaDiasLft,
   paginaDiasSat,
   paginasDeCalendarios,
+  RUTA_CALCULADORA,
   RUTA_DIAS_CNBV,
   RUTA_DIAS_LFT,
   RUTA_DIAS_SAT,
@@ -104,9 +106,15 @@ async function anioDelFix(): Promise<number> {
   return Number(fix.at(-1)?.fecha_publicacion.slice(0, 4));
 }
 
+/** Las tres páginas y la calculadora, a la que las tres enlazan. */
+const conCalculadora = (anio: number) => [
+  ...paginasDeCalendarios({ anio, sat, cnbv }),
+  paginaCalculadora({ sat, cnbv }),
+];
+
 /** El HTML de una página, armada con las tres en el registro. */
 function html(pagina: PaginaDatos, anio = 2026): string {
-  const registro = registrarPaginas(paginasDeCalendarios({ anio, sat, cnbv }));
+  const registro = registrarPaginas(conCalculadora(anio));
   const conLaPagina = new Map(registro);
   conLaPagina.set(pagina.ruta, pagina);
   return paginaDeDatos(pagina, conLaPagina, DESCARGAS);
@@ -399,7 +407,7 @@ describe("días inhábiles del SAT", () => {
     ]);
     expect(pagina.docs).toBe(`${URL_DOCS}/datos/dias-inhabiles-sat.md`);
     expect(pagina.dataset).toBe("dias-inhabiles.sat");
-    expect(pagina.relacionadas).toEqual([RUTA_DIAS_LFT, RUTA_DIAS_CNBV]);
+    expect(pagina.relacionadas).toEqual([RUTA_DIAS_LFT, RUTA_DIAS_CNBV, RUTA_CALCULADORA]);
   });
 });
 
@@ -571,9 +579,9 @@ describe("registro de los calendarios", () => {
     expect(RUTA_DIAS_SAT).toBe("/dias-inhabiles-sat/");
     expect(RUTA_DIAS_LFT).toBe("/dias-de-descanso-obligatorio/");
     expect(RUTA_DIAS_CNBV).toBe("/dias-inhabiles-bancarios/");
-    const registro = registrarPaginas(paginas);
+    const registro = registrarPaginas([...paginas, paginaCalculadora({ sat, cnbv })]);
     for (const p of paginas) {
-      expect(p.relacionadas.length, p.ruta).toBe(2);
+      expect(p.relacionadas.length, p.ruta).toBe(3);
       esperarDocumentoValido(paginaDeDatos(p, registro, DESCARGAS));
     }
   });

@@ -37,6 +37,7 @@ import {
   RUTA_VALIDAR_CLABE,
 } from "../../src/sitio/paginas/catalogos.js";
 import {
+  RUTA_CALCULADORA,
   RUTA_DIAS_CNBV,
   RUTA_DIAS_LFT,
   RUTA_DIAS_SAT,
@@ -71,6 +72,7 @@ const PAGINAS_DE_DATOS = [
   RUTA_DIAS_SAT,
   RUTA_DIAS_LFT,
   RUTA_DIAS_CNBV,
+  RUTA_CALCULADORA,
   RUTA_FIX,
   RUTA_UDIS,
   RUTA_UMA,
@@ -275,6 +277,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.json",
         "descargas/udis.manifest.json",
         "bancos-clabe/index.html",
+        "calculadora-dias-habiles/index.html",
         "dias-de-descanso-obligatorio/index.html",
         "dias-inhabiles-bancarios/index.html",
         "dias-inhabiles-sat/index.html",
@@ -955,6 +958,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         delAnio(asOf("dias-inhabiles.sat")),
         delAnio(VIGENCIA_LFT),
         "2026-01-01",
+        // La calculadora: la fecha más reciente de los tres calendarios.
+        [asOf("dias-inhabiles.sat"), asOf("dias-inhabiles.cnbv"), VIGENCIA_LFT].sort().at(-1),
         // Las páginas de indicadores no cambian con el año: la fecha de sus datos.
         asOfDe("tipo-cambio.fix"),
         asOfDe("udis"),
@@ -1005,7 +1010,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
       expect(html, ruta).toContain('<li><a href="/">MéxicoAPI</a></li>');
       const datasets = datosEstructurados(html).filter((n) => n["@type"] === "Dataset");
-      expect(datasets, ruta).toHaveLength(ruta === RUTA_VALIDAR_CLABE ? 0 : 1);
+      expect(datasets, ruta).toHaveLength(
+        ruta === RUTA_VALIDAR_CLABE || ruta === RUTA_CALCULADORA ? 0 : 1,
+      );
       if (datasets.length === 0) continue;
       const distribucion = (datasets[0] as { distribution: { contentUrl: string }[] }).distribution;
       const descargas = distribucion.map((d) => d.contentUrl);
