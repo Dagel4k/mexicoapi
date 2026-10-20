@@ -151,8 +151,8 @@ const html = paginaInicio(ENTRADA);
 function renglones(pagina: string, idTabla: string): string[] {
   const inicio = pagina.indexOf(`<caption id="${idTabla}">`);
   const fin = pagina.indexOf("</table>", inicio);
-  const cuerpo = pagina.slice(pagina.indexOf("<tbody>", inicio), fin);
-  return [...cuerpo.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => m[1] as string);
+  const cuerpo = pagina.slice(pagina.indexOf("<tbody", inicio), fin);
+  return [...cuerpo.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => m[1] as string);
 }
 
 /** Quita etiquetas hasta que no quede ninguna: una sola pasada podría dejar otra armada. */
@@ -224,7 +224,7 @@ describe("página de inicio", () => {
     const filas = renglones(html, "tabla-datos");
     const fix = filas.find((f) => f.includes('<span class="id">tipo-cambio.fix</span>')) ?? "";
     expect(fix).toContain(
-      '<td class="junto" data-etiqueta="Datos al"><time datetime="2026-10-18">2026-10-18</time><span class="detalle">último dato <time datetime="2026-10-16">2026-10-16</time></span></td>',
+      '<td class="junto" data-etiqueta="Datos al" role="cell"><time datetime="2026-10-18">2026-10-18</time><span class="detalle">último dato <time datetime="2026-10-16">2026-10-16</time></span></td>',
     );
     expect(filas.filter((f) => f.includes("último dato"))).toEqual([fix]);
     expect(html).toContain(
@@ -237,8 +237,36 @@ describe("página de inicio", () => {
     const fix =
       renglones(html, "tabla-datos").find((f) => f.includes("tipo-cambio.fix</span>")) ?? "";
     expect(fix).toContain(
-      '<td class="rutas" data-etiqueta="API"><code>/v1/tipo-cambio/fix?operacion={fecha}</code><span class="detalle">El que aplica a un pago o una operación de esa fecha</span><code>/v1/tipo-cambio/fix/ultimo</code><span class="detalle">La publicación más reciente</span><code>/v1/tipo-cambio/fix?publicado={fecha}</code><span class="detalle">El que publicó el DOF ese día</span></td>',
+      '<td class="rutas" data-etiqueta="API" role="cell"><code>/v1/<wbr>tipo-cambio/<wbr>fix<wbr>?operacion={fecha}</code><span class="detalle">El que aplica a un pago o una operación de esa fecha</span><code>/v1/<wbr>tipo-cambio/<wbr>fix/<wbr>ultimo</code><span class="detalle">La publicación más reciente</span><code>/v1/<wbr>tipo-cambio/<wbr>fix<wbr>?publicado={fecha}</code><span class="detalle">El que publicó el DOF ese día</span></td>',
     );
+  });
+
+  // Entre 1024 y 1280 px las rutas se parten: mejor después de una / o antes de ? y &, nunca
+  // después de la / inicial. <wbr> no cambia lo que se copia.
+  it("las rutas se pueden partir en sus separadores y se copian tal cual", () => {
+    const conRutas = paginaInicio({
+      ...ENTRADA,
+      datasets: ["inegi.municipios", "dias-inhabiles.cnbv", "isr.tarifas"].map((id) => ({
+        ...(DATASETS[0] as DatasetInicio),
+        id,
+      })),
+    });
+    const codigos = [...conRutas.matchAll(/<td class="rutas"[^>]*>([\s\S]*?)<\/td>/g)].flatMap(
+      (m) => [...(m[1] as string).matchAll(/<code>([\s\S]*?)<\/code>/g)].map((c) => c[1] as string),
+    );
+    expect(codigos).toEqual([
+      "/v1/<wbr>municipios",
+      "/v1/<wbr>estados/<wbr>{cve_ent}/<wbr>municipios",
+      "/v1/<wbr>dias-inhabiles<wbr>?autoridad=cnbv<wbr>&amp;anio={anio}",
+      "/v1/<wbr>isr/<wbr>tarifa/<wbr>{periodo}/<wbr>{anio}",
+    ]);
+    for (const codigo of codigos) expect(codigo).not.toMatch(/^\/<wbr>/);
+    expect(codigos.map((c) => desescapar(c.replaceAll("<wbr>", "")))).toEqual([
+      "/v1/municipios",
+      "/v1/estados/{cve_ent}/municipios",
+      "/v1/dias-inhabiles?autoridad=cnbv&anio={anio}",
+      "/v1/isr/tarifa/{periodo}/{anio}",
+    ]);
   });
 
   // Debajo de 640 px cada renglón es una tarjeta y la etiqueta de cada celda sale de este atributo.
@@ -296,7 +324,7 @@ describe("página de inicio", () => {
     );
     expect(nuevo).toContain('<span class="detalle">Automático</span></th>');
     expect(html).not.toContain("Actualizado");
-    expect(paginaEstado()).toContain('<th scope="col">Datos al</th>');
+    expect(paginaEstado()).toContain('<th scope="col" role="columnheader">Datos al</th>');
     expect(html).toContain("<em>Datos al</em>");
     // /estado/ y /v1/status solo traen los automáticos; en los curados la fecha es la publicación.
     expect(html).toContain("en los curados, la de su publicación oficial más reciente");
@@ -306,8 +334,8 @@ describe("página de inicio", () => {
   it("muestra el nombre y la ruta de la API del catálogo, y un dataset nuevo con su id", () => {
     const [estados, uma, nuevo] = renglones(html, "tabla-datos") as [string, string, string];
     expect(estados).toContain(">Estados</a>");
-    expect(estados).toContain("<code>/v1/estados</code>");
-    expect(uma).toContain("<code>/v1/constantes/uma?fecha={fecha}</code>");
+    expect(estados).toContain("<code>/v1/<wbr>estados</code>");
+    expect(uma).toContain("<code>/v1/<wbr>constantes/<wbr>uma<wbr>?fecha={fecha}</code>");
     expect(nuevo).toContain(">nuevo.dataset</a>");
     expect(nuevo).toContain("Solo en descargas");
   });
@@ -321,7 +349,7 @@ describe("página de inicio", () => {
     };
     const [fila] = renglones(paginaInicio({ ...ENTRADA, datasets: [municipios] }), "tabla-datos");
     expect(fila).toContain(
-      '<code>/v1/municipios</code><span class="detalle">Todos los del país</span><code>/v1/estados/{cve_ent}/municipios</code><span class="detalle">Los de un estado</span></td>',
+      '<code>/v1/<wbr>municipios</code><span class="detalle">Todos los del país</span><code>/v1/<wbr>estados/<wbr>{cve_ent}/<wbr>municipios</code><span class="detalle">Los de un estado</span></td>',
     );
   });
 
@@ -384,8 +412,34 @@ describe("página de inicio", () => {
 
   it("toda celda de encabezado declara su scope y toda tabla tiene caption", () => {
     for (const [th] of html.matchAll(/<th\b[^>]*>/g)) expect(th).toMatch(/ scope="(col|row)"/);
-    expect(html.match(/<table>/g)?.length).toBe(2);
-    expect(html.match(/<table>\n<caption id="[^"]+">/g)?.length).toBe(2);
+    expect(html.match(/<table\b/g)?.length).toBe(2);
+    expect(html.match(/<table\b[^>]*>\n<caption id="[^"]+">/g)?.length).toBe(2);
+  });
+
+  // En modo tarjeta (display: block) WebKit quita la semántica de tabla: los roles la fijan. La
+  // de las descargas no cambia de forma y no los necesita.
+  it("la tabla de datos declara sus roles para el modo tarjeta; la de descargas no", () => {
+    const tabla = (id: string): string => {
+      const caption = html.indexOf(`<caption id="${id}">`);
+      return html.slice(html.lastIndexOf("<table", caption), html.indexOf("</table>", caption));
+    };
+    const datos = tabla("tabla-datos");
+    expect(datos.startsWith('<table role="table">')).toBe(true);
+    expect(datos.match(/<thead\b[^>]*>|<tbody\b[^>]*>/g)).toEqual([
+      '<thead role="rowgroup">',
+      '<tbody role="rowgroup">',
+    ]);
+    const filas = datos.match(/<tr\b[^>]*>/g) ?? [];
+    expect(filas).toHaveLength(DATASETS.length + 1);
+    for (const tr of filas) expect(tr).toBe('<tr role="row">');
+    for (const [th] of datos.matchAll(/<th\b[^>]*>/g)) {
+      const [, scope, role] = th.match(/^<th scope="(\w+)"(?: class="\w+")? role="(\w+)">$/) ?? [];
+      expect(`${scope}header`.replace("col", "column"), th).toBe(role);
+    }
+    const celdas = datos.match(/<td\b[^>]*>/g) ?? [];
+    expect(celdas).toHaveLength(DATASETS.length * 5);
+    for (const td of celdas) expect(td).toMatch(/ role="cell">$/);
+    expect(tabla("tabla-descargas")).not.toContain("role=");
   });
 
   it("cada clase que usa tiene regla en la hoja de estilo", () => {
@@ -532,15 +586,20 @@ describe("página de inicio", () => {
     const inicio = html.indexOf("<h3>Servidor MCP</h3>");
     const mcp = html.slice(inicio, html.indexOf("</div>", inicio));
     const nota = mcp.match(
-      /<p>En Windows, si el cliente no encuentra <code>npx<\/code>, usa <code>([^<]+)<\/code> y <code>([^<]+)<\/code>\.<\/p>/,
+      /<p>En Windows, si el cliente no encuentra <code>npx<\/code>, usa <code>(.+?)<\/code> y <code>(.+?)<\/code>\.<\/p>/,
     );
     expect(nota).not.toBeNull();
     expect(mcp.indexOf("</code></pre>")).toBeLessThan(mcp.indexOf("<p>En Windows"));
     const [, comando, argumentos] = nota as RegExpMatchArray;
-    expect(JSON.parse(`{${desescapar(comando ?? "")}, ${desescapar(argumentos ?? "")}}`)).toEqual({
+    const texto = (html: string): string => desescapar(sinEtiquetas(html));
+    expect(JSON.parse(`{${texto(comando ?? "")}, ${texto(argumentos ?? "")}}`)).toEqual({
       command: "cmd",
       args: ["/c", "npx", "-y", "mexicoapi-mcp"],
     });
+    // Cada argumento queda entero en su renglón: "-y" no se parte en el guion.
+    for (const argumento of ["/c", "npx", "-y", "mexicoapi-mcp"]) {
+      expect(argumentos).toContain(`<span class="junto">&quot;${argumento}&quot;</span>`);
+    }
   });
 
   // La API solo valida CLABE; el paquete también RFC, CURP y NSS, sin mandar el dato a la red.

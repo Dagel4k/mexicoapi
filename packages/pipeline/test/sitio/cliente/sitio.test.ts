@@ -576,6 +576,15 @@ describe("actualizarEstado", () => {
     expect(plazo?.className).toBe("num");
     expect(filasDe(nuevo)[0]?.hijos).toEqual(["<b>nuevo</b>"]);
 
+    // En modo tarjeta (display: block) WebKit quita la semántica de tabla: los roles la fijan.
+    for (const tr of filasDe(pagina.cuerpo)) {
+      expect(tr.atributos.get("role")).toBe("row");
+      const [th, ...tds] = filasDe(tr);
+      expect(th?.atributos.get("role")).toBe("rowheader");
+      expect(tds).toHaveLength(5);
+      for (const td of tds) expect([td.etiqueta, td.atributos.get("role")]).toEqual(["td", "cell"]);
+    }
+
     const clases = new Set(
       filasDe(pagina.cuerpo)
         .flatMap((tr) => tr.todos())
@@ -605,9 +614,7 @@ describe("actualizarEstado", () => {
     const { pagina } = crearPagina();
     const { pedir } = pedirCon(async () => responder(JSON.stringify(VARIADA)));
     await actualizarEstado(pagina, pedir, reloj);
-    const cabecera = [
-      ...paginaEstado().matchAll(/<th scope="col"(?: class="[^"]+")?>([^<]+)<\/th>/g),
-    ]
+    const cabecera = [...paginaEstado().matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)]
       .map((m) => m[1])
       .slice(1);
     for (const tr of filasDe(pagina.cuerpo)) {

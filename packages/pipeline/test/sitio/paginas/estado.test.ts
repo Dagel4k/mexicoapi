@@ -32,7 +32,7 @@ describe("página de estado", () => {
     expect(marco).toContain(' role="region" aria-labelledby="tabla-estado" tabindex="0"');
     expect(marco).toMatch(/\shidden>$/);
     expect(etiquetaDe(html, "filas-estado")).toMatch(/^<tbody /);
-    expect(html).toMatch(/<tbody id="filas-estado" data-nombres="[^"]+"><\/tbody>/);
+    expect(html).toMatch(/<tbody id="filas-estado" data-nombres="[^"]+" role="rowgroup"><\/tbody>/);
     expect(html).toContain(
       '<p id="mensaje-estado" class="mensaje" role="status" aria-live="polite"></p>',
     );
@@ -46,9 +46,7 @@ describe("página de estado", () => {
     expect(html).toContain(
       '<caption id="tabla-estado">Estado de cada dataset automático, según /v1/status</caption>',
     );
-    const columnas = [...html.matchAll(/<th scope="col"(?: class="[^"]+")?>([^<]+)<\/th>/g)].map(
-      (m) => m[1],
-    );
+    const columnas = [...html.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
     expect(columnas).toEqual([
       "Dataset",
       "Estado",
@@ -69,10 +67,20 @@ describe("página de estado", () => {
 
   // Los nombres de las columnas son las etiquetas que sitio.js pone a cada celda de las tarjetas.
   it("las columnas son las etiquetas que sitio.js pone a cada celda", () => {
-    const columnas = [...html.matchAll(/<th scope="col"(?: class="[^"]+")?>([^<]+)<\/th>/g)].map(
-      (m) => m[1],
-    );
+    const columnas = [...html.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
     expect(columnas.slice(1)).toEqual([...ETIQUETAS]);
+  });
+
+  // En modo tarjeta (display: block) WebKit quita la semántica de tabla: los roles la fijan. Los
+  // renglones los pone sitio.js con los suyos.
+  it("la tabla declara sus roles para el modo tarjeta", () => {
+    const tabla = html.slice(html.indexOf("<table"), html.indexOf("</table>"));
+    expect(tabla.startsWith('<table role="table">')).toBe(true);
+    expect(tabla).toContain('<thead role="rowgroup">');
+    expect(tabla).toContain('<tr role="row">');
+    const encabezados = tabla.match(/<th\b[^>]*>/g) ?? [];
+    expect(encabezados).toHaveLength(6);
+    for (const th of encabezados) expect(th).toMatch(/^<th scope="col"[^>]* role="columnheader">$/);
   });
 
   it("lleva el nombre de cada dataset del catálogo para que sitio.js lo muestre", () => {

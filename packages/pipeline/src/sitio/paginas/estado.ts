@@ -6,7 +6,8 @@ export const RUTA_ESTADO = "/estado/";
 /**
  * `estado/index.html`: qué significa cada estado y la tabla que `sitio.js` llena con
  * `/v1/status`. Los renglones salen de la API, así que un dataset nuevo aparece sin tocar esta
- * página; del catálogo solo vienen los nombres para personas, en `data-nombres`.
+ * página; del catálogo solo vienen los nombres para personas, en `data-nombres`. La tabla lleva
+ * sus roles explícitos: en modo tarjeta (display: block) WebKit deja de anunciarla como tabla.
  */
 export function paginaEstado(
   catalogo: Readonly<Record<string, Pick<EntradaCatalogo, "nombre">>> = CATALOGO,
@@ -29,12 +30,12 @@ ${navegacion(ruta)}
 <p id="mensaje-estado" class="mensaje" role="status" aria-live="polite"></p>
 </div>
 <div class="tabla tarjetas" id="marco-estado" role="region" aria-labelledby="tabla-estado" tabindex="0" hidden>
-<table>
+<table role="table">
 <caption id="tabla-estado">Estado de cada dataset automático, según /v1/status</caption>
-<thead>
-<tr><th scope="col">Dataset</th><th scope="col">Estado</th><th scope="col">Datos al</th><th scope="col">Última revisión correcta</th><th scope="col" class="num">Plazo</th><th scope="col">Cobertura</th></tr>
+<thead role="rowgroup">
+<tr role="row"><th scope="col" role="columnheader">Dataset</th><th scope="col" role="columnheader">Estado</th><th scope="col" role="columnheader">Datos al</th><th scope="col" role="columnheader">Última revisión correcta</th><th scope="col" class="num" role="columnheader">Plazo</th><th scope="col" role="columnheader">Cobertura</th></tr>
 </thead>
-<tbody id="filas-estado" data-nombres="${escaparHtml(JSON.stringify(nombres))}"></tbody>
+<tbody id="filas-estado" data-nombres="${escaparHtml(JSON.stringify(nombres))}" role="rowgroup"></tbody>
 </table>
 </div>
 <section id="significado" aria-labelledby="titulo-significado">
