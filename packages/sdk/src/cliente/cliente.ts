@@ -98,10 +98,17 @@ function baseDe(base: string | { readonly href: string }): string {
   }
   const desde = texto.indexOf("//") + 2;
   const hasta = texto.indexOf("/", desde);
+  const origen = texto.slice(desde, hasta === -1 ? texto.length : hasta);
   // fetch rechaza una URL con credenciales y el error las dejaría en `url`.
-  if (texto.slice(desde, hasta === -1 ? texto.length : hasta).includes("@")) {
+  if (origen.includes("@")) {
     throw new TypeError(
       "base no lleva usuario ni contraseña (usuario:clave@); pasa solo el origen de la API, como https://mexicoapi.example.workers.dev.",
+    );
+  }
+  // Sin cifrar, quien esté en el camino puede cambiar los datos: http solo en el propio equipo.
+  if (/^http:/i.test(texto) && !/^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d*)?$/i.test(origen)) {
+    throw new TypeError(
+      "base con http:// solo se acepta para localhost, 127.0.0.1 o [::1]; para otro host usa https://, como https://mexicoapi.example.workers.dev.",
     );
   }
   let fin = texto.length;

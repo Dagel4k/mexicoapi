@@ -168,6 +168,54 @@ describe("consulta a la API", () => {
     ).not.toThrow();
   });
 
+  it("rechaza una base http:// que no sea localhost, 127.0.0.1 o [::1]", () => {
+    for (const base of [
+      "http://api.ejemplo.mx",
+      "HTTP://api.ejemplo.mx/v1/",
+      new URL("http://api.ejemplo.mx/"),
+      "http://mexicoapi.dagel4k.workers.dev",
+      "http://localhost.ejemplo.mx",
+      "http://localhostx:8787",
+      "http://127.0.0.1.nip.io:8787",
+      "http://127.0.0.2",
+      "http://10.0.0.1:8787",
+      "http://[::2]:8787",
+      "http://localhost\\.ejemplo.mx",
+    ]) {
+      const error = (() => {
+        try {
+          crearCliente({ base });
+        } catch (e) {
+          return e as Error;
+        }
+        throw new Error(`no lanzó: ${String(base)}`);
+      })();
+      expect(error, String(base)).toBeInstanceOf(TypeError);
+      expect(error.message).toBe(
+        "base con http:// solo se acepta para localhost, 127.0.0.1 o [::1]; para otro host usa https://, como https://mexicoapi.example.workers.dev.",
+      );
+    }
+  });
+
+  it("acepta http:// en localhost, 127.0.0.1 y [::1], con o sin puerto", async () => {
+    const bases = [
+      "http://localhost",
+      "http://LOCALHOST:8787/api/",
+      "http://127.0.0.1:8787",
+      "http://[::1]:8787/v1",
+      new URL("http://localhost:3000"),
+    ];
+    const { fetch, llamadas } = fetchFalso(...bases.map(() => respuestaDatos([])));
+    for (const base of bases) await crearCliente({ base, fetch }).bancos({ fuente: "api" });
+    expect(llamadas.map((l) => l.url)).toEqual([
+      "http://localhost/v1/bancos",
+      "http://LOCALHOST:8787/api/v1/bancos",
+      "http://127.0.0.1:8787/v1/bancos",
+      "http://[::1]:8787/v1/bancos",
+      "http://localhost:3000/v1/bancos",
+    ]);
+  });
+
   it("usa el fetch global si no recibe uno, llamado sin this", async () => {
     const global = vi.fn(function (this: unknown, _url: string) {
       expect(this).toBeUndefined();

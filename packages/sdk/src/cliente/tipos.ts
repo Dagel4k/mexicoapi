@@ -249,7 +249,8 @@ export interface OpcionesComunes {
 export type OpcionesCliente = OpcionesComunes & {
   /**
    * Origen de la API (con o sin `/v1` al final), sin query, fragmento ni credenciales
-   * (`usuario:clave@` lanza TypeError). Sin él, la API pública: `URL_API`
+   * (`usuario:clave@` lanza TypeError). Con `http://`, solo `localhost`, `127.0.0.1` o `[::1]`;
+   * otro host lanza TypeError (usa https). Sin él, la API pública: `URL_API`
    * (https://mexicoapi.dagel4k.workers.dev).
    */
   base?: Base | undefined;
