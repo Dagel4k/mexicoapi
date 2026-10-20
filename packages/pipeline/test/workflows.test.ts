@@ -179,6 +179,16 @@ function funcion(run: string, nombre: string): string {
   return lineas.slice(inicio, fin + 1).join("\n");
 }
 
+describe("horario de frescura.yml", () => {
+  it("corre a diario a partir de las 13:13 de la Ciudad de México, fuera de los cuartos de hora", async () => {
+    const frescura = await workflow("frescura.yml");
+    expect(frescura.on.schedule?.map((s) => s.cron)).toEqual(["13 19 * * *"]);
+    for (const s of frescura.on.schedule ?? []) {
+      expect(minutoDelDia(s.cron) % 15, s.cron).not.toBe(0);
+    }
+  });
+});
+
 describe("alerta de coberturas en frescura.yml", () => {
   it("coberturas instala y corre el pipeline sin poder escribir, con las acciones fijadas", async () => {
     const frescura = await workflow("frescura.yml");

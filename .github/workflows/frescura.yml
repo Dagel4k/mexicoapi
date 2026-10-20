@@ -2,7 +2,7 @@ name: Frescura
 
 on:
   schedule:
-    - cron: "0 19 * * *" # diario 13:00 CDMX
+    - cron: "13 19 * * *" # diario 13:13 CDMX, fuera del inicio de la hora (GitHub retrasa más esas)
   workflow_dispatch:
 
 permissions:

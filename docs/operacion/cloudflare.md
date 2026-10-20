@@ -39,7 +39,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 | --- | --- | --- |
 | `despliegue.yml` (cada merge a `main` y a mano desde `main`) | Compila, despliega a staging, corre la prueba de humo, despliega a producción, corre el humo otra vez y, si falla, revierte | Deja un aviso y termina en verde sin desplegar |
 | `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` y nunca con el token de despliegue | Sin `CLOUDFLARE_KV_TOKEN` o `CLOUDFLARE_ACCOUNT_ID`, deja un aviso y no escribe; el bot de datos funciona igual |
-| `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues; además, abre un issue por cada cobertura de los datos curados que termina en 30 días o menos y otro por cada publicación del DOF de hoy o de ayer que coincide con una captura pendiente | Sin `API_URL`, deja un aviso y no consulta `/v1/status`; la alerta de coberturas y el vigía del DOF corren igual |
+| `frescura.yml` (diario, a partir de las 13:13 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues; además, abre un issue por cada cobertura de los datos curados que termina en 30 días o menos y otro por cada publicación del DOF de hoy o de ayer que coincide con una captura pendiente | Sin `API_URL`, deja un aviso y no consulta `/v1/status`; la alerta de coberturas y el vigía del DOF corren igual |
 
 ### Despliegue
 
