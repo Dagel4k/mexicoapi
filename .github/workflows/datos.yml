@@ -642,7 +642,7 @@ jobs:
               gh pr comment "${pr_pendiente}" --body-file "${cuerpo}"
             fi
             # Avisa si el PR lleva más de 48 horas abierto o tiene algún check en rojo. Si la API
-            # falla aquí, solo queda un aviso: el paso sigue y el issue de revisión de abajo se abre.
+            # falla aquí, solo queda un aviso: el paso sigue (y, si el PR trae otros registros, se abre el issue de revisión).
             if estado_pr="$(gh pr view "${pr_pendiente}" --json createdAt,statusCheckRollup)" \
               && atasco="$(jq -r --argjson ahora "$(date -u +%s)" '
               [ (if any(.statusCheckRollup[]?;
