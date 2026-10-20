@@ -1,6 +1,9 @@
-// El vigía del DOF lee el índice del SIDOF de un día y avisa cuando un título coincide con una de
-// las capturas pendientes de data/curado/. No captura nada. El fixture es el índice real del
-// 2025-12-17 (el día de la Sexta Resolución de Modificaciones a la RMF 2025), recortado a 10 notas.
+// El vigía del DOF lee el índice del SIDOF del día y el del anterior, y avisa cuando un título
+// coincide con una de las capturas pendientes de data/curado/. No captura nada. notas-17-12-2025.json
+// es el índice real del 2025-12-17 (el día de la Sexta Resolución de Modificaciones a la RMF 2025),
+// recortado a 10 notas. notas-ejemplo-vespertina.json no es una respuesta real: tiene la forma de
+// la del 17 y notas inventadas (códigos 9000001 a 9000003), una de ellas vespertina; las pruebas lo
+// sirven como el índice del 2025-12-16.
 import { describe, expect, it } from "vitest";
 import { type Entorno, principal } from "../src/cli.js";
 import {
@@ -18,7 +21,10 @@ import { leerFixture } from "./ayudas.js";
 const FECHA = "2025-12-17";
 const URL_INDICE = "https://sidof.segob.gob.mx/dof/sidof/notas/17-12-2025";
 const texto = (s: string) => new TextEncoder().encode(s);
+const ANTERIOR = "2025-12-16";
+const URL_ANTERIOR = "https://sidof.segob.gob.mx/dof/sidof/notas/16-12-2025";
 const fixture = () => leerFixture("sidof/notas-17-12-2025.json");
+const fixtureAnterior = () => leerFixture("sidof/notas-ejemplo-vespertina.json");
 
 interface Indice {
   NotasMatutinas: Record<string, unknown>[];
@@ -64,6 +70,23 @@ describe("interpretarIndiceDof", () => {
       "5776456",
       "5776460",
       "5776489",
+    ]);
+  });
+
+  it("en el índice de ejemplo lee la nota vespertina y salta su encabezado", async () => {
+    expect(interpretarIndiceDof(await fixtureAnterior(), ANTERIOR)).toEqual([
+      {
+        codigo: "9000001",
+        titulo:
+          "Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana.",
+        edicion: "matutina",
+      },
+      {
+        codigo: "9000003",
+        titulo:
+          "Quinta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2025 (nota de ejemplo, no publicada).",
+        edicion: "vespertina",
+      },
     ]);
   });
 
@@ -250,38 +273,77 @@ function entornoDof(responder: (url: string) => Response | Promise<Response>, ah
   };
 }
 
-const conFixture = async () => {
-  const bytes = await fixture();
-  return (url: string) =>
-    url === URL_INDICE ? new Response(bytes) : new Response("no", { status: 404 });
-};
+type Respuesta = Response | (() => Response | Promise<Response>);
+
+/**
+ * El índice real del 17 y el de ejemplo del 16 (con una nota vespertina), salvo lo que se cambie;
+ * cualquier otra URL da 404.
+ */
+async function sidof(cambios: Record<string, Respuesta> = {}) {
+  const [delDia, anterior] = await Promise.all([fixture(), fixtureAnterior()]);
+  const respuestas: Record<string, Respuesta> = {
+    [URL_INDICE]: () => new Response(delDia),
+    [URL_ANTERIOR]: () => new Response(anterior),
+    ...cambios,
+  };
+  return (url: string) => {
+    const r = respuestas[url];
+    if (r === undefined) return new Response("no", { status: 404 });
+    return typeof r === "function" ? r() : r.clone();
+  };
+}
+
+const json = (e: ReturnType<typeof entornoDof>) => JSON.parse(e.salida());
+const codigos = (r: { publicaciones: { codigo: string }[] }) =>
+  r.publicaciones.map((p) => p.codigo);
 
 describe("comando dof", () => {
-  it("con --json da la fecha, si revisó el índice y las publicaciones por capturar", async () => {
-    const e = entornoDof(await conFixture());
+  it("revisa el índice del día y el del anterior, y junta lo que encuentra en los dos", async () => {
+    const e = entornoDof(await sidof());
     expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
-    expect(e.pedidas).toEqual([URL_INDICE]);
+    expect(e.pedidas).toEqual([URL_ANTERIOR, URL_INDICE]);
     expect(e.intervalos).toEqual([1000]);
-    const r = JSON.parse(e.salida());
-    expect(r).toMatchObject({ fecha: FECHA, revisado: true, notas: 6 });
-    expect(r.publicaciones.map((p: { codigo: string }) => p.codigo)).toEqual(["5776445"]);
+    const r = json(e);
+    expect(r.fecha).toBe(FECHA);
+    expect(r.indices).toEqual([
+      { fecha: ANTERIOR, estado: "revisado", notas: 2 },
+      { fecha: FECHA, estado: "revisado", notas: 6 },
+    ]);
+    // La vespertina del día anterior, que salió después de la corrida de ese día, entra hoy.
+    expect(codigos(r)).toEqual(["9000003", "5776445"]);
+    expect(r.publicaciones[0]).toMatchObject({
+      fecha: ANTERIOR,
+      edicion: "vespertina",
+      titulo: "Publicación en el DOF: 9000003 (modificaciones-rmf)",
+    });
     expect(e.errores()).toBe("");
   });
 
-  it("por omisión lee el índice de la fecha de la Ciudad de México", async () => {
+  it("por omisión toma la fecha de la Ciudad de México y la del día anterior", async () => {
     // 03:00 UTC del 18 de diciembre: en la Ciudad de México todavía es el 17.
-    const e = entornoDof(await conFixture(), new Date("2025-12-18T03:00:00Z"));
+    const e = entornoDof(await sidof(), new Date("2025-12-18T03:00:00Z"));
     expect(await principal(["dof", "--json"], e.entorno)).toBe(0);
-    expect(e.pedidas).toEqual([URL_INDICE]);
+    expect(e.pedidas).toEqual([URL_ANTERIOR, URL_INDICE]);
   });
 
-  it("en texto lista cada publicación con su enlace y los archivos que puede tocar", async () => {
-    const e = entornoDof(await conFixture());
+  it("una nota que sale en los dos índices cuenta una vez", async () => {
+    const e = entornoDof(await sidof({ [URL_ANTERIOR]: new Response(await fixture()) }));
+    expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
+    expect(codigos(json(e))).toEqual(["5776445"]);
+  });
+
+  it("en texto dice qué índices revisó y lista cada publicación con su enlace", async () => {
+    const e = entornoDof(await sidof());
     expect(await principal(["dof", "--fecha", FECHA], e.entorno)).toBe(0);
     expect(e.salida()).toBe(
       [
-        "DOF del 2025-12-17: 6 notas, 1 coincide con una captura pendiente:",
-        "  5776445 (matutina) Sexta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2025 y anexos 1 y 1-A.",
+        "Índice del SIDOF del 2025-12-16: 2 notas.",
+        "Índice del SIDOF del 2025-12-17: 6 notas.",
+        "2 notas coinciden con una captura pendiente:",
+        "  9000003 (2025-12-16, vespertina) Quinta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2025 (nota de ejemplo, no publicada).",
+        "    https://sidof.segob.gob.mx/notas/docFuente/9000003",
+        "    capturas: modificaciones-rmf, rmf; archivos: data/curado/dias-inhabiles-sat.yaml, data/curado/isr-tarifas.yaml",
+        "  5776445 (2025-12-17, matutina) Sexta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2025 y anexos 1 y 1-A.",
         "    https://sidof.segob.gob.mx/notas/docFuente/5776445",
         "    capturas: modificaciones-rmf, rmf; archivos: data/curado/dias-inhabiles-sat.yaml, data/curado/isr-tarifas.yaml",
         "",
@@ -292,66 +354,117 @@ describe("comando dof", () => {
   it("sin coincidencias lo dice", async () => {
     const i = await indice();
     i.NotasMatutinas = [nota(1, "Tipo de cambio para solventar obligaciones")];
-    const e = entornoDof(() => new Response(JSON.stringify(i)));
+    const vacio = await indice();
+    vacio.NotasMatutinas = [];
+    const e = entornoDof(
+      await sidof({
+        [URL_INDICE]: new Response(JSON.stringify(i)),
+        [URL_ANTERIOR]: new Response(JSON.stringify(vacio)),
+      }),
+    );
     expect(await principal(["dof", "--fecha", FECHA], e.entorno)).toBe(0);
     expect(e.salida()).toBe(
-      "DOF del 2025-12-17: 1 nota, ninguna coincide con una captura pendiente.\n",
+      [
+        "Índice del SIDOF del 2025-12-16: 0 notas.",
+        "Índice del SIDOF del 2025-12-17: 1 nota.",
+        "Ninguna nota coincide con una captura pendiente.",
+        "",
+      ].join("\n"),
     );
   });
 
-  it("si el SIDOF no responde avisa y termina en 0, sin publicaciones", async () => {
-    for (const responder of [
+  it("si el SIDOF no responde uno de los días, avisa y el otro se revisa igual", async () => {
+    for (const falla of [
       () => new Response("", { status: 503 }),
       () => Promise.reject(new TypeError("fetch failed")),
     ]) {
-      const e = entornoDof(responder);
+      const e = entornoDof(await sidof({ [URL_ANTERIOR]: falla }));
       expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
-      expect(JSON.parse(e.salida())).toEqual({
-        fecha: FECHA,
-        revisado: false,
-        notas: 0,
-        publicaciones: [],
-      });
+      const r = json(e);
+      expect(r.indices).toEqual([
+        { fecha: ANTERIOR, estado: "sin_respuesta", notas: 0 },
+        { fecha: FECHA, estado: "revisado", notas: 6 },
+      ]);
+      expect(codigos(r)).toEqual(["5776445"]);
       expect(e.errores()).toMatch(
-        /^dof: el SIDOF no respondió al pedir el índice del 2025-12-17: /,
+        /^dof: el SIDOF no respondió al pedir el índice del 2025-12-16: /,
       );
-      // Con los reintentos del cliente: cuatro intentos.
-      expect(e.pedidas).toEqual(Array(4).fill(URL_INDICE));
+      // Con los reintentos del cliente: cuatro intentos, y después el otro día.
+      expect(e.pedidas).toEqual([...Array(4).fill(URL_ANTERIOR), URL_INDICE]);
     }
-    const e = entornoDof(() => new Response("", { status: 503 }));
+  });
+
+  it("una respuesta con otra forma (HTML, no JSON, otros campos) solo avisa", async () => {
+    const casos: [Respuesta, RegExp][] = [
+      [new Response("<html>mantenimiento</html>"), /no es JSON válido/],
+      [new Response("no", { status: 404 }), /no es JSON válido/],
+      [
+        new Response('{"messageCode":200,"response":"OK"}'),
+        /no tiene la forma esperada: NotasMatutinas/,
+      ],
+    ];
+    for (const [respuesta, detalle] of casos) {
+      const e = entornoDof(await sidof({ [URL_INDICE]: respuesta }));
+      expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
+      const r = json(e);
+      expect(r.indices).toEqual([
+        { fecha: ANTERIOR, estado: "revisado", notas: 2 },
+        { fecha: FECHA, estado: "otra_forma", notas: 0 },
+      ]);
+      expect(codigos(r)).toEqual(["9000003"]);
+      expect(e.errores()).toMatch(
+        /^dof: el SIDOF respondió con otra forma: el índice del SIDOF del 2025-12-17 /,
+      );
+      expect(e.errores()).toMatch(detalle);
+    }
+  });
+
+  it("un 404 sin publicaciones es un día sin notas", async () => {
+    const e = entornoDof(
+      await sidof({
+        [URL_INDICE]: new Response('{"messageCode":404,"response":"NOT_FOUND"}', { status: 404 }),
+      }),
+    );
+    expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
+    expect(json(e).indices[1]).toEqual({ fecha: FECHA, estado: "revisado", notas: 0 });
+    expect(e.errores()).toBe("");
+  });
+
+  it("si no pudo leer ningún índice lo dice en texto", async () => {
+    const e = entornoDof(
+      await sidof({
+        [URL_ANTERIOR]: () => new Response("", { status: 503 }),
+        [URL_INDICE]: new Response("<html></html>"),
+      }),
+    );
     expect(await principal(["dof", "--fecha", FECHA], e.entorno)).toBe(0);
-    expect(e.salida()).toBe("No se revisó el DOF del 2025-12-17: el SIDOF no respondió.\n");
+    expect(e.salida()).toBe(
+      [
+        "Índice del SIDOF del 2025-12-16: el SIDOF no respondió.",
+        "Índice del SIDOF del 2025-12-17: el SIDOF respondió con otra forma.",
+        "No se revisó ningún índice.",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("solo pide al SIDOF: una redirección a otro host no se sigue", async () => {
     const e = entornoDof(
-      () => new Response("", { status: 302, headers: { location: "https://otro.example/x" } }),
+      await sidof({
+        [URL_INDICE]: new Response("", {
+          status: 302,
+          headers: { location: "https://otro.example/x" },
+        }),
+      }),
     );
     expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(0);
-    expect(JSON.parse(e.salida()).revisado).toBe(false);
+    expect(json(e).indices[1]).toEqual({ fecha: FECHA, estado: "sin_respuesta", notas: 0 });
     expect(e.errores()).toMatch(/Host no permitido \(otro\.example\)/);
-    expect(e.pedidas).toEqual([URL_INDICE]);
+    expect(e.pedidas).toEqual([URL_ANTERIOR, URL_INDICE]);
   });
 
-  it("un índice con forma inesperada termina en 1", async () => {
-    const e = entornoDof(() => new Response("<html>mantenimiento</html>"));
-    expect(await principal(["dof", "--fecha", FECHA, "--json"], e.entorno)).toBe(1);
-    expect(e.salida()).toBe("");
-    expect(e.errores()).toMatch(/^dof: el índice del SIDOF del 2025-12-17 no es JSON válido/);
-  });
-
-  it("un 404 sin publicaciones no tiene nada que avisar; otro 404 es un error", async () => {
-    const vacio = entornoDof(
-      () => new Response('{"messageCode":404,"response":"NOT_FOUND"}', { status: 404 }),
-    );
-    expect(await principal(["dof", "--fecha", FECHA, "--json"], vacio.entorno)).toBe(0);
-    expect(JSON.parse(vacio.salida())).toMatchObject({ revisado: true, notas: 0 });
-    const otro = entornoDof(() => new Response("no", { status: 404 }));
-    expect(await principal(["dof", "--fecha", FECHA, "--json"], otro.entorno)).toBe(1);
-  });
-
-  it("un error que no es del SIDOF no se toma por una falta de respuesta", async () => {
-    const e = entornoDof(await conFixture());
+  it("un error que no es del SIDOF termina en 1", async () => {
+    const e = entornoDof(await sidof());
     e.entorno.crearCliente = () => ({
       obtener: () => Promise.reject(new Error("falla del cliente")),
     });
@@ -361,7 +474,7 @@ describe("comando dof", () => {
   });
 
   it("rechaza una fecha inválida y las opciones de otros comandos", async () => {
-    const e = entornoDof(await conFixture());
+    const e = entornoDof(await sidof());
     expect(await principal(["dof", "--fecha", "2025-02-30"], e.entorno)).toBe(1);
     expect(e.errores()).toContain("Fecha inválida: 2025-02-30");
     expect(await principal(["dof", "--seco"], e.entorno)).toBe(1);

@@ -1,9 +1,9 @@
-// Vigía del DOF: lee el índice del SIDOF de un día y lista las publicaciones cuyo título coincide
-// con una de las capturas pendientes de data/curado/ (la RMF y sus modificaciones, las
-// disposiciones de la CNBV, el salario mínimo, la UMA y el Anexo 8). No captura nada: avisa para
-// que una persona siga el procedimiento de docs/operacion/datos-curados.md. Lo usa el comando
+// Vigía del DOF: lee el índice del SIDOF de un día y del anterior, y lista las publicaciones cuyo
+// título coincide con una de las capturas pendientes de data/curado/ (la RMF y sus modificaciones,
+// las disposiciones de la CNBV, el salario mínimo, la UMA y el Anexo 8). No captura nada: avisa
+// para que una persona siga el procedimiento de docs/operacion/datos-curados.md. Lo usa el comando
 // `dof` y, con él, frescura.yml.
-import type { FechaISO } from "@mexicoapi/core";
+import { type FechaISO, sumarDias } from "@mexicoapi/core";
 import { z } from "zod";
 import {
   curadoDiasCnbv,
@@ -198,61 +198,97 @@ export function publicacionesPorCapturar(
   });
 }
 
-export interface RevisionDof {
+/**
+ * Cómo quedó cada índice: `sin_respuesta` si el SIDOF no respondió (red, estado HTTP o una
+ * redirección que el cliente no sigue) y `otra_forma` si respondió algo que no es el índice
+ * (una página de error, un cuerpo que no es JSON o un JSON con otros campos).
+ */
+export type EstadoIndice = "revisado" | "sin_respuesta" | "otra_forma";
+
+export interface IndiceDof {
   fecha: FechaISO;
-  /** Falso si el SIDOF no respondió: entonces no hay publicaciones que avisar. */
-  revisado: boolean;
+  estado: EstadoIndice;
   /** Notas con título que se revisaron. */
   notas: number;
+}
+
+export interface RevisionDof {
+  /** La fecha de la corrida. */
+  fecha: FechaISO;
+  /** El índice del día anterior y el del día, en ese orden. */
+  indices: IndiceDof[];
   publicaciones: PublicacionPorCapturar[];
 }
 
 /**
- * Pide el índice del SIDOF de `fecha` y busca las capturas pendientes. Si el SIDOF no responde
- * (red, estado HTTP o una redirección que el cliente no sigue), devuelve `revisado: false` con el
- * motivo en `aviso`. Una respuesta con otra forma lanza ErrorDatos.
+ * Pide el índice del SIDOF de `fecha` y el del día anterior (así entra la edición vespertina que
+ * salió después de la corrida de ayer) y busca las capturas pendientes en los dos. Un índice que no
+ * se pudo leer queda con su estado y un aviso, y el otro se revisa igual. Solo lanza si el error
+ * no viene del SIDOF.
  */
 export async function revisarDof(
   cliente: Cliente,
   fecha: FechaISO,
-): Promise<{ revision: RevisionDof; aviso: string | null }> {
-  const url = urlIndiceDof(fecha);
-  let cuerpo: Uint8Array;
-  try {
-    cuerpo = (await cliente.obtener(url, { aceptar: [404] })).cuerpo;
-  } catch (e) {
-    if (!(e instanceof ErrorHttp)) throw e;
-    return {
-      revision: { fecha, revisado: false, notas: 0, publicaciones: [] },
-      aviso: `el SIDOF no respondió al pedir el índice del ${fecha}: ${e.message}`,
-    };
+): Promise<{ revision: RevisionDof; avisos: string[] }> {
+  const indices: IndiceDof[] = [];
+  const avisos: string[] = [];
+  const vistas = new Set<string>();
+  const publicaciones: PublicacionPorCapturar[] = [];
+  for (const dia of [sumarDias(fecha, -1), fecha]) {
+    let notas: NotaDof[];
+    try {
+      const { cuerpo } = await cliente.obtener(urlIndiceDof(dia), { aceptar: [404] });
+      notas = interpretarIndiceDof(cuerpo, dia);
+    } catch (e) {
+      if (e instanceof ErrorHttp) {
+        indices.push({ fecha: dia, estado: "sin_respuesta", notas: 0 });
+        avisos.push(`el SIDOF no respondió al pedir el índice del ${dia}: ${e.message}`);
+        continue;
+      }
+      if (e instanceof ErrorDatos) {
+        indices.push({ fecha: dia, estado: "otra_forma", notas: 0 });
+        avisos.push(`el SIDOF respondió con otra forma: ${e.message}`);
+        continue;
+      }
+      throw e;
+    }
+    indices.push({ fecha: dia, estado: "revisado", notas: notas.length });
+    for (const p of publicacionesPorCapturar(notas, dia)) {
+      if (vistas.has(p.codigo)) continue;
+      vistas.add(p.codigo);
+      publicaciones.push(p);
+    }
   }
-  const notas = interpretarIndiceDof(cuerpo, fecha);
-  return {
-    revision: {
-      fecha,
-      revisado: true,
-      notas: notas.length,
-      publicaciones: publicacionesPorCapturar(notas, fecha),
-    },
-    aviso: null,
-  };
+  return { revision: { fecha, indices, publicaciones }, avisos };
 }
 
 const plural = (n: number, una: string, varias: string): string => `${n} ${n === 1 ? una : varias}`;
 
-/** La revisión en texto: cada publicación con su enlace, sus capturas y sus archivos. */
+const ESTADOS: Record<Exclude<EstadoIndice, "revisado">, string> = {
+  sin_respuesta: "el SIDOF no respondió",
+  otra_forma: "el SIDOF respondió con otra forma",
+};
+
+/** La revisión en texto: cada índice y cada publicación con su enlace, capturas y archivos. */
 export function dofEnTexto(r: RevisionDof): string {
-  if (!r.revisado) return `No se revisó el DOF del ${r.fecha}: el SIDOF no respondió.\n`;
-  const notas = plural(r.notas, "nota", "notas");
-  if (r.publicaciones.length === 0) {
-    return `DOF del ${r.fecha}: ${notas}, ninguna coincide con una captura pendiente.\n`;
+  const renglones = r.indices.map(
+    (i) =>
+      `Índice del SIDOF del ${i.fecha}: ${i.estado === "revisado" ? plural(i.notas, "nota", "notas") : ESTADOS[i.estado]}.`,
+  );
+  if (!r.indices.some((i) => i.estado === "revisado")) {
+    renglones.push("No se revisó ningún índice.");
+  } else if (r.publicaciones.length === 0) {
+    renglones.push("Ninguna nota coincide con una captura pendiente.");
+  } else {
+    const cuantas = plural(r.publicaciones.length, "nota coincide", "notas coinciden");
+    renglones.push(`${cuantas} con una captura pendiente:`);
+    for (const p of r.publicaciones) {
+      renglones.push(
+        `  ${p.codigo} (${p.fecha}, ${p.edicion}) ${p.publicacion}`,
+        `    ${p.url}`,
+        `    capturas: ${p.capturas.join(", ")}; archivos: ${p.archivos.join(", ")}`,
+      );
+    }
   }
-  const cuantas = plural(r.publicaciones.length, "coincide", "coinciden");
-  const renglones = r.publicaciones.flatMap((p) => [
-    `  ${p.codigo} (${p.edicion}) ${p.publicacion}`,
-    `    ${p.url}`,
-    `    capturas: ${p.capturas.join(", ")}; archivos: ${p.archivos.join(", ")}`,
-  ]);
-  return `DOF del ${r.fecha}: ${notas}, ${cuantas} con una captura pendiente:\n${renglones.join("\n")}\n`;
+  return `${renglones.join("\n")}\n`;
 }

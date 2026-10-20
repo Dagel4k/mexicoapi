@@ -1,0 +1,75 @@
+{
+  "messageCode": 200,
+  "response": "OK",
+  "NotasExtraordinarias": [],
+  "imagenesDiario": [
+    {
+      "MAT": true
+    }
+  ],
+  "NotasVespertinas": [
+    {
+      "codNota": 9000002,
+      "codSeccion": "UNICA",
+      "fecha": "16-12-2025",
+      "codDiario": 900000,
+      "existeHtml": "S",
+      "existeDoc": "N",
+      "existeImagen": "S",
+      "tipoNota": "null",
+      "estado": 2,
+      "pagina": 23,
+      "paginaHasta": 0,
+      "nombreCodOrgaUno": "PODER EJECUTIVO",
+      "codOrgaUno": "PE",
+      "codOrgaDos": "SECRETARIA DE HACIENDA Y CREDITO PUBLICO",
+      "orden": 1,
+      "existePdf": "S"
+    },
+    {
+      "codNota": 9000003,
+      "titulo": "Quinta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2025 (nota de ejemplo, no publicada).",
+      "codSeccion": "UNICA",
+      "fecha": "16-12-2025",
+      "codDiario": 900000,
+      "existeHtml": "S",
+      "existeDoc": "S",
+      "existeImagen": "S",
+      "tipoNota": "null",
+      "estado": 2,
+      "pagina": 23,
+      "paginaHasta": 0,
+      "nombreCodOrgaUno": "PODER EJECUTIVO",
+      "codOrgaUno": "PE",
+      "codOrgaDos": "SECRETARIA DE HACIENDA Y CREDITO PUBLICO",
+      "orden": 2,
+      "existePdf": "S"
+    }
+  ],
+  "NotasMatutinas": [
+    {
+      "codNota": 9000001,
+      "titulo": "Tipo de cambio para solventar obligaciones denominadas en moneda extranjera pagaderas en la República Mexicana.",
+      "codSeccion": "UNICA",
+      "fecha": "16-12-2025",
+      "codDiario": 899999,
+      "existeHtml": "S",
+      "existeDoc": "S",
+      "existeImagen": "S",
+      "tipoNota": "null",
+      "estado": 2,
+      "pagina": 76,
+      "paginaHasta": 0,
+      "nombreCodOrgaUno": "ORGANISMOS AUTONOMOS",
+      "codOrgaUno": "OA",
+      "codOrgaDos": "BANCO DE MEXICO",
+      "orden": 1,
+      "existePdf": "S"
+    }
+  ],
+  "audioSumario": [
+    {
+      "MAT": {}
+    }
+  ]
+}

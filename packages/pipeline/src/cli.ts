@@ -315,10 +315,11 @@ async function coberturas(
 }
 
 /**
- * Lee el índice del SIDOF de la fecha (la de la Ciudad de México, por omisión) y lista las
- * publicaciones cuyo título coincide con una captura pendiente de data/curado/; con `--json`, lo
- * que usa el vigía del DOF de frescura.yml. Si el SIDOF no responde, lo avisa y termina en 0: el
- * vigía no detiene la corrida. Un índice con otra forma termina en 1.
+ * Lee el índice del SIDOF de la fecha (la de la Ciudad de México, por omisión) y el del día
+ * anterior, y lista las publicaciones cuyo título coincide con una captura pendiente de
+ * data/curado/; con `--json`, lo que usa el vigía del DOF de frescura.yml. Si el SIDOF no responde
+ * o responde con otra forma, lo avisa y termina en 0: el vigía no detiene la corrida. Solo un
+ * error que no viene del SIDOF termina en 1.
  */
 async function dof(
   valores: { fecha?: string | undefined; json?: boolean | undefined },
@@ -337,8 +338,8 @@ async function dof(
     entorno.escribirError(`dof: ${mensajeDe(error)}\n`);
     return 1;
   }
-  const { revision, aviso } = resultado;
-  if (aviso !== null) entorno.escribirError(`dof: ${aviso}\n`);
+  const { revision, avisos } = resultado;
+  for (const aviso of avisos) entorno.escribirError(`dof: ${aviso}\n`);
   entorno.escribir(
     valores.json === true ? `${JSON.stringify(revision, null, 2)}\n` : dofEnTexto(revision),
   );
