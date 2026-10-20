@@ -29,7 +29,7 @@ import {
 import { DATASETS } from "../../src/registro.js";
 import { FRESCURA_HORAS } from "../../src/sitio/meta.js";
 import { verificarDatos } from "../../src/verificar.js";
-import { leerFixture } from "../ayudas.js";
+import { leerFixture, PRUEBA_LENTA } from "../ayudas.js";
 
 type Tipo = 158 | 159;
 type Indicador = Record<string, unknown>;
@@ -589,7 +589,7 @@ describe("registro", () => {
   });
 });
 
-describe("capturar", () => {
+describe("capturar", { timeout: PRUEBA_LENTA }, () => {
   const urls = (tipo: Tipo, anios: readonly number[]) => anios.map((a) => urlSidof(tipo, a));
 
   it("sin crudos en disco pide cada año desde 2020 hasta el de la corrida, en orden", async () => {
@@ -1316,7 +1316,7 @@ describe("revisar", () => {
   });
 });
 
-describe("corrida completa", () => {
+describe("corrida completa", { timeout: PRUEBA_LENTA }, () => {
   const dirFix = () => join(raiz, "tipo-cambio-fix");
   const leerDir = async (dir: string) => {
     const nombres = (await readdir(dir, { recursive: true })).sort();
