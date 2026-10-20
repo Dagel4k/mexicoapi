@@ -202,13 +202,30 @@ describe("probarHumo", () => {
     expect(r.fallas).toEqual([`/descargas/SHA256SUMS: ${nombre}: ausente, se esperaba ${valor}`]);
   });
 
+  // Un fallo del humo de producción revierte el despliegue: un HSTS más largo, con otras
+  // directivas o junto al que agregue el borde no debe hacerlo fallar.
   it.each(["/v1/estados", "/descargas/SHA256SUMS", "/", "/v2"])(
-    "%s: HSTS de un año exacto, o falla",
+    "%s: HSTS con max-age de un año o más, aunque venga con otros valores",
     async (ruta) => {
-      for (const [valor, falla] of [
-        [undefined, "ausente"],
-        ["max-age=0", "max-age=0"],
-        ["max-age=31536000; includeSubDomains", "max-age=31536000; includeSubDomains"],
+      for (const [valor, bien] of [
+        [HSTS, true],
+        ["max-age=63072000; includeSubDomains; preload", true],
+        ["MAX-AGE=31536000", true],
+        ['max-age="31536000"', true],
+        ["includeSubDomains; max-age=31536000", true],
+        [" max-age = 31536000 ", true],
+        ["max-age=15552000, max-age=31536000", true],
+        ["max-age=31536000,max-age=15552000; includeSubDomains", true],
+        [undefined, false],
+        ["", false],
+        ["max-age=0", false],
+        ["max-age=31535999", false],
+        ["max-age=15552000; includeSubDomains", false],
+        ["includeSubDomains", false],
+        ["max-age=", false],
+        ["max-age=abc", false],
+        ["max-age=31536000abc", false],
+        ["max-ages=31536000", false],
       ] as const) {
         const rutas = rutasBuenas();
         const propia = rutas[ruta] as Ruta;
@@ -217,9 +234,14 @@ describe("probarHumo", () => {
         else encabezados["strict-transport-security"] = valor;
         rutas[ruta] = { ...propia, encabezados };
         const r = await probarHumo(BASE, { fetch: falso(rutas) });
-        expect(r.fallas).toEqual([
-          `${ruta}: strict-transport-security: ${falla}, se esperaba ${HSTS}`,
-        ]);
+        if (bien) {
+          expect(r.fallas, valor).toEqual([]);
+        } else {
+          const actual = valor === undefined ? "ausente" : valor === "" ? "(vacío)" : valor;
+          expect(r.fallas, valor).toEqual([
+            `${ruta}: strict-transport-security: ${actual}, se esperaba max-age de 31536000 o más`,
+          ]);
+        }
       }
     },
   );
@@ -407,13 +429,56 @@ describe("la API por http", () => {
     expect(pedidas.filter((p) => p.url.startsWith("http:"))).toEqual([]);
   });
 
-  it("debe ser 403 https-requerido en problem+json, sin Location", async () => {
+  // Si la plataforma empezara a redirigir http a https antes del Worker, la API sigue protegida:
+  // no es motivo para revertir el despliegue.
+  it.each([301, 302, 307, 308])(
+    "acepta una redirección %i de la plataforma a la misma URL con https",
+    async (estado) => {
+      const rutas = rutasBuenas();
+      rutas[HTTP] = {
+        estado,
+        tipo: "text/html",
+        cuerpo: "",
+        encabezados: { location: `${BASE}/v1/estados` },
+      };
+      const r = await probarHumo(BASE, { fetch: falso(rutas), robots: "noindex" });
+      expect(r.fallas.filter((f) => f.startsWith(ETIQUETA_HTTP))).toEqual([]);
+    },
+  );
+
+  it("una redirección a otro lugar, o un 200 por http, falla", async () => {
+    const redireccion = (estado: number, location?: string): Ruta => ({
+      estado,
+      tipo: "text/html",
+      cuerpo: "",
+      encabezados: location === undefined ? {} : { location },
+    });
+    const ESPERADO = "se esperaba 403 o una redirección a https://";
     const casos: [Ruta, string][] = [
-      [{ cuerpo: { data: ESTADOS, meta: { as_of: "2026-10-01" } } }, "estado 200, se esperaba 403"],
+      [{ cuerpo: { data: ESTADOS, meta: { as_of: "2026-10-01" } } }, `estado 200, ${ESPERADO}`],
       [
-        { estado: 301, cuerpo: "", encabezados: { ...SEGURIDAD, location: `${BASE}/v1/estados` } },
-        "estado 301, se esperaba 403",
+        redireccion(301, "https://otro.example/v1/estados"),
+        `redirige a https://otro.example/v1/estados, se esperaba ${BASE}/v1/estados`,
       ],
+      [redireccion(308, `${BASE}/`), `redirige a ${BASE}/, se esperaba ${BASE}/v1/estados`],
+      [
+        redireccion(302, "http://api.ejemplo.mx/v1/estados"),
+        `redirige a http://api.ejemplo.mx/v1/estados, se esperaba ${BASE}/v1/estados`,
+      ],
+      [redireccion(307, "/v1/estados"), `redirige a /v1/estados, se esperaba ${BASE}/v1/estados`],
+      [redireccion(301), "redirección 301 sin location"],
+      [redireccion(303, `${BASE}/v1/estados`), `estado 303, ${ESPERADO}`],
+    ];
+    for (const [ruta, falla] of casos) {
+      const rutas = rutasBuenas();
+      rutas[HTTP] = ruta;
+      const r = await probarHumo(BASE, { fetch: falso(rutas) });
+      expect(r.fallas, falla).toEqual([`${ETIQUETA_HTTP}: ${falla}`]);
+    }
+  });
+
+  it("el 403 debe ser https-requerido en problem+json, sin Location", async () => {
+    const casos: [Ruta, string][] = [
       [
         { estado: 403, tipo: "text/html", cuerpo: "<h1>Forbidden</h1>" },
         "tipo de contenido text/html, se esperaba application/problem+json",
