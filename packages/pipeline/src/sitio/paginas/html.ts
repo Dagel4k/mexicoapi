@@ -54,6 +54,9 @@ const RUTA_SCRIPT = /^\/[\w.-][\w./-]*$/;
  */
 const RUTA_PAGINA = /^\/(?:[a-z0-9][a-z0-9._-]*\/)*$/;
 
+/** Si `ruta` puede ser la de una página: la que recibe `documento()` y la que lista el sitemap. */
+export const esRutaDePagina = (ruta: string): boolean => RUTA_PAGINA.test(ruta);
+
 /** Lo que los buscadores muestran de la descripción antes de cortarla. */
 export const MAXIMO_DESCRIPCION = 155;
 
@@ -120,7 +123,7 @@ const TEMA = `<meta name="theme-color" content="${FONDO.claro}" media="(prefers-
 
 /** La canónica y la tarjeta para compartir el enlace (Open Graph, sin imagen). */
 function tarjeta(ruta: string, titulo: string, descripcion: string): string {
-  if (!RUTA_PAGINA.test(ruta)) throw new Error(`ruta de página inválida: ${ruta}`);
+  if (!esRutaDePagina(ruta)) throw new Error(`ruta de página inválida: ${ruta}`);
   const canonica = escaparHtml(`${URL_API}${ruta}`);
   return `<link rel="canonical" href="${canonica}">
 <meta property="og:type" content="website">

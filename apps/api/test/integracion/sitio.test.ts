@@ -103,6 +103,18 @@ describe("páginas del sitio en el Worker local", () => {
       expect(texto.startsWith("# ")).toBe(true);
     },
   );
+
+  it("/sitemap.xml es XML en UTF-8 con una hora de caché, y robots.txt lo declara", async () => {
+    const respuesta = await pedir("/sitemap.xml");
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.headers.get("content-type")).toBe("application/xml; charset=utf-8");
+    esperarSitio(respuesta, "default-src 'none'", "public, max-age=3600");
+    esperarSinWorker(respuesta);
+    expect(await respuesta.text()).toBe((await leerPublico("sitemap.xml")).toString("utf8"));
+    const robots = await pedir("/robots.txt");
+    expect(robots.status).toBe(200);
+    expect(await robots.text()).toMatch(/\nSitemap: https:\/\/\S+\/sitemap\.xml\n$/);
+  });
 });
 
 describe("lo que no existe", () => {

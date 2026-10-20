@@ -58,6 +58,7 @@ describe("_headers", () => {
       "/sitio.js",
       "/favicon.svg",
       "/robots.txt",
+      "/sitemap.xml",
       "/llms.txt",
       "/llms-full.txt",
     ]);
@@ -93,6 +94,16 @@ describe("_headers", () => {
       "content-security-policy": NINGUNO,
       ...SEGURIDAD,
       "cache-control": "public, max-age=86400",
+    });
+  });
+
+  // Cambia con la fecha de los datos: una hora de caché, como llms.txt.
+  it("/sitemap.xml es XML en UTF-8 con una hora de caché", () => {
+    expect(efectivos("/sitemap.xml")).toEqual({
+      "content-security-policy": NINGUNO,
+      ...SEGURIDAD,
+      "cache-control": "public, max-age=3600",
+      "content-type": "application/xml; charset=utf-8",
     });
   });
 

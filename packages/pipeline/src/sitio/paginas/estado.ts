@@ -1,6 +1,8 @@
 import { CATALOGO, type EntradaCatalogo } from "./catalogo.js";
 import { documento, escaparHtml, navegacion } from "./html.js";
 
+export const RUTA_ESTADO = "/estado/";
+
 /**
  * `estado/index.html`: qué significa cada estado y la tabla que `sitio.js` llena con
  * `/v1/status`. Los renglones salen de la API, así que un dataset nuevo aparece sin tocar esta
@@ -10,7 +12,7 @@ export function paginaEstado(
   catalogo: Readonly<Record<string, Pick<EntradaCatalogo, "nombre">>> = CATALOGO,
 ): string {
   const nombres = Object.fromEntries(Object.entries(catalogo).map(([id, e]) => [id, e.nombre]));
-  const ruta = "/estado/";
+  const ruta = RUTA_ESTADO;
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">
