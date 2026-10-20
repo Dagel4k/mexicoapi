@@ -308,12 +308,13 @@ jobs:
   # mcpName de esa versión en npm sea el name de server.json. Va aparte de publicar y fuera del
   # Environment npm: su token de OIDC no le sirve al publicador de confianza de npm, y mcp-publisher
   # no corre donde sí serviría. El registro da el espacio io.github.Dagel4k/* al dueño del
-  # repositorio que dice el token. Si este job falla, la versión ya quedó en npm.
+  # repositorio que dice el token. Si este job falla, la versión ya quedó en npm. Cada paso que usa
+  # la red tiene su tope, menor que el del job: si uno se cuelga, Explicar el fallo alcanza a correr.
   registro-mcp:
     needs: [preparar, publicar]
     if: startsWith(github.event.release.tag_name, 'mexicoapi-mcp@') && needs.publicar.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: read
       id-token: write
@@ -342,13 +343,9 @@ jobs:
             exit 1
           fi
 
-      # Solo para npm view, con el mismo Node que preparar.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: ${{ needs.preparar.outputs.node }}
-
       # Versión fija y su sha256 revisado antes de extraer: nada de latest ni de curl | tar.
       - name: Instalar mcp-publisher
+        timeout-minutes: 3
         run: |
           set -euo pipefail
           base="https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}"
@@ -360,28 +357,39 @@ jobs:
           tar -xzf "${dir}/${tarball}" -C "${HOME}/.local/bin" mcp-publisher
           echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
 
-      # El registro lee de npm el mcpName de la versión: mientras npm no la muestre, rechaza el
-      # server.json. --prefer-online consulta npm cada vez, sin la copia de su caché.
+      # El registro valida el paquete con este mismo documento de npm (el de la versión) y su
+      # mcpName: mientras npm no lo sirva, rechaza el server.json. Un mcpName distinto no se arregla
+      # esperando, así que ahí se detiene.
       - name: Esperar la versión en npm
+        timeout-minutes: 12
         env:
           VERSION: ${{ needs.preparar.outputs.version }}
         run: |
           set -euo pipefail
-          spec="mexicoapi-mcp@${VERSION}"
+          url="https://registry.npmjs.org/mexicoapi-mcp/${VERSION}"
+          manifiesto="${RUNNER_TEMP}/mexicoapi-mcp-npm.json"
           for intento in $(seq 1 40); do
-            if [ "$(npm view "${spec}" version --prefer-online 2>/dev/null || true)" = "${VERSION}" ]; then
-              echo "${spec} ya está en npm (intento ${intento})."
+            if curl -fsS --max-time 30 -o "${manifiesto}" "${url}"; then
+              if ! jq -e '.mcpName == "io.github.Dagel4k/mexicoapi-mcp"' "${manifiesto}" > /dev/null; then
+                echo "::error::mexicoapi-mcp@${VERSION} está en npm sin el mcpName io.github.Dagel4k/mexicoapi-mcp, y el registro de MCP la rechazaría: el arreglo va en la siguiente versión."
+                exit 1
+              fi
+              echo "mexicoapi-mcp@${VERSION} ya está en npm con su mcpName (intento ${intento})."
               exit 0
             fi
-            sleep 15
+            if [ "${intento}" -lt 40 ]; then
+              sleep 15
+            fi
           done
-          echo "::error::${spec} no aparece en npm después de 10 minutos y no se registró en el registro de MCP."
+          echo "::error::mexicoapi-mcp@${VERSION} no aparece en npm después de 10 minutos y no se registró en el registro de MCP."
           exit 1
 
       - name: Entrar al registro con OIDC
+        timeout-minutes: 2
         run: mcp-publisher login github-oidc
 
       - name: Publicar en el registro de MCP
+        timeout-minutes: 3
         env:
           VERSION: ${{ needs.preparar.outputs.version }}
         run: |
