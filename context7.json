@@ -1,0 +1,14 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "MéxicoAPI",
+  "description": "Datos oficiales de México para programas y agentes de código: una API REST pública, el paquete npm mexicoapi (JavaScript y TypeScript, sin dependencias, funciona sin red) y el servidor MCP mexicoapi-mcp. Estados y municipios de INEGI, bancos y validación de CLABE, RFC, CURP y NSS, tipo de cambio FIX, UDIS, días hábiles de la LFT, la CNBV y el SAT, UMA, salario mínimo, tarifas de ISR y códigos postales. Cada dato dice su fuente oficial.",
+  "folders": ["docs", "packages/sdk", "packages/mcp"],
+  "excludeFiles": ["CHANGELOG.md"],
+  "rules": [
+    "Usa fechas AAAA-MM-DD en días de la Ciudad de México (America/Mexico_City). Para la fecha de hoy usa hoyEnMexico() (mexicoapi 0.2.0 o posterior), no la fecha en UTC, que desde las 18:00 ya es el día siguiente.",
+    "Con autoridad=sat manda siempre tipo_plazo: declaraciones_pagos solo para presentar declaraciones o pagar contribuciones, general para lo demás. Sin él la API responde 400 y el paquete lanza un error.",
+    "Cita la fuente de cada dato: meta.sources en las respuestas de la API y fuente o fuentes en los resultados del servidor MCP.",
+    "Valida CLABE, RFC, CURP y NSS en tu equipo con validarClabe(), validarRfc(), validarCurp() y validarNss() del paquete mexicoapi; no los mandes a la API.",
+    "Para decidir en código lee avisos[].codigo, no el texto de las advertencias, que puede cambiar de redacción; trata un código que no conozcas como otro."
+  ]
+}
