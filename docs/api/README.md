@@ -1132,7 +1132,7 @@ Fuera de `/v1` y `/descargas/` está el sitio, con páginas estáticas que gener
 | `/robots.txt` | Pide a los rastreadores que no entren a `/v1` ni a `/descargas/`; el resto del sitio queda abierto. Declara el sitemap |
 | `/sitemap.xml` | Las páginas que se indexan (`/` y `/estado/`), con la fecha más reciente de los datos como `lastmod` |
 
-Cada página declara como URL canónica la de la API pública (`https://mexicoapi.dagel4k.workers.dev`), también en staging, y lleva una tarjeta de Open Graph para cuando se comparte el enlace.
+Cada página indexable (`/` y `/estado/`) declara como URL canónica la de la API pública (`https://mexicoapi.dagel4k.workers.dev`), también en staging, y lleva una tarjeta de Open Graph para cuando se comparte el enlace. La página del 404 no tiene canónica y pide no indexarse.
 
 Las sirven los assets de Cloudflare sin pasar por el Worker, así que no cuentan en el límite de peticiones. Las páginas llevan su propia política de seguridad de contenido y cinco minutos de caché; `llms.txt` y `llms-full.txt` se sirven como `text/plain; charset=utf-8`, con `Access-Control-Allow-Origin: *` y una hora de caché. `/estado` redirige a `/estado/`.
 
