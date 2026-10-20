@@ -9,8 +9,8 @@ export const LLAVE_INDEXNOW = "51b257ee324a98da1d1e5d6bd8094a98";
 export const RUTA_LLAVE_INDEXNOW = `/${LLAVE_INDEXNOW}.txt`;
 
 /**
- * Los códigos de verificación de Google Search Console y de Bing Webmaster Tools. Vacíos por
- * omisión: con un valor, la portada emite su `<meta>`.
+ * Los códigos de verificación de Google Search Console y de Bing Webmaster Tools (propiedad
+ * `https://mexicoapi.dagel4k.workers.dev/`). La portada emite su `<meta>`; con uno vacío, no.
  */
-export const VERIFICACION_GOOGLE: string = "";
-export const VERIFICACION_BING: string = "";
+export const VERIFICACION_GOOGLE: string = "uHufR-xOP9NNU75Kwg0lXLOfzcrkV5LcSepAOUX2mLQ";
+export const VERIFICACION_BING: string = "BE549682F9C6EED45464B22CA34809CA";

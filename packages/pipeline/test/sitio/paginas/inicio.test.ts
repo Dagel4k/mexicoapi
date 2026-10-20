@@ -5,6 +5,7 @@ import { URL_API } from "@mexicoapi/core/problemas";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { PUBLICADO_EN_NPM } from "../../../src/sitio/comun.js";
+import { VERIFICACION_BING, VERIFICACION_GOOGLE } from "../../../src/sitio/indexacion.js";
 import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { nodosDelSitio } from "../../../src/sitio/paginas/datos-estructurados.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
@@ -813,10 +814,18 @@ describe("formatos", () => {
 });
 
 describe("etiquetas de verificación de buscadores", () => {
+  it("la portada lleva los códigos del sitio", () => {
+    expect(html).toContain(
+      `<meta name="google-site-verification" content="${VERIFICACION_GOOGLE}">`,
+    );
+    expect(html).toContain(`<meta name="msvalidate.01" content="${VERIFICACION_BING}">`);
+  });
+
   it("sin código no sale ninguna", () => {
-    expect(html).not.toContain("google-site-verification");
-    expect(html).not.toContain("msvalidate.01");
-    expect(etiquetasVerificacion()).toBe("");
+    const sin = paginaInicio(ENTRADA, PUBLICADO_EN_NPM, etiquetasVerificacion("", ""));
+    expect(sin).not.toContain("google-site-verification");
+    expect(sin).not.toContain("msvalidate.01");
+    expect(etiquetasVerificacion("", "")).toBe("");
   });
 
   it("con código salen en la portada, escapadas", () => {
