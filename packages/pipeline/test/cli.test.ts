@@ -324,6 +324,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
     expect((await readdir(salida)).sort()).toEqual([
       "404.html",
       "_headers",
+      "bancos-clabe",
       "descargas",
       "dias-de-descanso-obligatorio",
       "dias-inhabiles-bancarios",
@@ -334,6 +335,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "index.html",
       "llms-full.txt",
       "llms.txt",
+      "municipios",
       "robots.txt",
       "salario-minimo",
       "sitemap.xml",
@@ -343,6 +345,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "udis",
       "uma",
       "v1",
+      "validar-clabe",
     ]);
   });
 
