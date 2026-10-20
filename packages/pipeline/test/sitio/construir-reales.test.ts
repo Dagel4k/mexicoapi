@@ -381,7 +381,12 @@ describe("con los datos reales del repositorio", () => {
         ruta,
       ).toHaveLength(1);
     }
-    // "Datos al" de las curadas es el as_of de su manifiesto.
+    // "Datos al" de las curadas es el as_of de su manifiesto; su fecha en el sitemap, ese as_of o,
+    // si es anterior, el 1 de enero del año actual (el del FIX más reciente), que cambia el título.
+    const fix = (await leerJson(join(REAL, "tipo-cambio-fix", "fix.json"))) as {
+      fecha_publicacion: string;
+    }[];
+    const enero = `${fix.at(-1)?.fecha_publicacion.slice(0, 4)}-01-01`;
     for (const [ruta, def] of [
       ["/dias-inhabiles-sat/", curadoDiasSat],
       ["/dias-inhabiles-bancarios/", curadoDiasCnbv],
@@ -391,7 +396,8 @@ describe("con los datos reales del repositorio", () => {
       };
       const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
       expect(html, ruta).toContain(`<p class="datos-al">Datos al <time datetime="${as_of}">`);
-      expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc><lastmod>${as_of}</lastmod>`);
+      const lastmod = as_of > enero ? as_of : enero;
+      expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc><lastmod>${lastmod}</lastmod>`);
     }
   }, 120_000);
 });
