@@ -83,6 +83,39 @@ describe("_headers", () => {
     },
   );
 
+  // Sin regla, una página solo recibe /* y se queda sin CSP: cada página de datos lleva la suya.
+  it("cada página de datos lleva la CSP de las páginas y caché corta, en una regla al final", () => {
+    const paginas = ["/dias-inhabiles-sat/", "/municipios/25-sinaloa/"];
+    const conPaginas = leerReglas(archivoEncabezados(DESCARGAS, paginas));
+    expect(conPaginas.map((r) => r.ruta)).toEqual([
+      "/*",
+      ...DESCARGAS.map((n) => `/descargas/${n}`),
+      ...RUTAS_SITIO,
+      ...paginas,
+    ]);
+    for (const ruta of paginas) {
+      const encabezados = encabezadosDe(conPaginas, ruta);
+      for (const [nombre, valores] of encabezados)
+        expect(valores, `${ruta} ${nombre}`).toHaveLength(1);
+      expect(Object.fromEntries([...encabezados].map(([n, v]) => [n, v.join()]))).toEqual({
+        "content-security-policy": CSP_PAGINAS,
+        ...SEGURIDAD,
+        "cache-control": "public, max-age=300",
+      });
+    }
+    // Sin la barra final la página no existe: Cloudflare redirige y solo pone /*.
+    expect(Object.fromEntries(encabezadosDe(conPaginas, "/dias-inhabiles-sat"))).not.toHaveProperty(
+      "content-security-policy",
+    );
+  });
+
+  it.each([["/"], ["/estado/"], ["/sitemap.xml"], ["sin-barra/"], ["/sin-barra"], ["/a/", "/a/"]])(
+    "rechaza la página %s (repetida, ya del sitio o mal escrita)",
+    (...paginas) => {
+      expect(() => archivoEncabezados(DESCARGAS, paginas)).toThrow(/página/);
+    },
+  );
+
   it.each(["/estilo.css", "/sitio.js"])("%s lleva caché corta y CSP vacía", (ruta) => {
     expect(efectivos(ruta)).toEqual({
       "content-security-policy": NINGUNO,

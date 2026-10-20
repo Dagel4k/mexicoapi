@@ -95,8 +95,24 @@ function tipoContenido(nombre: string): string {
 const texto = ({ ruta, encabezados }: Regla): string =>
   `${ruta}\n${encabezados.map(([nombre, valor]) => `  ${nombre}: ${valor}\n`).join("")}`;
 
-/** El archivo completo: `/*`, una regla por descarga con su tipo y lo de todas, y las del sitio. */
-export function archivoEncabezados(descargas: readonly string[]): string {
+/** La ruta de una página de datos: con barra final, como se sirve su `index.html`, y no la raíz. */
+const RUTA_PAGINA = /^\/(?:[a-z0-9][a-z0-9._-]*\/)+$/;
+
+/**
+ * El archivo completo: `/*`, una regla por descarga con su tipo y lo de todas, las del sitio y una
+ * por cada página de datos (`paginas`), con la CSP y la caché de las páginas. Lanza Error si una
+ * página está mal escrita, se repite o ya es una ruta del sitio.
+ */
+export function archivoEncabezados(
+  descargas: readonly string[],
+  paginas: readonly string[] = [],
+): string {
+  const vistas = new Set(RUTAS_SITIO);
+  for (const ruta of paginas) {
+    if (!RUTA_PAGINA.test(ruta)) throw new Error(`ruta de página inválida en _headers: ${ruta}`);
+    if (vistas.has(ruta)) throw new Error(`página repetida en _headers: ${ruta}`);
+    vistas.add(ruta);
+  }
   const reglas: Regla[] = [TODAS];
   for (const nombre of descargas) {
     reglas.push({
@@ -104,6 +120,6 @@ export function archivoEncabezados(descargas: readonly string[]): string {
       encabezados: [["Content-Type", tipoContenido(nombre)], ...SEGURIDAD_DESCARGAS],
     });
   }
-  reglas.push(...REGLAS_SITIO);
+  reglas.push(...REGLAS_SITIO, ...paginas.map((ruta) => sitio(ruta, CSP_PAGINAS, CACHE_SITIO)));
   return reglas.map(texto).join("\n");
 }
