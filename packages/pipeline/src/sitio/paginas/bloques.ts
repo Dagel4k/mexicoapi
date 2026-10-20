@@ -3,6 +3,10 @@
 import { URL_API } from "@mexicoapi/core/problemas";
 import { escaparHtml } from "./html.js";
 
+/** "2026", "2026 y 2027", "2027, 2028 y 2029". */
+export const enTexto = (numeros: readonly number[]): string =>
+  numeros.length < 2 ? numeros.join("") : `${numeros.slice(0, -1).join(", ")} y ${numeros.at(-1)}`;
+
 const UNIDADES = ["KB", "MB", "GB"] as const;
 
 /** Tamaño en unidades de 1024, con un decimal por debajo de 10: `512 B`, `1.5 KB`, `300 MB`. */

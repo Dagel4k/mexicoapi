@@ -22,6 +22,7 @@ import { diasInhabilesLft, fechaEnTexto, metaLft } from "@mexicoapi/core/rutas";
 import { calendarioCurado, coberturasDeLaLista } from "../../curado/calendario.js";
 import { COBERTURA_LISTA_LFT } from "../calendarios.js";
 import { type Meta, URL_DOCS } from "../meta.js";
+import { enTexto } from "./bloques.js";
 import { escaparHtml } from "./html.js";
 import type { CitaPagina, PaginaDatos, PaquetePagina } from "./pagina-datos.js";
 
@@ -86,10 +87,6 @@ const cubreAnio = (rango: Rango, anio: number): boolean =>
 /** De `anio` y el siguiente, los que `rango` cubre completos. */
 const aniosCubiertos = (anio: number, rango: Rango): number[] =>
   [anio, anio + 1].filter((a) => cubreAnio(rango, a));
-
-/** "2026", "2026 y 2027", "2027, 2028 y 2029". */
-const enTexto = (anios: readonly number[]): string =>
-  anios.length < 2 ? anios.join("") : `${anios.slice(0, -1).join(", ")} y ${anios.at(-1)}`;
 
 /** Los años de `desde` a `hasta`, los dos incluidos. */
 const aniosEntre = (desde: number, hasta: number): number[] =>
@@ -292,6 +289,7 @@ ${tablaPlazos(calendario)}
     titulo: `${h1} · MéxicoAPI`,
     descripcion,
     h1,
+    anios,
     miga: "Días inhábiles del SAT",
     dataset: meta.dataset,
     datosAl: meta.as_of,
@@ -381,6 +379,7 @@ export function paginaDiasLft(anio: number): PaginaDatos {
     titulo: `${h1} · MéxicoAPI`,
     descripcion: `Días de descanso obligatorio de ${texto} según el artículo 74 de la Ley Federal del Trabajo, con su fuente oficial, por API, npm y descarga.`,
     h1,
+    anios,
     miga: "Días de descanso obligatorio",
     dataset: null,
     datosAl: meta.as_of,
@@ -479,6 +478,7 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
     titulo: `${h1} · MéxicoAPI`,
     descripcion: `Días inhábiles bancarios de ${texto}: cuándo cierran los bancos y demás entidades supervisadas por la CNBV, según sus disposiciones en el DOF.`,
     h1,
+    anios,
     miga: "Días inhábiles bancarios",
     dataset: meta.dataset,
     datosAl: meta.as_of,

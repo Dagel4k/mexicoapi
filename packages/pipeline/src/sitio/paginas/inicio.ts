@@ -4,6 +4,7 @@ import { type Meta, URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
 import {
   codigo,
   enPowerShell,
+  enTexto,
   formatearEntero,
   rutaPartible,
   tamanoLegible,
@@ -59,6 +60,8 @@ export interface PaginaEnPortada {
   dataset: string | null;
   /** Una página hija no se enlaza desde la portada: se llega desde su superior. */
   superior?: string;
+  /** Los años que muestra, si cambian con el año actual. */
+  anios?: readonly number[];
 }
 
 /** Las páginas de datos de arriba, las que enlaza la portada. */
@@ -298,10 +301,15 @@ function descargas(entrada: EntradaInicio): string {
   const sqlite = tamano("mexicoapi.sqlite");
   tamano("SHA256SUMS");
   const paginaLft = deArriba(entrada.paginas).find((p) => p.ruta === RUTA_DIAS_LFT);
+  // Los años que muestra la página (el actual y el siguiente), no un texto fijo.
+  const deLosAnios =
+    paginaLft?.anios === undefined || paginaLft.anios.length === 0
+      ? " Por año"
+      : ` Los de ${enTexto(paginaLft.anios)}`;
   const porAnio =
     paginaLft === undefined
       ? ""
-      : ` Los de cada año, en <a href="${RUTA_DIAS_LFT}">${escaparHtml(paginaLft.h1)}</a>.`;
+      : `${deLosAnios}, con su motivo y su cita, en <a href="${RUTA_DIAS_LFT}">${escaparHtml(paginaLft.h1)}</a>.`;
   const lft = ["json", "csv"].every((e) => entrada.descargas.has(`dias-inhabiles-lft.${e}`))
     ? ` Los días de descanso obligatorio de la LFT (art. 74), que se calculan por regla y no son un dataset, están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100.${porAnio}`
     : "";

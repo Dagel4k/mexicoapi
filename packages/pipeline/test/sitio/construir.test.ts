@@ -971,7 +971,10 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       const encabezado = inicio.slice(inicio.lastIndexOf("<th ", posicion), posicion);
       expect(encabezado, id).toMatch(new RegExp(`^<th [^>]*><a href="${ruta}">[^<]+</a>$`));
     }
-    expect(inicio).toContain(`Los de cada año, en <a href="${RUTA_DIAS_LFT}">`);
+    // Los años de la frase son los de la página: el del FIX más reciente (2026) y el siguiente.
+    expect(inicio).toContain(
+      `Los de 2026 y 2027, con su motivo y su cita, en <a href="${RUTA_DIAS_LFT}">`,
+    );
   });
 
   // El ejemplo sale de los datos del build con el mismo validador que usa el Worker; la prueba de
