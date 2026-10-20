@@ -3,6 +3,7 @@ import {
   CACHE_DATOS,
   CACHE_STATUS,
   CACHE_ULTIMO,
+  encabezados,
   respuestaJson,
   respuestaProblema,
   respuestaVacia,
@@ -17,6 +18,29 @@ describe("constantes de caché", () => {
     );
     expect(CACHE_STATUS).toBe("public, max-age=60");
     expect(CACHE_ULTIMO).toBe("public, max-age=300");
+  });
+});
+
+describe("encabezados", () => {
+  it("HSTS de un año, sin includeSubDomains ni preload, y no se puede pisar", () => {
+    expect(encabezados().get("strict-transport-security")).toBe("max-age=31536000");
+    const pisado = encabezados({ "Strict-Transport-Security": "max-age=0" });
+    expect(pisado.get("strict-transport-security")).toBe("max-age=31536000");
+  });
+
+  // La plataforma comprime según Accept-Encoding: un caché compartido debe guardar cada versión
+  // por separado (RFC 9110, 12.5.5).
+  it("Vary: Accept-Encoding, junto al Vary que ya traiga y sin repetirlo", () => {
+    expect(encabezados().get("vary")).toBe("Accept-Encoding");
+    expect(encabezados({ Vary: "Origin" }).get("vary")).toBe("Origin, Accept-Encoding");
+    for (const vary of [
+      "accept-encoding",
+      "Origin, Accept-Encoding",
+      "Origin,accept-encoding",
+      "*",
+    ]) {
+      expect(encabezados({ Vary: vary }).get("vary"), vary).toBe(vary);
+    }
   });
 });
 

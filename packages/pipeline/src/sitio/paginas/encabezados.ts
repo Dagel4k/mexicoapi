@@ -33,13 +33,18 @@ const CSP_ARCHIVOS = "default-src 'none'";
 /** HTML, CSS y JS no llevan hash en el nombre: se revalidan pronto. */
 const CACHE_SITIO = "public, max-age=300";
 
-/** La regla `/*`: sin CSP ni caché, que se juntarían con las de cada ruta. */
+/**
+ * La regla `/*`: sin CSP ni caché, que se juntarían con las de cada ruta. HSTS sin
+ * includeSubDomains ni preload; `Vary` porque la plataforma comprime según `Accept-Encoding`.
+ */
 const TODAS: Regla = {
   ruta: "/*",
   encabezados: [
     ["X-Content-Type-Options", "nosniff"],
     ["Referrer-Policy", "no-referrer"],
     ["X-Frame-Options", "DENY"],
+    ["Strict-Transport-Security", "max-age=31536000"],
+    ["Vary", "Accept-Encoding"],
   ],
 };
 

@@ -8,7 +8,7 @@ export const PUBLICO = new URL("../../public/", import.meta.url);
 export const BASE_PROBLEMAS =
   "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
 
-/** Encabezados que el Worker pone en todas sus respuestas. */
+/** Encabezados que el Worker pone en todas sus respuestas: los de seguridad y `Vary`. */
 export const SEGURIDAD: Readonly<Record<string, string>> = {
   "access-control-allow-origin": "*",
   "access-control-expose-headers": "ETag, Retry-After",
@@ -16,6 +16,8 @@ export const SEGURIDAD: Readonly<Record<string, string>> = {
   "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
   "referrer-policy": "no-referrer",
   "cross-origin-resource-policy": "cross-origin",
+  "strict-transport-security": "max-age=31536000",
+  vary: "Accept-Encoding",
 };
 
 /** Pide `ruta` (con su query) al Worker local; las redirecciones no se siguen. */

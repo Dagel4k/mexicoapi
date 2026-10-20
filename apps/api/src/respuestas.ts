@@ -15,12 +15,23 @@ const SEGURIDAD: ReadonlyArray<readonly [string, string]> = [
   ["Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"],
   ["Referrer-Policy", "no-referrer"],
   ["Cross-Origin-Resource-Policy", "cross-origin"],
+  // Sin includeSubDomains ni preload: solo este host, y se puede retirar.
+  ["Strict-Transport-Security", "max-age=31536000"],
 ];
 
-/** Encabezados de toda respuesta del Worker; los de seguridad no se pueden pisar. */
+/**
+ * Encabezados de toda respuesta del Worker; los de seguridad no se pueden pisar. La plataforma
+ * comprime según `Accept-Encoding`, así que `Vary` lo nombra siempre (RFC 9110, 12.5.5): un caché
+ * compartido no le da el cuerpo en br a quien no lo pidió.
+ */
 export function encabezados(extra?: HeadersInit): Headers {
   const resultado = new Headers(extra);
   for (const [nombre, valor] of SEGURIDAD) resultado.set(nombre, valor);
+  const vary = resultado.get("Vary");
+  const nombres = (vary ?? "").split(",").map((n) => n.trim().toLowerCase());
+  if (!nombres.includes("accept-encoding") && !nombres.includes("*")) {
+    resultado.set("Vary", vary === null ? "Accept-Encoding" : `${vary}, Accept-Encoding`);
+  }
   return resultado;
 }
 

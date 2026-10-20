@@ -822,6 +822,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       "x-content-type-options": ["nosniff"],
       "referrer-policy": ["no-referrer"],
       "x-frame-options": ["DENY"],
+      "strict-transport-security": ["max-age=31536000"],
+      vary: ["Accept-Encoding"],
     });
     expect(texto).toContain(`\n/\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
   });

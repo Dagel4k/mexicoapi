@@ -31,6 +31,8 @@ const SEGURIDAD = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-frame-options": "DENY",
+  "strict-transport-security": "max-age=31536000",
+  vary: "Accept-Encoding",
 };
 const NINGUNO = "default-src 'none'";
 
@@ -146,7 +148,9 @@ describe("_headers", () => {
   // `/*` alcanza también al 404 y a las redirecciones: solo lleva lo que vale en cualquier URL.
   // Una CSP o una caché ahí se juntarían con las de cada ruta y, bajo /descargas/, le bloquearían
   // la hoja de estilo al 404, que lleva su CSP en meta (prueba de no-encontrado).
-  it("/* solo pone nosniff, referrer y X-Frame-Options, y ninguna otra regla los repite", () => {
+  // HSTS sin includeSubDomains ni preload. Vary porque la plataforma comprime las descargas según
+  // Accept-Encoding y un caché compartido debe guardar cada versión aparte.
+  it("/* solo pone nosniff, referrer, X-Frame-Options, HSTS y Vary, y ninguna otra regla los repite", () => {
     const comodin = reglas.find((r) => r.ruta === "/*");
     expect(comodin).toEqual({
       ruta: "/*",
@@ -154,6 +158,8 @@ describe("_headers", () => {
         ["X-Content-Type-Options", "nosniff"],
         ["Referrer-Policy", "no-referrer"],
         ["X-Frame-Options", "DENY"],
+        ["Strict-Transport-Security", "max-age=31536000"],
+        ["Vary", "Accept-Encoding"],
       ],
       quitar: [],
     });
