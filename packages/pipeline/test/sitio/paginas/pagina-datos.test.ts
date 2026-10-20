@@ -371,6 +371,16 @@ describe("registro de páginas", () => {
     ["una relacionada que no existe", [{ ...SOLA, relacionadas: ["/nada/"] }], /\/nada\//],
     ["una relacionada que es ella misma", [{ ...SOLA, relacionadas: ["/prueba-datos/"] }], /misma/],
     ["una superior que no existe", [{ ...SOLA, superior: "/nada/" }], /\/nada\//],
+    // La regla con comodín de una familia (`/municipios/*`) solo cubre a las hijas cuya ruta
+    // empieza con la de su superior.
+    [
+      "una hija cuya ruta no empieza con la de su superior",
+      [
+        { ...SOLA, ruta: "/municipios/" },
+        { ...SOLA, ruta: "/estados/25/", superior: "/municipios/", conjunto: null },
+      ],
+      /\/estados\/25\/ cuelga de \/municipios\/, pero su ruta no empieza con la de ella/,
+    ],
     [
       "una hija con su propio Dataset",
       [
