@@ -233,6 +233,7 @@ describe("página de inicio", () => {
         h1: "Días de descanso obligatorio 2026 y 2027 (LFT)",
         descripcion: "Los del artículo 74.",
         dataset: null,
+        anios: [2026, 2027],
       },
       // Una página hija no va en la lista: se llega a ella desde su superior.
       {
@@ -274,7 +275,14 @@ describe("página de inicio", () => {
     conLft.set("dias-inhabiles-lft.json", "[]");
     conLft.set("dias-inhabiles-lft.csv", "");
     expect(paginaInicio({ ...ENTRADA, descargas: conLft, paginas })).toContain(
-      'están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100. Los de cada año, en <a href="/dias-de-descanso-obligatorio/">Días de descanso obligatorio 2026 y 2027 (LFT)</a>.',
+      'están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100. Los de 2026 y 2027, con su motivo y su cita, en <a href="/dias-de-descanso-obligatorio/">Días de descanso obligatorio 2026 y 2027 (LFT)</a>.',
+    );
+    // Los años salen de la página, no de un texto fijo.
+    const otrosAnios = paginas.map((p) =>
+      p.ruta === "/dias-de-descanso-obligatorio/" ? { ...p, anios: [2100] } : p,
+    );
+    expect(paginaInicio({ ...ENTRADA, descargas: conLft, paginas: otrosAnios })).toContain(
+      "de 2007 a 2100. Los de 2100, con su motivo y su cita, en ",
     );
     // Antes de la tabla de datos; sin páginas no hay sección.
     expect(inicio).toBeLessThan(conPaginas.indexOf('<section id="datos"'));
