@@ -32,6 +32,11 @@ import { coberturasDe, diasLft } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import {
+  RUTA_BANCOS,
+  RUTA_MUNICIPIOS,
+  RUTA_VALIDAR_CLABE,
+} from "../../src/sitio/paginas/catalogos.js";
+import {
   RUTA_DIAS_CNBV,
   RUTA_DIAS_LFT,
   RUTA_DIAS_SAT,
@@ -71,7 +76,16 @@ const PAGINAS_DE_DATOS = [
   RUTA_UMA,
   RUTA_SALARIO_MINIMO,
   RUTA_ISR,
+  RUTA_BANCOS,
+  RUTA_VALIDAR_CLABE,
+  RUTA_MUNICIPIOS,
 ];
+
+/** Las hijas de /municipios/ con los estados del ejemplo: el sitemap las lista, `_headers` no. */
+const PAGINAS_HIJAS = ["/municipios/01-aguascalientes/", "/municipios/09-ciudad-de-mexico/"];
+
+/** Las rutas de `_headers`: una por página de arriba, con comodín en la que tiene hijas. */
+const RUTAS_DE_ENCABEZADOS = PAGINAS_DE_DATOS.map((r) => (r === RUTA_MUNICIPIOS ? `${r}*` : r));
 
 const estados = [
   { cve_ent: "01", nombre: "Aguascalientes", abreviatura: "Ags.", cvegeo: "01" },
@@ -260,6 +274,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "descargas/udis.csv",
         "descargas/udis.json",
         "descargas/udis.manifest.json",
+        "bancos-clabe/index.html",
         "dias-de-descanso-obligatorio/index.html",
         "dias-inhabiles-bancarios/index.html",
         "dias-inhabiles-sat/index.html",
@@ -269,6 +284,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "index.html",
         "llms-full.txt",
         "llms.txt",
+        "municipios/01-aguascalientes/index.html",
+        "municipios/09-ciudad-de-mexico/index.html",
+        "municipios/index.html",
         "robots.txt",
         "sitemap.xml",
         "salario-minimo/index.html",
@@ -277,6 +295,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         "tipo-de-cambio-fix/index.html",
         "udis/index.html",
         "uma/index.html",
+        "validar-clabe/index.html",
         "v1/_internos/calendarios/cnbv.json",
         "v1/_internos/calendarios/sat.json",
         "v1/_internos/constantes.json",
@@ -824,7 +843,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     await construirSitio({ raizDatos: datos, salida });
     const texto = await readFile(join(salida, "_headers"), "utf8");
     const descargas = await listar(join(salida, "descargas"));
-    expect(texto).toBe(archivoEncabezados(descargas, PAGINAS_DE_DATOS));
+    expect(texto).toBe(archivoEncabezados(descargas, RUTAS_DE_ENCABEZADOS));
     const reglas = leerReglas(texto);
     expect(reglas.length).toBeLessThanOrEqual(100);
     for (const linea of texto.split("\n")) expect(linea.length).toBeLessThanOrEqual(2000);
@@ -833,14 +852,14 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       "/*",
       ...rutas,
       ...RUTAS_SITIO,
-      ...PAGINAS_DE_DATOS,
+      ...RUTAS_DE_ENCABEZADOS,
     ]);
     // Cada página de datos lleva la CSP de las páginas: sin su regla, solo tendría la de /*.
-    for (const ruta of PAGINAS_DE_DATOS) {
+    for (const ruta of RUTAS_DE_ENCABEZADOS) {
       expect(texto, ruta).toContain(`\n${ruta}\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
     }
     // Ninguna ruta recibe el mismo encabezado de dos reglas (Cloudflare los juntaría con coma).
-    for (const ruta of [...rutas, ...RUTAS_SITIO, ...PAGINAS_DE_DATOS]) {
+    for (const ruta of [...rutas, ...RUTAS_SITIO, ...PAGINAS_DE_DATOS, ...PAGINAS_HIJAS]) {
       for (const [nombre, valores] of encabezadosDe(reglas, ruta)) {
         expect(valores, `${ruta} ${nombre}`).toHaveLength(1);
       }
@@ -906,7 +925,9 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     await construirSitio({ raizDatos: datos, salida });
     const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
     const locs = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) => m[1] as string);
-    expect(locs).toEqual(["/", "/estado/", ...PAGINAS_DE_DATOS].map((ruta) => `${URL_API}${ruta}`));
+    expect(locs).toEqual(
+      ["/", "/estado/", ...PAGINAS_DE_DATOS, ...PAGINAS_HIJAS].map((ruta) => `${URL_API}${ruta}`),
+    );
     const canonicas: string[] = [];
     for (const archivo of (await listar(salida)).filter((n) => n.endsWith(".html"))) {
       const html = await readFile(join(salida, archivo), "utf8");
@@ -940,6 +961,12 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         asOfDe("constantes.uma"),
         asOfDe("constantes.salario-minimo"),
         asOfDe("isr.tarifas"),
+        // Los catálogos: la fecha de su dataset; /municipios/ la más reciente de estados y municipios.
+        asOfDe("bancos"),
+        asOfDe("bancos"),
+        [asOfDe("inegi.estados"), asOfDe("inegi.municipios")].sort().at(-1),
+        asOfDe("inegi.municipios"),
+        asOfDe("inegi.municipios"),
       ].map((fecha) => `<lastmod>${fecha}</lastmod>`),
     );
   });
@@ -978,10 +1005,11 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
       expect(html, ruta).toContain('<li><a href="/">MéxicoAPI</a></li>');
       const datasets = datosEstructurados(html).filter((n) => n["@type"] === "Dataset");
-      expect(datasets, ruta).toHaveLength(1);
+      expect(datasets, ruta).toHaveLength(ruta === RUTA_VALIDAR_CLABE ? 0 : 1);
+      if (datasets.length === 0) continue;
       const distribucion = (datasets[0] as { distribution: { contentUrl: string }[] }).distribution;
       const descargas = distribucion.map((d) => d.contentUrl);
-      expect(descargas.length, ruta).toBe(2);
+      expect(descargas.length, ruta).toBe(ruta === RUTA_MUNICIPIOS ? 4 : 2);
       for (const url of descargas) {
         expect(url.startsWith(`${URL_API}/descargas/`), url).toBe(true);
         await expect(

@@ -79,7 +79,9 @@ describe("validarClabeLocal", () => {
         expect(local.errores).toEqual(base.errores);
         expect(local.banco?.codigo ?? null).toBe(base.detalle?.banco?.codigo ?? null);
         expect(local.banco?.nombre_corto ?? null).toBe(base.detalle?.banco?.nombre_corto ?? null);
-        expect(local.banco?.activo ?? null).toBe(base.detalle?.banco?.activo ?? null);
+        expect(local.banco?.activo ?? null).toBe(
+          (base.detalle?.banco as { activo?: boolean } | null | undefined)?.activo ?? null,
+        );
       }),
       { numRuns: 2000 },
     );

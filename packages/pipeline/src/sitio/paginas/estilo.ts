@@ -208,4 +208,11 @@ dd { margin: 0 0 0.875rem; color: var(--tenue); }
 blockquote { margin: 0 0 1rem; padding-left: 1rem; border-left: 4px solid var(--borde); max-width: 68ch; }
 .pie { border-top: 1px solid var(--borde); padding: 1.5rem 0 2.5rem; color: var(--tenue); font-size: 0.9375rem; }
 .pie p { margin: 0 0 0.5rem; }
+.validador { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; margin: 0 0 1rem; }
+.validador[hidden] { display: none; }
+.validador label { flex: 1 0 100%; font-weight: 600; }
+.validador input { flex: 1 1 14rem; min-width: 0; font: 1.125rem var(--mono); padding: 0.5rem 0.75rem; color: var(--texto); background: var(--fondo); border: 1px solid var(--tenue); border-radius: 6px; }
+#resultado-clabe:not(:empty) { margin: 0 0 1rem; padding: 0.75rem 1rem; border-left: 4px solid var(--borde); background: var(--superficie); }
+#resultado-clabe.ok { border-left-color: var(--acento); }
+#resultado-clabe.mal { border-left-color: var(--aviso-borde); background: var(--aviso); }
 `;
