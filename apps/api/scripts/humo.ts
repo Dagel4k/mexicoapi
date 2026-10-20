@@ -31,8 +31,14 @@ export interface OpcionesHumo {
 
 type Tipo = "json" | "problema" | "texto" | "html";
 
-/** Valor exacto, un patrón que debe cumplir, o `null` si no debe venir. */
-type Esperado = string | RegExp | null;
+/** Una regla para el valor de un encabezado, con la descripción que va en la falla. */
+interface Condicion {
+  descripcion: string;
+  cumple: (valor: string) => boolean;
+}
+
+/** Valor exacto, un patrón, una condición, o `null` si no debe venir. */
+type Esperado = string | RegExp | Condicion | null;
 
 type Encabezados = readonly (readonly [string, Esperado])[];
 
@@ -47,11 +53,37 @@ interface Comprobacion {
   validar?: (cuerpo: unknown) => string | undefined;
   /** Los encabezados que debe traer; por omisión, CORS, nosniff, HSTS y Vary. */
   encabezados?: Encabezados;
-  /** Se pide por http, sin seguir redirecciones; en los resultados va como `http:// <ruta>`. */
+  /**
+   * Se pide por http, sin seguir redirecciones; en los resultados va como `http:// <ruta>`. Vale
+   * también una redirección 301, 302, 307 o 308 a la misma URL con https.
+   */
   porHttp?: boolean;
+  /** Lo que dice la falla cuando el estado no es `estado`; por omisión, `estado`. */
+  estadoEsperado?: string;
 }
 
-const HSTS: readonly [string, Esperado] = ["strict-transport-security", "max-age=31536000"];
+const UN_ANIO = 31_536_000;
+
+/**
+ * Si algún valor de `Strict-Transport-Security` pide `max-age` de un año o más. El borde puede
+ * agregar el suyo (separado por coma), y un valor más largo o con más directivas no es una falla:
+ * un fallo del humo de producción revierte el despliegue.
+ */
+function hstsDeUnAnio(valor: string): boolean {
+  return valor.split(",").some((uno) =>
+    uno.split(";").some((directiva) => {
+      const [nombre, ...resto] = directiva.split("=");
+      if (nombre?.trim().toLowerCase() !== "max-age" || resto.length !== 1) return false;
+      const segundos = (resto[0] ?? "").trim().replace(/^"(\d+)"$/, "$1");
+      return /^\d+$/.test(segundos) && Number(segundos) >= UN_ANIO;
+    }),
+  );
+}
+
+const HSTS: readonly [string, Esperado] = [
+  "strict-transport-security",
+  { descripcion: `max-age de ${UN_ANIO} o más`, cumple: hstsDeUnAnio },
+];
 // La plataforma puede agregar su propio Vary: basta con que nombre Accept-Encoding.
 const VARY: readonly [string, Esperado] = ["vary", /(?:^|,)\s*accept-encoding\s*(?:,|$)/i];
 
@@ -229,10 +261,14 @@ const COMPROBACIONES: readonly Comprobacion[] = [
   },
 ];
 
-/** `/v1` por http: 403 https-requerido, sin redirigir. Solo con una base https. */
+/**
+ * `/v1` por http: 403 https-requerido del Worker, o una redirección de la plataforma a la misma
+ * URL con https. Solo con una base https.
+ */
 const POR_HTTP: Comprobacion = {
   ruta: "/v1/estados",
   estado: 403,
+  estadoEsperado: "403 o una redirección a https://",
   tipo: "problema",
   porHttp: true,
   validar(cuerpo) {
@@ -274,20 +310,53 @@ function encabezadosDe(caso: Comprobacion, robots: Robots | undefined): Encabeza
   return tag === undefined ? conHttp : [...conHttp, ["x-robots-tag", tag]];
 }
 
+/** Lo que se esperaba, para el texto de la falla. */
+function describir(esperado: Esperado): string {
+  if (esperado === null) return "ausente";
+  if (typeof esperado === "string") return esperado;
+  return esperado instanceof RegExp ? String(esperado) : esperado.descripcion;
+}
+
+function cumple(actual: string | null, esperado: Esperado): boolean {
+  if (esperado === null) return actual === null;
+  if (actual === null) return false;
+  if (typeof esperado === "string") return actual === esperado;
+  return esperado instanceof RegExp ? esperado.test(actual) : esperado.cumple(actual);
+}
+
 /** La falla de un encabezado, o undefined si cumple lo esperado. */
 function revisarEncabezado(
   nombre: string,
   actual: string | null,
   esperado: Esperado,
 ): string | undefined {
-  const cumple =
-    esperado === null
-      ? actual === null
-      : typeof esperado === "string"
-        ? actual === esperado
-        : actual !== null && esperado.test(actual);
-  if (cumple) return undefined;
-  return `${nombre}: ${actual ?? "ausente"}, se esperaba ${esperado ?? "ausente"}`;
+  if (cumple(actual, esperado)) return undefined;
+  const mostrado = actual === null ? "ausente" : actual === "" ? "(vacío)" : actual;
+  return `${nombre}: ${mostrado}, se esperaba ${describir(esperado)}`;
+}
+
+/** Las redirecciones de la plataforma que valen en la comprobación por http. */
+const REDIRECCIONES: readonly number[] = [301, 302, 307, 308];
+
+/** La falla de una redirección de `pedida` (http) que debía ir a `esperada` (https). */
+function revisarRedireccion(
+  respuesta: Response,
+  pedida: string,
+  esperada: string,
+): string | undefined {
+  const location = respuesta.headers.get("location");
+  if (location === null || location.trim() === "") {
+    return `redirección ${respuesta.status} sin location`;
+  }
+  let destino: string;
+  try {
+    destino = new URL(location, pedida).href;
+  } catch {
+    destino = location;
+  }
+  return destino === new URL(esperada).href
+    ? undefined
+    : `redirige a ${location}, se esperaba ${esperada}`;
 }
 
 const mensajeDe = (error: unknown): string =>
@@ -319,7 +388,7 @@ async function revisar(
   encabezados: Encabezados,
 ): Promise<string | undefined> {
   if (respuesta.status !== caso.estado) {
-    return `estado ${respuesta.status}, se esperaba ${caso.estado}`;
+    return `estado ${respuesta.status}, se esperaba ${caso.estadoEsperado ?? caso.estado}`;
   }
   const medio = (respuesta.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
   if (medio.toLowerCase() !== TIPOS[caso.tipo]) {
@@ -351,14 +420,16 @@ async function comprobar(
 ): Promise<string | undefined> {
   const origen = caso.porHttp === true ? base.replace(/^https:/, "http:") : base;
   const init: RequestInit = caso.porHttp === true ? { redirect: "manual" } : {};
+  const url = `${origen}${caso.ruta}`;
   try {
-    return await acotar(opciones.timeoutMs, async (signal) =>
-      revisar(
-        await pedidor(`${origen}${caso.ruta}`, { ...init, signal }),
-        caso,
-        encabezadosDe(caso, opciones.robots),
-      ),
-    );
+    return await acotar(opciones.timeoutMs, async (signal) => {
+      const respuesta = await pedidor(url, { ...init, signal });
+      if (caso.porHttp === true && REDIRECCIONES.includes(respuesta.status)) {
+        await respuesta.body?.cancel();
+        return revisarRedireccion(respuesta, url, `${base}${caso.ruta}`);
+      }
+      return revisar(respuesta, caso, encabezadosDe(caso, opciones.robots));
+    });
   } catch (error) {
     return mensajeDe(error);
   }
