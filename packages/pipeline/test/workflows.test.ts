@@ -664,24 +664,17 @@ describe("registro oficial de MCP en publicacion.yml", () => {
     expect(job.permissions).toEqual({ contents: "read", "id-token": "write" });
     expect(job.environment).toBeUndefined();
     expect(JSON.stringify(job)).not.toMatch(/secrets\.|NODE_AUTH_TOKEN|NPM_TOKEN/);
-    // Las mismas acciones fijadas por SHA que preparar.
+    // Solo el checkout, con la misma acción fijada por SHA que preparar: curl y jq son del runner.
     const usos = job.steps.flatMap((p) => p.uses ?? []);
-    expect(usos).toEqual([
-      expect.stringMatching(/^actions\/checkout@[0-9a-f]{40}$/),
-      expect.stringMatching(/^actions\/setup-node@[0-9a-f]{40}$/),
-    ]);
+    expect(usos).toEqual([expect.stringMatching(/^actions\/checkout@[0-9a-f]{40}$/)]);
     expect(wf.jobs.preparar?.steps.flatMap((p) => p.uses ?? [])).toEqual(
       expect.arrayContaining(usos),
     );
     expect(job.steps[0]?.with).toEqual({ "persist-credentials": false });
-    expect(job.steps[2]?.with).toEqual({
-      "node-version": expresion("needs.preparar.outputs.node"),
-    });
     // En este orden: revisa server.json, espera a npm, entra con OIDC y publica.
     expect(job.steps.map((p) => p.name ?? p.uses?.split("@")[0])).toEqual([
       "actions/checkout",
       "Revisar server.json",
-      "actions/setup-node",
       "Instalar mcp-publisher",
       "Esperar la versión en npm",
       "Entrar al registro con OIDC",
@@ -690,6 +683,26 @@ describe("registro oficial de MCP en publicacion.yml", () => {
     ]);
     // Nada se interpola en los scripts: todo llega por env.
     for (const p of job.steps) expect(p.run ?? "", p.name).not.toContain("$" + "{{");
+  });
+
+  it("cada paso que usa la red tiene su tope y el del job deja correr la explicación", async () => {
+    const wf = await workflow("publicacion.yml");
+    const job = wf.jobs["registro-mcp"] as unknown as JobRegistro & { "timeout-minutes": number };
+    const topes = Object.fromEntries(
+      job.steps.flatMap((p) => {
+        const tope = (p as Paso & { "timeout-minutes"?: number })["timeout-minutes"];
+        return tope === undefined ? [] : [[p.name, tope]];
+      }),
+    );
+    expect(topes).toEqual({
+      "Instalar mcp-publisher": 3,
+      "Esperar la versión en npm": 12,
+      "Entrar al registro con OIDC": 2,
+      "Publicar en el registro de MCP": 3,
+    });
+    // Si un paso se cuelga, falla por su tope y no por el del job: Explicar el fallo sí corre.
+    const suma = Object.values(topes).reduce((a, b) => a + b, 0);
+    expect(job["timeout-minutes"]).toBeGreaterThanOrEqual(suma + 5);
   });
 
   it("baja mcp-publisher en una versión fija y revisa su sha256 antes de extraerlo", async () => {
@@ -719,18 +732,29 @@ describe("registro oficial de MCP en publicacion.yml", () => {
     expect(run.startsWith("set -euo pipefail\n")).toBe(true);
   });
 
-  it("espera a que npm muestre la versión, con un tope, y publica packages/mcp/server.json", async () => {
+  it("espera a que npm muestre la versión con su mcpName, con un tope, y publica server.json", async () => {
     const wf = await workflow("publicacion.yml");
     const esperar = paso(wf, "registro-mcp", "Esperar la versión en npm");
     expect(esperar.env).toEqual({ VERSION: expresion("needs.preparar.outputs.version") });
     const run = esperar.run ?? "";
-    expect(run).toContain(`spec="mexicoapi-mcp@\${VERSION}"`);
-    // Sin la copia de la caché de npm, hasta 40 veces cada 15 segundos (10 minutos).
-    expect(run).toContain(
-      `if [ "$(npm view "\${spec}" version --prefer-online 2>/dev/null || true)" = "\${VERSION}" ]; then`,
-    );
+    // El mismo documento que lee el registro para validar el paquete, hasta 40 veces cada 15
+    // segundos (10 minutos), sin esperar después del último intento.
+    expect(run).toContain(`url="https://registry.npmjs.org/mexicoapi-mcp/\${VERSION}"`);
+    expect(run).toContain(`if curl -fsS --max-time 30 -o "\${manifiesto}" "\${url}"; then`);
+    expect(run).not.toContain("npm view");
     expect(run).toContain("for intento in $(seq 1 40); do");
-    expect(run).toContain("sleep 15");
+    expect(run).toContain(`if [ "\${intento}" -lt 40 ]; then`);
+    expect(run.indexOf("sleep 15")).toBeGreaterThan(
+      run.indexOf(`if [ "\${intento}" -lt 40 ]; then`),
+    );
+    // Con un mcpName distinto, el registro lo rechazaría: se detiene ahí, sin reintentar.
+    const revision = run.indexOf(
+      `if ! jq -e '.mcpName == "io.github.Dagel4k/mexicoapi-mcp"' "\${manifiesto}" > /dev/null; then`,
+    );
+    expect(revision).toBeGreaterThan(run.indexOf("if curl -fsS"));
+    expect(run.slice(revision)).toMatch(
+      /^[^\n]*\n\s*echo "::error::[^"]*mcpName[^"]*"\n\s*exit 1\n/,
+    );
     expect(run).toMatch(/echo "::error::[^"]*no aparece en npm/);
     expect(run.trimEnd().endsWith("exit 1")).toBe(true);
     expect(paso(wf, "registro-mcp", "Entrar al registro con OIDC").run).toBe(
