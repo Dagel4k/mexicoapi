@@ -37,9 +37,20 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/^[\x20-\x7e\n]*$/);
   });
 
-  // 7 KB desde que las tablas se ven como tarjetas en pantallas angostas (antes, 6 KB).
-  it("es pequeña", () => {
-    expect(Buffer.byteLength(ESTILO)).toBeLessThan(7 * 1024);
+  // Un presupuesto contra el crecimiento sin querer, no un requisito de rendimiento: la hoja es una
+  // sola, se guarda en caché y comprimida pesa una fracción. 9 KB desde las páginas de datos (migas,
+  // citas y tablas compactas); antes 7 KB, desde que las tablas se ven como tarjetas, y 6 KB.
+  it("no crece sin que se decida", () => {
+    expect(Buffer.byteLength(ESTILO)).toBeLessThan(9 * 1024);
+  });
+
+  // Las migas se leen como texto: la diagonal entre una y otra es contenido, no un color.
+  it("las migas van en un renglón, sin viñetas y separadas con una diagonal", () => {
+    expect(ESTILO).toMatch(
+      /\.migas ol \{[^}]*display: flex;[^}]*flex-wrap: wrap;[^}]*list-style: none;/,
+    );
+    expect(ESTILO).toMatch(/\.migas li \+ li::before \{[^}]*content: "\/";/);
+    expect(ESTILO).toMatch(/\nblockquote \{[^}]*border-left: 4px solid var\(--borde\);/);
   });
 
   // `.oculto` es absoluto: sin un contenedor posicionado sale del que se desplaza y la página gana
