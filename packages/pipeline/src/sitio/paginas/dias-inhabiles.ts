@@ -118,8 +118,8 @@ function tablaDias(
     const tipo = conTipo ? `<td>${escaparHtml(TIPOS[d.tipo] ?? d.tipo)}</td>` : "";
     return `<tr><th scope="row"><time datetime="${escaparHtml(d.fecha)}">${diaYMes(d.fecha)}</time><span class="detalle">${NOMBRES_DIA[diaDeLaSemana(d.fecha)]}</span></th><td>${escaparHtml(d.motivo)}</td>${tipo}</tr>`;
   });
-  return `<div class="tabla" role="region" aria-labelledby="${id}" tabindex="0">
-<table class="compacta">
+  return `<div class="tabla compacta" role="region" aria-labelledby="${id}" tabindex="0">
+<table>
 <caption id="${id}">${escaparHtml(titulo)}</caption>
 <thead>
 <tr><th scope="col">Fecha</th><th scope="col">Motivo</th>${conTipo ? '<th scope="col">Tipo</th>' : ""}</tr>
@@ -196,8 +196,8 @@ function tablaPlazos(calendario: CalendarioCurado): string {
     const celdas = plazos.map(([, excluir]) => (excluir.includes(tipo) ? "Hábil" : "Inhábil"));
     return `<tr><th scope="row">${TIPOS[tipo]}</th>${celdas.map((c) => `<td>${c}</td>`).join("")}</tr>`;
   });
-  return `<div class="tabla" role="region" aria-labelledby="tabla-plazos" tabindex="0">
-<table class="compacta">
+  return `<div class="tabla compacta" role="region" aria-labelledby="tabla-plazos" tabindex="0">
+<table>
 <caption id="tabla-plazos">Qué días son inhábiles en cada tipo de plazo</caption>
 <thead>
 <tr><th scope="col">Tipo de día</th>${plazos.map(([t]) => `<th scope="col">${PLAZOS[t]}</th>`).join("")}</tr>
@@ -233,7 +233,7 @@ export function paginaDiasSat(anio: number, sat: CalendarioDePagina): PaginaDato
       a,
       `Días inhábiles del SAT en ${a}`,
       [resumen, vacacionesDelAnio(a, general), ...transmision],
-      tablaDias(a, `Días inhábiles del SAT en ${a}, sin sábados ni domingos`, dias, true),
+      tablaDias(a, `Días inhábiles del SAT en ${a}`, dias, true),
     );
   });
   const plazos = `<section id="plazos" aria-labelledby="titulo-plazos">
@@ -261,7 +261,7 @@ ${tablaPlazos(calendario)}
     dataset: meta.dataset,
     datosAl: meta.as_of,
     queEsDatosAl: "la fecha de la publicación más reciente de sus fuentes",
-    intro: `<p class="intro">Días que no cuentan en los plazos fiscales ante el SAT: los del artículo 12 del Código Fiscal de la Federación y los periodos de vacaciones y días inhábiles que fija la regla 2.1.6 de la Resolución Miscelánea Fiscal. Los sábados y domingos también son inhábiles y no se listan; un periodo de vacaciones se lista completo, con sus fines de semana.</p>`,
+    intro: `<p class="intro">Días que no cuentan en los plazos fiscales ante el SAT: los del artículo 12 del Código Fiscal de la Federación y los periodos de vacaciones y días inhábiles que fija la regla 2.1.6 de la Resolución Miscelánea Fiscal. Los sábados y domingos también son inhábiles y no se listan por serlo; un periodo de vacaciones se lista completo, con sus fines de semana.</p>`,
     contenido: [...secciones, plazos, pendiente].join("\n"),
     fuentes: meta.sources,
     citas: citasDe(listas.flatMap((l) => l.dias)),
@@ -280,7 +280,7 @@ ${tablaPlazos(calendario)}
     docs: meta.docs,
     conjunto: {
       nombre: "Días inhábiles del SAT",
-      descripcion: `Días inhábiles para los plazos fiscales ante el SAT: los del primer párrafo del artículo 12 del Código Fiscal de la Federación, calculados por regla, y los periodos de vacaciones y días inhábiles de la regla 2.1.6 de la Resolución Miscelánea Fiscal, transcritos del Diario Oficial de la Federación. Cada día trae su fecha, su motivo, su tipo (descanso o vacaciones) y la cita de su fuente. La descarga trae los días de ${deLaLista}; las vacaciones están completas del ${general.desde} al ${general.hasta}. No incluye sábados ni domingos.`,
+      descripcion: `Días inhábiles para los plazos fiscales ante el SAT: los del primer párrafo del artículo 12 del Código Fiscal de la Federación, calculados por regla, y los periodos de vacaciones y días inhábiles de la regla 2.1.6 de la Resolución Miscelánea Fiscal, transcritos del Diario Oficial de la Federación. Cada día trae su fecha, su motivo, su tipo (descanso o vacaciones) y la cita de su fuente. La descarga trae los días de ${deLaLista}; las vacaciones están completas del ${general.desde} al ${general.hasta}. Los sábados y domingos no se listan por serlo; un periodo de vacaciones se lista completo, con sus fines de semana.`,
       palabrasClave: [
         "días inhábiles",
         "SAT",
@@ -318,7 +318,7 @@ export function paginaDiasLft(anio: number): PaginaDatos {
       a,
       `Días de descanso obligatorio en ${a}`,
       [`<p>${cuenta(dias.length)}.</p>`],
-      tablaDias(a, `Días de descanso obligatorio en ${a}, sin sábados ni domingos`, dias, false),
+      tablaDias(a, `Días de descanso obligatorio en ${a}`, dias, false),
     ),
   );
   const proxima = transmisionDesde(anio);
@@ -350,7 +350,7 @@ export function paginaDiasLft(anio: number): PaginaDatos {
     datosAl: meta.as_of,
     queEsDatosAl:
       "la fecha de la última reforma de la Ley Federal del Trabajo que se tomó en cuenta",
-    intro: `<p class="intro">Los días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Para nómina (días de descanso obligatorio, artículo 75) esta es la lista que aplica. Los sábados y domingos no se listan.</p>`,
+    intro: `<p class="intro">Los días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Para nómina (días de descanso obligatorio, artículo 75) esta es la lista que aplica. Los sábados y domingos no se listan por serlo; un día de descanso obligatorio que cae en fin de semana sí aparece.</p>`,
     contenido: [...secciones, ...transmision, art715].join("\n"),
     fuentes: meta.sources,
     citas: citasDe(
@@ -373,7 +373,7 @@ diasDescansoLft(${anio}); // sin red: los días del artículo 74, cada uno con s
     docs: null,
     conjunto: {
       nombre: "Días de descanso obligatorio de la Ley Federal del Trabajo",
-      descripcion: `Días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Cada día trae su fecha, su motivo y la cita del texto del artículo 74 que estaba en vigor ese día. No incluye sábados ni domingos, ni los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715).`,
+      descripcion: `Días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Cada día trae su fecha, su motivo y la cita del texto del artículo 74 que estaba en vigor ese día. Los sábados y domingos no se listan por serlo. No incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715).`,
       palabrasClave: [
         "días de descanso obligatorio",
         "Ley Federal del Trabajo",
@@ -410,7 +410,7 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
       [
         `<p>${cuenta(dias.length)}, según las disposiciones publicadas en el DOF el ${fechas.map(fechaEnTexto).join(" y el ")}.</p>`,
       ],
-      tablaDias(a, `Días inhábiles bancarios en ${a}, sin sábados ni domingos`, dias, false),
+      tablaDias(a, `Días inhábiles bancarios en ${a}`, dias, false),
     );
   });
   const faltantes =
@@ -461,7 +461,7 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
     docs: meta.docs,
     conjunto: {
       nombre: "Días inhábiles bancarios de la CNBV",
-      descripcion: `Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores deben cerrar sus puertas y suspender operaciones, transcritos de las disposiciones que la CNBV publica cada año en el Diario Oficial de la Federación. Cada día trae su fecha, su motivo y la cita de su fuente. La lista está completa del ${amplia.desde} al ${amplia.hasta}. No incluye sábados ni domingos.`,
+      descripcion: `Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores deben cerrar sus puertas y suspender operaciones, transcritos de las disposiciones que la CNBV publica cada año en el Diario Oficial de la Federación. Cada día trae su fecha, su motivo y la cita de su fuente. La lista está completa del ${amplia.desde} al ${amplia.hasta}. Los sábados y domingos no se listan por serlo; una fecha de las disposiciones que cae en fin de semana sí aparece.`,
       palabrasClave: [
         "días inhábiles bancarios",
         "CNBV",

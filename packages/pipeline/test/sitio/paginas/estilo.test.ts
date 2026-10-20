@@ -53,6 +53,15 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(/\nblockquote \{[^}]*border-left: 4px solid var\(--borde\);/);
   });
 
+  // Una tabla de dos o tres columnas a todo el ancho de 1280 px se lee mal; a 375 px, con el
+  // relleno normal y los encabezados sin partir, la última columna se corta.
+  it("las tablas compactas tienen un ancho máximo y a 375 px menos relleno y encabezados que se parten", () => {
+    expect(ESTILO).toContain("\n.compacta { max-width: 48rem; }\n");
+    expect(ESTILO).toContain(
+      "@media (max-width: 39.99rem) { .compacta th, .compacta td { padding-inline: 0.5rem; white-space: normal; } }",
+    );
+  });
+
   // `.oculto` es absoluto: sin un contenedor posicionado sale del que se desplaza y la página gana
   // desplazamiento horizontal a 320 px.
   it("las tablas se desplazan dentro de su contenedor, con el texto oculto adentro", () => {
