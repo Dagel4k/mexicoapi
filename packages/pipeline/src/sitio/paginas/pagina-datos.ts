@@ -69,6 +69,8 @@ export interface PaginaDatos {
   superior?: string;
   /** El id del dataset cuyo renglón de la tabla de la portada enlaza aquí, si tiene. */
   dataset: string | null;
+  /** Los años que muestra, si cambian con el año actual; la portada los nombra al enlazarla. */
+  anios?: readonly number[];
   /** El `as_of` de los datos que muestra: "Datos al" y la versión de su Dataset. */
   datosAl: FechaISO;
   /**
@@ -137,7 +139,7 @@ function migasDe(pagina: PaginaDatos, registro: RegistroPaginas): Miga[] {
 /**
  * El registro de las páginas de datos. Lanza Error si una ruta no es de página, es la de la
  * portada o la de `/estado/`, se repite, si una relacionada o una superior no está registrada o
- * si una hija trae su propio Dataset.
+ * si la ruta de una hija no empieza con la de su superior o si una hija trae su propio Dataset.
  */
 export function registrarPaginas(paginas: readonly PaginaDatos[]): RegistroPaginas {
   const registro = new Map<string, PaginaDatos>();
@@ -157,6 +159,13 @@ export function registrarPaginas(paginas: readonly PaginaDatos[]): RegistroPagin
       }
     }
     migasDe(pagina, registro);
+    // La regla con comodín de la familia (`rutasParaEncabezados`) solo cubre las rutas que
+    // empiezan con la de la página de arriba.
+    if (pagina.superior !== undefined && !pagina.ruta.startsWith(pagina.superior)) {
+      throw new Error(
+        `${pagina.ruta} cuelga de ${pagina.superior}, pero su ruta no empieza con la de ella`,
+      );
+    }
     if (pagina.superior !== undefined && pagina.conjunto !== null) {
       throw new Error(
         `${pagina.ruta} es hija de ${pagina.superior} y no declara su propio Dataset`,
