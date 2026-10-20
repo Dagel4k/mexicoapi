@@ -6,9 +6,12 @@ import { NOMBRES_ALTERNOS, nodosDelSitio } from "../../../src/sitio/paginas/dato
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 import { escaparHtml } from "../../../src/sitio/paginas/html.js";
 import {
+  type ConjuntoPagina,
+  fechaDelSitemap,
   type PaginaDatos,
   paginaDeDatos,
   registrarPaginas,
+  rutasParaEncabezados,
 } from "../../../src/sitio/paginas/pagina-datos.js";
 import { atributos, datosEstructurados, desescapar, esperarDocumentoValido } from "./estructura.js";
 
@@ -42,7 +45,10 @@ const PAGINA: PaginaDatos = {
   citas: [{ nombre: FUENTE.name, url: URL_FUENTE, fragmentos: ["Artículo 1. <Texto> & más."] }],
   consultas: ["/v1/prueba?anio=2026&tipo=a", "/v1/prueba?anio=2027"],
   guiaApi: `${URL_DOCS}/api/README.md#prueba`,
-  paquete: 'import { crearCliente } from "mexicoapi/cliente";',
+  paquete: {
+    codigo: 'import { crearCliente } from "mexicoapi/cliente";',
+    nota: "Con <code>npm install mexicoapi</code>, también sin red.",
+  },
   descargas: [
     { archivo: "prueba.json", contenido: "Los días, con su fuente" },
     { archivo: "prueba.csv", contenido: "Lo mismo en CSV" },
@@ -125,13 +131,21 @@ describe("página de datos", () => {
   });
 
   it("con una página superior, las migas pasan por ella", () => {
-    const hija: PaginaDatos = { ...OTRA, ruta: "/otra/hija/", miga: "Hija", superior: "/otra/" };
+    const hija: PaginaDatos = {
+      ...OTRA,
+      ruta: "/otra/hija/",
+      miga: "Hija",
+      superior: "/otra/",
+      conjunto: null,
+    };
     const registro = registrarPaginas([PAGINA, OTRA, hija]);
     const pagina = paginaDeDatos(hija, registro, DESCARGAS);
     esperarDocumentoValido(pagina);
     expect(pagina).toContain(
       '<li><a href="/">MéxicoAPI</a></li>\n<li><a href="/otra/">Otra</a></li>\n<li aria-current="page">Hija</li>',
     );
+    // La hija no declara su propio Dataset: lo describe la superior.
+    expect(datosEstructurados(pagina).map((n) => n["@type"])).toEqual(["BreadcrumbList"]);
     const migas = nodo("BreadcrumbList", pagina).itemListElement as { item: string }[];
     expect(migas.map((m) => m.item)).toEqual([
       `${URL_API}/`,
@@ -193,9 +207,12 @@ describe("página de datos", () => {
     expect(consultar).toContain(`<a href="${URL_DOCS}/api/README.md#prueba">`);
   });
 
-  it("muestra el ejemplo del paquete y, sin él, no muestra el bloque de npm", () => {
+  // Cada página dice lo que hace su ejemplo: el cliente usa la API y la LFT va sin red.
+  it("muestra el ejemplo del paquete con su nota y, sin él, no muestra el bloque de npm", () => {
     const consultar = seccion(html, "consultar");
-    expect(consultar).toContain("<h3>Paquete de npm</h3>");
+    expect(consultar).toContain(
+      "<h3>Paquete de npm</h3>\n<p>Con <code>npm install mexicoapi</code>, también sin red.</p>\n<pre>",
+    );
     expect(consultar).toContain(
       "<pre><code>import { crearCliente } from &quot;mexicoapi/cliente&quot;;</code></pre>",
     );
@@ -240,6 +257,7 @@ describe("página de datos", () => {
       temporalCoverage: "2026-01-01/2026-12-31",
       spatialCoverage: { "@type": "Place", name: "México" },
       dateModified: "2026-02-01",
+      version: "2026-02-01",
       isBasedOn: [URL_FUENTE],
       includedInDataCatalog: { "@type": "DataCatalog", name: "MéxicoAPI", url: `${URL_API}/` },
       distribution: [
@@ -275,9 +293,9 @@ describe("página de datos", () => {
     const sinCsv = new Map(DESCARGAS);
     sinCsv.delete("prueba.csv");
     expect(() => paginaDeDatos(PAGINA, REGISTRO, sinCsv)).toThrow(/prueba\.csv/);
-    const con = (cambio: Partial<PaginaDatos["conjunto"]>) =>
+    const con = (cambio: Partial<ConjuntoPagina>) =>
       paginaDeDatos(
-        { ...PAGINA, conjunto: { ...PAGINA.conjunto, ...cambio } },
+        { ...PAGINA, conjunto: { ...(PAGINA.conjunto as ConjuntoPagina), ...cambio } },
         REGISTRO,
         DESCARGAS,
       );
@@ -288,6 +306,34 @@ describe("página de datos", () => {
     expect(() => con({ distribucion: ["prueba.json", "SHA256SUMS"] })).toThrow(/SHA256SUMS/);
     expect(() => con({ distribucion: [] })).toThrow(/distribución/);
     expect(() => con({ distribucion: ["prueba.json", "otra.csv"] })).toThrow(/otra\.csv/);
+  });
+
+  // Una página que no describe un dataset (una calculadora, un validador) no declara Dataset.
+  it("sin conjunto no declara Dataset, solo sus migas", () => {
+    const sinConjunto = paginaDeDatos({ ...PAGINA, conjunto: null }, REGISTRO, DESCARGAS);
+    esperarDocumentoValido(sinConjunto);
+    expect(datosEstructurados(sinConjunto).map((n) => n["@type"])).toEqual(["BreadcrumbList"]);
+  });
+
+  // Sin consultas de la API no hay bloque de la API; sin nada que consultar, no hay sección.
+  it("sin consultas no muestra el bloque de la API, y sin nada que consultar no hay sección", () => {
+    const sinApi = paginaDeDatos({ ...PAGINA, consultas: [] }, REGISTRO, DESCARGAS);
+    esperarDocumentoValido(sinApi);
+    expect(seccion(sinApi, "consultar")).not.toContain("<h3>API</h3>");
+    expect(seccion(sinApi, "consultar")).toContain("<h3>Paquete de npm</h3>");
+    const nada = paginaDeDatos(
+      { ...PAGINA, consultas: [], paquete: null, descargas: [], conjunto: null },
+      REGISTRO,
+      new Map(),
+    );
+    esperarDocumentoValido(nada);
+    expect(nada).not.toContain('id="consultar"');
+  });
+
+  // El título de algunas páginas cambia con el año: el sitemap usa la fecha de la página si la trae.
+  it("la fecha del sitemap es la de la página o, si no la trae, la de sus datos", () => {
+    expect(fechaDelSitemap(PAGINA)).toBe("2026-02-01");
+    expect(fechaDelSitemap({ ...PAGINA, modificada: "2027-01-01" })).toBe("2027-01-01");
   });
 
   it("escapa los textos y cada clase que usa tiene regla en la hoja de estilo", () => {
@@ -326,6 +372,14 @@ describe("registro de páginas", () => {
     ["una relacionada que es ella misma", [{ ...SOLA, relacionadas: ["/prueba-datos/"] }], /misma/],
     ["una superior que no existe", [{ ...SOLA, superior: "/nada/" }], /\/nada\//],
     [
+      "una hija con su propio Dataset",
+      [
+        { ...SOLA, conjunto: null },
+        { ...SOLA, ruta: "/prueba-datos/hija/", superior: "/prueba-datos/" },
+      ],
+      /Dataset/,
+    ],
+    [
       "superiores en ciclo",
       [
         { ...PAGINA, superior: "/otra/" },
@@ -335,6 +389,26 @@ describe("registro de páginas", () => {
     ],
   ] as const)("rechaza %s", (_, paginas, error) => {
     expect(() => registrarPaginas(paginas as readonly PaginaDatos[])).toThrow(error);
+  });
+});
+
+describe("rutas de las páginas en _headers", () => {
+  // Una regla por página sin hijas y una con comodín por familia: Cloudflare acepta 100 reglas.
+  it("da la ruta de cada página de arriba, con comodín si tiene hijas, y nada por las hijas", () => {
+    const hija = (n: number): PaginaDatos => ({
+      ...OTRA,
+      ruta: `/otra/hija-${n}/`,
+      superior: "/otra/",
+      conjunto: null,
+      relacionadas: [],
+    });
+    const nieta: PaginaDatos = {
+      ...hija(9),
+      ruta: "/otra/hija-1/nieta/",
+      superior: "/otra/hija-1/",
+    };
+    const registro = registrarPaginas([PAGINA, OTRA, hija(1), hija(2), nieta]);
+    expect(rutasParaEncabezados(registro)).toEqual(["/prueba-datos/", "/otra/*"]);
   });
 });
 

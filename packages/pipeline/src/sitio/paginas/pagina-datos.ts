@@ -37,9 +37,23 @@ export interface ConjuntoPagina {
   distribucion: readonly string[];
 }
 
+/** El ejemplo del paquete de npm y lo que hace, porque no todos usan la red. */
+export interface PaquetePagina {
+  codigo: string;
+  /** HTML ya armado que va antes del código: cómo se instala y si sale a la red. */
+  nota: string;
+}
+
 /**
  * Una entrada del registro de páginas. Los textos (`titulo`, `h1`, `miga`, las citas) van sin
- * escapar; `intro` y `contenido` son HTML ya armado, con los datos escapados por quien los arma.
+ * escapar; `intro`, `contenido` y la nota del paquete son HTML ya armado, con los datos
+ * escapados por quien los arma.
+ *
+ * Páginas hijas (con `superior`, como `/municipios/{cve_ent}-{estado}/`): salen en las migas
+ * debajo de su superior, en el sitemap y en `_headers` dentro de la regla con comodín de la
+ * familia (`rutasParaEncabezados`), pero no en "Consultar los datos" de la portada, y no declaran
+ * su propio Dataset (`conjunto: null`, el registro lo exige): el Dataset es el de la superior, que
+ * describe todos los datos de la familia.
  */
 export interface PaginaDatos {
   /** La ruta pública y estable, con barra final: `/dias-inhabiles-sat/`. */
@@ -51,12 +65,17 @@ export interface PaginaDatos {
   h1: string;
   /** El nombre corto de la página en las migas. */
   miga: string;
-  /** La ruta de la página de la que cuelga en las migas; sin ella, de la portada. */
+  /** La ruta de la página de la que cuelga; sin ella, de la portada. */
   superior?: string;
   /** El id del dataset cuyo renglón de la tabla de la portada enlaza aquí, si tiene. */
   dataset: string | null;
-  /** El `as_of` de los datos que muestra: "Datos al" y el `lastmod` del sitemap. */
+  /** El `as_of` de los datos que muestra: "Datos al" y la versión de su Dataset. */
   datosAl: FechaISO;
+  /**
+   * La fecha del sitemap si no es `datosAl`: en las páginas cuyo título cambia con el año
+   * actual, la más reciente entre `datosAl` y el 1 de enero de ese año.
+   */
+  modificada?: FechaISO;
   /** Qué es esa fecha, para terminar la frase "Datos al {fecha}, ...". */
   queEsDatosAl: string;
   intro: string;
@@ -64,19 +83,24 @@ export interface PaginaDatos {
   contenido: string;
   fuentes: readonly FuenteMeta[];
   citas: readonly CitaPagina[];
-  /** Las consultas de la API que dan lo mismo que la página, con su query. */
+  /** Las consultas de la API que dan lo mismo que la página, con su query; vacía si no hay. */
   consultas: readonly string[];
-  /** La sección de la guía de la API que las explica. */
-  guiaApi: string;
+  /** La sección de la guía de la API que las explica (se enlaza si hay consultas). */
+  guiaApi: string | null;
   /** El ejemplo del paquete de npm, o null si no tiene. */
-  paquete: string | null;
+  paquete: PaquetePagina | null;
   descargas: readonly DescargaPagina[];
   /** La documentación del dataset, si tiene. */
   docs: string | null;
-  conjunto: ConjuntoPagina;
+  /** El Dataset de schema.org; null en una página que no describe uno o en una hija. */
+  conjunto: ConjuntoPagina | null;
   /** Las rutas de las páginas relacionadas, que deben estar en el registro. */
   relacionadas: readonly string[];
 }
+
+/** La fecha de la página en el sitemap. */
+export const fechaDelSitemap = (pagina: PaginaDatos): FechaISO =>
+  pagina.modificada ?? pagina.datosAl;
 
 /** Las páginas de datos por su ruta, en el orden en que se registraron. */
 export type RegistroPaginas = ReadonlyMap<string, PaginaDatos>;
@@ -112,7 +136,8 @@ function migasDe(pagina: PaginaDatos, registro: RegistroPaginas): Miga[] {
 
 /**
  * El registro de las páginas de datos. Lanza Error si una ruta no es de página, es la de la
- * portada o la de `/estado/`, se repite, o si una relacionada o una superior no está registrada.
+ * portada o la de `/estado/`, se repite, si una relacionada o una superior no está registrada o
+ * si una hija trae su propio Dataset.
  */
 export function registrarPaginas(paginas: readonly PaginaDatos[]): RegistroPaginas {
   const registro = new Map<string, PaginaDatos>();
@@ -132,8 +157,29 @@ export function registrarPaginas(paginas: readonly PaginaDatos[]): RegistroPagin
       }
     }
     migasDe(pagina, registro);
+    if (pagina.superior !== undefined && pagina.conjunto !== null) {
+      throw new Error(
+        `${pagina.ruta} es hija de ${pagina.superior} y no declara su propio Dataset`,
+      );
+    }
   }
   return registro;
+}
+
+/**
+ * Las rutas de `_headers` de las páginas: cada página de arriba (sin `superior`) con la suya o,
+ * si tiene hijas, con un comodín que la cubre a ella y a toda su familia (`/municipios/*`). Así
+ * cien páginas hijas no se acercan al límite de reglas de Cloudflare.
+ */
+export function rutasParaEncabezados(registro: RegistroPaginas): string[] {
+  const conHijas = new Set<string>();
+  for (const pagina of registro.values()) {
+    const [, primera] = migasDe(pagina, registro);
+    if (pagina.superior !== undefined) conHijas.add((primera as Miga).ruta);
+  }
+  return [...registro.values()]
+    .filter((p) => p.superior === undefined)
+    .map((p) => (conHijas.has(p.ruta) ? `${p.ruta}*` : p.ruta));
 }
 
 const sinRepetir = (valores: readonly string[]): string[] => [...new Set(valores)];
@@ -170,42 +216,61 @@ ${citas.join("\n")}
 </section>`;
 }
 
-function seccionConsultar(pagina: PaginaDatos, tamano: (archivo: string) => string): string {
-  const [primera] = pagina.consultas;
-  if (primera === undefined) throw new Error(`${pagina.ruta} no tiene consultas de la API`);
-  const curl = pagina.consultas.map((c) => `curl "$API${rutaPartible(c)}"`);
-  const api = `<div class="bloque">
+/** El bloque de la API: un curl por consulta y la línea de PowerShell de la primera. */
+function bloqueApi(consultas: readonly string[], guia: string | null): string[] {
+  const [primera] = consultas;
+  if (primera === undefined) return [];
+  const curl = consultas.map((c) => `curl "$API${rutaPartible(c)}"`);
+  const enlaceGuia =
+    guia === null
+      ? ""
+      : `\n<p>Parámetros y ejemplos de respuesta en la <a href="${escaparHtml(guia)}">guía de la API</a>.</p>`;
+  return [
+    `<div class="bloque">
 <h3>API</h3>
 <p>Sin llave ni cuenta. Cada respuesta trae el dato en <code>data</code> y su fuente, licencia y fecha en <code>meta</code>.</p>
 <pre><code>${VARIABLE_API}
 ${curl.join("\n")}</code></pre>
-${enPowerShell(`curl.exe "$API${primera}"`)}
-<p>Parámetros y ejemplos de respuesta en la <a href="${escaparHtml(pagina.guiaApi)}">guía de la API</a>.</p>
-</div>`;
+${enPowerShell(`curl.exe "$API${primera}"`)}${enlaceGuia}
+</div>`,
+  ];
+}
+
+/** "Cómo consultarlo": API, paquete y descargas, los que tenga; nada si no tiene ninguno. */
+function seccionConsultar(pagina: PaginaDatos, tamano: (archivo: string) => string): string {
   const paquete =
     pagina.paquete === null
-      ? ""
-      : `<div class="bloque">
+      ? []
+      : [
+          `<div class="bloque">
 <h3>Paquete de npm</h3>
-<p>Con <code>npm install mexicoapi</code>. Si la API no responde, usa los datos del paquete y lo avisa.</p>
-${codigo(pagina.paquete)}
-</div>
-`;
-  const descargas = pagina.descargas.map((d) => {
+<p>${pagina.paquete.nota}</p>
+${codigo(pagina.paquete.codigo)}
+</div>`,
+        ];
+  const descargas =
+    pagina.descargas.length === 0
+      ? []
+      : [
+          `<div class="bloque">
+<h3>Descargas</h3>
+<ul>
+${pagina.descargas
+  .map((d) => {
     const archivo = escaparHtml(d.archivo);
     return `<li><a href="/descargas/${archivo}">${archivo}</a> (${tamano(d.archivo)}): ${escaparHtml(d.contenido)}</li>`;
-  });
+  })
+  .join("\n")}
+</ul>
+<p>Todos los archivos, con su sha256 y en SQLite, en <a href="/#descargas">Descargas</a>.</p>
+</div>`,
+        ];
+  const bloques = [...bloqueApi(pagina.consultas, pagina.guiaApi), ...paquete, ...descargas];
+  if (bloques.length === 0) return "";
   return `<section id="consultar" aria-labelledby="titulo-consultar">
 <h2 id="titulo-consultar">Cómo consultarlo</h2>
 <div class="bloques">
-${api}
-${paquete}<div class="bloque">
-<h3>Descargas</h3>
-<ul>
-${descargas.join("\n")}
-</ul>
-<p>Todos los archivos, con su sha256 y en SQLite, en <a href="/#descargas">Descargas</a>.</p>
-</div>
+${bloques.join("\n")}
 </div>
 </section>`;
 }
@@ -261,19 +326,25 @@ export function paginaDeDatos(
     if (contenido === undefined) throw new Error(`${pagina.ruta}: falta la descarga ${archivo}`);
     return tamanoLegible(Buffer.byteLength(contenido));
   };
-  for (const archivo of pagina.conjunto.distribucion) tamano(archivo);
+  const { conjunto } = pagina;
+  for (const archivo of conjunto?.distribucion ?? []) tamano(archivo);
   const migas = migasDe(pagina, registro);
-  const dataset = nodoDataset({
-    nombre: pagina.conjunto.nombre,
-    descripcion: pagina.conjunto.descripcion,
-    ruta: pagina.ruta,
-    licencias: sinRepetir(pagina.fuentes.map((f) => f.license_url)),
-    fuentes: sinRepetir(pagina.fuentes.map((f) => f.url)),
-    palabrasClave: pagina.conjunto.palabrasClave,
-    coberturaTemporal: pagina.conjunto.coberturaTemporal,
-    modificado: pagina.datosAl,
-    distribucion: pagina.conjunto.distribucion,
-  });
+  const dataset =
+    conjunto === null
+      ? []
+      : [
+          nodoDataset({
+            nombre: conjunto.nombre,
+            descripcion: conjunto.descripcion,
+            ruta: pagina.ruta,
+            licencias: sinRepetir(pagina.fuentes.map((f) => f.license_url)),
+            fuentes: sinRepetir(pagina.fuentes.map((f) => f.url)),
+            palabrasClave: conjunto.palabrasClave,
+            coberturaTemporal: conjunto.coberturaTemporal,
+            modificado: pagina.datosAl,
+            distribucion: conjunto.distribucion,
+          }),
+        ];
   const fecha = escaparHtml(pagina.datosAl);
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
@@ -286,11 +357,15 @@ ${navegacion(pagina.ruta)}
 ${migasVisibles(migas)}
 <h1>${escaparHtml(pagina.h1)}</h1>
 <p class="datos-al">Datos al <time datetime="${fecha}">${fechaEnTexto(pagina.datosAl)}</time>, ${escaparHtml(pagina.queEsDatosAl)}.</p>
-${pagina.intro}
-${pagina.contenido}
-${seccionFuente(pagina)}
-${seccionConsultar(pagina, tamano)}
-${seccionRelacionadas(pagina, registro)}
+${[
+  pagina.intro,
+  pagina.contenido,
+  seccionFuente(pagina),
+  seccionConsultar(pagina, tamano),
+  seccionRelacionadas(pagina, registro),
+]
+  .filter((parte) => parte !== "")
+  .join("\n")}
 </main>`;
   return documento({
     titulo: pagina.titulo,
@@ -298,6 +373,6 @@ ${seccionRelacionadas(pagina, registro)}
     cuerpo,
     ruta: pagina.ruta,
     scripts: ["/sitio.js"],
-    datosEstructurados: [dataset, nodoMigas(migas)],
+    datosEstructurados: [...dataset, nodoMigas(migas)],
   });
 }
