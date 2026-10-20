@@ -96,7 +96,7 @@ Es una barrera gruesa: un cambio chico pasa por debajo, y para eso está `revisi
 ## Qué hace el bot
 
 - Descarga y valida los datos con el CLI del pipeline.
-- Si no hay cambios, no hace nada.
+- Si no hay cambios, no hace nada. Tampoco si `main` o el PR abierto del grupo ya tienen los mismos registros (sin contar el manifiesto ni los crudos, que cambian con la hora de la descarga): pasa con la corrida de respaldo del FIX, o con una que GitHub atrasó y partió de un `main` anterior a la última publicación.
 - Si hay cambios dentro de los umbrales, abre un PR desde la rama `datos/<grupo>-<fecha>` con el resumen y activa el auto-merge. El PR se fusiona cuando pasa el check `verify`, que exige los jobs `verificacion`, `paquete`, `paquete-node`, `paquete-runtimes`, `paquete-mcp`, `solo-datos` y `revision-datos` de `ci.yml`.
 - Si los cambios piden revisión humana, o el parche pasa del umbral de líneas del grupo, abre el PR con la etiqueta `revisar`, sin auto-merge, y un issue `Revisar datos: <grupo> <fecha>` con los motivos. Para fusionarlo hace falta aprobarlo y volver a correr los jobs fallidos de su CI (ver arriba).
 - Si el pipeline pide revisión pero no hay cambios en `data/`, abre (o comenta en) un issue `Revisar datos: <grupo>`.

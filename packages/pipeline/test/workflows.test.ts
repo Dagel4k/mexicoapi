@@ -362,6 +362,37 @@ describe("publicar de datos.yml", () => {
     );
   });
 
+  // La corrida de respaldo del FIX, o una que GitHub atrasó, puede partir de un main anterior a la
+  // última publicación: con los mismos registros no abre otro PR ni comenta en el que ya está.
+  it("no publica los registros que main o el PR abierto del grupo ya tienen", async () => {
+    const datos = await workflow("datos.yml");
+    const publicar = paso(datos, "publicar", "Publicar resultado");
+    expect(publicar.env?.CARPETAS).toBe(expresion("needs.preparar.outputs.carpetas"));
+    const run = publicar.run ?? "";
+    // Solo los registros de las carpetas del grupo: el manifiesto y los crudos cambian con la hora
+    // de la descarga aunque los datos sean los mismos.
+    const sinNovedad = funcion(run, "sin_novedad");
+    expect(sinNovedad).toContain(`read -r -a grupo_carpetas <<< "\${CARPETAS}"`);
+    expect(sinNovedad).toContain(
+      `rutas+=("data/\${carpeta}" ":(exclude)data/\${carpeta}/manifest.json" ":(exclude)data/\${carpeta}/raw")`,
+    );
+    expect(sinNovedad).toContain(`git diff --cached --quiet "$1" -- "\${rutas[@]}"`);
+    // Primero contra main, después de ver que hay cambios y antes de buscar el PR abierto.
+    const contraMain = run.indexOf(
+      "if git fetch -q --no-tags --depth=1 origin main && sin_novedad FETCH_HEAD; then",
+    );
+    expect(contraMain).toBeGreaterThan(run.indexOf("if git diff --cached --quiet -- data/; then"));
+    expect(contraMain).toBeLessThan(run.indexOf('pr_pendiente="$('));
+    expect(run.indexOf("gh auth setup-git")).toBeLessThan(contraMain);
+    // Después contra el PR abierto, antes de comentar en él.
+    const contraPr = run.indexOf(
+      `git fetch -q --no-tags --depth=1 origin "refs/pull/\${numero_pr}/head"`,
+    );
+    expect(contraPr).toBeGreaterThan(run.indexOf('pr_pendiente="$('));
+    expect(contraPr).toBeLessThan(run.indexOf(`gh pr comment "\${pr_pendiente}"`));
+    expect(run).toContain(`if [[ "\${numero_pr}" =~ ^[0-9]+$ ]]`);
+  });
+
   it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {
     const datos = await workflow("datos.yml");
     const run = paso(datos, "publicar", "Publicar resultado").run ?? "";
