@@ -899,14 +899,18 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     );
     const masReciente = [...fechas].sort().at(-1);
     expect(masReciente).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // El título de los calendarios cambia con el año actual (2026, por el FIX): su fecha no es
+    // anterior al 1 de enero de ese año, aunque sus datos sí (la CNBV, del 2025-12-10).
     const asOf = (id: string): string => interna.curados[id]?.meta.as_of as string;
+    expect(asOf("dias-inhabiles.cnbv") < "2026-01-01").toBe(true);
+    const delAnio = (fecha: string): string => (fecha > "2026-01-01" ? fecha : "2026-01-01");
     expect(sitemap.match(/<lastmod>[^<]*<\/lastmod>/g)).toEqual(
       [
         masReciente,
         masReciente,
-        asOf("dias-inhabiles.sat"),
-        VIGENCIA_LFT,
-        asOf("dias-inhabiles.cnbv"),
+        delAnio(asOf("dias-inhabiles.sat")),
+        delAnio(VIGENCIA_LFT),
+        "2026-01-01",
       ].map((fecha) => `<lastmod>${fecha}</lastmod>`),
     );
   });

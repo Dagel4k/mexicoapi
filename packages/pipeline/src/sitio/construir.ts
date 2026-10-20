@@ -69,7 +69,12 @@ import {
   ordenLlmsCompleto,
 } from "./paginas/llms.js";
 import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
-import { paginaDeDatos, registrarPaginas } from "./paginas/pagina-datos.js";
+import {
+  fechaDelSitemap,
+  paginaDeDatos,
+  registrarPaginas,
+  rutasParaEncabezados,
+} from "./paginas/pagina-datos.js";
 import { ROBOTS } from "./paginas/robots.js";
 import { archivoSitemap, fechaMasReciente } from "./paginas/sitemap.js";
 import { partirPorAnio } from "./series.js";
@@ -484,7 +489,7 @@ export async function construirSitio(opciones: {
   }
   archivos.set(
     "_headers",
-    archivoEncabezados([...descargas.keys()].sort(porNombre), [...registro.keys()]),
+    archivoEncabezados([...descargas.keys()].sort(porNombre), rutasParaEncabezados(registro)),
   );
 
   const datasets = [
@@ -517,13 +522,13 @@ export async function construirSitio(opciones: {
   archivos.set("favicon.svg", FAVICON);
   archivos.set("robots.txt", ROBOTS);
   // Las páginas que se indexan: la portada y /estado/ con la fecha más reciente de los datos que
-  // muestra el sitio, y cada página de datos con la de los suyos.
+  // muestra el sitio, y cada página de datos con la suya (`fechaDelSitemap`).
   const lastmod = fechaMasReciente(datasets.map((d) => d.as_of));
   archivos.set(
     "sitemap.xml",
     archivoSitemap([
       ...[RUTA_INICIO, RUTA_ESTADO].map((ruta) => ({ ruta, lastmod })),
-      ...[...registro.values()].map((p) => ({ ruta: p.ruta, lastmod: p.datosAl })),
+      ...[...registro.values()].map((p) => ({ ruta: p.ruta, lastmod: fechaDelSitemap(p) })),
     ]),
   );
   archivos.set("llms.txt", archivoLlms(datasets));
