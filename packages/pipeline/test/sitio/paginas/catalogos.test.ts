@@ -83,10 +83,18 @@ function filas(html: string, id: string): string[] {
   return cuerpo.match(/<tr[ >].*?<\/tr>/gs) ?? [];
 }
 
+/** Quita etiquetas hasta que no quede ninguna. */
+function sinEtiquetas(fragmento: string): string {
+  let texto = fragmento;
+  for (let previo = ""; texto !== previo; ) {
+    previo = texto;
+    texto = texto.replace(/<[^>]+>/g, "");
+  }
+  return texto;
+}
+
 const celdas = (fila: string): string[] =>
-  [...fila.matchAll(/<t[hd]\b[^>]*>(.*?)<\/t[hd]>/gs)].map((m) =>
-    (m[1] as string).replace(/<[^>]+>/g, ""),
-  );
+  [...fila.matchAll(/<t[hd]\b[^>]*>(.*?)<\/t[hd]>/gs)].map((m) => sinEtiquetas(m[1] as string));
 
 function esperarPagina(pagina: PaginaDatos, html: string): void {
   esperarDocumentoValido(html);
