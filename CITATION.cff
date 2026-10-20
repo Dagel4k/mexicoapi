@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: >-
+  Si usas MéxicoAPI, cítalo con estos datos y conserva la cita de la fuente oficial de cada
+  dataset. Ver DATA_LICENSE.md, sección "Cómo citar MéxicoAPI".
+title: MéxicoAPI
+type: software
+authors:
+  - given-names: Daniel
+    family-names: Pereda
+abstract: >-
+  Datos oficiales de referencia de México (estados y municipios, bancos y CLABE, tipo de cambio
+  FIX, UDIS, días hábiles, UMA, salario mínimo y tarifas de ISR) con su fuente, en una API,
+  descargas, un paquete npm y un servidor MCP.
+repository-code: "https://github.com/Dagel4k/mexicoapi"
+url: "https://mexicoapi.dagel4k.workers.dev"
+license: MIT
+keywords:
+  - México
+  - datos abiertos
+  - API
+  - DOF
