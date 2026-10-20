@@ -471,7 +471,8 @@ describe("página de inicio", () => {
   it("los ejemplos con URL usan la API pública dentro de [data-origen], sin aviso en noscript", () => {
     expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
     const origenes = [...html.matchAll(/<span data-origen>([^<]*)<\/span>/g)].map((m) => m[1]);
-    expect(origenes).toHaveLength(2);
+    // Dos bloques de bash y su línea de PowerShell.
+    expect(origenes).toHaveLength(4);
     for (const texto of origenes) expect(texto).toBe(URL_API);
     expect(html.match(/<pre><code>API=<wbr><span data-origen>/g)).toHaveLength(2);
     const codigo = bloquesDeCodigo(html);
@@ -491,6 +492,31 @@ describe("página de inicio", () => {
     }
     expect(html).not.toContain("&lt;base&gt;");
     expect(html).not.toContain("<noscript>");
+  });
+
+  // `API=` y `$API` son de bash y zsh. En PowerShell la variable se asigna con espacios y
+  // comillas, y `curl` es un alias de Invoke-WebRequest en la 5.1: hace falta `curl.exe`.
+  it("debajo de cada bloque de curl dice cómo correrlo en PowerShell, con curl.exe y comillas", () => {
+    const notas = [...html.matchAll(/<\/code><\/pre>\n<p>En PowerShell: ([\s\S]*?)<\/p>/g)].map(
+      (m) => m[1] as string,
+    );
+    expect(notas).toHaveLength(2);
+    const codigos = notas.map((nota) =>
+      [...nota.matchAll(/<code>([\s\S]*?)<\/code>/g)].map((m) => m[1] as string),
+    );
+    for (const [asignacion, comando] of codigos) {
+      expect(asignacion).toBe(`$API = &quot;<span data-origen>${URL_API}</span>&quot;`);
+      expect(desescapar(comando ?? "")).toMatch(/^curl\.exe (-O )?"\$API\/[^"\s]+"$/);
+    }
+    expect(desescapar(codigos[0]?.[1] ?? "")).toBe('curl.exe "$API/v1/estados/25"');
+    expect(desescapar(codigos[1]?.[1] ?? "")).toBe('curl.exe -O "$API/descargas/SHA256SUMS"');
+    // Cada nota va justo debajo del bloque de bash que traduce.
+    for (const bloque of ["curl $API/v1/clabe/", "sha256sum -c SHA256SUMS"]) {
+      const fin = html.indexOf("</code></pre>", html.indexOf(bloque));
+      expect(html.slice(fin).startsWith("</code></pre>\n<p>En PowerShell: "), bloque).toBe(true);
+    }
+    // sha256sum no existe en PowerShell: Get-FileHash da el sha256 para comparar.
+    expect(notas[1]).toContain("<code>Get-FileHash</code>");
   });
 
   // Con pre-wrap ningún bloque de código se desplaza: con tabindex, Tab se detendría en cada uno.
