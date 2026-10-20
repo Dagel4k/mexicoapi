@@ -1,6 +1,8 @@
+import { URL_API } from "@mexicoapi/core/problemas";
 import { describe, expect, it } from "vitest";
 import { DATASETS } from "../../../src/registro.js";
 import { ETIQUETAS, NOMBRES_STATUS, nombresDeDatasets } from "../../../src/sitio/cliente/sitio.js";
+import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { CATALOGO } from "../../../src/sitio/paginas/catalogo.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
@@ -118,9 +120,25 @@ describe("página de estado", () => {
     expect(html).toMatch(/<noscript>[\s\S]*<a href="\/v1\/status">[\s\S]*<\/noscript>/);
   });
 
-  it("solo enlaza al sitio y cada clase existe en la hoja", () => {
-    for (const href of atributos(html, "href")) expect(href).toMatch(/^(\/(?!\/)|#)/);
+  // La canónica, en el head, es la única URL absoluta fuera del pie.
+  it("enlaza al sitio y, en el pie, al repositorio; cada clase existe en la hoja", () => {
+    const inicioPie = html.indexOf('<footer class="pie">');
+    const cuerpo = html.slice(html.indexOf("<body>"), inicioPie);
+    const pie = html.slice(inicioPie);
+    for (const href of atributos(cuerpo, "href")) expect(href).toMatch(/^(\/(?!\/)|#)/);
+    for (const href of atributos(pie, "href")) {
+      expect(href === URL_REPO || href.startsWith(`${URL_REPO}/`), href).toBe(true);
+    }
+    expect(pie).toContain(`<a href="${URL_ARCHIVOS}/SECURITY.md">Reportar una vulnerabilidad</a>`);
     const clases = new Set(atributos(html, "class").flatMap((c) => c.split(" ")));
     for (const clase of clases) expect(ESTILO, clase).toMatch(new RegExp(`\\.${clase}\\b`));
+  });
+
+  it("declara su canónica y marca Estado como la página actual", () => {
+    expect(html).toContain(`<link rel="canonical" href="${URL_API}/estado/">`);
+    expect(html).toContain(`<meta property="og:url" content="${URL_API}/estado/">`);
+    expect(html).toContain('<a href="/estado/" aria-current="page">Estado</a>');
+    expect(html.match(/aria-current/g)).toHaveLength(1);
+    expect(html).not.toContain('name="robots"');
   });
 });

@@ -1,7 +1,15 @@
+import { URL_API } from "@mexicoapi/core/problemas";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { CSP_404 } from "../../../src/sitio/paginas/encabezados.js";
-import { documento, enlaceSeguro, escaparHtml } from "../../../src/sitio/paginas/html.js";
+import { ESTILO, FONDO } from "../../../src/sitio/paginas/estilo.js";
+import {
+  documento,
+  enlaceSeguro,
+  escaparHtml,
+  navegacion,
+} from "../../../src/sitio/paginas/html.js";
 import { desescapar, esperarDocumentoValido, problemasDeEtiquetas } from "./estructura.js";
 
 /** Cadenas cargadas de los caracteres que importan, incluidas entidades ya escritas. */
@@ -92,6 +100,7 @@ describe("documento", () => {
     titulo: "Título & <prueba>",
     descripcion: 'Descripción con "comillas"',
     cuerpo: "<main><h1>Hola</h1></main>",
+    ruta: "/prueba/",
   };
 
   it("arma un documento válido con la hoja de estilo y sin scripts", () => {
@@ -120,11 +129,83 @@ describe("documento", () => {
     );
   });
 
-  it("con indexable: false pide a los buscadores no indexar la página", () => {
+  // Sin ruta (el 404, que se sirve en cualquier URL) no hay canónica ni tarjeta, y no se indexa.
+  it("con ruta null pide a los buscadores no indexar la página y no declara canónica", () => {
     expect(documento(base)).not.toContain('name="robots"');
-    const html = documento({ ...base, indexable: false });
+    const html = documento({ ...base, ruta: null });
     esperarDocumentoValido(html);
     expect(html).toContain('<meta name="robots" content="noindex">\n');
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain("og:");
+    expect(html).not.toContain("twitter:");
+  });
+
+  // Staging también apunta a producción: la canónica sale de URL_API, no del origen servido.
+  it("con ruta declara la canónica en la API pública y la tarjeta de Open Graph", () => {
+    const html = documento(base);
+    esperarDocumentoValido(html);
+    const canonica = `${URL_API}/prueba/`;
+    expect(html).toContain(
+      `<link rel="canonical" href="${canonica}">\n` +
+        '<meta property="og:type" content="website">\n' +
+        '<meta property="og:site_name" content="MéxicoAPI">\n' +
+        '<meta property="og:locale" content="es_MX">\n' +
+        '<meta property="og:title" content="Título &amp; &lt;prueba&gt;">\n' +
+        '<meta property="og:description" content="Descripción con &quot;comillas&quot;">\n' +
+        `<meta property="og:url" content="${canonica}">\n` +
+        '<meta name="twitter:card" content="summary">\n',
+    );
+    expect(html).not.toContain("og:image");
+    expect(documento({ ...base, ruta: "/" })).toContain(
+      `<link rel="canonical" href="${URL_API}/">`,
+    );
+  });
+
+  it.each(["", "estado/", "//otro.mx/", "https://otro.mx/", "/a b/", '/a"b/', "/a?b"])(
+    "rechaza la ruta %j",
+    (ruta) => {
+      expect(() => documento({ ...base, ruta })).toThrow(/ruta/);
+    },
+  );
+
+  // Los buscadores cortan la descripción cerca de los 155 caracteres.
+  it("rechaza una descripción de más de 155 caracteres", () => {
+    expect(() => documento({ ...base, descripcion: "é".repeat(155) })).not.toThrow();
+    expect(() => documento({ ...base, descripcion: "é".repeat(156) })).toThrow(/155/);
+  });
+
+  // El color de la barra del navegador es el fondo de la página, en cada tema.
+  it("declara theme-color con el fondo de cada tema", () => {
+    expect(documento(base)).toContain(
+      `<meta name="theme-color" content="${FONDO.claro}" media="(prefers-color-scheme: light)">\n` +
+        `<meta name="theme-color" content="${FONDO.oscuro}" media="(prefers-color-scheme: dark)">\n`,
+    );
+    const oscuro = ESTILO.indexOf("prefers-color-scheme: dark");
+    expect(ESTILO.indexOf(`--fondo: ${FONDO.claro};`)).toBeLessThan(oscuro);
+    expect(ESTILO.indexOf(`--fondo: ${FONDO.oscuro};`)).toBeGreaterThan(oscuro);
+  });
+
+  // El pie con las licencias y el reporte de vulnerabilidades va en toda página, también el 404.
+  it.each([
+    ["/prueba/", "/prueba/"],
+    ["null", null],
+  ])("con ruta %s cierra el cuerpo con el pie", (_, ruta) => {
+    const html = documento({ ...base, ruta });
+    esperarDocumentoValido(html);
+    const inicio = html.indexOf('<footer class="pie">');
+    expect(html.indexOf("</main>")).toBeLessThan(inicio);
+    const pie = html.slice(inicio, html.indexOf("</body>"));
+    expect(pie.trimEnd().endsWith("</footer>")).toBe(true);
+    for (const href of [
+      `${URL_ARCHIVOS}/LICENSE`,
+      `${URL_ARCHIVOS}/DATA_LICENSE.md`,
+      URL_REPO,
+      `${URL_ARCHIVOS}/SECURITY.md`,
+    ]) {
+      expect(pie).toContain(`<a href="${href}">`);
+    }
+    expect(pie).toContain("Reportar una vulnerabilidad");
+    expect(html.match(/<footer/g)).toHaveLength(1);
   });
 
   it("carga cada script como módulo del mismo origen", () => {
@@ -139,6 +220,40 @@ describe("documento", () => {
       expect(() => documento({ ...base, scripts: [src] })).toThrow(/script/);
     },
   );
+});
+
+describe("navegacion", () => {
+  const enlaces = (nav: string): string[] =>
+    [...nav.matchAll(/<a [^>]*>[^<]*<\/a>/g)].map((m) => m[0]);
+
+  it("en / las secciones son anclas de la página y nada lleva aria-current", () => {
+    expect(enlaces(navegacion("/", URL_REPO))).toEqual([
+      '<a href="#empieza">Empieza</a>',
+      '<a href="#datos">Datos</a>',
+      '<a href="#descargas">Descargas</a>',
+      '<a href="#referencia">Referencia</a>',
+      '<a href="/estado/">Estado</a>',
+      `<a href="${URL_REPO}">GitHub</a>`,
+    ]);
+  });
+
+  // aria-current marca el enlace de la página en la que se está.
+  it("en /estado/ las secciones van a las de / y Estado lleva aria-current", () => {
+    expect(enlaces(navegacion("/estado/"))).toEqual([
+      '<a href="/#empieza">Empieza</a>',
+      '<a href="/#datos">Datos</a>',
+      '<a href="/#descargas">Descargas</a>',
+      '<a href="/#referencia">Referencia</a>',
+      '<a href="/estado/" aria-current="page">Estado</a>',
+    ]);
+  });
+
+  it("sin ruta (el 404) todo apunta a / y nada lleva aria-current", () => {
+    const nav = navegacion(null);
+    expect(nav).not.toContain("aria-current");
+    expect(enlaces(nav)).toContain('<a href="/estado/">Estado</a>');
+    expect(enlaces(nav)).toContain('<a href="/#datos">Datos</a>');
+  });
 });
 
 describe("verificador de etiquetas de las pruebas", () => {

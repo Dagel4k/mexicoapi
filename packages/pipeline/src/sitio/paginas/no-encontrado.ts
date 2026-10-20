@@ -2,20 +2,21 @@ import { documento, navegacion } from "./html.js";
 
 /**
  * `404.html`: Cloudflare la sirve en cualquier URL fuera de `/v1` que no es un asset, así que
- * todos sus enlaces son absolutos. No lleva scripts ni repite la URL pedida. De `_headers` solo
- * la alcanza la regla `/*` (nosniff, referrer y X-Frame-Options): su CSP va en `<meta>`.
+ * todos sus enlaces son absolutos y no tiene ruta propia (ni canónica, y no se indexa). No lleva
+ * scripts ni repite la URL pedida. De `_headers` solo la alcanza la regla `/*`: su CSP va en
+ * `<meta>`.
  */
 export function paginaNoEncontrada(): string {
   return documento({
     titulo: "No existe esta página · MéxicoAPI",
     descripcion: "La dirección no corresponde a ninguna página ni descarga de MéxicoAPI.",
     seguridadEnMeta: true,
-    indexable: false,
+    ruta: null,
     cuerpo: `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">
 <p class="marca"><a href="/">MéxicoAPI</a></p>
-${navegacion(false)}
+${navegacion(null)}
 </div>
 </header>
 <main id="contenido" class="marco">

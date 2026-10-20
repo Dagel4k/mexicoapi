@@ -298,21 +298,15 @@ const REFERENCIA = `<section id="referencia" aria-labelledby="titulo-referencia"
 </dl>
 </section>`;
 
-const PIE = `<footer class="pie">
-<div class="marco">
-<p>El código es <a href="${URL_ARCHIVOS}/LICENSE">MIT</a>. Los datos conservan los términos de la institución que los publica: ver <a href="${URL_ARCHIVOS}/DATA_LICENSE.md">DATA_LICENSE.md</a>.</p>
-<p><a href="${URL_REPO}">Repositorio en GitHub</a> · <a href="${URL_ARCHIVOS}/SECURITY.md">Reportar una vulnerabilidad</a></p>
-</div>
-</footer>`;
-
 /** `index.html`: qué es, cómo empezar, qué datos hay, las descargas y la referencia. */
 export function paginaInicio(entrada: EntradaInicio, publicado = PUBLICADO_EN_NPM): string {
+  const ruta = "/";
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">
 <h1>MéxicoAPI</h1>
 <p class="lema">Datos de referencia de México con fuente oficial, licencia y sha256.</p>
-${navegacion(true, URL_REPO)}
+${navegacion(ruta, URL_REPO)}
 </div>
 </header>
 <main id="contenido" class="marco">
@@ -321,13 +315,13 @@ ${empieza(publicado, entrada.ejemplo)}
 ${datos(entrada)}
 ${descargas(entrada)}
 ${REFERENCIA}
-</main>
-${PIE}`;
+</main>`;
   return documento({
     titulo: "MéxicoAPI: datos de referencia de México con fuente oficial",
     descripcion:
-      "API JSON sin llave y descargas en JSON, CSV y SQLite con datos oficiales de México: catálogos, indicadores, calendarios y constantes, cada uno con su fuente, licencia y sha256.",
+      "API JSON sin llave y descargas en JSON, CSV y SQLite: catálogos, indicadores, calendarios y constantes oficiales de México, con fuente, licencia y sha256.",
     cuerpo,
+    ruta,
     scripts: ["/sitio.js"],
   });
 }
