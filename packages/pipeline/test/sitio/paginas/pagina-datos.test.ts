@@ -88,8 +88,15 @@ function seccion(pagina: string, id: string): string {
   return pagina.slice(inicio, pagina.indexOf("</section>", inicio));
 }
 
-/** Quita etiquetas y entidades: lo que se copia de un bloque de código. */
-const textoDe = (fragmento: string): string => desescapar(fragmento.replace(/<[^>]*>/g, ""));
+/** Quita etiquetas (hasta que no quede ninguna) y entidades: lo que se copia de un bloque de código. */
+function textoDe(fragmento: string): string {
+  let texto = fragmento;
+  for (let previo = ""; texto !== previo; ) {
+    previo = texto;
+    texto = texto.replace(/<[^>]*>/g, "");
+  }
+  return desescapar(texto);
+}
 
 const nodo = (tipo: string, pagina = html): Record<string, unknown> => {
   const nodos = datosEstructurados(pagina).filter((n) => n["@type"] === tipo);
