@@ -88,7 +88,7 @@ Lo que `revision-datos` no puede repetir son los avisos que `generar` saca de la
 | `fix` | 300 líneas o 256 KB | 31 FIX nuevos: unas 140 líneas; el crudo del año, unos 45 KB |
 | `udis` | 400 líneas o 256 KB | 45 UDIS nuevas: unas 200 líneas; los crudos de dos años, unos 130 KB |
 
-Es una barrera gruesa: un cambio chico pasa por debajo, y para eso está `revision-datos`. Los umbrales están en el paso "Revisar y aplicar el parche" de `datos.yml`; una prueba del pipeline revisa que cada grupo tenga el suyo.
+Es una barrera gruesa: un cambio chico pasa por debajo, y para eso está `revision-datos`. Los umbrales están en el paso "Revisar y aplicar el parche" de `datos.yml`; una prueba del pipeline fija los valores de cada grupo y la condición que los compara.
 
 ## Qué hace el bot
 

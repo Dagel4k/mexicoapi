@@ -275,10 +275,14 @@ describe("publicar de datos.yml", () => {
       ...(aplicar.run ?? "").matchAll(/^\s*([a-z]+)\) limite=(\d+); limite_bytes=(\d+) ;;$/gm),
     ];
     expect(umbrales.map((u) => u[1])).toEqual(grupos);
-    for (const [, , limite, bytes] of umbrales) {
-      expect(Number(limite)).toBeGreaterThan(0);
-      expect(Number(bytes)).toBeGreaterThan(0);
-    }
+    // Los valores exactos: un cambio en un umbral apaga esta barrera sin que nada más lo note. El
+    // margen de cada uno está en el comentario del paso y en docs/operacion/bot-de-datos.md.
+    expect(Object.fromEntries(umbrales.map(([, g, l, b]) => [g, [Number(l), Number(b)]]))).toEqual({
+      inegi: [400, 2097152],
+      bancos: [300, 262144],
+      fix: [300, 262144],
+      udis: [400, 262144],
+    });
     const publicar = paso(datos, "publicar", "Publicar resultado");
     expect(publicar.env?.PARCHE_GRANDE).toBe(expresion("steps.aplicar.outputs.grande"));
     expect(publicar.run).toContain(
@@ -298,7 +302,10 @@ describe("publicar de datos.yml", () => {
     // Solo la ruta exacta que escribe el pipeline, y con un tope de bytes.
     expect(run).toContain('pdf="data/bancos/raw/participantes-spei.pdf"');
     expect(run).toContain("tope_pdf=5242880");
-    expect(run).toContain(`[ "\${bytes}" -gt "\${limite_bytes}" ]`);
+    // Pide revisión si pasa cualquiera de los dos, las líneas o los bytes.
+    expect(run).toContain(
+      `if [ "\${lineas}" -gt "\${limite}" ] || [ "\${bytes}" -gt "\${limite_bytes}" ]; then`,
+    );
   });
 
   it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {
