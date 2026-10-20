@@ -52,6 +52,7 @@ import {
   metaDesdeManifiesto,
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
+import { paginasDeCatalogos } from "./paginas/catalogos.js";
 import {
   type CalendarioDePagina,
   calendarioDePagina,
@@ -485,6 +486,7 @@ export async function construirSitio(opciones: {
       cnbv: calendarios.get("cnbv") as CalendarioDePagina,
     }),
     ...paginasDeIndicadores({ fix, udis, uma, salarioMinimo: salario, isr }),
+    ...paginasDeCatalogos({ bancos, estados, municipios }),
   ]);
   for (const pagina of registro.values()) {
     archivos.set(`${pagina.ruta.slice(1)}index.html`, paginaDeDatos(pagina, registro, descargas));

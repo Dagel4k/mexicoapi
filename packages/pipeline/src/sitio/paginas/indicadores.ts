@@ -74,7 +74,12 @@ interface Columna {
 }
 
 /** Una tabla compacta con caption; las filas ya vienen armadas. */
-function tabla(id: string, titulo: string, columnas: readonly Columna[], filas: readonly string[]) {
+export function tabla(
+  id: string,
+  titulo: string,
+  columnas: readonly Columna[],
+  filas: readonly string[],
+) {
   const encabezados = columnas.map(
     (c) =>
       `<th scope="col"${c.numerica === true ? ' class="num"' : ""}>${escaparHtml(c.texto)}</th>`,
@@ -92,9 +97,9 @@ ${filas.join("\n")}
 </div>`;
 }
 
-const celdaNum = (html: string): string => `<td class="num">${html}</td>`;
+export const celdaNum = (html: string): string => `<td class="num">${html}</td>`;
 
-function seccion(id: string, titulo: string, partes: readonly string[]): string {
+export function seccion(id: string, titulo: string, partes: readonly string[]): string {
   return `<section id="${id}" aria-labelledby="titulo-${id}">
 <h2 id="titulo-${id}">${escaparHtml(titulo)}</h2>
 ${partes.join("\n")}
