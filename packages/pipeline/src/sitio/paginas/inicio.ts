@@ -84,13 +84,15 @@ export const formatearEntero = (n: number): string =>
   String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 /**
- * La base de los ejemplos: la API pública, que es la que funciona sin JavaScript. `sitio.js` la
- * cambia por el origen de la página, que sirve la misma API (otro despliegue o `wrangler dev`).
+ * La base de los ejemplos, en una variable de shell: la API pública, que es la que funciona sin
+ * JavaScript. `sitio.js` la cambia por el origen de la página, que sirve la misma API (otro
+ * despliegue o `wrangler dev`). Cada `curl` usa `$API`, así que su renglón cabe en una columna
+ * angosta; si `API=` no cabe, `<wbr>` lo parte antes de la URL y no a media URL.
  */
-const ORIGEN = `<span data-origen>${escaparHtml(URL_API)}</span>`;
+const VARIABLE_API = `API=<wbr><span data-origen>${escaparHtml(URL_API)}</span>`;
 
-const codigo = (texto: string): string =>
-  `<pre tabindex="0"><code>${escaparHtml(texto)}</code></pre>`;
+/** Sin tabindex: con pre-wrap no se desplaza, y Tab no tiene por qué detenerse en él. */
+const codigo = (texto: string): string => `<pre><code>${escaparHtml(texto)}</code></pre>`;
 
 /**
  * Un comando copiable de un paquete que todavía no está en npm falla, o instala el de alguien que
@@ -118,8 +120,9 @@ function bloqueApi(ejemplo: unknown): string {
   return `<div class="bloque">
 <h3>API</h3>
 <p>Sin llave ni cuenta. Cada respuesta trae el dato en <code>data</code> y su fuente, licencia y fecha en <code>meta</code>.</p>
-<pre tabindex="0"><code>curl ${ORIGEN}/v1/estados/25
-curl ${ORIGEN}/v1/clabe/${CLABE_EJEMPLO}</code></pre>
+<pre><code>${VARIABLE_API}
+curl $API/v1/estados/25
+curl $API/v1/clabe/${CLABE_EJEMPLO}</code></pre>
 <p>La respuesta de la CLABE, recortada:</p>
 ${codigo(JSON.stringify(ejemplo, null, 2))}
 <p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code> y son días de la Ciudad de México.</p>
@@ -275,7 +278,8 @@ function descargas(entrada: EntradaInicio): string {
 <h2 id="titulo-descargas">Descargas</h2>
 <p>Todo junto en <a href="/descargas/mexicoapi.sqlite">mexicoapi.sqlite</a> (${sqlite}): una base SQLite con todos los datasets y el manifiesto de cada uno. Cada dataset también se descarga en JSON y CSV, con su manifiesto.${lft}</p>
 <p><a href="/descargas/SHA256SUMS">SHA256SUMS</a> trae el sha256 de cada archivo. Para verificar lo que bajaste:</p>
-<pre tabindex="0"><code>curl -O ${ORIGEN}/descargas/SHA256SUMS
+<pre><code>${VARIABLE_API}
+curl -O $API/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing</code></pre>
 <details>
 <summary>Los ${nombres.length} archivos, con su tamaño</summary>

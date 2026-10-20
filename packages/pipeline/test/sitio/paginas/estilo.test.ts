@@ -51,8 +51,14 @@ describe("estilo.css", () => {
   });
 
   // El primer comando que uno copia no puede quedar cortado en una columna angosta ni en móvil.
+  // break-word y no anywhere: se parte en un espacio y solo a media palabra lo que no cabe solo.
   it("los bloques de código parten las líneas largas en vez de cortarlas", () => {
-    expect(ESTILO).toMatch(/\npre \{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/);
+    expect(ESTILO).toMatch(/\npre \{[^}]*white-space: pre-wrap;[^}]*overflow-wrap: break-word;/);
+    expect(ESTILO).not.toMatch(/\npre \{[^}]*anywhere/);
+    // A 375 px, API= con la URL de producción (41 caracteres) cabe en un renglón.
+    expect(ESTILO).toContain(
+      "@media (max-width: 39.99rem) { pre { font-size: 0.8125rem; padding-inline: 0.75rem; } }",
+    );
   });
 
   // Debajo de 640 px una tabla de seis columnas no cabe: cada renglón es una tarjeta y cada celda
@@ -60,7 +66,7 @@ describe("estilo.css", () => {
   it("debajo de 40rem las tablas .tarjetas se ven como tarjetas con la etiqueta de cada celda", () => {
     // max-width y no la sintaxis de rango, que Safari solo entiende desde la 16.4.
     expect(ESTILO).not.toMatch(/@media \([^)]*[<>]/);
-    const inicio = ESTILO.indexOf("@media (max-width: 39.99rem) {");
+    const inicio = ESTILO.indexOf("@media (max-width: 39.99rem) {\n");
     expect(inicio).toBeGreaterThan(0);
     const bloque = ESTILO.slice(inicio, ESTILO.indexOf("\n}\n", inicio));
     expect(bloque).toMatch(/\.tarjetas thead \{[^}]*display: none;/);

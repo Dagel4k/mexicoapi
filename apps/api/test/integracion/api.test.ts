@@ -194,10 +194,10 @@ describe("datos reales del build", () => {
   // Lo que muestra la página es un recorte: cada campo existe en la respuesta con el mismo valor.
   it("la respuesta de la CLABE en la página de inicio es la del Worker, recortada", async () => {
     const inicio = (await leerPublico("index.html")).toString("utf8");
-    const curl = /curl <span data-origen>[^<]*<\/span>(\/v1\/clabe\/[0-9]{18})<\/code>/.exec(
-      inicio,
-    );
-    const marca = '<p>La respuesta de la CLABE, recortada:</p>\n<pre tabindex="0"><code>';
+    // El origen va una vez en API= y cada curl lo usa como $API.
+    expect(inicio).toContain("<pre><code>API=<wbr><span data-origen>");
+    const curl = /\ncurl \$API(\/v1\/clabe\/[0-9]{18})<\/code>/.exec(inicio);
+    const marca = "<p>La respuesta de la CLABE, recortada:</p>\n<pre><code>";
     const desde = inicio.indexOf(marca);
     expect(curl).not.toBeNull();
     expect(desde).toBeGreaterThan(0);
