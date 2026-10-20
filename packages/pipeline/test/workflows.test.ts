@@ -29,7 +29,11 @@ interface Job {
 }
 
 interface Workflow {
-  on: { workflow_dispatch: { inputs: { dataset: { options: string[] } } } };
+  on: {
+    schedule?: { cron: string }[];
+    workflow_dispatch: { inputs: { dataset: { options: string[] } } };
+  };
+  concurrency?: { group: string; "cancel-in-progress": boolean };
   env?: Record<string, string>;
   jobs: Record<string, Job>;
 }
@@ -108,6 +112,56 @@ describe("carpetas del bot de datos en los workflows", () => {
         expect(`/${ruta}/`, ruta).not.toMatch(/\/[/.]/);
       }
     }
+  });
+});
+
+/**
+ * Los crons del bot de datos, en UTC, con su grupo. La Ciudad de México está en UTC-6 todo el año:
+ * lunes 05:47 (INEGI), 07:47 (bancos), 12:47 (FIX), 14:17 (UDIS) y 16:17 (respaldo del FIX).
+ */
+const CRONS: [string, string][] = [
+  ["47 11 * * 1", "inegi"],
+  ["47 13 * * *", "bancos"],
+  ["47 18 * * *", "fix"],
+  ["17 20 * * *", "udis"],
+  ["17 22 * * *", "fix"],
+];
+
+/** Minutos desde las 00:00 UTC de un cron con minuto y hora fijos. */
+const minutoDelDia = (cron: string): number => {
+  const [minuto, hora] = cron.split(" ").map(Number);
+  return (hora as number) * 60 + (minuto as number);
+};
+
+describe("horario de datos.yml", () => {
+  it("fija los crons y cada uno lleva su grupo en la concurrencia y en preparar", async () => {
+    const datos = await workflow("datos.yml");
+    expect(datos.on.schedule?.map((s) => s.cron)).toEqual(CRONS.map(([cron]) => cron));
+    const run = paso(datos, "preparar", "Resolver grupo de datos").run ?? "";
+    const enPreparar = [...run.matchAll(/^\s*"([^"]+)"\) grupo="([a-z]+)" ;;/gm)];
+    expect(enPreparar.map(([, cron, grupo]) => [cron, grupo])).toEqual(CRONS);
+    // Un cron que no está en la lista detiene la corrida en lugar de caer en un grupo.
+    expect(run).toMatch(/^\s*\*\) echo "Cron sin grupo: \$\{CRON\}" >&2; exit 1 ;;$/m);
+    const grupo = datos.concurrency?.group ?? "";
+    const enConcurrencia = [
+      ...grupo.matchAll(/github\.event\.schedule == '([^']+)' && '([a-z]+)'/g),
+    ];
+    expect(enConcurrencia.map(([, cron, g]) => [cron, g])).toEqual(CRONS);
+    expect(grupo.startsWith("datos-${{ github.event.inputs.dataset || ")).toBe(true);
+  });
+
+  it("ningún cron cae en un cuarto de hora y FIX y UDIS van a una hora o más entre sí", async () => {
+    // GitHub retrasa más las corridas programadas al inicio de cada hora.
+    for (const [cron] of CRONS) expect(minutoDelDia(cron) % 15, cron).not.toBe(0);
+    // La rama de un PR tiene que estar al día con main: dos PRs casi a la vez se estorban.
+    const diarios = CRONS.filter(([, g]) => g === "fix" || g === "udis").map(([c]) => c);
+    const minutos = diarios.map(minutoDelDia).sort((a, b) => a - b);
+    for (let i = 1; i < minutos.length; i++) {
+      expect((minutos[i] as number) - (minutos[i - 1] as number)).toBeGreaterThanOrEqual(60);
+    }
+    // El respaldo del FIX va unas horas después de la primera corrida.
+    const [primera, respaldo] = CRONS.filter(([, g]) => g === "fix").map(([c]) => minutoDelDia(c));
+    expect((respaldo as number) - (primera as number)).toBeGreaterThanOrEqual(180);
   });
 });
 

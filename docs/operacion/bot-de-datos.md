@@ -34,11 +34,14 @@ El workflow ya declara `environment: datos` en los jobs que leen la clave. Si el
 
 ## Cuándo corre
 
-- INEGI (`inegi.estados` e `inegi.municipios`): lunes a las 06:00 de la Ciudad de México.
-- Bancos: todos los días a las 08:00 de la Ciudad de México.
-- Tipo de cambio FIX (grupo `fix`, dataset `tipo-cambio.fix`): todos los días a las 13:30 de la Ciudad de México (cron `30 19 * * *`, en UTC), después de la publicación del DOF.
-- UDIS (grupo `udis`, dataset `udis`): todos los días a las 14:30 de la Ciudad de México (cron `30 20 * * *`).
-- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. Las UDIS corren una hora después del FIX porque `main` exige que la rama del PR esté al día (un ajuste de seguridad que no se apaga, ver Puesta en marcha): si los dos PRs se abrieran casi a la vez, el segundo quedaría atrasado en cuanto se fusionara el primero y su auto-merge no avanzaría hasta pulsar "Update branch". México no tiene horario de verano desde 2022, así que las horas no se mueven.
+Las horas son a partir de cuándo corre cada grupo: GitHub puede retrasar la corrida varias horas, sobre todo al inicio de cada hora, por eso los crons van en minutos poco usados.
+
+- INEGI (`inegi.estados` e `inegi.municipios`): lunes a partir de las 05:47 de la Ciudad de México (cron `47 11 * * 1`, en UTC).
+- Bancos: todos los días a partir de las 07:47 de la Ciudad de México (cron `47 13 * * *`).
+- Tipo de cambio FIX (grupo `fix`, dataset `tipo-cambio.fix`): todos los días a partir de las 12:47 de la Ciudad de México (cron `47 18 * * *`), después de la publicación del DOF, y otra vez a partir de las 16:17 (cron `17 22 * * *`), de respaldo por si la primera no llegó o falló.
+- UDIS (grupo `udis`, dataset `udis`): todos los días a partir de las 14:17 de la Ciudad de México (cron `17 20 * * *`).
+- FIX y UDIS van en grupos separados, cada uno con su propia corrida, su concurrencia, su rama `datos/<grupo>-<fecha>` y sus issues: si una serie falla o pide revisión, la otra se sigue actualizando. Entre dos corridas de FIX o UDIS hay una hora o más porque `main` exige que la rama del PR esté al día (un ajuste de seguridad que no se apaga, ver Puesta en marcha): si dos PRs se abrieran casi a la vez, el segundo quedaría atrasado en cuanto se fusionara el primero y su auto-merge no avanzaría hasta pulsar "Update branch". México no tiene horario de verano desde 2022, así que las horas no se mueven.
+- Las dos corridas del FIX comparten concurrencia: si se juntan, la segunda espera a que termine la primera.
 - A mano con "Run workflow", solo desde `main`. Desde otra rama los jobs se saltan.
 
 ## Cómo está armado

@@ -1,13 +1,20 @@
 name: Datos
 
 on:
+  # GitHub retrasa las corridas programadas, sobre todo al inicio de cada hora: los crons van en
+  # minutos poco usados, y la hora es la más temprana a la que corren, no la de llegada. Una
+  # prueba del pipeline (test/workflows.test.ts) fija esta lista.
   schedule:
-    - cron: "0 12 * * 1" # INEGI, lunes 06:00 CDMX
-    - cron: "0 14 * * *" # bancos, diario 08:00 CDMX
-    # FIX y UDIS van en grupos aparte: una falla de una serie no detiene la otra. Las UDIS
-    # corren una hora después para que su PR no compita con el del FIX por estar al día con main.
-    - cron: "30 19 * * *" # FIX, diario 13:30 CDMX (sin horario de verano desde 2022)
-    - cron: "30 20 * * *" # UDIS, diario 14:30 CDMX
+    - cron: "47 11 * * 1" # INEGI, lunes 05:47 CDMX
+    - cron: "47 13 * * *" # bancos, diario 07:47 CDMX
+    # FIX y UDIS van en grupos aparte: una falla de una serie no detiene la otra. Entre dos
+    # corridas de FIX o UDIS hay una hora o más, para que sus PRs no compitan por estar al día
+    # con main.
+    - cron: "47 18 * * *" # FIX, diario 12:47 CDMX (sin horario de verano desde 2022)
+    - cron: "17 20 * * *" # UDIS, diario 14:17 CDMX
+    # Respaldo del FIX, por si la primera corrida no llegó o falló. Si main ya tiene los mismos
+    # registros, no publica nada.
+    - cron: "17 22 * * *" # FIX, diario 16:17 CDMX
   workflow_dispatch:
     inputs:
       dataset:
@@ -24,7 +31,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '0 12 * * 1' && 'inegi') || (github.event.schedule == '30 19 * * *' && 'fix') || (github.event.schedule == '30 20 * * *' && 'udis') || 'bancos' }}
+  group: datos-${{ github.event.inputs.dataset || (github.event.schedule == '47 11 * * 1' && 'inegi') || (github.event.schedule == '47 13 * * *' && 'bancos') || (github.event.schedule == '47 18 * * *' && 'fix') || (github.event.schedule == '17 20 * * *' && 'udis') || (github.event.schedule == '17 22 * * *' && 'fix') || 'otro' }}
   cancel-in-progress: false
 
 # La corrida va en jobs separados para que la clave de la GitHub App no conviva con código de
@@ -72,14 +79,16 @@ jobs:
           set -euo pipefail
           if [ -n "${DATASET_ENTRADA}" ]; then
             grupo="${DATASET_ENTRADA}"
-          elif [ "${CRON}" = "0 12 * * 1" ]; then
-            grupo="inegi" # cron lunes 06:00 CDMX
-          elif [ "${CRON}" = "30 19 * * *" ]; then
-            grupo="fix" # cron diario 13:30 CDMX
-          elif [ "${CRON}" = "30 20 * * *" ]; then
-            grupo="udis" # cron diario 14:30 CDMX
           else
-            grupo="bancos" # cron diario 08:00 CDMX
+            # Los mismos crons de on.schedule y de concurrency.
+            case "${CRON}" in
+              "47 11 * * 1") grupo="inegi" ;;
+              "47 13 * * *") grupo="bancos" ;;
+              "47 18 * * *") grupo="fix" ;;
+              "17 20 * * *") grupo="udis" ;;
+              "17 22 * * *") grupo="fix" ;;
+              *) echo "Cron sin grupo: ${CRON}" >&2; exit 1 ;;
+            esac
           fi
           # Los datasets del grupo y sus carpetas en data/: publicar solo acepta un parche dentro
           # de esas carpetas. Una prueba del pipeline (test/workflows.test.ts) las compara con el
