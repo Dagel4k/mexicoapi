@@ -118,4 +118,34 @@ describe("configurar", () => {
       expect(mensaje).not.toContain(base);
     }
   });
+
+  it("rechaza una base http:// fuera del equipo y pide https", () => {
+    for (const base of ["http://api.example", "http://api.example/v1/TOKEN-SECRETO"]) {
+      let error: unknown;
+      try {
+        configurar({ MEXICOAPI_BASE: base });
+      } catch (e) {
+        error = e;
+      }
+      expect(error, base).toBeInstanceOf(ErrorConfiguracion);
+      const mensaje = (error as Error).message;
+      expect(mensaje).toBe(
+        "MEXICOAPI_BASE no es válida: base con http:// solo se acepta para localhost, 127.0.0.1 o [::1]; para otro host usa https://, como https://mexicoapi.example.workers.dev.",
+      );
+      expect(mensaje).not.toContain("TOKEN-SECRETO");
+    }
+  });
+
+  it("acepta una base http:// en localhost, 127.0.0.1 o [::1]", async () => {
+    for (const base of ["http://localhost:8787", "http://127.0.0.1:8787/", "http://[::1]:8787"]) {
+      const fetch = vi.fn(async () => respuestaApi({ fecha: "2026-10-01", valor: "8.800000" }));
+      const { cliente, conApi } = configurar({ MEXICOAPI_BASE: base }, { fetch });
+      expect(conApi).toBe(true);
+      expect((await cliente.udi("2026-10-01")).origen).toBe("api");
+      expect(fetch).toHaveBeenCalledWith(
+        `${base.replace(/\/$/, "")}/v1/udis?fecha=2026-10-01`,
+        expect.anything(),
+      );
+    }
+  });
 });
