@@ -109,12 +109,37 @@ describe("_headers", () => {
     );
   });
 
-  it.each([["/"], ["/estado/"], ["/sitemap.xml"], ["sin-barra/"], ["/sin-barra"], ["/a/", "/a/"]])(
-    "rechaza la página %s (repetida, ya del sitio o mal escrita)",
-    (...paginas) => {
-      expect(() => archivoEncabezados(DESCARGAS, paginas)).toThrow(/página/);
-    },
-  );
+  it.each([
+    ["/"],
+    ["/estado/"],
+    ["/sitemap.xml"],
+    ["sin-barra/"],
+    ["/sin-barra"],
+    ["/a/", "/a/"],
+    ["/*"],
+    ["/a*"],
+    ["/a/*/b/"],
+    ["/municipios/*", "/municipios/25-sinaloa/"],
+    ["/municipios/25-sinaloa/", "/municipios/*"],
+    ["/municipios/*", "/municipios/25-sinaloa/*"],
+  ])("rechaza la página %s (repetida, ya del sitio, mal escrita o ya cubierta)", (...paginas) => {
+    expect(() => archivoEncabezados(DESCARGAS, paginas)).toThrow(/página/);
+  });
+
+  // Una familia de páginas hijas (/municipios/{cve_ent}-{estado}/) lleva una sola regla con
+  // comodín, que también cubre a la página de arriba: cien hijas no se acercan al límite de 100.
+  it("una regla con comodín cubre a la página de arriba y a sus hijas con la CSP de las páginas", () => {
+    const conFamilia = leerReglas(archivoEncabezados(DESCARGAS, ["/municipios/*", "/uma/"]));
+    expect(conFamilia.map((r) => r.ruta).slice(-2)).toEqual(["/municipios/*", "/uma/"]);
+    for (const ruta of ["/municipios/", "/municipios/25-sinaloa/", "/uma/"]) {
+      const encabezados = encabezadosDe(conFamilia, ruta);
+      for (const [nombre, valores] of encabezados)
+        expect(valores, `${ruta} ${nombre}`).toHaveLength(1);
+      expect(encabezados.get("content-security-policy"), ruta).toEqual([CSP_PAGINAS]);
+      expect(encabezados.get("cache-control"), ruta).toEqual(["public, max-age=300"]);
+    }
+    expect(encabezadosDe(conFamilia, "/uma/x/").get("content-security-policy")).toBeUndefined();
+  });
 
   it.each(["/estilo.css", "/sitio.js"])("%s lleva caché corta y CSP vacía", (ruta) => {
     expect(efectivos(ruta)).toEqual({
