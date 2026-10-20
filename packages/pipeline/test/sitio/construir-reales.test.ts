@@ -13,6 +13,9 @@ import {
   type Udi,
   udiDeFecha,
 } from "@mexicoapi/core";
+import { crearCalendarioCurado, diasInhabilesCurados } from "@mexicoapi/core/curados";
+import { URL_API } from "@mexicoapi/core/problemas";
+import { diasInhabilesLft } from "@mexicoapi/core/rutas";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sha256Hex } from "../../src/canonico.js";
 import { coberturasDeLaLista, shardCalendario } from "../../src/curado/calendario.js";
@@ -29,7 +32,8 @@ import { DATASETS } from "../../src/registro.js";
 import { COBERTURA_LISTA_LFT, coberturasDe } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
 import { type MetaInterna, URL_ARCHIVOS, URL_DOCS } from "../../src/sitio/meta.js";
-import { enlaceSeguro } from "../../src/sitio/paginas/html.js";
+import { enlaceSeguro, escaparHtml } from "../../src/sitio/paginas/html.js";
+import { datosEstructurados } from "./paginas/estructura.js";
 
 const REAL = fileURLToPath(new URL("../../../../data", import.meta.url));
 
@@ -316,6 +320,78 @@ describe("con los datos reales del repositorio", () => {
     expect(reescritos).toContain("docs/operacion/datos-curados.md");
     for (const ruta of reescritos) {
       await expect(readFile(join(repo, ruta)), ruta).resolves.toBeDefined();
+    }
+  }, 120_000);
+
+  // Lo que responde el Worker para lo mismo: arma el calendario con el shard del build
+  // (crearCalendarioCurado) y lista el año con diasInhabilesCurados; la LFT, con diasInhabilesLft.
+  it("cada fecha de las páginas de calendarios es la que responde la API con el build", async () => {
+    const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
+    const rutas = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map((m) =>
+      (m[1] as string).slice(URL_API.length),
+    );
+    const autoridades = [
+      ["/dias-inhabiles-sat/", "sat"],
+      ["/dias-de-descanso-obligatorio/", "lft"],
+      ["/dias-inhabiles-bancarios/", "cnbv"],
+    ] as const;
+    expect(rutas).toEqual(["/", "/estado/", ...autoridades.map(([ruta]) => ruta)]);
+    const listaDe = async (autoridad: "sat" | "lft" | "cnbv", anio: number) => {
+      if (autoridad === "lft") return diasInhabilesLft(anio).dias;
+      const shard = await leerJson(join(salida, `v1/_internos/calendarios/${autoridad}.json`));
+      return diasInhabilesCurados(crearCalendarioCurado(shard), anio).dias;
+    };
+    for (const [ruta, autoridad] of autoridades) {
+      const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
+      const anios = [...html.matchAll(/<caption id="dias-(\d{4})">/g)].map((m) => Number(m[1]));
+      expect(anios.length, ruta).toBeGreaterThan(0);
+      for (const anio of anios) {
+        const inicio = html.indexOf(`<caption id="dias-${anio}">`);
+        const tabla = html.slice(inicio, html.indexOf("</table>", inicio));
+        const fechas = [...tabla.matchAll(/<time datetime="([^"]+)">/g)].map((m) => m[1]);
+        const dias = await listaDe(autoridad, anio);
+        expect(fechas, `${ruta} ${anio}`).toEqual(dias.map((d) => d.fecha));
+        for (const d of dias) {
+          expect(tabla, `${ruta} ${d.fecha}`).toContain(`<td>${escaparHtml(d.motivo)}</td>`);
+        }
+      }
+      // Cada Dataset declara los obligatorios de Google y descarga archivos del build.
+      const nodos = datosEstructurados(html);
+      const datasets = nodos.filter((n) => n["@type"] === "Dataset");
+      expect(datasets, ruta).toHaveLength(1);
+      const dataset = datasets[0] as Record<string, unknown>;
+      expect(typeof dataset.name, ruta).toBe("string");
+      expect((dataset.description as string).length, ruta).toBeGreaterThanOrEqual(50);
+      expect((dataset.description as string).length, ruta).toBeLessThanOrEqual(5000);
+      expect(dataset.url, ruta).toBe(`${URL_API}${ruta}`);
+      const distribucion = dataset.distribution as { contentUrl: string; encodingFormat: string }[];
+      expect(
+        distribucion.map((d) => d.encodingFormat),
+        ruta,
+      ).toEqual(["application/json", "text/csv"]);
+      for (const { contentUrl } of distribucion) {
+        expect(contentUrl.startsWith(`${URL_API}/descargas/`), contentUrl).toBe(true);
+        await expect(
+          readFile(join(salida, contentUrl.slice(URL_API.length + 1))),
+          contentUrl,
+        ).resolves.toBeDefined();
+      }
+      expect(
+        nodos.filter((n) => n["@type"] === "BreadcrumbList"),
+        ruta,
+      ).toHaveLength(1);
+    }
+    // "Datos al" de las curadas es el as_of de su manifiesto.
+    for (const [ruta, def] of [
+      ["/dias-inhabiles-sat/", curadoDiasSat],
+      ["/dias-inhabiles-bancarios/", curadoDiasCnbv],
+    ] as const) {
+      const { as_of } = (await leerJson(join(REAL, def.directorio, "manifest.json"))) as {
+        as_of: string;
+      };
+      const html = await readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
+      expect(html, ruta).toContain(`<p class="datos-al">Datos al <time datetime="${as_of}">`);
+      expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc><lastmod>${as_of}</lastmod>`);
     }
   }, 120_000);
 });
