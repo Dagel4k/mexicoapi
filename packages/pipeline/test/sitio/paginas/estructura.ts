@@ -61,6 +61,19 @@ export const atributos = (html: string, nombre: string): string[] =>
     desescapar(m[1] as string),
   );
 
+const APERTURA_JSON_LD = '<script type="application/ld+json">';
+
+/** Los nodos del JSON-LD de la página (`@graph`), o una lista vacía si no tiene. */
+export function datosEstructurados(html: string): Record<string, unknown>[] {
+  const inicio = html.indexOf(APERTURA_JSON_LD);
+  if (inicio === -1) return [];
+  const cuerpo = html.slice(inicio + APERTURA_JSON_LD.length, html.indexOf("</script>", inicio));
+  const documento = JSON.parse(cuerpo) as { "@context"?: unknown; "@graph"?: unknown };
+  expect(documento["@context"]).toBe("https://schema.org");
+  expect(Array.isArray(documento["@graph"])).toBe(true);
+  return documento["@graph"] as Record<string, unknown>[];
+}
+
 /** Lo que toda página del sitio cumple: estructura, accesibilidad básica y la CSP. */
 export function esperarDocumentoValido(html: string): void {
   expect(html.startsWith('<!doctype html>\n<html lang="es-MX">\n<head>\n')).toBe(true);
@@ -77,12 +90,21 @@ export function esperarDocumentoValido(html: string): void {
     expect(etiqueta).not.toMatch(/\sstyle\s*=/i);
     expect(etiqueta).not.toMatch(/\son[a-z]+\s*=/i);
   }
-  // Cada `<script` abre un módulo del mismo origen sin cuerpo. Se revisa desde cada aparición, sin
-  // depender de cómo venga escrita la etiqueta de cierre.
+  // Cada `<script` abre un módulo del mismo origen sin cuerpo, o el bloque de datos JSON-LD, que
+  // no se ejecuta y no trae `<` ni `>` con los que se cierre o abra otra etiqueta. Se revisa desde
+  // cada aparición, sin depender de cómo venga escrita la etiqueta de cierre.
   const minusculas = html.toLowerCase();
   for (let i = minusculas.indexOf("<script"); i !== -1; i = minusculas.indexOf("<script", i + 1)) {
-    expect(html.slice(i)).toMatch(/^<script type="module" src="\/[^/"][^"]*"><\/script>/);
+    const resto = html.slice(i);
+    if (resto.startsWith(APERTURA_JSON_LD)) {
+      const cuerpo = resto.slice(APERTURA_JSON_LD.length, resto.indexOf("</script>"));
+      expect(cuerpo).not.toMatch(/[<>]/);
+      expect(() => JSON.parse(cuerpo)).not.toThrow();
+      continue;
+    }
+    expect(resto).toMatch(/^<script type="module" src="\/[^/"][^"]*"><\/script>/);
   }
+  expect(html.split(APERTURA_JSON_LD).length).toBeLessThanOrEqual(2);
   // Ningún recurso externo: lo que carga la página es del mismo origen. La canónica no carga nada
   // y apunta a la API pública, la misma desde cualquier despliegue.
   for (const src of atributos(html, "src")) expect(src).toMatch(/^\/(?!\/)/);

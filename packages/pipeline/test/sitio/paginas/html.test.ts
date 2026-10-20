@@ -8,9 +8,18 @@ import {
   documento,
   enlaceSeguro,
   escaparHtml,
+  jsonEnScript,
   navegacion,
 } from "../../../src/sitio/paginas/html.js";
-import { desescapar, esperarDocumentoValido, problemasDeEtiquetas } from "./estructura.js";
+import {
+  datosEstructurados,
+  desescapar,
+  esperarDocumentoValido,
+  problemasDeEtiquetas,
+} from "./estructura.js";
+
+/** U+2028 y U+2029: JSON los admite en un texto y un script de JavaScript antiguo no. */
+const SEPARADORES = String.fromCharCode(0x2028, 0x2029);
 
 /** Cadenas cargadas de los caracteres que importan, incluidas entidades ya escritas. */
 const conEspeciales = fc.string({
@@ -220,6 +229,39 @@ describe("documento", () => {
       expect(() => documento({ ...base, scripts: [src] })).toThrow(/script/);
     },
   );
+
+  // Un bloque de datos no se ejecuta: la CSP (script-src 'self') no lo bloquea ni hace falta
+  // relajarla. Va uno solo, con todos los nodos en @graph.
+  it("pone los datos estructurados en un solo bloque JSON-LD con @context y @graph", () => {
+    expect(documento(base)).not.toContain("application/ld+json");
+    const nodos = [
+      { "@type": "WebSite", name: "MéxicoAPI" },
+      { "@type": "Organization", name: "MéxicoAPI" },
+    ];
+    const html = documento({ ...base, datosEstructurados: nodos });
+    esperarDocumentoValido(html);
+    expect(html).toContain(
+      '<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"MéxicoAPI"},{"@type":"Organization","name":"MéxicoAPI"}]}</script>\n</head>',
+    );
+    expect(datosEstructurados(html)).toEqual(nodos);
+  });
+
+  // Un texto de los datos con </script> o <!-- cerraría el bloque o abriría un comentario.
+  it("escapa en el JSON-LD lo que podría cerrar el bloque, y el JSON sigue siendo el mismo", () => {
+    fc.assert(
+      fc.property(conEspeciales, fc.string(), (a, b) => {
+        const nodo = {
+          "@type": "Dataset",
+          name: `${a}</script><!--${b}`,
+          description: SEPARADORES,
+        };
+        const texto = jsonEnScript(nodo);
+        expect(texto).not.toMatch(new RegExp(`[<>&${SEPARADORES}]`));
+        expect(JSON.parse(texto)).toEqual(nodo);
+        esperarDocumentoValido(documento({ ...base, datosEstructurados: [nodo] }));
+      }),
+    );
+  });
 });
 
 describe("navegacion", () => {
