@@ -443,6 +443,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           APP_SLUG: ${{ steps.app.outputs.app-slug }}
           GRUPO: ${{ needs.preparar.outputs.grupo }}
+          CARPETAS: ${{ needs.preparar.outputs.carpetas }}
           CODIGO: ${{ needs.generar.outputs.codigo }}
           PARCHE_GRANDE: ${{ steps.aplicar.outputs.grande }}
           PARCHE_LINEAS: ${{ steps.aplicar.outputs.lineas }}
@@ -469,6 +470,19 @@ jobs:
           # Un artefacto puede traer un enlace simbólico: solo se leen archivos comunes.
           es_archivo() {
             [ -f "$1" ] && [ ! -L "$1" ]
+          }
+
+          # Si el índice trae en las carpetas del grupo los mismos registros que el commit $1. No
+          # cuentan el manifiesto ni los crudos de raw/, que cambian con la hora de la descarga
+          # aunque los datos sean los mismos. Si git falla, cuenta como novedad: se publica como
+          # siempre.
+          sin_novedad() {
+            local carpeta grupo_carpetas rutas=()
+            read -r -a grupo_carpetas <<< "${CARPETAS}"
+            for carpeta in "${grupo_carpetas[@]}"; do
+              rutas+=("data/${carpeta}" ":(exclude)data/${carpeta}/manifest.json" ":(exclude)data/${carpeta}/raw")
+            done
+            git diff --cached --quiet "$1" -- "${rutas[@]}"
           }
 
           # Abre un issue con el título exacto o, si ya hay uno abierto de la App, comenta en él (un
@@ -588,6 +602,17 @@ jobs:
             exit 0
           fi
 
+          # git pide las credenciales a gh, que las toma de GH_TOKEN en este paso: el token no
+          # va en la URL ni queda en .git/config.
+          gh auth setup-git
+
+          # La corrida de respaldo del FIX, o una que GitHub atrasó, pudo partir de un main anterior
+          # a la última publicación: si main ya tiene estos registros, no hay nada que publicar.
+          if git fetch -q --no-tags --depth=1 origin main && sin_novedad FETCH_HEAD; then
+            echo "main ya tiene los mismos registros de ${GRUPO}: no hay nada que publicar."
+            exit 0
+          fi
+
           # Si el bot ya tiene un PR abierto para este grupo (con o sin etiqueta), no se abre otro:
           # se comenta en él. Solo cuentan ramas del propio repo, no de forks.
           pr_pendiente="$(gh pr list --state open --author "app/${APP_SLUG}" --limit 100 \
@@ -595,6 +620,14 @@ jobs:
             | jq -r --arg p "datos/${GRUPO}-" \
               '[.[] | select((.isCrossRepository | not) and (.headRefName | startswith($p)))][0].url // empty')"
           if [ -n "${pr_pendiente}" ]; then
+            # Si el PR ya trae estos registros, no hay nada nuevo que comentar.
+            numero_pr="${pr_pendiente##*/}"
+            if [[ "${numero_pr}" =~ ^[0-9]+$ ]] \
+              && git fetch -q --no-tags --depth=1 origin "refs/pull/${numero_pr}/head" \
+              && sin_novedad FETCH_HEAD; then
+              echo "El PR ${pr_pendiente} ya trae los mismos registros de ${GRUPO}: no hay nada nuevo."
+              exit 0
+            fi
             cuerpo="${RUNNER_TEMP}/pr-pendiente.md"
             {
               echo "Una corrida nueva de \`${GRUPO}\` trae cambios, pero este PR sigue abierto, así que no se abrió otro."
@@ -641,10 +674,6 @@ jobs:
             fi
             exit 0
           fi
-
-          # git pide las credenciales a gh, que las toma de GH_TOKEN en este paso: el token no
-          # va en la URL ni queda en .git/config.
-          gh auth setup-git
 
           # Identidad del bot
           id_bot="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
