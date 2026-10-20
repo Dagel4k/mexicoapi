@@ -105,9 +105,11 @@ pre {
   overflow-x: auto;
   line-height: 1.5;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 pre code { font-size: 1em; }
+/* en un telefono de 375 px, API= y la URL de produccion caben en un renglon */
+@media (max-width: 39.99rem) { pre { font-size: 0.8125rem; padding-inline: 0.75rem; } }
 .aviso {
   background: var(--aviso);
   border-left: 4px solid var(--aviso-borde);

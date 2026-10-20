@@ -411,21 +411,41 @@ describe("página de inicio", () => {
     );
   });
 
-  // Sin JavaScript se ve la API pública, que funciona tal cual; sitio.js pone el origen.
+  // Sin JavaScript se ve la API pública, que funciona tal cual; sitio.js pone el origen. El origen
+  // va una vez en API= y cada curl lo usa: los renglones caben en una columna angosta y, si no,
+  // se parten en un espacio o después de API=, nunca a media URL.
   it("los ejemplos con URL usan la API pública dentro de [data-origen], sin aviso en noscript", () => {
     expect(URL_API).toBe("https://mexicoapi.dagel4k.workers.dev");
     const origenes = [...html.matchAll(/<span data-origen>([^<]*)<\/span>/g)].map((m) => m[1]);
-    expect(origenes.length).toBeGreaterThanOrEqual(2);
+    expect(origenes).toHaveLength(2);
     for (const texto of origenes) expect(texto).toBe(URL_API);
+    expect(html.match(/<pre><code>API=<wbr><span data-origen>/g)).toHaveLength(2);
     const codigo = bloquesDeCodigo(html);
     expect(codigo).toContain(
-      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/002010077777777771`,
+      `API=${URL_API}\ncurl $API/v1/estados/25\ncurl $API/v1/clabe/002010077777777771`,
     );
     expect(codigo).toContain(
-      `curl -O ${URL_API}/descargas/SHA256SUMS\nsha256sum -c SHA256SUMS --ignore-missing`,
+      `API=${URL_API}\ncurl -O $API/descargas/SHA256SUMS\nsha256sum -c SHA256SUMS --ignore-missing`,
     );
+    // Cada renglón con curl lleva el comando y la URL juntos, sin el origen repetido.
+    for (const renglon of codigo
+      .join("\n")
+      .split("\n")
+      .filter((r) => r.startsWith("curl"))) {
+      expect(renglon).toMatch(/^curl (-O )?\$API\/\S+$/);
+      expect(renglon.length).toBeLessThanOrEqual(40);
+    }
     expect(html).not.toContain("&lt;base&gt;");
     expect(html).not.toContain("<noscript>");
+  });
+
+  // Con pre-wrap ningún bloque de código se desplaza: con tabindex, Tab se detendría en cada uno.
+  it("solo las tablas, que se pueden desplazar, se enfocan con Tab; los bloques de código no", () => {
+    expect(html.match(/<pre\b[^>]*>/g)?.every((pre) => pre === "<pre>")).toBe(true);
+    expect(html.match(/<pre>/g)?.length).toBeGreaterThanOrEqual(5);
+    const conTabindex = html.match(/<[a-z]+\b[^>]*\stabindex="0"[^>]*>/g) ?? [];
+    expect(conTabindex).toHaveLength(2);
+    for (const etiqueta of conTabindex) expect(etiqueta).toMatch(/^<div class="tabla[ "]/);
   });
 
   it("Empieza muestra una consulta, una CLABE y cómo sumar días hábiles, con tipo_plazo en el SAT", () => {
@@ -434,12 +454,12 @@ describe("página de inicio", () => {
       html.indexOf("</div>", html.indexOf("<h3>API</h3>")),
     );
     expect(bloquesDeCodigo(api)).toEqual([
-      `curl ${URL_API}/v1/estados/25\ncurl ${URL_API}/v1/clabe/${CLABE_EJEMPLO}`,
+      `API=${URL_API}\ncurl $API/v1/estados/25\ncurl $API/v1/clabe/${CLABE_EJEMPLO}`,
       JSON.stringify(EJEMPLO, null, 2),
     ]);
     expect(CLABE_EJEMPLO).toBe("002010077777777771");
     expect(validarClabe("002010077777777771").valido).toBe(true);
-    expect(api).toContain('<p>La respuesta de la CLABE, recortada:</p>\n<pre tabindex="0"><code>{');
+    expect(api).toContain("<p>La respuesta de la CLABE, recortada:</p>\n<pre><code>{");
     expect(api).toContain(
       "<code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>",
     );
