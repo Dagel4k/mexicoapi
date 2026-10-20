@@ -69,6 +69,8 @@ describe("shards", () => {
         "cross-origin-resource-policy",
         "etag",
         "referrer-policy",
+        "strict-transport-security",
+        "vary",
         "x-content-type-options",
       ].sort(),
     );

@@ -532,6 +532,30 @@ describe("caché con ETag", () => {
       await otra.arrayBuffer();
     },
   );
+
+  // La plataforma comprime después del Worker: sin Vary, un caché compartido podría darle el
+  // cuerpo en gzip o br a un cliente que no lo pidió.
+  it.each(["/v1/estados/25", "/v1/dias-habiles?autoridad=lft&desde=2026-01-05&dias=1"])(
+    "%s: Vary: Accept-Encoding en el 200 comprimido, en el 304 y sin comprimir",
+    async (ruta) => {
+      const comprimida = await pedir(ruta, { headers: { "Accept-Encoding": "gzip" } });
+      await comprimida.arrayBuffer();
+      expect(comprimida.status).toBe(200);
+      expect(comprimida.headers.get("Content-Encoding")).toBe("gzip");
+      expect(comprimida.headers.get("Vary")).toBe("Accept-Encoding");
+      const plana = await pedir(ruta, { headers: { "Accept-Encoding": "identity" } });
+      await plana.arrayBuffer();
+      expect(plana.headers.get("Content-Encoding")).toBeNull();
+      expect(plana.headers.get("Vary")).toBe("Accept-Encoding");
+      const etag = comprimida.headers.get("ETag");
+      if (etag === null) return;
+      const condicional = await pedir(ruta, {
+        headers: { "If-None-Match": etag, "Accept-Encoding": "gzip" },
+      });
+      expect(condicional.status).toBe(304);
+      expect(condicional.headers.get("Vary")).toBe("Accept-Encoding");
+    },
+  );
 });
 
 describe("HEAD", () => {

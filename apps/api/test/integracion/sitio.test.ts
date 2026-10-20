@@ -13,6 +13,8 @@ function esperarTodas(respuesta: Response): void {
   expect(respuesta.headers.get("x-content-type-options")).toBe("nosniff");
   expect(respuesta.headers.get("referrer-policy")).toBe("no-referrer");
   expect(respuesta.headers.get("x-frame-options")).toBe("DENY");
+  expect(respuesta.headers.get("strict-transport-security")).toBe("max-age=31536000");
+  expect(respuesta.headers.get("vary")).toBe("Accept-Encoding");
 }
 
 /** Encabezados que pone `_headers` en todas las rutas del sitio. */
@@ -151,6 +153,8 @@ describe("lo que no existe", () => {
         "x-content-type-options": "nosniff",
         "referrer-policy": "no-referrer",
         "x-frame-options": "DENY",
+        "strict-transport-security": "max-age=31536000",
+        vary: "Accept-Encoding",
         "content-security-policy": "default-src 'none'",
         "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
       });

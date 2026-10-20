@@ -68,6 +68,7 @@ export function peticion(ruta: string, init?: RequestInit): Request {
   return new Request(`${ORIGEN_API}${ruta}`, init);
 }
 
+/** Lo que lleva toda respuesta del Worker: los encabezados de seguridad y `Vary`. */
 export const SEGURIDAD: Readonly<Record<string, string>> = {
   "access-control-allow-origin": "*",
   "access-control-expose-headers": "ETag, Retry-After",
@@ -75,9 +76,11 @@ export const SEGURIDAD: Readonly<Record<string, string>> = {
   "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
   "referrer-policy": "no-referrer",
   "cross-origin-resource-policy": "cross-origin",
+  "strict-transport-security": "max-age=31536000",
+  vary: "Accept-Encoding",
 };
 
-/** Comprueba los encabezados de seguridad y que no haya cookies. */
+/** Comprueba los encabezados de seguridad y `Vary`, y que no haya cookies. */
 export function seguridadDe(respuesta: Response): Record<string, string | null> {
   const encontrados: Record<string, string | null> = {};
   for (const nombre of Object.keys(SEGURIDAD)) encontrados[nombre] = respuesta.headers.get(nombre);
