@@ -7,6 +7,7 @@ import { curarDatos } from "./curado/curar.js";
 import { CURADOS, DIRECTORIO_CURADO } from "./curado/registro.js";
 import { crearBancos, HOSTS_BANCOS, registrosDesdeHistorico } from "./datasets/bancos/bancos.js";
 import type { Diferencias } from "./diferencias.js";
+import { dofEnTexto, HOST_SIDOF, revisarDof } from "./dof.js";
 import { fechaEnMexico } from "./fecha.js";
 import { capturarHistoricoCep } from "./historico.js";
 import type { Cliente } from "./http.js";
@@ -38,6 +39,7 @@ const USO = `Uso:
   curar [--datos <ruta>]
   construir --salida <ruta> [--datos <ruta>]
   coberturas [--dias <entero >= 0>] [--fecha AAAA-MM-DD] [--json] [--datos <ruta>]
+  dof [--fecha AAAA-MM-DD] [--json]
 Datasets: ${[...DATASETS.keys()].join(", ")}
 Curados (data/curado/*.yaml): ${CURADOS.map((d) => d.id).join(", ")}
 `;
@@ -50,6 +52,7 @@ const OPCIONES_POR_COMANDO: Record<string, readonly string[]> = {
   curar: ["datos"],
   construir: ["salida", "datos"],
   coberturas: ["dias", "fecha", "json", "datos"],
+  dof: ["fecha", "json"],
 };
 
 function leer(argumentos: readonly string[]) {
@@ -311,6 +314,37 @@ async function coberturas(
   return 0;
 }
 
+/**
+ * Lee el índice del SIDOF de la fecha (la de la Ciudad de México, por omisión) y lista las
+ * publicaciones cuyo título coincide con una captura pendiente de data/curado/; con `--json`, lo
+ * que usa el vigía del DOF de frescura.yml. Si el SIDOF no responde, lo avisa y termina en 0: el
+ * vigía no detiene la corrida. Un índice con otra forma termina en 1.
+ */
+async function dof(
+  valores: { fecha?: string | undefined; json?: boolean | undefined },
+  entorno: Entorno,
+): Promise<number> {
+  const fecha = resolverFecha(valores.fecha, entorno);
+  if (fecha === null) {
+    entorno.escribirError(`Fecha inválida: ${valores.fecha}\n`);
+    return 1;
+  }
+  const cliente = restringirCliente(entorno.crearCliente(1000), [HOST_SIDOF]);
+  let resultado: Awaited<ReturnType<typeof revisarDof>>;
+  try {
+    resultado = await revisarDof(cliente, fecha);
+  } catch (error) {
+    entorno.escribirError(`dof: ${mensajeDe(error)}\n`);
+    return 1;
+  }
+  const { revision, aviso } = resultado;
+  if (aviso !== null) entorno.escribirError(`dof: ${aviso}\n`);
+  entorno.escribir(
+    valores.json === true ? `${JSON.stringify(revision, null, 2)}\n` : dofEnTexto(revision),
+  );
+  return 0;
+}
+
 async function curar(entorno: Entorno, raizDatos: string): Promise<number> {
   let salida: Awaited<ReturnType<typeof curarDatos>>;
   try {
@@ -376,6 +410,8 @@ export async function principal(argumentos: readonly string[], entorno: Entorno)
       return curar(entorno, raizDatos);
     case "coberturas":
       return coberturas(values, entorno, raizDatos);
+    case "dof":
+      return dof(values, entorno);
     case "construir": {
       if (values.salida === undefined) {
         entorno.escribirError(`Falta --salida.
