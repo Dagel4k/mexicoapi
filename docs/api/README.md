@@ -742,7 +742,7 @@ La ruta calcula con la regla del CFF y su `fundamento` cita el artículo 20 del 
 - tampoco los días de descanso del [calendario de la CNBV](../datos/dias-inhabiles-cnbv.md) dentro de su cobertura (hoy del 2025-01-01 al 2026-12-31), porque en un feriado bancario no hay publicación;
 - fuera de esa cobertura la API no sabe qué días son feriados, y un feriado entre semana cuenta como un día sin cargar.
 
-Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a las 13:30 de la Ciudad de México y llega a la API cuando se fusiona su PR y termina el despliegue, así que una consulta temprano por la operación de mañana da 404 hasta entonces; vuelve a intentar después.
+Si falta alguno de esos días, no devuelve un valor anterior: responde 404 `dato-no-disponible`. La actualización diaria del FIX corre a partir de las 12:47 de la Ciudad de México, con una corrida de respaldo a partir de las 16:17 (GitHub puede retrasar la corrida varias horas), y llega a la API cuando se fusiona su PR y termina el despliegue, así que una consulta temprano por la operación de mañana da 404 hasta entonces; vuelve a intentar después.
 
 La mañana después de un feriado bancario la respuesta ya es cierta. Por ejemplo, el lunes 16 de noviembre de 2026 es feriado bancario y no hay publicación. El martes 17 por la mañana, lo cargado termina en el viernes 13 y el lunes 16 es día de descanso de la CNBV, así que `operacion=2026-11-17` responde la publicación del viernes 13, que es la que aplica, sin esperar la corrida del martes. Por lo mismo, `publicado=2026-11-16` responde `no-encontrado`. En cambio, `operacion=2026-11-18` da `dato-no-disponible` hasta que se cargue la publicación del martes 17.
 
