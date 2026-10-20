@@ -231,17 +231,26 @@ function sinArgumentos(posiciones: readonly string[], comando: string): void {
  * yes, si, on: todo sale del paquete); MEXICOAPI_BASE; y si no, la API pública (URL_API). Solo los
  * datos que caducan (dias-habiles, fix, udi, uma, salario-minimo, isr) se piden a la API; banco,
  * estados y municipios son estables y salen del paquete igual (la base solo se valida), y los
- * validadores no usan el cliente. Un MEXICOAPI_SIN_RED que no se reconoce es un error aunque haya
- * --base.
+ * validadores no usan el cliente. Un MEXICOAPI_SIN_RED que no se reconoce, o una base que el
+ * cliente rechaza, es un error de configuración (sale con 2).
  */
 async function crearClienteCli(e: Entorno, opciones: Opciones) {
   const sinRed = sinRedPedido(e.env.MEXICOAPI_SIN_RED);
   const { crearCliente } = await import("../cliente/index.js");
   const { fetch } = e;
-  if (opciones.base !== undefined) return crearCliente({ base: opciones.base, fetch });
+  // Una base que crearCliente rechaza (http:// a un host remoto, sin esquema...) es de configuración.
+  const conBase = (base: string | undefined) => {
+    try {
+      return crearCliente({ base, fetch });
+    } catch (error) {
+      if (error instanceof TypeError) throw new ErrorConfiguracion(error.message);
+      throw error;
+    }
+  };
+  if (opciones.base !== undefined) return conBase(opciones.base);
   if (sinRed) return crearCliente({ offline: true });
   const base = e.env.MEXICOAPI_BASE;
-  return crearCliente({ base: base === undefined || base === "" ? undefined : base, fetch });
+  return conBase(base === undefined || base === "" ? undefined : base);
 }
 
 async function validador(
