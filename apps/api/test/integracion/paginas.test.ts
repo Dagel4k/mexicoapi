@@ -39,10 +39,19 @@ const AUTORIDADES: Readonly<Record<string, string>> = {
   "/dias-inhabiles-bancarios/": "cnbv",
 };
 
+/** Las páginas de indicadores y constantes, después de las de calendarios, en el orden del registro. */
+const INDICADORES = [
+  "/tipo-de-cambio-fix/",
+  "/udis/",
+  "/uma/",
+  "/salario-minimo/",
+  "/tarifas-isr/",
+];
+
 describe("páginas de datos en el Worker local", () => {
   it("cada página del sitemap es la del build, con la CSP de las páginas", async () => {
     const rutas = await paginasDeDatos();
-    expect(rutas).toEqual(Object.keys(AUTORIDADES));
+    expect(rutas).toEqual([...Object.keys(AUTORIDADES), ...INDICADORES]);
     for (const ruta of rutas) {
       const respuesta = await pedir(ruta);
       expect(respuesta.status, ruta).toBe(200);
@@ -105,5 +114,64 @@ describe("páginas de datos en el Worker local", () => {
         );
       }
     }
+  });
+
+  // Una cifra por página, la que responde la API para lo mismo, y "Datos al" es su meta.as_of.
+  it("las cifras de cada página de indicadores y constantes son las que responde la API", async () => {
+    const pagina = async (ruta: string) =>
+      (await leerPublico(`${ruta.slice(1)}index.html`)).toString("utf8");
+    const consultar = async <T>(ruta: string) => {
+      const { respuesta, cuerpo } = await pedirJson(ruta);
+      expect(respuesta.status, ruta).toBe(200);
+      return cuerpo as { data: T; meta: { as_of: string } };
+    };
+    const datosAl = (html: string, asOf: string) =>
+      expect(html).toContain(`<p class="datos-al">Datos al <time datetime="${asOf}">`);
+
+    const fix = await consultar<{ fecha_publicacion: string; valor: string }>(
+      "/v1/tipo-cambio/fix/ultimo",
+    );
+    const htmlFix = await pagina("/tipo-de-cambio-fix/");
+    expect(htmlFix).toContain(`<data value="${fix.data.valor}">${fix.data.valor}</data>`);
+    expect(htmlFix).toContain(`<time datetime="${fix.data.fecha_publicacion}">`);
+    datosAl(htmlFix, fix.meta.as_of);
+
+    const htmlUdis = await pagina("/udis/");
+    const filasUdis = [...htmlUdis.matchAll(/<tr data-fecha="([^"]+)">.*?<data value="([^"]+)">/g)];
+    expect(filasUdis.length).toBeGreaterThan(30);
+    for (const [, fecha, valor] of [filasUdis[0], filasUdis.at(-1)] as RegExpMatchArray[]) {
+      const udi = await consultar<{ valor: string }>(`/v1/udis?fecha=${fecha}`);
+      expect(udi.data.valor, fecha).toBe(valor);
+      datosAl(htmlUdis, udi.meta.as_of);
+    }
+
+    const anio = fix.data.fecha_publicacion.slice(0, 4);
+    const uma = await consultar<Record<"diaria" | "mensual" | "anual", string>>(
+      `/v1/constantes/uma/${anio}`,
+    );
+    const htmlUma = await pagina("/uma/");
+    for (const campo of ["diaria", "mensual", "anual"] as const) {
+      expect(htmlUma, campo).toContain(`<data value="${uma.data[campo]}">`);
+    }
+    datosAl(htmlUma, uma.meta.as_of);
+
+    const salario = await consultar<{ zona: string; diario: string }[]>(
+      `/v1/constantes/salario-minimo/${anio}`,
+    );
+    const htmlSalario = await pagina("/salario-minimo/");
+    for (const { diario } of salario.data)
+      expect(htmlSalario).toContain(`<data value="${diario}">`);
+    datosAl(htmlSalario, salario.meta.as_of);
+
+    const isr = await consultar<{ tramos: { limite_inferior: string; cuota_fija: string }[] }>(
+      `/v1/isr/tarifa/mensual/${anio}`,
+    );
+    const htmlIsr = await pagina("/tarifas-isr/");
+    const mensual = htmlIsr.slice(htmlIsr.indexOf(`<caption id="isr-mensual-${anio}">`));
+    for (const t of isr.data.tramos) {
+      expect(mensual).toContain(`<data value="${t.limite_inferior}">`);
+      expect(mensual).toContain(`<data value="${t.cuota_fija}">`);
+    }
+    datosAl(htmlIsr, isr.meta.as_of);
   });
 });
