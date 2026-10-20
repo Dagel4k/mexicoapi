@@ -335,8 +335,13 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
       "llms-full.txt",
       "llms.txt",
       "robots.txt",
+      "salario-minimo",
       "sitemap.xml",
       "sitio.js",
+      "tarifas-isr",
+      "tipo-de-cambio-fix",
+      "udis",
+      "uma",
       "v1",
     ]);
   });
