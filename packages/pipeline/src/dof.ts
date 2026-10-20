@@ -39,6 +39,8 @@ export interface CapturaPendiente {
   clave: string;
   /** Texto que se busca en el título de la nota, sin distinguir mayúsculas ni acentos. */
   texto: string;
+  /** Si es true, no cuenta una nota cuyo título empieza con "Anexo": son notas de anexos, no la resolución. */
+  sinAnexos?: true;
   archivos: readonly string[];
 }
 
@@ -47,15 +49,21 @@ export const CAPTURAS_PENDIENTES: readonly CapturaPendiente[] = [
   {
     clave: "modificaciones-rmf",
     texto: "Resolución de Modificaciones a la Resolución Miscelánea Fiscal",
+    sinAnexos: true,
     archivos: [yaml(curadoDiasSat)],
   },
   {
     clave: "rmf",
     texto: "Resolución Miscelánea Fiscal para",
+    sinAnexos: true,
     archivos: [yaml(curadoDiasSat), yaml(curadoTarifasIsr)],
   },
   { clave: "cnbv", texto: "cerrar sus puertas", archivos: [yaml(curadoDiasCnbv)] },
-  { clave: "salario-minimo", texto: "salarios mínimos", archivos: [yaml(curadoSalarioMinimo)] },
+  {
+    clave: "salario-minimo",
+    texto: "fija los salarios mínimos",
+    archivos: [yaml(curadoSalarioMinimo)],
+  },
   { clave: "uma", texto: "Unidad de Medida y Actualización", archivos: [yaml(curadoUma)] },
   { clave: "anexo-8", texto: "Anexo 8", archivos: [yaml(curadoTarifasIsr)] },
 ];
@@ -180,7 +188,10 @@ export function publicacionesPorCapturar(
 ): PublicacionPorCapturar[] {
   return notas.flatMap((n) => {
     const titulo = normalizar(n.titulo);
-    const capturas = BUSQUEDAS.filter((b) => b.patron.test(titulo)).map((b) => b.captura);
+    const esAnexo = titulo.startsWith("anexo");
+    const capturas = BUSQUEDAS.filter(
+      (b) => !(b.captura.sinAnexos && esAnexo) && b.patron.test(titulo),
+    ).map((b) => b.captura);
     const [primera] = capturas;
     if (primera === undefined) return [];
     return [

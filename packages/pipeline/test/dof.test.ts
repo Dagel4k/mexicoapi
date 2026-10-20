@@ -186,7 +186,7 @@ describe("publicacionesPorCapturar", () => {
         ["salario-minimo"],
       ],
       ["Unidad de medida y actualización.", ["uma"]],
-      ["Anexo 8 de la Resolución Miscelánea Fiscal para 2027.", ["rmf", "anexo-8"]],
+      ["Anexo 8 de la Resolución Miscelánea Fiscal para 2027.", ["anexo-8"]],
     ];
     for (const [titulo, claves] of titulos) {
       const [p] = publicacionesPorCapturar(notas(titulo), FECHA);
@@ -200,10 +200,35 @@ describe("publicacionesPorCapturar", () => {
 
   it("no distingue mayúsculas, acentos ni espacios repetidos", () => {
     const lista = publicacionesPorCapturar(
-      notas("UNIDAD DE MEDIDA Y ACTUALIZACION", "Comisión de los salarios   mí\u00adnimos"),
+      notas("UNIDAD DE MEDIDA Y ACTUALIZACION", "Comisión que fija los salarios   mí\u00adnimos"),
       FECHA,
     );
     expect(lista.map((p) => p.capturas)).toEqual([["uma"], ["salario-minimo"]]);
+  });
+
+  it("una nota de anexos de la RMF no es una captura de la RMF, pero el Anexo 8 sí", () => {
+    const lista = publicacionesPorCapturar(
+      notas(
+        "  ANEXO 3 de la Resolución Miscelánea Fiscal para 2027.",
+        "Anexo 1-A de la Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2027.",
+        "Anexos 1 y 2 de la Resolución Miscelánea Fiscal para 2027.",
+        "Anexo 8 de la Resolución Miscelánea Fiscal para 2027.",
+      ),
+      FECHA,
+    );
+    expect(lista.map((p) => p.capturas)).toEqual([["anexo-8"]]);
+  });
+
+  it("del salario mínimo solo avisa la resolución que lo fija", () => {
+    const lista = publicacionesPorCapturar(
+      notas(
+        "Programa Institucional de la Comisión Nacional de los Salarios Mínimos 2025-2030.",
+        "Aviso de la Comisión Nacional de los Salarios Mínimos sobre los salarios mínimos de 2026.",
+        "Resolución del H. Consejo de Representantes de la Comisión Nacional de los Salarios Mínimos que fija los salarios mínimos generales y profesionales que habrán de regir a partir del 1 de enero de 2026.",
+      ),
+      FECHA,
+    );
+    expect(lista.map((p) => p.capturas)).toEqual([["salario-minimo"]]);
   });
 
   it("solo cuenta palabras completas: el Anexo 80 no es el Anexo 8", () => {
