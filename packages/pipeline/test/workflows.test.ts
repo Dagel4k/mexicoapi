@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { leerCoberturas, PREFIJO_TITULO, porVencer } from "../src/coberturas.js";
+import { CAPTURAS_PENDIENTES, interpretarIndiceDof, publicacionesPorCapturar } from "../src/dof.js";
 import { DATASETS } from "../src/registro.js";
+import { leerFixture } from "./ayudas.js";
 
 // Los workflows del bot no corren código del repo para saber qué carpetas puede tocar cada grupo:
 // las listas van escritas en el YAML. Estas pruebas las comparan con el registro de datasets.
@@ -263,6 +265,118 @@ describe("alerta de coberturas en frescura.yml", () => {
     ]) {
       expect(malo).not.toMatch(new RegExp(patron as string));
     }
+  });
+});
+
+describe("vigía del DOF en frescura.yml", () => {
+  it("dof corre el pipeline sin poder escribir, con la fecha de la Ciudad de México", async () => {
+    const frescura = await workflow("frescura.yml");
+    const job = frescura.jobs.dof as Job;
+    expect(job.permissions).toEqual({ contents: "read" });
+    expect(job.if).toBe("github.ref == 'refs/heads/main'");
+    expect(job.outputs).toEqual({ lista: expresion("steps.buscar.outputs.lista") });
+    // Las mismas acciones fijadas por SHA que la alerta de coberturas.
+    const usos = (j: Job | undefined) => (j?.steps ?? []).flatMap((p) => p.uses ?? []);
+    expect(usos(job)).toEqual(usos(frescura.jobs.coberturas));
+    expect(job.steps[0]?.with).toMatchObject({ "persist-credentials": false });
+    const buscar = job.steps.find((p) => p.id === "buscar");
+    expect(buscar?.env).toBeUndefined();
+    const run = buscar?.run ?? "";
+    // Sin --fecha: el comando toma la de la Ciudad de México.
+    const comando = run.indexOf(
+      `node packages/pipeline/dist/bin.js dof --json > "\${salida}" || codigo=$?`,
+    );
+    expect(comando).toBeGreaterThan(-1);
+    // Mientras corre el CLI, que puede imprimir textos del SIDOF en sus errores, el runner no
+    // interpreta comandos de workflow.
+    expect(run.indexOf(`echo "::stop-commands::\${pausa}"`)).toBeLessThan(comando);
+    expect(run.indexOf(`echo "::\${pausa}::"`)).toBeGreaterThan(comando);
+    // Si el SIDOF no respondió el paso sigue en verde, con un aviso.
+    expect(run).toContain(`if ! jq -e '.revisado == true' "\${salida}" > /dev/null; then`);
+    expect(run).toContain(
+      `lista="$(jq -ce '.publicaciones | if type == "array" then . else error("no es un arreglo") end' "\${salida}")"`,
+    );
+  });
+
+  it("avisar-dof solo escribe issues, no instala nada y nunca reabre ni comenta", async () => {
+    const frescura = await workflow("frescura.yml");
+    const job = frescura.jobs["avisar-dof"] as Job;
+    expect(job.needs).toBe("dof");
+    expect(job.if).toBe("github.ref == 'refs/heads/main' && needs.dof.outputs.lista != '[]'");
+    expect(job.permissions).toEqual({ issues: "write" });
+    expect(job.steps.flatMap((p) => p.uses ?? [])).toEqual([]);
+    const [unico] = job.steps;
+    expect(job.steps).toHaveLength(1);
+    expect(unico?.env).toEqual({
+      LISTA: expresion("needs.dof.outputs.lista"),
+      GH_TOKEN: expresion("github.token"),
+      GH_REPO: expresion("github.repository"),
+    });
+    for (const nombre of ["dof", "avisar-dof"]) {
+      for (const p of frescura.jobs[nombre]?.steps ?? []) {
+        expect(p.run ?? "", `${nombre} ${p.name}`).not.toContain("$" + "{{");
+      }
+    }
+    const run = unico?.run ?? "";
+    // Busca por título exacto y autor, también entre los cerrados: un aviso que alguien cerró no
+    // se vuelve a abrir.
+    expect(funcion(run, "buscar_cualquiera")).toContain(
+      "gh issue list --state all --limit 100 --author app/github-actions",
+    );
+    expect(run).not.toMatch(/gh issue (close|comment|edit|reopen)/);
+    expect(run).toContain("blob/main/docs/operacion/datos-curados.md");
+    // La forma de la lista se revisa antes del bucle, y cada publicación dentro de él.
+    const guardia = run.indexOf('jq -e \'type == "array"');
+    expect(guardia).toBeGreaterThan(-1);
+    expect(guardia).toBeLessThan(run.indexOf("while IFS="));
+    expect(run).toContain(
+      `[ "\${url}" != "https://sidof.segob.gob.mx/notas/docFuente/\${codigo}" ]`,
+    );
+    // El título de la nota viene del SIDOF: va en un bloque de código, sin acentos graves.
+    expect(run).toContain("echo '```text'");
+    expect(run).toContain('gsub("`+"; "\\u0027")');
+  });
+
+  it("lee los campos que da el comando y acepta el título de cada publicación", async () => {
+    const frescura = await workflow("frescura.yml");
+    const run = frescura.jobs["avisar-dof"]?.steps[0]?.run ?? "";
+    const campos = /jq -r '\.\[\] \| \[([^\]]+?)\] \| @tsv'/.exec(run)?.[1];
+    expect(campos).toBe('.codigo, .titulo, .edicion, .fecha, .url, (.archivos | join(", "))');
+    const patron = /^\s*patron='([^']+)'$/m.exec(run)?.[1];
+    const archivos = /^\s*patron_archivos='([^']+)'$/m.exec(run)?.[1];
+    expect(patron).toBeDefined();
+    expect(archivos).toBeDefined();
+    const notas = interpretarIndiceDof(
+      await leerFixture("sidof/notas-17-12-2025.json"),
+      "2025-12-17",
+    );
+    const lista = publicacionesPorCapturar(
+      [
+        ...notas,
+        ...CAPTURAS_PENDIENTES.map((c, i) => ({
+          codigo: String(i + 1),
+          titulo: c.texto,
+          edicion: "matutina" as const,
+        })),
+      ],
+      "2025-12-17",
+    );
+    expect(lista).toHaveLength(CAPTURAS_PENDIENTES.length + 1);
+    for (const p of lista) {
+      expect(p.titulo, p.codigo).toMatch(new RegExp(patron as string));
+      expect(p.archivos.join(", "), p.codigo).toMatch(new RegExp(archivos as string));
+      expect(p.url).toBe(`https://sidof.segob.gob.mx/notas/docFuente/${p.codigo}`);
+    }
+    for (const malo of [
+      "Publicación en el DOF: 5776445",
+      "Publicación en el DOF: 5776445 (rmf) x",
+      "Publicación en el DOF: $(x) (rmf)",
+      "Publicación en el DOF: 5776445 (RMF)",
+      "Cobertura por vencer: constantes.uma",
+    ]) {
+      expect(malo).not.toMatch(new RegExp(patron as string));
+    }
+    expect("data/curado/../x.yaml").not.toMatch(new RegExp(archivos as string));
   });
 });
 
