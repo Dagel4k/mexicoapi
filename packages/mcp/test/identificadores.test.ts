@@ -10,7 +10,7 @@ import {
 
 const VALIDADORES = {
   nombre: "MéxicoAPI, validadores de formato y dígito verificador",
-  url: "https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#validadores",
+  url: "https://www.npmjs.com/package/mexicoapi",
 };
 
 const PROCEDENCIA = {

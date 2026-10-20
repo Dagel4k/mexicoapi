@@ -12,7 +12,7 @@ import {
 const BANXICO = meta.bancos.sources.map((f) => ({ nombre: f.name, url: f.url }));
 const VALIDADORES = {
   nombre: "MéxicoAPI, validadores de formato y dígito verificador",
-  url: "https://github.com/Dagel4k/mexicoapi/tree/main/packages/sdk#validadores",
+  url: "https://www.npmjs.com/package/mexicoapi",
 };
 
 let llamar: Llamador;
