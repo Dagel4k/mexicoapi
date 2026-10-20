@@ -155,7 +155,7 @@ Las revisiones de la etiqueta, el `package.json`, el historial, `verify` y npm e
 
 ## Registro oficial de MCP
 
-El [registro oficial de servidores MCP](https://registry.modelcontextprotocol.io) es el catálogo del que leen los clientes de MCP y otros directorios de servidores. `mexicoapi-mcp` va en él como `io.github.Dagel4k/mexicoapi-mcp`, con lo que dice `packages/mcp/server.json`. El registro no guarda el paquete: apunta a la versión de npm y, antes de aceptarla, revisa que el `mcpName` de esa versión en npm sea el `name` de `server.json`. Por eso se registra después de publicar en npm. La 0.1.0 no trae `mcpName` y no se puede registrar; la primera es la 0.2.0.
+El [registro oficial de servidores MCP](https://registry.modelcontextprotocol.io) es el catálogo del que leen los clientes de MCP y otros directorios de servidores. `mexicoapi-mcp` va en él como `io.github.Dagel4k/mexicoapi-mcp`, con lo que dice `packages/mcp/server.json`. El registro no guarda el paquete: apunta a la versión de npm y, antes de aceptarla, revisa que el `mcpName` de esa versión en npm sea el `name` de `server.json`. Por eso se registra después de publicar en npm. La 0.1.0 no trae `mcpName` y no se puede registrar; la primera será la 0.2.0.
 
 El job `registro-mcp` de `publicacion.yml` lo hace solo:
 
