@@ -15,6 +15,10 @@ function esperarTodas(respuesta: Response): void {
   expect(respuesta.headers.get("x-frame-options")).toBe("DENY");
   expect(respuesta.headers.get("strict-transport-security")).toBe("max-age=31536000");
   expect(respuesta.headers.get("vary")).toBe("Accept-Encoding");
+  expect(respuesta.headers.get("permissions-policy")).toBe(
+    "camera=(), microphone=(), geolocation=()",
+  );
+  expect(respuesta.headers.get("cross-origin-opener-policy")).toBe("same-origin");
 }
 
 /** Encabezados que pone `_headers` en todas las rutas del sitio. */

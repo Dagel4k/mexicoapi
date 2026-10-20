@@ -35,7 +35,8 @@ const CACHE_SITIO = "public, max-age=300";
 
 /**
  * La regla `/*`: sin CSP ni caché, que se juntarían con las de cada ruta. HSTS sin
- * includeSubDomains ni preload; `Vary` porque la plataforma comprime según `Accept-Encoding`.
+ * includeSubDomains ni preload; `Vary` porque la plataforma comprime según `Accept-Encoding`. El
+ * sitio no usa cámara, micrófono ni ubicación, y ninguna página comparte su ventana con otro origen.
  */
 const TODAS: Regla = {
   ruta: "/*",
@@ -45,6 +46,8 @@ const TODAS: Regla = {
     ["X-Frame-Options", "DENY"],
     ["Strict-Transport-Security", "max-age=31536000"],
     ["Vary", "Accept-Encoding"],
+    ["Permissions-Policy", "camera=(), microphone=(), geolocation=()"],
+    ["Cross-Origin-Opener-Policy", "same-origin"],
   ],
 };
 

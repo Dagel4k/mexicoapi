@@ -33,6 +33,8 @@ const SEGURIDAD = {
   "x-frame-options": "DENY",
   "strict-transport-security": "max-age=31536000",
   vary: "Accept-Encoding",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin",
 };
 const NINGUNO = "default-src 'none'";
 
@@ -160,8 +162,9 @@ describe("_headers", () => {
   // Una CSP o una caché ahí se juntarían con las de cada ruta y, bajo /descargas/, le bloquearían
   // la hoja de estilo al 404, que lleva su CSP en meta (prueba de no-encontrado).
   // HSTS sin includeSubDomains ni preload. Vary porque la plataforma comprime las descargas según
-  // Accept-Encoding y un caché compartido debe guardar cada versión aparte.
-  it("/* solo pone nosniff, referrer, X-Frame-Options, HSTS y Vary, y ninguna otra regla los repite", () => {
+  // Accept-Encoding y un caché compartido debe guardar cada versión aparte. El sitio no usa cámara,
+  // micrófono ni ubicación, y ninguna página necesita compartir su ventana con otro origen.
+  it("/* solo pone lo que vale en cualquier URL, y ninguna otra regla lo repite", () => {
     const comodin = reglas.find((r) => r.ruta === "/*");
     expect(comodin).toEqual({
       ruta: "/*",
@@ -171,6 +174,8 @@ describe("_headers", () => {
         ["X-Frame-Options", "DENY"],
         ["Strict-Transport-Security", "max-age=31536000"],
         ["Vary", "Accept-Encoding"],
+        ["Permissions-Policy", "camera=(), microphone=(), geolocation=()"],
+        ["Cross-Origin-Opener-Policy", "same-origin"],
       ],
       quitar: [],
     });
