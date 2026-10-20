@@ -825,7 +825,8 @@ describe("aviso a IndexNow en despliegue.yml", () => {
     expect(run).toContain("head -n 10000");
     expect(run).toContain("keyLocation");
     // Es el único paso que avisa, y no toca staging.
-    expect(pasos.filter((p) => (p.run ?? "").includes("api.indexnow.org"))).toHaveLength(1);
+    const avisaIndexNow = /https:\/\/api\.indexnow\.org\/indexnow/;
+    expect(pasos.filter((p) => avisaIndexNow.test(p.run ?? ""))).toHaveLength(1);
     expect(run).not.toContain("URL_STAGING");
   });
 });
