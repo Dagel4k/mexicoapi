@@ -1,8 +1,8 @@
 // Habla con la API REST de Cloudflare para el despliegue y el bot de datos: resuelve el namespace
 // de KV, genera la configuración de wrangler de cada entorno y escribe `estado:<dataset>`.
 // Sin dependencias: Node lo ejecuta tal cual (quita los tipos), así que solo usa sintaxis borrable.
-import { readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { cp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -289,6 +289,24 @@ function esEntorno(valor: string): valor is Entorno {
 }
 
 /**
+ * Staging no se indexa: su Worker manda `X-Robots-Tag` (la var `X_ROBOTS_TAG`) y sus assets salen
+ * de una copia de `public/` en `ASSETS_STAGING` con el encabezado en la regla `/*` del `_headers`.
+ * Producción usa `public/` tal cual y no lleva nada de esto.
+ */
+const ROBOTS_STAGING = "noindex";
+/** La copia de los assets para staging, junto a `wrangler.jsonc` (está en .gitignore). */
+export const ASSETS_STAGING = "./public-staging";
+
+/** El `assets.directory` de la base; sin él no hay de dónde copiar los assets. */
+function directorioAssets(base: Record<string, unknown>): string {
+  const assets = base.assets;
+  if (!esObjeto(assets) || typeof assets.directory !== "string") {
+    throw new Error("wrangler.jsonc no tiene assets.directory");
+  }
+  return assets.directory;
+}
+
+/**
  * Configuración de wrangler de un entorno a partir de `wrangler.jsonc`. `main` y
  * `assets.directory` se quedan relativos: el archivo generado vive junto a `wrangler.jsonc`.
  */
@@ -298,13 +316,63 @@ export function configuracionDespliegue(
   kvId: string,
 ): Record<string, unknown> {
   const { name, limite } = ENTORNOS[entorno];
-  return {
+  const config: Record<string, unknown> = {
     ...base,
     name,
     kv_namespaces: [{ binding: "ESTADO", id: kvId }],
     // namespace_id es un entero elegido por la cuenta: separa los contadores de cada Worker.
     ratelimits: [{ name: "LIMITE", namespace_id: limite, simple: { limit: 600, period: 60 } }],
   };
+  if (entorno === "staging") {
+    directorioAssets(base);
+    config.assets = { ...(base.assets as Record<string, unknown>), directory: ASSETS_STAGING };
+    config.vars = { ...(esObjeto(base.vars) ? base.vars : {}), X_ROBOTS_TAG: ROBOTS_STAGING };
+  }
+  return config;
+}
+
+const REGLA_TODAS = "/*\n";
+
+/** El `_headers` del build con `X-Robots-Tag: noindex` en su regla `/*`, que va primero. */
+export function encabezadosSinIndexar(texto: string): string {
+  if (!texto.startsWith(REGLA_TODAS)) {
+    throw new Error("el _headers no empieza con la regla /*: no se puede agregar X-Robots-Tag");
+  }
+  return `${REGLA_TODAS}  X-Robots-Tag: ${ROBOTS_STAGING}\n${texto.slice(REGLA_TODAS.length)}`;
+}
+
+/** Si `ruta` es `carpeta` o está dentro de ella. */
+const dentroDe = (ruta: string, carpeta: string): boolean => {
+  const camino = relative(carpeta, ruta);
+  return (
+    camino === "" || (camino !== ".." && !camino.startsWith(`..${sep}`) && !isAbsolute(camino))
+  );
+};
+
+/**
+ * Copia los assets de la base (`public/`) en `ASSETS_STAGING`, desde cero, con el `_headers` de
+ * `encabezadosSinIndexar`. Devuelve la carpeta de la copia.
+ */
+async function prepararAssetsStaging(
+  raizApi: string,
+  base: Record<string, unknown>,
+): Promise<string> {
+  const origen = resolve(raizApi, directorioAssets(base));
+  const destino = resolve(raizApi, ASSETS_STAGING);
+  if (dentroDe(origen, destino) || dentroDe(destino, origen)) {
+    throw new Error(`assets.directory no puede ser ni contener ${ASSETS_STAGING}`);
+  }
+  let texto: string;
+  try {
+    texto = await readFile(join(origen, "_headers"), "utf8");
+  } catch {
+    throw new Error(`no se pudo leer ${join(origen, "_headers")}: corre el build antes`);
+  }
+  const conRobots = encabezadosSinIndexar(texto);
+  await rm(destino, { recursive: true, force: true });
+  await cp(origen, destino, { recursive: true });
+  await writeFile(join(destino, "_headers"), conRobots, "utf8");
+  return destino;
 }
 
 export interface EstadoKv {
@@ -534,6 +602,12 @@ async function configurar(
   const ruta = join(entorno.raizApi, "wrangler.jsonc");
   const base = leerJsonc(await readFile(ruta, "utf8"));
   if (!esObjeto(base)) throw new Error(`${ruta} no es un objeto JSON`);
+  // Antes de ir a Cloudflare: sin el build no hay qué desplegar.
+  if (destino === "staging") {
+    const copia = await prepararAssetsStaging(entorno.raizApi, base);
+    entorno.escribirError(`configurar: assets de staging en ${copia} (X-Robots-Tag: noindex)
+`);
+  }
   const kvId = await resolverNamespace(c);
   const sub = await subdominio(c);
   const config = configuracionDespliegue(base, destino, kvId);

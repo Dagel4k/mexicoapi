@@ -46,7 +46,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 Solo corre desde `main`, en el Environment `produccion`.
 
 1. Instala y compila el repositorio.
-2. `cloudflare.ts configurar` busca (o crea) el namespace de KV titulado `mexicoapi-estado`, genera la configuración del entorno (con el bloque `assets` de `wrangler.jsonc` completo) y devuelve la URL de `workers.dev`.
+2. `cloudflare.ts configurar` busca (o crea) el namespace de KV titulado `mexicoapi-estado`, genera la configuración del entorno (con el bloque `assets` de `wrangler.jsonc` completo) y devuelve la URL de `workers.dev`. En staging, además, copia `public/` en `public-staging/` con `X-Robots-Tag: noindex` en la regla `/*` del `_headers`, apunta `assets.directory` a esa copia y define la var `X_ROBOTS_TAG`, con la que el Worker manda el mismo encabezado: los buscadores no indexan staging. Producción usa `public/` sin cambios y no lleva ese encabezado.
 3. Despliega el Worker `mexicoapi-staging`.
 4. Corre `humo.ts` contra staging: las rutas principales de `/v1`, `SHA256SUMS`, la página de inicio, `/llms.txt` y `/v2`, que debe ser el 404 en HTML de los assets y no un 404 del Worker. Un Worker recién desplegado tarda en propagarse, así que hace hasta 5 intentos, con esperas de 10, 20, 30 y 60 segundos entre ellos.
 5. Repite lo mismo con el Worker `mexicoapi` (producción). Si staging falla, producción no se toca. El humo de producción corre solo si la versión llegó a subirse, aunque el paso de despliegue fallara después; si falló antes de subirla, producción no cambió, no hay humo ni reversión y la corrida queda en rojo.
@@ -67,7 +67,7 @@ El mismo despliegue publica el sitio que genera el build (`/`, `/estado/`, `/llm
 
 Nada de eso invoca al Worker: los rastreadores que prueban rutas al azar no gastan la cuota diaria ni el límite por IP. Si un despliegue pierde `not_found_handling`, esas direcciones vuelven a llegar al Worker y el humo falla en `/v2`.
 
-`_headers` tiene una regla `/*` con `X-Content-Type-Options`, `Referrer-Policy` y `X-Frame-Options: DENY`, que alcanza a todo lo que sirven los assets (también el 404 y las redirecciones), y una regla por archivo con su CSP, su caché y, en las descargas, CORS. Un 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas reglas: llevan sus propios encabezados.
+`_headers` tiene una regla `/*` con `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000` y `Vary: Accept-Encoding`, que alcanza a todo lo que sirven los assets (también el 404 y las redirecciones), y una regla por archivo con su CSP, su caché y, en las descargas, CORS. Un 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas reglas: llevan sus propios encabezados.
 
 ### Frescura
 

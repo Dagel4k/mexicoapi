@@ -574,6 +574,55 @@ describe("registro de errores internos", () => {
   });
 });
 
+// Staging define X_ROBOTS_TAG (lo genera el despliegue) para que los buscadores no lo indexen;
+// producción no lo define.
+describe("X-Robots-Tag", () => {
+  const casos: Array<[string, RequestInit | undefined, number]> = [
+    ["https://api.test/v1", undefined, 200],
+    ["https://api.test/v1", { method: "HEAD" }, 200],
+    ["https://api.test/v1/no-existe", undefined, 404],
+    ["https://api.test/v1/estados/", undefined, 308],
+    ["https://api.test/v1/estados", { method: "OPTIONS" }, 204],
+    ["https://api.test/v1/estados", { method: "POST" }, 405],
+    ["http://api.test/v1", undefined, 403],
+  ];
+
+  it("con X_ROBOTS_TAG, toda respuesta del Worker lo lleva", async () => {
+    for (const [url, init, estado] of casos) {
+      const respuesta = await manejar(
+        new Request(url, init),
+        entornoDe(crearAssets(), { X_ROBOTS_TAG: "noindex" }),
+      );
+      expect(respuesta.status, url).toBe(estado);
+      expect(respuesta.headers.get("x-robots-tag"), url).toBe("noindex");
+    }
+  });
+
+  it("también el 500, con y sin cuerpo", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const method of ["GET", "HEAD"]) {
+      const assets = crearAssets({}, { fallar: true });
+      const respuesta = await manejar(
+        peticion("/v1/estados", { method }),
+        entornoDe(assets, { X_ROBOTS_TAG: "noindex" }),
+      );
+      expect(respuesta.status, method).toBe(500);
+      expect(respuesta.headers.get("x-robots-tag"), method).toBe("noindex");
+    }
+    vi.restoreAllMocks();
+  });
+
+  it("sin X_ROBOTS_TAG, o vacía, ninguna lo lleva", async () => {
+    for (const extra of [{}, { X_ROBOTS_TAG: "" }]) {
+      for (const [url, init, estado] of casos) {
+        const respuesta = await manejar(new Request(url, init), entornoDe(crearAssets(), extra));
+        expect(respuesta.status, url).toBe(estado);
+        expect(respuesta.headers.get("x-robots-tag"), url).toBeNull();
+      }
+    }
+  });
+});
+
 describe("export por omisión", () => {
   it("delega en manejar", async () => {
     const assets = crearAssets();
