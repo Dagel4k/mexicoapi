@@ -123,7 +123,7 @@ describe("codigoAviso con los textos que da el núcleo", () => {
     // Cada productor del núcleo devuelve { codigo, texto }: el código no sale del texto.
     expect(avisoTransmisionCff(2030)).toEqual({
       codigo: "transmision-poder-ejecutivo",
-      texto: expect.stringMatching(/^En 2030 no se descuentan/),
+      texto: expect.stringMatching(/^En 2030 no se descuenta el 1o\. de octubre:/),
     });
     expect(
       avisoRespaldo("sat", "general", { desde: "2026-01-01", hasta: "2026-11-30" }, ["vacaciones"]),
@@ -234,7 +234,11 @@ describe("codigoAviso con los textos que da el núcleo", () => {
   });
 
   it("transmision-poder-ejecutivo: en un cálculo y en la lista del SAT", () => {
-    expect(codigoAviso(avisoTransmisionCff(2030).texto)).toBe("transmision-poder-ejecutivo");
+    // Cada variante del texto: solo octubre (2030), las dos fechas (2036) y solo diciembre (2072).
+    for (let anio = 2030; anio <= 2096; anio += 6) {
+      const { texto } = avisoTransmisionCff(anio);
+      expect(codigoAviso(texto), texto).toBe("transmision-poder-ejecutivo");
+    }
     const r = sumarDiasHabilesCurado(sat, {
       tipoPlazo: "declaraciones_pagos",
       desde: "2030-09-30",

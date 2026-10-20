@@ -905,7 +905,7 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
     ]);
   });
 
-  it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre de 2030", () => {
+  it("avisa de la transmisión del Poder Ejecutivo al pasar por el 1o. de octubre o de diciembre entre semana", () => {
     const aviso = avisoTransmisionCff(2030).texto;
     // El 1o. de octubre de 2030 (martes) cuenta como hábil: es el lado seguro, y se avisa.
     // Cambio: al final, que las vacaciones de 2030 no están publicadas.
@@ -914,9 +914,15 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       resultado: "2030-10-01",
       advertencias: [aviso, sinPublicar("2030-10-01")],
     });
+    // Cambio: el 1o. de diciembre de 2030 es domingo, ya inhábil, así que no se avisa.
     expect(sat("declaraciones_pagos", "2030-11-29", 1)).toMatchObject({
       resultado: "2030-12-02",
-      advertencias: [aviso, sinPublicar("2030-12-02")],
+      advertencias: [sinPublicar("2030-12-02")],
+    });
+    // El de 2036 es lunes: cuenta como hábil y se avisa.
+    expect(sat("declaraciones_pagos", "2036-11-28", 1)).toMatchObject({
+      resultado: "2036-12-01",
+      advertencias: [avisoTransmisionCff(2036).texto, sinPublicar("2036-12-01")],
     });
     expect(sat("declaraciones_pagos", "2030-10-01", 1).advertencias).toEqual([
       sinPublicar("2030-10-02"),
