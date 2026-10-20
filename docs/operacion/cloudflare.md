@@ -67,7 +67,7 @@ El mismo despliegue publica el sitio que genera el build (`/`, `/estado/`, `/llm
 
 Nada de eso invoca al Worker: los rastreadores que prueban rutas al azar no gastan la cuota diaria ni el límite por IP. Si un despliegue pierde `not_found_handling`, esas direcciones vuelven a llegar al Worker y el humo falla en `/v2`.
 
-`_headers` tiene una regla `/*` con `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000` y `Vary: Accept-Encoding`, que alcanza a todo lo que sirven los assets (también el 404 y las redirecciones), y una regla por archivo con su CSP, su caché y, en las descargas, CORS. Un 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas reglas: llevan sus propios encabezados.
+`_headers` tiene una regla `/*` con `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Strict-Transport-Security: max-age=31536000`, `Vary: Accept-Encoding`, `Permissions-Policy: camera=(), microphone=(), geolocation=()` y `Cross-Origin-Opener-Policy: same-origin`, que alcanza a todo lo que sirven los assets (también el 404 y las redirecciones), y una regla por archivo con su CSP, su caché y, en las descargas, CORS. Un 404 solo recibe la de `/*` y lleva su CSP en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas reglas: llevan sus propios encabezados.
 
 ### Frescura
 
