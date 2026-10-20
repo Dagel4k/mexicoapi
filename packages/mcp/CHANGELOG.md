@@ -22,6 +22,7 @@ Otros cambios:
 - Nuevo: `avisos` en el `structuredContent` de cada herramienta (y en `datos` de `sumar_dias_habiles`), requerido en su `outputSchema`: las mismas advertencias con un código estable, como en la API. El texto no cambia.
 - `dias_inhabiles` y `sumar_dias_habiles` con `sat`: el aviso de la transmisión del Poder Ejecutivo (2030 y cada seis años) solo sale por el 1o. de octubre o el 1o. de diciembre que caen de lunes a viernes, y su texto nombra solo esos. En 2030 un cálculo que cruza el 1o. de diciembre, que es domingo, ya no lo trae.
 - La caché de las respuestas de la API descuenta la edad con la que llegan (`Age`), no guarda las `no-cache` y deja de usar lo guardado de una consulta si la API responde `no-store` o `no-cache`, también como respaldo cuando la API falla.
+- El error por un parámetro desconocido muestra su nombre entre comillas, con los caracteres invisibles escapados, cuando tiene caracteres que no son letras, dígitos, `_`, `.` ni `-`. Es el mismo texto del `detail` de la API y del cliente de `mexicoapi`.
 - La fuente que citan los validadores es la página de `mexicoapi` en npm (https://www.npmjs.com/package/mexicoapi) en lugar del README de `main`, que puede describir otra versión.
 - `mcpName` en el `package.json` y `server.json` en el repositorio, para el registro oficial de servidores MCP (`io.github.Dagel4k/mexicoapi-mcp`).
 

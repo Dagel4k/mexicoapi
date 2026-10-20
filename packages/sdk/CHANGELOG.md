@@ -33,6 +33,7 @@ Correcciones:
 
 - Caché del cliente: descuenta de `max-age` y de la ventana de `stale-if-error` la edad con la que llega la respuesta (`Age`), así que una respuesta que pasó por otra caché no se usa más tiempo del que permite la API. No guarda las respuestas `no-cache`, y una respuesta `no-store` o `no-cache` deja sin usar lo que había guardado de esa consulta, también para `stale-if-error`.
 - El aviso `transmision-poder-ejecutivo` (SAT, 2030 y cada seis años) solo sale por el 1o. de octubre o el 1o. de diciembre que caen de lunes a viernes, y su texto nombra solo esos. En 2030 un cálculo que cruza el 1o. de diciembre, que es domingo, ya no lo trae, y el texto dice "no se descuenta el 1o. de octubre". `codigoAviso` reconoce el texto nuevo y el anterior.
+- El `detail` del error por un parámetro desconocido muestra su nombre entre comillas, con los caracteres invisibles escapados, cuando tiene caracteres que no son letras, dígitos, `_`, `.` ni `-`. La API, el cliente sin red y el servidor MCP dan el mismo texto.
 
 ## 0.1.0 (2026-10-18)
 
