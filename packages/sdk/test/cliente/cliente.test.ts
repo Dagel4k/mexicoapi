@@ -1555,6 +1555,33 @@ describe("respuesta guardada si la API falla (stale-if-error)", () => {
     expect(((await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError).status).toBe(500);
   });
 
+  it("una respuesta no-store o no-cache invalida la que había: no se sirve ni se revalida", async () => {
+    const casos = [
+      respuestaDatos([], { "Cache-Control": "no-store" }),
+      respuestaDatos([], { "Cache-Control": "no-cache", ETag: '"b"' }),
+      new Response(null, { status: 304, headers: { "Cache-Control": "no-store" } }),
+      new Response(null, { status: 304, headers: { "Cache-Control": "no-cache" } }),
+    ];
+    for (const segunda of casos) {
+      relojFalso();
+      const { fetch, llamadas } = fetchFalso(
+        respuestaDatos([SINALOA], { "Cache-Control": CONTROL, ETag: '"a"' }),
+        segunda,
+        errorInterno(),
+      );
+      const api = conFetch(fetch, { cache: true, reintentos: 0 });
+      await api.estados({ fuente: "api" });
+      vi.advanceTimersByTime(61_000);
+      const esperada = segunda.status === 304 ? [SINALOA] : [];
+      expect((await api.estados({ fuente: "api" })).data).toEqual(esperada);
+      // En el mismo milisegundo y dentro de los 600 s de stale-if-error de la primera.
+      const error = (await rechazo(api.estados({ fuente: "api" }))) as MexicoApiError;
+      expect(error.status).toBe(500);
+      expect(llamadas[2]?.init.headers).toEqual({ Accept: "application/json" });
+      vi.useRealTimers();
+    }
+  });
+
   it("la respuesta guardada sigue caducada: la siguiente consulta vuelve a la API", async () => {
     relojFalso();
     const { fetch, llamadas } = fetchFalso(
