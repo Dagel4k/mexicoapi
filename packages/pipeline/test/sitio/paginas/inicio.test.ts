@@ -9,7 +9,7 @@ import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { nodosDelSitio } from "../../../src/sitio/paginas/datos-estructurados.js";
 import { paginaEstado } from "../../../src/sitio/paginas/estado.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
-import { enlaceSeguro } from "../../../src/sitio/paginas/html.js";
+import { enlaceSeguro, etiquetasVerificacion } from "../../../src/sitio/paginas/html.js";
 import {
   CLABE_EJEMPLO,
   type DatasetInicio,
@@ -809,5 +809,21 @@ describe("formatos", () => {
     [1234567, "1,234,567"],
   ])("formatearEntero(%i) es %j", (n, texto) => {
     expect(formatearEntero(n)).toBe(texto);
+  });
+});
+
+describe("etiquetas de verificación de buscadores", () => {
+  it("sin código no sale ninguna", () => {
+    expect(html).not.toContain("google-site-verification");
+    expect(html).not.toContain("msvalidate.01");
+    expect(etiquetasVerificacion()).toBe("");
+  });
+
+  it("con código salen en la portada, escapadas", () => {
+    const con = paginaInicio(ENTRADA, PUBLICADO_EN_NPM, etiquetasVerificacion('a"b<c', "XYZ123"));
+    expect(con).toContain('<meta name="google-site-verification" content="a&quot;b&lt;c">');
+    expect(con).toContain('<meta name="msvalidate.01" content="XYZ123">');
+    esperarDocumentoValido(con);
+    expect(etiquetasVerificacion("", "solo")).toBe('<meta name="msvalidate.01" content="solo">\n');
   });
 });

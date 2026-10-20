@@ -6,6 +6,7 @@ import { parse } from "yaml";
 import { leerCoberturas, PREFIJO_TITULO, porVencer } from "../src/coberturas.js";
 import { CAPTURAS_PENDIENTES, interpretarIndiceDof, publicacionesPorCapturar } from "../src/dof.js";
 import { DATASETS } from "../src/registro.js";
+import { LLAVE_INDEXNOW } from "../src/sitio/indexacion.js";
 import { leerFixture } from "./ayudas.js";
 
 // Los workflows del bot no corren código del repo para saber qué carpetas puede tocar cada grupo:
@@ -796,5 +797,35 @@ describe("registro oficial de MCP en publicacion.yml", () => {
     }
     // registro-mcp lee el server.json del commit del Release, el que revisó preparar.
     expect(enRegistro.run).toContain(`if [ "$(git rev-parse HEAD)" != "\${GITHUB_SHA}" ]; then`);
+  });
+});
+
+describe("aviso a IndexNow en despliegue.yml", () => {
+  it("solo en producción, después del humo, sin romper el despliegue y con la llave del sitio", async () => {
+    const wf = await workflow("despliegue.yml");
+    const pasos = wf.jobs.desplegar?.steps ?? [];
+    const nombres = pasos.map((p) => p.name);
+    const indexnow = paso(wf, "desplegar", "Avisar a IndexNow") as Paso & {
+      "continue-on-error"?: boolean;
+      "timeout-minutes"?: number;
+      if?: string;
+    };
+    expect(nombres.indexOf("Avisar a IndexNow")).toBeGreaterThan(
+      nombres.indexOf("Prueba de humo en producción"),
+    );
+    expect(indexnow.if).toContain("steps.humo_prod.outputs.ok == 'true'");
+    expect(indexnow["continue-on-error"]).toBe(true);
+    expect(indexnow["timeout-minutes"]).toBe(3);
+    expect(indexnow.env?.LLAVE_INDEXNOW).toBe(LLAVE_INDEXNOW);
+    expect(indexnow.env?.URL_PROD).toBe(expresion("steps.conf_prod.outputs.url"));
+    const run = indexnow.run ?? "";
+    expect(run).not.toContain("${{");
+    expect(run).toContain("https://api.indexnow.org/indexnow");
+    expect(run).toContain("curl -fsS --max-time 30");
+    expect(run).toContain("head -n 10000");
+    expect(run).toContain("keyLocation");
+    // Es el único paso que avisa, y no toca staging.
+    expect(pasos.filter((p) => (p.run ?? "").includes("api.indexnow.org"))).toHaveLength(1);
+    expect(run).not.toContain("URL_STAGING");
   });
 });

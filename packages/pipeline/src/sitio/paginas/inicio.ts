@@ -14,7 +14,7 @@ import {
 import { describir } from "./catalogo.js";
 import { nodosDelSitio } from "./datos-estructurados.js";
 import { RUTA_DIAS_LFT } from "./dias-inhabiles.js";
-import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
+import { documento, enlaceSeguro, escaparHtml, etiquetasVerificacion, navegacion } from "./html.js";
 
 export { formatearEntero, tamanoLegible } from "./bloques.js";
 
@@ -362,7 +362,11 @@ const REFERENCIA = `<section id="referencia" aria-labelledby="titulo-referencia"
 export const RUTA_INICIO = "/";
 
 /** `index.html`: qué es, cómo empezar, qué datos hay, las descargas y la referencia. */
-export function paginaInicio(entrada: EntradaInicio, publicado = PUBLICADO_EN_NPM): string {
+export function paginaInicio(
+  entrada: EntradaInicio,
+  publicado = PUBLICADO_EN_NPM,
+  verificacion = etiquetasVerificacion(),
+): string {
   const ruta = RUTA_INICIO;
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
@@ -387,5 +391,6 @@ ${REFERENCIA}
     ruta,
     scripts: ["/sitio.js"],
     datosEstructurados: nodosDelSitio(),
+    verificacion,
   });
 }

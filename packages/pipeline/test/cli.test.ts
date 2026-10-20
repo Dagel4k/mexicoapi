@@ -323,6 +323,7 @@ describe("construir", { timeout: PRUEBA_LENTA }, () => {
     expect(entorno.salida.join("")).toContain("sitio:");
     expect((await readdir(salida)).sort()).toEqual([
       "404.html",
+      "51b257ee324a98da1d1e5d6bd8094a98.txt",
       "_headers",
       "bancos-clabe",
       "calculadora-dias-habiles",
