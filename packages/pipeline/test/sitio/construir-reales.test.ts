@@ -412,6 +412,7 @@ describe("con los datos reales del repositorio", () => {
       ((await leerJson(join(salida, ruta))) as { data: T }).data;
     const pagina = (ruta: string) => readFile(join(salida, ruta.slice(1), "index.html"), "utf8");
     const sitemap = await readFile(join(salida, "sitemap.xml"), "utf8");
+    const portada = await readFile(join(salida, "index.html"), "utf8");
     for (const ruta of [
       "/tipo-de-cambio-fix/",
       "/udis/",
@@ -420,6 +421,8 @@ describe("con los datos reales del repositorio", () => {
       "/tarifas-isr/",
     ]) {
       expect(sitemap, ruta).toContain(`<loc>${URL_API}${ruta}</loc>`);
+      // La portada las enlaza desde la tabla de datos y desde "Consultar los datos".
+      expect(portada.split(`href="${ruta}"`).length - 1, ruta).toBeGreaterThanOrEqual(2);
     }
     // FIX: el último valor del último año, el de `/v1/tipo-cambio/fix/ultimo`.
     const fixes = (await leerJson(join(salida, "v1/_internos/fix/2026.json"))) as {
