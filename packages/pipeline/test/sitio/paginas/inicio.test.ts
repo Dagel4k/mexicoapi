@@ -234,22 +234,47 @@ describe("página de inicio", () => {
         descripcion: "Los del artículo 74.",
         dataset: null,
       },
+      // Una página hija no va en la lista: se llega a ella desde su superior.
+      {
+        ruta: "/uma/2026/",
+        h1: "UMA 2026",
+        descripcion: "La de 2026.",
+        dataset: "constantes.uma",
+        superior: "/uma/",
+      },
     ];
     const conPaginas = paginaInicio({ ...ENTRADA, paginas });
     esperarDocumentoValido(conPaginas);
     const [estados, uma] = renglones(conPaginas, "tabla-datos") as [string, string];
+    // El nombre lleva a la página y "Documentación" a la del repositorio: dos textos distintos.
+    const docs = DATASETS.find((d) => d.id === "constantes.uma")?.docs as string;
     expect(uma).toContain(
-      '<span class="id">constantes.uma</span><span class="detalle"><a href="/uma/">UMA 2026 &amp; 2025</a></span><span class="detalle">Curado</span></th>',
+      `<th scope="row" role="rowheader"><a href="/uma/">UMA</a><span class="id">constantes.uma</span><span class="detalle"><a href="${docs}">Documentación<span class="oculto"> de UMA</span></a></span><span class="detalle">Curado</span></th>`,
     );
+    expect(uma).not.toContain("/uma/2026/");
     expect(estados).not.toContain("/uma/");
+    expect(estados).toContain(
+      '>Estados</a><span class="id">inegi.estados</span><span class="detalle">Automático</span></th>',
+    );
     const inicio = conPaginas.indexOf('<section id="consultar-datos"');
     const seccion = conPaginas.slice(inicio, conPaginas.indexOf("</section>", inicio));
     expect(seccion).toContain('<h2 id="titulo-consultar-datos">Consultar los datos</h2>');
+    expect(seccion).toContain(
+      "<p>Una página por tema, con su fuente oficial y cómo pedir los datos por API, npm o descarga.</p>",
+    );
     expect(seccion).toContain(
       '<dt><a href="/uma/">UMA 2026 &amp; 2025</a></dt>\n<dd>La UMA &lt;diaria&gt;, mensual y anual.</dd>',
     );
     expect(seccion).toContain(
       '<dt><a href="/dias-de-descanso-obligatorio/">Días de descanso obligatorio 2026 y 2027 (LFT)</a></dt>',
+    );
+    expect(seccion).not.toContain("/uma/2026/");
+    // La frase de la LFT en Descargas lleva a su página, si está.
+    const conLft = new Map(DESCARGAS);
+    conLft.set("dias-inhabiles-lft.json", "[]");
+    conLft.set("dias-inhabiles-lft.csv", "");
+    expect(paginaInicio({ ...ENTRADA, descargas: conLft, paginas })).toContain(
+      'están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100. Los de cada año, en <a href="/dias-de-descanso-obligatorio/">Días de descanso obligatorio 2026 y 2027 (LFT)</a>.',
     );
     // Antes de la tabla de datos; sin páginas no hay sección.
     expect(inicio).toBeLessThan(conPaginas.indexOf('<section id="datos"'));
