@@ -42,8 +42,9 @@ import {
   DATASET_LFT,
   diasLft,
 } from "./calendarios.js";
-import { porNombre } from "./comun.js";
+import { PUBLICADO_EN_NPM, porNombre } from "./comun.js";
 import { aCsv } from "./csv.js";
+import { LLAVE_INDEXNOW } from "./indexacion.js";
 import {
   type AniosConstantes,
   FRESCURA_HORAS,
@@ -540,8 +541,9 @@ export async function construirSitio(opciones: {
       ...[...registro.values()].map((p) => ({ ruta: p.ruta, lastmod: fechaDelSitemap(p) })),
     ]),
   );
-  archivos.set("llms.txt", archivoLlms(datasets));
-  archivos.set("llms-full.txt", archivoLlmsCompleto(await docsCompletas()));
+  archivos.set("llms.txt", archivoLlms(datasets, PUBLICADO_EN_NPM, [...registro.values()]));
+  archivos.set("llms-full.txt", archivoLlmsCompleto(await docsCompletas(), [...registro.values()]));
+  archivos.set(`${LLAVE_INDEXNOW}.txt`, LLAVE_INDEXNOW);
 
   await escribirDirectorioAtomico(opciones.salida, archivos);
 

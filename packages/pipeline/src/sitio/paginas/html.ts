@@ -1,4 +1,5 @@
 import { URL_API } from "@mexicoapi/core/problemas";
+import { VERIFICACION_BING, VERIFICACION_GOOGLE } from "../indexacion.js";
 import { URL_ARCHIVOS, URL_REPO } from "../meta.js";
 import { CSP_404 } from "./encabezados.js";
 import { FONDO } from "./estilo.js";
@@ -93,6 +94,19 @@ const PIE = `<footer class="pie">
 </div>
 </footer>`;
 
+/** Los `<meta>` de verificación de los buscadores que tienen código; vacío si ninguno. */
+export function etiquetasVerificacion(
+  google: string = VERIFICACION_GOOGLE,
+  bing: string = VERIFICACION_BING,
+): string {
+  const etiqueta = (nombre: string, valor: string): string =>
+    valor === ""
+      ? ""
+      : `<meta name="${nombre}" content="${escaparHtml(valor)}">
+`;
+  return etiqueta("google-site-verification", google) + etiqueta("msvalidate.01", bing);
+}
+
 export interface Documento {
   titulo: string;
   descripcion: string;
@@ -116,6 +130,8 @@ export interface Documento {
    * solo bloque JSON-LD con `@graph`. Es un bloque de datos: no se ejecuta y la CSP no lo bloquea.
    */
   datosEstructurados?: readonly Readonly<Record<string, unknown>>[];
+  /** `<meta>` de verificación de buscadores, ya armados y escapados (`etiquetasVerificacion`). */
+  verificacion?: string;
 }
 
 const SEGURIDAD_EN_META = `<meta http-equiv="Content-Security-Policy" content="${CSP_404}">
@@ -167,6 +183,7 @@ export function documento({
   scripts = [],
   seguridadEnMeta = false,
   datosEstructurados,
+  verificacion = "",
 }: Documento): string {
   if ([...descripcion].length > MAXIMO_DESCRIPCION) {
     throw new Error(`la descripción pasa de ${MAXIMO_DESCRIPCION} caracteres: ${descripcion}`);
@@ -184,7 +201,7 @@ export function documento({
 ${seguridadEnMeta ? SEGURIDAD_EN_META : ""}<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escaparHtml(titulo)}</title>
 <meta name="description" content="${escaparHtml(descripcion)}">
-${indexacion}${TEMA}<meta name="color-scheme" content="light dark">
+${indexacion}${verificacion}${TEMA}<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/estilo.css">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${modulos.join("")}${bloqueJsonLd(datosEstructurados)}</head>

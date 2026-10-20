@@ -194,6 +194,36 @@ jobs:
             echo "ok=false" >> "${GITHUB_OUTPUT}"
           fi
 
+      # Avisa a los buscadores (IndexNow) de las URL del sitemap de producción. Solo producción, y
+      # nunca rompe el despliegue: si el aviso falla, la corrida sigue en verde.
+      - name: Avisar a IndexNow
+        id: indexnow
+        if: steps.cf.outputs.tiene_cf == 'true' && steps.humo_prod.outputs.ok == 'true'
+        timeout-minutes: 3
+        continue-on-error: true
+        env:
+          URL_PROD: ${{ steps.conf_prod.outputs.url }}
+          LLAVE_INDEXNOW: 51b257ee324a98da1d1e5d6bd8094a98
+          SALIDA_DIR: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          host="${URL_PROD#https://}"
+          curl -fsS --max-time 30 "${URL_PROD}/sitemap.xml" -o "${SALIDA_DIR}/sitemap.xml"
+          grep -o '<loc>[^<]*</loc>' "${SALIDA_DIR}/sitemap.xml" | sed -e 's#^<loc>##' -e 's#</loc>$##' | grep -E '^https://[A-Za-z0-9._~:/?#@!$&=+%-]+$' | head -n 10000 > "${SALIDA_DIR}/urls.txt"
+          if [ ! -s "${SALIDA_DIR}/urls.txt" ]; then
+            echo "::warning::El sitemap no trae URL; no se avisa a IndexNow."
+            exit 1
+          fi
+          jq -Rn --arg host "${host}" --arg key "${LLAVE_INDEXNOW}" --arg loc "https://${host}/${LLAVE_INDEXNOW}.txt"             '{host: $host, key: $key, keyLocation: $loc, urlList: [inputs]}' < "${SALIDA_DIR}/urls.txt" > "${SALIDA_DIR}/indexnow.json"
+          estado=0
+          codigo="$(curl -fsS --max-time 30 -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json; charset=utf-8' --data @"${SALIDA_DIR}/indexnow.json" https://api.indexnow.org/indexnow)" || estado=$?
+          {
+            echo "### IndexNow"
+            echo
+            echo "- Aviso de $(wc -l < "${SALIDA_DIR}/urls.txt") URL a api.indexnow.org: HTTP ${codigo:-sin respuesta}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit "${estado}"
+
       # En el primer despliegue no hay versión anterior y el rollback falla: el resumen lo dice.
       - name: Revertir producción
         id: rollback

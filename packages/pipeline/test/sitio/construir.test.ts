@@ -30,6 +30,7 @@ import { ErrorDatos } from "../../src/errores.js";
 import { DATASETS } from "../../src/registro.js";
 import { coberturasDe, diasLft } from "../../src/sitio/calendarios.js";
 import { construirSitio } from "../../src/sitio/construir.js";
+import { LLAVE_INDEXNOW } from "../../src/sitio/indexacion.js";
 import { FRESCURA_HORAS, type Meta, type MetaInterna, URL_DOCS } from "../../src/sitio/meta.js";
 import {
   RUTA_BANCOS,
@@ -238,6 +239,7 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(archivos).toEqual(
       [
         "404.html",
+        "51b257ee324a98da1d1e5d6bd8094a98.txt",
         "_headers",
         "descargas/SHA256SUMS",
         "descargas/bancos-historial.csv",
@@ -919,6 +921,11 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
     expect(await readFile(join(salida, "404.html"), "utf8")).toBe(paginaNoEncontrada());
     expect(await readFile(join(salida, "estilo.css"), "utf8")).toBe(ESTILO);
     expect(await readFile(join(salida, "robots.txt"), "utf8")).toBe(ROBOTS);
+    expect(await readFile(join(salida, `${LLAVE_INDEXNOW}.txt`), "utf8")).toBe(LLAVE_INDEXNOW);
+    const llms = await readFile(join(salida, "llms.txt"), "utf8");
+    expect(llms).toContain(`](${URL_API}/uma/)`);
+    expect(llms).not.toContain("/municipios/01-aguascalientes/");
+    expect(await readFile(join(salida, "llms-full.txt"), "utf8")).toContain(`](${URL_API}/uma/)`);
     expect(await readFile(join(salida, "favicon.svg"), "utf8")).toBe(FAVICON);
   });
 

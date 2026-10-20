@@ -11,6 +11,8 @@
  * reciben estas reglas; ponen sus propios encabezados (`respuestas.ts` de la API).
  */
 
+import { RUTA_LLAVE_INDEXNOW } from "../indexacion.js";
+
 type Encabezados = readonly (readonly [string, string])[];
 
 interface Regla {
@@ -76,6 +78,7 @@ const REGLAS_SITIO: readonly Regla[] = [
   sitio("/sitio.js", CSP_ARCHIVOS, CACHE_SITIO),
   sitio("/favicon.svg", CSP_ARCHIVOS, "public, max-age=86400"),
   sitio("/robots.txt", CSP_ARCHIVOS, "public, max-age=86400"),
+  sitio(RUTA_LLAVE_INDEXNOW, CSP_ARCHIVOS, "public, max-age=86400", TEXTO_PARA_TODOS),
   // Su lastmod cambia con los datos.
   sitio("/sitemap.xml", CSP_ARCHIVOS, "public, max-age=3600", [
     ["Content-Type", "application/xml; charset=utf-8"],

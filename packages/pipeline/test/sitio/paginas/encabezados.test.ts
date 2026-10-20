@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RUTA_LLAVE_INDEXNOW } from "../../../src/sitio/indexacion.js";
 import {
   archivoEncabezados,
   CSP_PAGINAS,
@@ -38,6 +39,14 @@ const SEGURIDAD = {
 };
 const NINGUNO = "default-src 'none'";
 
+describe("_headers de la llave de IndexNow", () => {
+  it("se sirve como texto plano con la caché de robots.txt", () => {
+    const llave = efectivos(RUTA_LLAVE_INDEXNOW);
+    expect(llave["content-type"]).toBe("text/plain; charset=utf-8");
+    expect(llave["cache-control"]).toBe(efectivos("/robots.txt")["cache-control"]);
+  });
+});
+
 describe("_headers", () => {
   it("respeta los límites de Cloudflare: 100 reglas y 2,000 caracteres por línea", () => {
     expect(reglas.length).toBeLessThanOrEqual(100);
@@ -60,6 +69,7 @@ describe("_headers", () => {
       "/sitio.js",
       "/favicon.svg",
       "/robots.txt",
+      RUTA_LLAVE_INDEXNOW,
       "/sitemap.xml",
       "/llms.txt",
       "/llms-full.txt",
