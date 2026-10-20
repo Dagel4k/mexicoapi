@@ -196,7 +196,7 @@ describe("publicacionesPorCapturar", () => {
         {
           codigo: "5800157",
           titulo:
-            "Segunda  Resolución de Modificaciones a la\nResolución Miscelánea Fiscal `para` 2026 y Anexo 2.",
+            "Segunda  Resolución de Modificaciones a la\nResolución Miscelánea Fiscal `para` 2026\u2028y Anexo 2.",
           edicion: "vespertina",
         },
       ],
