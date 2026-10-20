@@ -4,7 +4,7 @@ Los paquetes `mexicoapi` (`packages/sdk`) y `mexicoapi-mcp` (`packages/mcp`, el 
 
 Estado al 2026-10-18: el Environment `npm` (con revisor obligatorio y solo las etiquetas `mexicoapi@*` y `mexicoapi-mcp@*`) y el ruleset de esas etiquetas ya están configurados; falta la primera publicación a mano de cada paquete y su publicador de confianza.
 
-Este documento dice cómo se arma cada paquete, qué hay que preparar en npm una sola vez, cómo se publica a mano la primera versión, cómo se configura el publicador de confianza, cómo se corta cada versión después y qué revisa el workflow. `mexicoapi-mcp` depende de `mexicoapi`, así que siempre se publica después.
+Este documento dice cómo se arma cada paquete, qué hay que preparar en npm una sola vez, cómo se publica a mano la primera versión, cómo se configura el publicador de confianza, cómo se corta cada versión después, qué revisa el workflow y cómo registra el servidor en el registro oficial de MCP. `mexicoapi-mcp` depende de `mexicoapi`, así que siempre se publica después.
 
 ## Cómo se arma `mexicoapi`
 
@@ -128,13 +128,13 @@ Para `mexicoapi`:
 
 1. Se publica `mexicoapi@<versión>` con su Release, como arriba.
 2. Un PR sube la versión *patch* de `packages/mcp/package.json`, pone la misma en `version` y en `packages[0].version` de `packages/mcp/server.json` (una prueba exige que coincidan) y agrega a `packages/mcp/CHANGELOG.md` su sección con fecha; si el patch solo sube el piso de `mexicoapi`, basta una línea que lo diga (por ejemplo, "Sube la dependencia a `mexicoapi` ^0.1.1."). Con ese commit integrado y CI en verde se crea el Release `mexicoapi-mcp@<versión>`. El workflow arma el servidor con `publicable.ts --publicar`, que pone la dependencia en `^<versión nueva>` y se niega si el paso 1 no está en npm.
-3. Con `mexicoapi-mcp@<versión>` ya en npm, se registra esa versión en el registro oficial de servidores MCP con `packages/mcp/server.json` (`io.github.Dagel4k/mexicoapi-mcp`, el `mcpName` del `package.json`); los pasos del registro se documentarán aparte.
+3. Con `mexicoapi-mcp@<versión>` ya en npm, el job `registro-mcp` del mismo workflow registra esa versión en el registro oficial de servidores MCP con `packages/mcp/server.json` (`io.github.Dagel4k/mexicoapi-mcp`, el `mcpName` del `package.json`). Los detalles, y cómo registrarla a mano si hace falta, están en [Registro oficial de MCP](#registro-oficial-de-mcp).
 
 El motivo: `^` basta para las instalaciones nuevas, pero npx guarda lo que instaló y no actualiza las dependencias de un paquete que no cambió de versión. Quien ya usó `npx -y mexicoapi-mcp` seguiría con los datos viejos. Con el *patch* del servidor, npx ve una versión nueva de `mexicoapi-mcp` cuyo piso ya no cumple la instalación vieja, y la reinstala con la `mexicoapi` nueva. Una versión menor de `mexicoapi` (0.2.0) queda fuera de `^0.1.0` y sigue la misma regla: el servidor sale con `^0.2.0`.
 
 ## Qué revisa `publicacion.yml`
 
-Corre con cada Release publicado y tiene dos jobs. `preparar` no puede publicar (no tiene `id-token`) y revisa, en este orden; la primera revisión que falla detiene la corrida sin publicar nada:
+Corre con cada Release publicado y tiene tres jobs: `preparar`, `publicar` y, solo con `mexicoapi-mcp`, `registro-mcp` (ver [Registro oficial de MCP](#registro-oficial-de-mcp)). `preparar` no puede publicar (no tiene `id-token`) y revisa, en este orden; la primera revisión que falla detiene la corrida sin publicar nada:
 
 | Revisión | Si falla |
 | --- | --- |
@@ -142,6 +142,7 @@ Corre con cada Release publicado y tiene dos jobs. `preparar` no puede publicar 
 | La etiqueta es `mexicoapi@X.Y.Z` o `mexicoapi-mcp@X.Y.Z` y el Release no es pre-release. Por ahora no se publican pre-versiones. | Borra el Release y su etiqueta (`gh release delete <etiqueta> --cleanup-tag`) y créalo bien. |
 | El `package.json` del paquete tiene ese nombre y esa versión. | El Release está sobre un commit anterior al PR de la versión: bórralo y créalo sobre el commit correcto. |
 | El primer encabezado del `CHANGELOG.md` es `## <versión> (AAAA-MM-DD)`. | Falta la sección o todavía dice "(sin publicar)": se arregla en un PR y se crea el Release otra vez sobre el commit nuevo. |
+| Con `mexicoapi-mcp`, `version` y `packages[0].version` de `packages/mcp/server.json` son la versión de la etiqueta, y `mexicoapi-mcp` es su único paquete. Es lo que `registro-mcp` sube después al registro de MCP. | Se corrige `server.json` en un PR y se crea el Release otra vez sobre el commit nuevo. |
 | La corrida más reciente del check `verify` de `ci.yml` terminó en verde en ese commit. | Si todavía corre, espera a que termine y usa Re-run all jobs. Si falló, se arregla en un PR. Si el commit no tiene `verify`, no es el último de un push a `main`. |
 | npm: el paquete existe y la versión es mayor que todas las publicadas (`npm view <paquete> versions`). | Si el paquete no existe (404), la corrida termina en verde con un aviso y no publica: la primera versión va a mano. Si la versión ya está o es menor, sube la versión en un PR nuevo. Si npm no responde, Re-run all jobs. |
 | Instala solo el paquete y lo que usa (`pnpm install --frozen-lockfile --filter "<paquete>..."`), lo compila y lo arma con su `publicable.ts`; `mexicoapi-mcp` con `--publicar`, que exige `mexicoapi@<versión de packages/sdk>` en npm. | Lo mismo que en el job `paquete` de CI. En `mexicoapi-mcp`, publica antes esa versión de `mexicoapi`. |
@@ -151,3 +152,40 @@ Corre con cada Release publicado y tiene dos jobs. `preparar` no puede publicar 
 Re-run all jobs vuelve a correr sobre el mismo commit. Si el arreglo necesita un commit nuevo, borra el Release y su etiqueta y créalos otra vez sobre ese commit: mientras la versión no esté en npm, el número se puede reutilizar.
 
 Las revisiones de la etiqueta, el `package.json`, el historial, `verify` y npm están en `packages/sdk/scripts/liberacion.ts`, con sus pruebas. El workflow no usa caché, fija cada acción por SHA y corre una vez a la vez, sea cual sea la etiqueta: dos versiones no compiten por `latest`, y la segunda espera a la primera.
+
+## Registro oficial de MCP
+
+El [registro oficial de servidores MCP](https://registry.modelcontextprotocol.io) es el catálogo del que leen los clientes de MCP y otros directorios de servidores. `mexicoapi-mcp` va en él como `io.github.Dagel4k/mexicoapi-mcp`, con lo que dice `packages/mcp/server.json`. El registro no guarda el paquete: apunta a la versión de npm y, antes de aceptarla, revisa que el `mcpName` de esa versión en npm sea el `name` de `server.json`. Por eso se registra después de publicar en npm. La 0.1.0 no trae `mcpName` y no se puede registrar; la primera es la 0.2.0.
+
+El job `registro-mcp` de `publicacion.yml` lo hace solo:
+
+- Corre con etiquetas `mexicoapi-mcp@*` y solo si `publicar` terminó bien.
+- Tiene `contents: read` e `id-token: write`, sin secretos y fuera del Environment `npm`. El publicador de confianza de npm exige ese Environment, así que el token de OIDC de este job no sirve para publicar en npm, y `mcp-publisher` nunca corre en el job que sí puede hacerlo.
+- Revisa que el checkout sea el commit del Release y que `server.json` traiga su versión, lo mismo que ya revisó `preparar`.
+- Baja `mcp-publisher` 1.8.1 (`mcp-publisher_linux_amd64.tar.gz`, del [release de modelcontextprotocol/registry](https://github.com/modelcontextprotocol/registry/releases/tag/v1.8.1), con licencia Apache-2.0) y revisa su sha256 antes de extraerlo.
+- Espera hasta 10 minutos a que npm muestre la versión: consulta `npm view mexicoapi-mcp@<versión> version` cada 15 segundos.
+- Entra con `mcp-publisher login github-oidc`. El registro da el espacio `io.github.Dagel4k/*` al dueño del repositorio que dice el token de OIDC, así que no hay nada que configurar.
+- Publica con `mcp-publisher publish packages/mcp/server.json` y deja en el resumen de la corrida el enlace para comprobarlo.
+
+Para comprobarlo a mano: `curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Dagel4k/mexicoapi-mcp"`.
+
+Si algo falla, el job queda en rojo y su resumen lo explica, pero la versión ya está en npm y eso no cambia. Re-run failed jobs repite solo `registro-mcp`.
+
+| Error | Qué hacer |
+| --- | --- |
+| La versión no aparece en npm después de 10 minutos | Cuando `npm view mexicoapi-mcp@<versión> version` la muestre, usa Re-run failed jobs. |
+| `invalid audience` | `mcp-publisher` quedó viejo para el registro: sube su versión en un PR (abajo) y registra esta versión a mano. Re-run failed jobs correría la versión vieja. |
+| El registro rechaza el paquete o su `mcpName` | `npm view mexicoapi-mcp@<versión> mcpName` debe dar `io.github.Dagel4k/mexicoapi-mcp`. Si da otra cosa, esa versión no se puede registrar y el arreglo va en la siguiente. |
+| `cannot publish duplicate version` | La versión ya estaba registrada: no hay nada que hacer. |
+
+Para subir la versión de `mcp-publisher`, elige un release de modelcontextprotocol/registry publicado hace al menos 7 días, toma el sha256 de `mcp-publisher_linux_amd64.tar.gz` de su `registry_<versión>_checksums.txt` y cambia `MCP_PUBLISHER_VERSION` y `MCP_PUBLISHER_SHA256` en `publicacion.yml` y en la prueba que los fija (`packages/pipeline/test/workflows.test.ts`).
+
+### Registro a mano
+
+Si el OIDC de GitHub Actions no estuviera disponible, o para registrar una versión que el job no pudo, se registra desde tu equipo con la cuenta `Dagel4k`:
+
+1. Baja `mcp-publisher` 1.8.1 para tu sistema (en Windows, `mcp-publisher_windows_amd64.tar.gz`) del release, compara su sha256 con el de `registry_1.8.1_checksums.txt` (`sha256sum` en Git Bash o `certutil -hashfile <archivo> SHA256`) y extrae el binario. Sin `curl | sh` ni `latest`.
+2. Ve al commit del Release: `git switch --detach mexicoapi-mcp@<versión>`.
+3. `mcp-publisher login github`: abre https://github.com/login/device, escribe el código que muestra y autoriza con la cuenta `Dagel4k`, dueña del espacio `io.github.Dagel4k/*`.
+4. `mcp-publisher publish packages/mcp/server.json`. Igual que en el job, la versión tiene que estar ya en npm.
+5. `mcp-publisher logout` borra el token que guardó el paso 3. Comprueba con el `curl` de arriba.
