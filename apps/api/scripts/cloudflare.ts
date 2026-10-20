@@ -605,8 +605,7 @@ async function configurar(
   // Antes de ir a Cloudflare: sin el build no hay qué desplegar.
   if (destino === "staging") {
     const copia = await prepararAssetsStaging(entorno.raizApi, base);
-    entorno.escribirError(`configurar: assets de staging en ${copia} (X-Robots-Tag: noindex)
-`);
+    entorno.escribirError(`configurar: assets de staging en ${copia} (X-Robots-Tag: noindex)\n`);
   }
   const kvId = await resolverNamespace(c);
   const sub = await subdominio(c);
