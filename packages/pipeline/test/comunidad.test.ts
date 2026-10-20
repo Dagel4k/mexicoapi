@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { URL_API, URL_REPOSITORIO } from "@mexicoapi/core/problemas";
 import { metaLft } from "@mexicoapi/core/rutas";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -55,5 +56,27 @@ describe("formulario de fallo", () => {
     const ids = form.body.flatMap((b) => (b.id ? [b.id] : []));
     expect(new Set(ids).size).toBe(ids.length);
     expect(form.body.find((b) => b.id === "componente")?.validations?.required).toBe(true);
+  });
+});
+
+describe("CITATION.cff", () => {
+  const raiz = (archivo: string) =>
+    readFileSync(new URL(`../../../${archivo}`, import.meta.url), "utf8");
+
+  it("cita MéxicoAPI con su sitio, su repositorio y la licencia del código", () => {
+    const cff = parse(raiz("CITATION.cff")) as Record<string, unknown>;
+    expect(cff["cff-version"]).toBe("1.2.0");
+    expect(typeof cff.message).toBe("string");
+    expect(cff.title).toBe("MéxicoAPI");
+    expect(cff.authors).toEqual([{ "given-names": "Daniel", "family-names": "Pereda" }]);
+    expect(cff["repository-code"]).toBe(URL_REPOSITORIO);
+    expect(cff.url).toBe(URL_API);
+    // Lo que aporta el proyecto va con la licencia del código (DATA_LICENSE.md).
+    expect(cff.license).toBe("MIT");
+    expect(raiz("LICENSE")).toMatch(/^MIT License\n/);
+  });
+
+  it("no lleva correos", () => {
+    expect(raiz("CITATION.cff")).not.toMatch(/@|email/i);
   });
 });

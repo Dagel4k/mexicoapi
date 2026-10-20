@@ -1,8 +1,26 @@
 # Licencia de los datos
 
-El código de este repositorio se publica bajo la licencia [MIT](LICENSE). Los datos de `data/` no son del proyecto: son datos oficiales que conservan los términos de la institución que los publica. Esta página dice de dónde viene cada uno, qué términos aplican y qué hace MéxicoAPI con ellos.
+El código de este repositorio se publica bajo la licencia [MIT](LICENSE). Los datos oficiales de `data/` no son del proyecto: conservan los términos de la institución que los publica, y lo que aporta MéxicoAPI va con la licencia del código. Esta página dice de dónde viene cada uno, qué términos aplican, qué hace MéxicoAPI con ellos y cómo citarlo.
 
 Cada dataset trae en su `manifest.json` la fuente, la URL de los términos y la cita; los automáticos, además, el hash de los archivos de `raw/`. Casi todos esos archivos son la respuesta de la fuente tal como se descargó. La excepción es `data/bancos/raw/cep-historico.json`: es una compilación de MéxicoAPI con las respuestas mensuales del CEP, que conserva la primera, la última y cada mes cuya lista cambió.
+
+## Lo que aporta MéxicoAPI
+
+Lo que no viene de una fuente sino del proyecto se publica con la misma licencia [MIT](LICENSE) que el código: las compilaciones (como `data/bancos/raw/cep-historico.json`), el `historial` de bancos, la transcripción de las publicaciones del DOF en los YAML de `data/curado/` (su selección, su estructura y los campos que agrega MéxicoAPI) y los manifiestos. Puedes usarlo, redistribuirlo y venderlo con el aviso de copyright y el texto de la licencia. Los datos oficiales que contienen, y los fragmentos citados, siguen con los términos de su fuente, que se dicen abajo, y su cita va siempre.
+
+## Cómo citar MéxicoAPI
+
+Cita la fuente oficial del dataset, di que los datos fueron procesados por MéxicoAPI y agrega el identificador del dataset, su `as_of` y su `data_sha256`: con eso se sabe exactamente qué versión usaste. Por ejemplo:
+
+```text
+Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y
+Localidades. Procesado por MéxicoAPI (https://mexicoapi.dagel4k.workers.dev), dataset
+inegi.municipios, as_of 2026-10-17, sha256 b4801a8ccc5345da84306e6be54e595d147a127f92509a81b7b1161c8c545503.
+```
+
+`as_of` viene en `meta` de cada respuesta de la API. `data_sha256` está en el `.manifest.json` de cada descarga, en `data/<dataset>/manifest.json` y, en los datasets que actualiza el bot, en `/v1/status`. Los valores de este ejemplo cambian con cada actualización.
+
+Para citar el proyecto en general, por ejemplo en un trabajo académico, usa [`CITATION.cff`](CITATION.cff); GitHub lo ofrece en "Cite this repository".
 
 ## Descargas y API
 
@@ -13,7 +31,7 @@ Las descargas de `/descargas/` (JSON, CSV y SQLite) y las respuestas de la API s
 - Datasets: `data/inegi-estados/` y `data/inegi-municipios/`.
 - Publica: Instituto Nacional de Estadística y Geografía (INEGI), Catálogo Único de Claves de Áreas Geoestadísticas.
 - Términos: https://www.inegi.org.mx/inegi/terminos.html. El INEGI permite el uso libre de su información y exige darle el crédito.
-- Cita: "Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades." Si usas estos datos, cita al INEGI como fuente y aclara que fueron procesados por MéxicoAPI.
+- Cita: "Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades." Si usas estos datos, cita al INEGI como fuente y aclara que fueron procesados por MéxicoAPI ([cómo citarlo](#cómo-citar-méxicoapi)).
 - Qué hace MéxicoAPI: normaliza los textos a NFC, quita espacios sobrantes, conserva solo algunos campos (clave, nombre, abreviatura, cabecera), ordena por clave y guarda las claves como texto con ceros a la izquierda. Los nombres se dejan como los publica el INEGI. Las alcaldías de la Ciudad de México no tienen cabecera en la fuente (viene como "----") y quedan con `cve_cabecera: null`.
 
 ## Banco de México: bancos y participantes del SPEI
@@ -71,7 +89,7 @@ Para decodificar una CLABE antigua conviene revisar el historial de ese código 
 - Dataset: `data/constantes-uma/`.
 - Publica: Instituto Nacional de Estadística y Geografía (INEGI), "Unidad de medida y actualización", en el DOF cada año.
 - Términos: https://www.inegi.org.mx/inegi/terminos.html. El INEGI permite el uso libre de su información y exige darle el crédito.
-- Cita: "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, DD/MM/AAAA. <url>". Si usas estos datos, cita al INEGI como fuente y aclara que fueron procesados por MéxicoAPI.
+- Cita: "INEGI. Unidad de medida y actualización. Diario Oficial de la Federación, DD/MM/AAAA. <url>". Si usas estos datos, cita al INEGI como fuente y aclara que fueron procesados por MéxicoAPI ([cómo citarlo](#cómo-citar-méxicoapi)).
 
 ### CONASAMI: salario mínimo
 
