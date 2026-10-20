@@ -53,7 +53,7 @@ Las rutas de datos responden `{ "data": …, "meta": … }`:
     "sources": [
       {
         "name": "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
-        "url": "https://gaia.inegi.org.mx/wscatgeo/v2/",
+        "url": "https://www.inegi.org.mx/app/ageeml/",
         "license": "Términos de libre uso de la información del INEGI",
         "license_url": "https://www.inegi.org.mx/inegi/terminos.html",
         "citation": "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio wscatgeo v2."

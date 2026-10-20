@@ -13,7 +13,10 @@ import {
   type Revision,
 } from "../marco.js";
 
+/** La base del servicio que se consulta; los crudos del manifiesto guardan cada URL pedida. */
 const BASE = "https://gaia.inegi.org.mx/wscatgeo/v2/";
+/** La página pública del Catálogo Único, la que se muestra como fuente: la base da 404. */
+const PAGINA = "https://www.inegi.org.mx/app/ageeml/";
 const HOSTS = [new URL(BASE).host];
 const CLAVES_ESTADO = Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"));
 const MINIMO_MUNICIPIOS = 2400;
@@ -40,7 +43,7 @@ function nombresNoLatinos<T extends { nombre: string }>(
 
 const FUENTE = {
   name: "INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades",
-  url: BASE,
+  url: PAGINA,
   license: "Términos de libre uso de la información del INEGI",
   license_url: "https://www.inegi.org.mx/inegi/terminos.html",
   citation:

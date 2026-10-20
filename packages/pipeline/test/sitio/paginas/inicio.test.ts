@@ -40,7 +40,7 @@ const DATASETS: DatasetInicio[] = [
     fuentes: [
       {
         name: "A & <B>",
-        url: "https://gaia.inegi.org.mx/wscatgeo/v2/",
+        url: "https://www.inegi.org.mx/app/ageeml/",
         published_at: null,
         ...LICENCIA_INEGI,
       },
