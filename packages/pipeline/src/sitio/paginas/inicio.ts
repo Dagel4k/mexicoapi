@@ -12,6 +12,7 @@ import {
 } from "./bloques.js";
 import { describir } from "./catalogo.js";
 import { nodosDelSitio } from "./datos-estructurados.js";
+import { RUTA_DIAS_LFT } from "./dias-inhabiles.js";
 import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
 
 export { formatearEntero, tamanoLegible } from "./bloques.js";
@@ -56,7 +57,13 @@ export interface PaginaEnPortada {
   descripcion: string;
   /** El dataset de la tabla cuyo renglón la enlaza, si tiene. */
   dataset: string | null;
+  /** Una página hija no se enlaza desde la portada: se llega desde su superior. */
+  superior?: string;
 }
+
+/** Las páginas de datos de arriba, las que enlaza la portada. */
+const deArriba = (paginas: readonly PaginaEnPortada[] = []): PaginaEnPortada[] =>
+  paginas.filter((p) => p.superior === undefined);
 
 /** La CLABE de los ejemplos: Banamex, con su dígito de control. */
 export const CLABE_EJEMPLO = "002010077777777771";
@@ -222,18 +229,23 @@ function datos(entrada: EntradaInicio): string {
     `<th scope="col"${clase === "" ? "" : ` class="${clase}"`} role="columnheader">${texto}</th>`;
   const filas = entrada.datasets.map((d) => {
     const { nombre } = describir(d.id);
-    const pagina = (entrada.paginas ?? []).find((p) => p.dataset === d.id);
-    const enlacePagina =
+    const nombreHtml = escaparHtml(nombre);
+    // Con página, el nombre lleva a ella y la documentación va aparte, con otro texto.
+    const pagina = deArriba(entrada.paginas).find((p) => p.dataset === d.id);
+    const encabezado =
+      pagina === undefined
+        ? enlaceSeguro(d.docs, nombre)
+        : `<a href="${escaparHtml(pagina.ruta)}">${nombreHtml}</a>`;
+    const documentacion =
       pagina === undefined
         ? ""
-        : `<span class="detalle"><a href="${escaparHtml(pagina.ruta)}">${escaparHtml(pagina.h1)}</a></span>`;
-    const nombreHtml = escaparHtml(nombre);
+        : `<span class="detalle">${enlaceSeguro(d.docs, "Documentación").replace("</a>", `<span class="oculto"> de ${nombreHtml}</span></a>`)}</span>`;
     const ultimo =
       d.ultimo_dato === undefined
         ? ""
         : `<span class="detalle">último dato ${tiempo(d.ultimo_dato)}</span>`;
     return `<tr role="row">
-<th scope="row" role="rowheader">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span>${enlacePagina}<span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
+<th scope="row" role="rowheader">${encabezado}<span class="id">${escaparHtml(d.id)}</span>${documentacion}<span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
 ${celda("Datos al", "junto", `${tiempo(d.as_of)}${ultimo}`)}
 ${celda("Registros", "num", formatearEntero(d.registros))}
 ${celda("Fuente y licencia", "fuentes", fuentes(d.fuentes))}
@@ -258,17 +270,18 @@ ${filas.join("\n")}
 </section>`;
 }
 
-/** "Consultar los datos": cada página de datos con su descripción; nada si no hay ninguna. */
-function consultarDatos(paginas: readonly PaginaEnPortada[]): string {
-  if (paginas.length === 0) return "";
-  const entradas = paginas.map(
+/** "Consultar los datos": cada página de arriba con su descripción; nada si no hay ninguna. */
+function consultarDatos(paginas: readonly PaginaEnPortada[] | undefined): string {
+  const lista = deArriba(paginas);
+  if (lista.length === 0) return "";
+  const entradas = lista.map(
     (p) =>
       `<dt><a href="${escaparHtml(p.ruta)}">${escaparHtml(p.h1)}</a></dt>
 <dd>${escaparHtml(p.descripcion)}</dd>`,
   );
   return `<section id="consultar-datos" aria-labelledby="titulo-consultar-datos">
 <h2 id="titulo-consultar-datos">Consultar los datos</h2>
-<p>Una página por tema, con los datos completos, su fuente oficial y cómo pedirlos por API, npm o descarga.</p>
+<p>Una página por tema, con su fuente oficial y cómo pedir los datos por API, npm o descarga.</p>
 <dl>
 ${entradas.join("\n")}
 </dl>
@@ -284,8 +297,13 @@ function descargas(entrada: EntradaInicio): string {
   };
   const sqlite = tamano("mexicoapi.sqlite");
   tamano("SHA256SUMS");
+  const paginaLft = deArriba(entrada.paginas).find((p) => p.ruta === RUTA_DIAS_LFT);
+  const porAnio =
+    paginaLft === undefined
+      ? ""
+      : ` Los de cada año, en <a href="${RUTA_DIAS_LFT}">${escaparHtml(paginaLft.h1)}</a>.`;
   const lft = ["json", "csv"].every((e) => entrada.descargas.has(`dias-inhabiles-lft.${e}`))
-    ? ' Los días de descanso obligatorio de la LFT (art. 74), que se calculan por regla y no son un dataset, están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100.'
+    ? ` Los días de descanso obligatorio de la LFT (art. 74), que se calculan por regla y no son un dataset, están en <a href="/descargas/dias-inhabiles-lft.json">JSON</a> y <a href="/descargas/dias-inhabiles-lft.csv">CSV</a>, de 2007 a 2100.${porAnio}`
     : "";
   const nombres = [...entrada.descargas.keys()].sort(porNombre);
   const filas = nombres.map((nombre) => {
@@ -349,7 +367,7 @@ ${navegacion(ruta, URL_REPO)}
 <main id="contenido" class="marco">
 <p class="intro">Una API JSON de solo lectura, sin llave ni cuenta, con ${entrada.datasets.length} datasets oficiales y descargas completas en JSON, CSV y SQLite. Cada dato dice de qué fuente salió, con qué licencia y de qué fecha, y cada archivo publica su sha256.</p>
 ${empieza(publicado, entrada.ejemplo)}
-${consultarDatos(entrada.paginas ?? [])}${datos(entrada)}
+${consultarDatos(entrada.paginas)}${datos(entrada)}
 ${descargas(entrada)}
 ${REFERENCIA}
 </main>`;

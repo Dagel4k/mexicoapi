@@ -961,14 +961,17 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
         ).resolves.toBeDefined();
       }
     }
-    // Los renglones de la tabla de datos del SAT y la CNBV llevan a su página.
+    // El nombre del SAT y la CNBV en la tabla de datos lleva a su página; la LFT, que no es un
+    // dataset, se enlaza desde su frase en Descargas.
     for (const [id, ruta] of [
       ["dias-inhabiles.sat", RUTA_DIAS_SAT],
       ["dias-inhabiles.cnbv", RUTA_DIAS_CNBV],
     ]) {
-      const renglon = inicio.slice(inicio.indexOf(`<span class="id">${id}</span>`));
-      expect(renglon.slice(0, renglon.indexOf("</th>")), id).toContain(`<a href="${ruta}">`);
+      const posicion = inicio.indexOf(`<span class="id">${id}</span>`);
+      const encabezado = inicio.slice(inicio.lastIndexOf("<th ", posicion), posicion);
+      expect(encabezado, id).toMatch(new RegExp(`^<th [^>]*><a href="${ruta}">[^<]+</a>$`));
     }
+    expect(inicio).toContain(`Los de cada año, en <a href="${RUTA_DIAS_LFT}">`);
   });
 
   // El ejemplo sale de los datos del build con el mismo validador que usa el Worker; la prueba de
