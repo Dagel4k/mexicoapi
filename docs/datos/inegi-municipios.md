@@ -32,7 +32,7 @@ Las claves son texto con ceros a la izquierda.
 
 ## Fuente y licencia
 
-- Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio `wscatgeo` v2 (https://gaia.inegi.org.mx/wscatgeo/v2/), con una consulta por estado.
+- Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades (https://www.inegi.org.mx/app/ageeml/). Los datos se consultan en su servicio `wscatgeo` v2, con una consulta por estado en `https://gaia.inegi.org.mx/wscatgeo/v2/mgem/{cve_ent}`; el manifiesto guarda la URL de cada una junto a su respuesta.
 - Licencia: términos de libre uso de la información del INEGI (https://www.inegi.org.mx/inegi/terminos.html). Se puede usar, incluso con fines comerciales, citando al INEGI como fuente.
 - Cita: "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio wscatgeo v2."
 

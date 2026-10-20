@@ -14,9 +14,13 @@ import {
   ejecutarDataset,
   type FuenteCapturada,
 } from "../../src/marco.js";
+import { PRUEBA_LENTA } from "../ayudas.js";
 
 const dirFixtures = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/inegi");
 const BASE = "https://gaia.inegi.org.mx/wscatgeo/v2/";
+/** La página pública del catálogo: la base del servicio responde 404. */
+const PAGINA = "https://www.inegi.org.mx/app/ageeml/";
+const raizRepo = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const claves = Array.from({ length: 32 }, (_, i) => String(i + 1).padStart(2, "0"));
 
 async function leer(nombre: string): Promise<Uint8Array> {
@@ -264,7 +268,7 @@ describe("municipios", () => {
   });
 });
 
-describe("capturar", () => {
+describe("capturar", { timeout: PRUEBA_LENTA }, () => {
   let raiz: string;
   let pedidas: string[];
   let falla17: boolean;
@@ -309,8 +313,9 @@ describe("capturar", () => {
     expect(fe?.crudos.map((x) => x.file)).toEqual(["raw/mgee.json"]);
     expect(fm?.crudos.map((x) => x.file)).toEqual(claves.map((k) => `raw/mgem-${k}.json`));
     expect(fm?.crudos[16]?.url).toBe(`${BASE}mgem/17`);
+    // La fuente que se muestra es la página del catálogo; cada crudo guarda la URL consultada.
     expect(fe).toMatchObject({
-      url: BASE,
+      url: PAGINA,
       license: "Términos de libre uso de la información del INEGI",
       license_url: "https://www.inegi.org.mx/inegi/terminos.html",
       published_at: null,
@@ -328,8 +333,12 @@ describe("capturar", () => {
     const mm = JSON.parse(await readFile(join(raiz, "inegi-municipios", "manifest.json"), "utf8"));
     expect(mm.records).toBe(2478);
     expect(mm.sources[0].raw).toHaveLength(32);
+    expect(mm.sources[0].url).toBe(PAGINA);
+    expect(mm.sources[0].raw[24].url).toBe(`${BASE}mgem/25`);
     const me = JSON.parse(await readFile(join(raiz, "inegi-estados", "manifest.json"), "utf8"));
     expect(me.records).toBe(32);
+    expect(me.sources[0].url).toBe(PAGINA);
+    expect(me.sources[0].raw[0].url).toBe(`${BASE}mgee/`);
   });
 
   it("si el estado 17 falla siempre, lanza ErrorHttp y no escribe nada", async () => {
@@ -339,4 +348,22 @@ describe("capturar", () => {
     expect(e.estado).toBe(503);
     expect(await readdir(raiz)).toEqual([]);
   });
+});
+
+// El sitio, la API y las descargas toman la fuente del manifiesto: tiene que ser la del código.
+describe("manifiestos de data/", () => {
+  it.each([
+    [estadosInegi, "inegi-estados"],
+    [municipiosInegi, "inegi-municipios"],
+  ] as const)(
+    "$1 trae la fuente que arma el código y los crudos con la URL consultada",
+    async (def, dir) => {
+      const manifiesto = JSON.parse(
+        await readFile(join(raizRepo, "data", dir, "manifest.json"), "utf8"),
+      );
+      expect(def.revisarFuentes(manifiesto.sources)).toEqual([]);
+      expect(manifiesto.sources[0].url).toBe(PAGINA);
+      for (const crudo of manifiesto.sources[0].raw) expect(crudo.url.startsWith(BASE)).toBe(true);
+    },
+  );
 });

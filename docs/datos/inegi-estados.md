@@ -31,7 +31,7 @@ Ver [API v1](../api/README.md).
 
 ## Fuente y licencia
 
-- Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio `wscatgeo` v2 (https://gaia.inegi.org.mx/wscatgeo/v2/).
+- Fuente: INEGI, Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades (https://www.inegi.org.mx/app/ageeml/). Los datos se consultan en su servicio `wscatgeo` v2, en `https://gaia.inegi.org.mx/wscatgeo/v2/mgee/`; el manifiesto guarda esa URL junto a la respuesta.
 - Licencia: términos de libre uso de la información del INEGI (https://www.inegi.org.mx/inegi/terminos.html). Se puede usar, incluso con fines comerciales, citando al INEGI como fuente.
 - Cita: "INEGI. Catálogo Único de Claves de Áreas Geoestadísticas Estatales, Municipales y Localidades, servicio wscatgeo v2."
 
