@@ -3,10 +3,12 @@
  * Cloudflare aplica todas las reglas que coinciden con la URL pedida y junta con coma un
  * encabezado repetido, así que ningún encabezado sale en dos reglas que alcancen la misma URL.
  *
- * El único comodín es `/*`, con lo que vale en cualquier URL: alcanza también al 404 (que se
- * sirve en la URL pedida) y a las redirecciones. Ahí no va la CSP ni la caché, que cambian por
- * ruta: el 404 lleva `CSP_404` en `<meta>`. Las respuestas del Worker en `/v1` no reciben estas
- * reglas; ponen sus propios encabezados (`respuestas.ts` de la API).
+ * `/*` lleva lo que vale en cualquier URL: alcanza también al 404 (que se sirve en la URL pedida)
+ * y a las redirecciones. Ahí no va la CSP ni la caché, que cambian por ruta: el 404 lleva
+ * `CSP_404` en `<meta>`. Los otros comodines son los de las familias de páginas de datos
+ * (`/municipios/*`): una regla con la CSP de las páginas para la de arriba y todas sus hijas, a
+ * cuyas rutas no llega ninguna otra regla de la lista. Las respuestas del Worker en `/v1` no
+ * reciben estas reglas; ponen sus propios encabezados (`respuestas.ts` de la API).
  */
 
 type Encabezados = readonly (readonly [string, string])[];
