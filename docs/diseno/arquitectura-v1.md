@@ -402,7 +402,7 @@ Todas las rutas de la tabla están implementadas. El catálogo de plazas de la C
 
 El sitio son páginas estáticas que genera el mismo build (`packages/pipeline/src/sitio/paginas/`), sin framework ni dependencias, a partir de los manifiestos:
 
-- `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. Mientras los paquetes no estén en npm, la constante `PUBLICADO_EN_NPM` hace que la página y `llms.txt` solo lo avisen, sin comandos de instalación ni configuración que copiar.
+- `/`: página de inicio con cómo empezar (API, paquete y servidor MCP), la tabla de datasets con su `as_of`, fuente y licencia, y las descargas. La constante `PUBLICADO_EN_NPM` (en `true` desde la 0.1.0) decide si la página y `llms.txt` muestran los comandos de instalación y configuración o solo avisan que los paquetes vienen.
 - `/estado/`: la frescura de cada dataset automático; un módulo propio (`sitio.js`) consulta `/v1/status` desde el navegador.
 - `/sitemap.xml` y `/robots.txt`: el mapa del sitio con las páginas indexables y su `lastmod`, y las reglas para rastreadores. Cada página indexable declara su URL canónica en un `<link rel="canonical">`.
 - `/llms.txt` (formato de llmstxt.org) y `/llms-full.txt`: la ruta de cada dataset con su `as_of`, y la referencia de la API, la de errores y las docs de cada dataset en un solo archivo, con los enlaces relativos cambiados por su URL en GitHub.
