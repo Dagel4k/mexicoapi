@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
+  type AutoridadCurada,
   type Banco,
   type CoberturaCurada,
   type CoberturaSerie,
@@ -31,6 +32,7 @@ import {
 } from "../curado/registro.js";
 import { ErrorDatos } from "../errores.js";
 import { escribirDirectorioAtomico } from "../escritura.js";
+import { anioDe } from "../fecha.js";
 import { DATASETS } from "../registro.js";
 import { verificarDatos } from "../verificar.js";
 import {
@@ -50,6 +52,11 @@ import {
   metaDesdeManifiesto,
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
+import {
+  type CalendarioDePagina,
+  calendarioDePagina,
+  paginasDeCalendarios,
+} from "./paginas/dias-inhabiles.js";
 import { archivoEncabezados } from "./paginas/encabezados.js";
 import { paginaEstado, RUTA_ESTADO } from "./paginas/estado.js";
 import { ESTILO } from "./paginas/estilo.js";
@@ -62,6 +69,7 @@ import {
   ordenLlmsCompleto,
 } from "./paginas/llms.js";
 import { paginaNoEncontrada } from "./paginas/no-encontrado.js";
+import { paginaDeDatos, registrarPaginas } from "./paginas/pagina-datos.js";
 import { ROBOTS } from "./paginas/robots.js";
 import { archivoSitemap, fechaMasReciente } from "./paginas/sitemap.js";
 import { partirPorAnio } from "./series.js";
@@ -311,6 +319,8 @@ export async function construirSitio(opciones: {
   // del núcleo, como `/v1/dias-inhabiles?autoridad=lft`, y está completa en toda su cobertura.
   const lft = diasLft();
   const coberturasCalendario: CoberturaCalendario[] = [COBERTURA_LISTA_LFT];
+  // El calendario de cada autoridad, el mismo que arma el Worker, para sus páginas.
+  const calendarios = new Map<AutoridadCurada, CalendarioDePagina>();
   for (const [c, def, autoridad] of [
     [diasCnbv, curadoDiasCnbv, "cnbv"],
     [diasSat, curadoDiasSat, "sat"],
@@ -320,6 +330,7 @@ export async function construirSitio(opciones: {
     archivos.set(`v1/_internos/calendarios/${autoridad}.json`, json(calendario));
     const plazos = coberturasDeLaLista(autoridad, c.registros, cobertura);
     coberturasCalendario.push(...coberturasDe({ autoridad, plazos }));
+    calendarios.set(autoridad, calendarioDePagina(autoridad, c.registros, cobertura, c.meta));
   }
 
   // `uma.json` es la lista completa: con ella el Worker responde la UMA vigente en una fecha.
@@ -457,7 +468,24 @@ export async function construirSitio(opciones: {
   const sumas = nombres.map((n) => `${sha256Hex(descargas.get(n) as Uint8Array | string)}  ${n}\n`);
   descargas.set("SHA256SUMS", sumas.join(""));
   for (const [nombre, contenido] of descargas) archivos.set(`descargas/${nombre}`, contenido);
-  archivos.set("_headers", archivoEncabezados([...descargas.keys()].sort(porNombre)));
+
+  // Las páginas de datos. "Año actual" es el de la fecha más reciente del FIX en los datos y no el
+  // del día del build: dos builds de los mismos datos dan las mismas páginas.
+  const anio = anioDe((coberturas.get(fix.manifiesto.dataset) as CoberturaSerie).hasta);
+  const registro = registrarPaginas(
+    paginasDeCalendarios({
+      anio,
+      sat: calendarios.get("sat") as CalendarioDePagina,
+      cnbv: calendarios.get("cnbv") as CalendarioDePagina,
+    }),
+  );
+  for (const pagina of registro.values()) {
+    archivos.set(`${pagina.ruta.slice(1)}index.html`, paginaDeDatos(pagina, registro, descargas));
+  }
+  archivos.set(
+    "_headers",
+    archivoEncabezados([...descargas.keys()].sort(porNombre), [...registro.keys()]),
+  );
 
   const datasets = [
     ...cargados.map((c) => ({ c, tipo: "automatico" as const })),
@@ -473,18 +501,30 @@ export async function construirSitio(opciones: {
     fuentes: c.manifiesto.sources,
     docs: c.meta.docs,
   }));
-  archivos.set("index.html", paginaInicio({ datasets, descargas, ejemplo: ejemploClabe(bancos) }));
+  archivos.set(
+    "index.html",
+    paginaInicio({
+      datasets,
+      descargas,
+      ejemplo: ejemploClabe(bancos),
+      paginas: [...registro.values()],
+    }),
+  );
   archivos.set("estado/index.html", paginaEstado());
   archivos.set("sitio.js", await readFile(CLIENTE));
   archivos.set("404.html", paginaNoEncontrada());
   archivos.set("estilo.css", ESTILO);
   archivos.set("favicon.svg", FAVICON);
   archivos.set("robots.txt", ROBOTS);
-  // Las páginas que se indexan, con la fecha más reciente de los datos que muestra el sitio.
+  // Las páginas que se indexan: la portada y /estado/ con la fecha más reciente de los datos que
+  // muestra el sitio, y cada página de datos con la de los suyos.
   const lastmod = fechaMasReciente(datasets.map((d) => d.as_of));
   archivos.set(
     "sitemap.xml",
-    archivoSitemap([RUTA_INICIO, RUTA_ESTADO].map((ruta) => ({ ruta, lastmod }))),
+    archivoSitemap([
+      ...[RUTA_INICIO, RUTA_ESTADO].map((ruta) => ({ ruta, lastmod })),
+      ...[...registro.values()].map((p) => ({ ruta: p.ruta, lastmod: p.datosAl })),
+    ]),
   );
   archivos.set("llms.txt", archivoLlms(datasets));
   archivos.set("llms-full.txt", archivoLlmsCompleto(await docsCompletas()));
