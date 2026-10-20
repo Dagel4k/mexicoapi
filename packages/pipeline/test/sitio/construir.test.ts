@@ -826,6 +826,8 @@ describe("construirSitio", { timeout: PRUEBA_LENTA }, () => {
       "x-frame-options": ["DENY"],
       "strict-transport-security": ["max-age=31536000"],
       vary: ["Accept-Encoding"],
+      "permissions-policy": ["camera=(), microphone=(), geolocation=()"],
+      "cross-origin-opener-policy": ["same-origin"],
     });
     expect(texto).toContain(`\n/\n  Content-Security-Policy: ${CSP_PAGINAS}\n`);
   });
