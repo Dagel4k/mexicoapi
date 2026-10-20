@@ -108,6 +108,24 @@ const conParametro = (
   parametro: string,
 ): ProblemaConsulta => ({ tipo, detalle, extras: { parametro } });
 
+const NOMBRE_SIMPLE = /^[A-Za-z0-9_.-]+$/;
+/** Lo que JSON.stringify deja tal cual y no se ve: DEL y controles C1, formato y separadores. */
+const INVISIBLE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+
+const escapar = (caracter: string): string =>
+  Array.from(
+    { length: caracter.length },
+    (_, i) => `\\u${caracter.charCodeAt(i).toString(16).padStart(4, "0")}`,
+  ).join("");
+
+/**
+ * El nombre de un parámetro que mandó el usuario, para un `detail`: tal cual si es simple; si no,
+ * con JSON.stringify y lo invisible escapado. Sin eso, "fecha\0" se leería como "fecha".
+ */
+function nombreEnTexto(nombre: string): string {
+  return NOMBRE_SIMPLE.test(nombre) ? nombre : JSON.stringify(nombre).replace(INVISIBLE, escapar);
+}
+
 /**
  * Revisa la query (`search`, con o sin el `?`) contra `reglas` en el orden de la API: un segmento
  * sin nombre (`?&`, `?=1`), que URLSearchParams ignora o deja con nombre vacío; un parámetro que
@@ -126,7 +144,7 @@ export function revisarConsulta(
   const query = new URLSearchParams(texto);
   for (const nombre of query.keys()) {
     if (!Object.hasOwn(reglas, nombre)) {
-      const detalle = `Esta ruta no acepta el parámetro ${nombre}.`;
+      const detalle = `Esta ruta no acepta el parámetro ${nombreEnTexto(nombre)}.`;
       return conParametro("parametro-desconocido", detalle, nombre);
     }
   }

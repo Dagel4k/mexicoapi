@@ -53,6 +53,44 @@ describe("revisarConsulta", () => {
     expect(revisarConsulta({}, "?a=1")).toMatchObject({ tipo: "parametro-desconocido" });
   });
 
+  it("un nombre simple va tal cual en el detalle", () => {
+    for (const nombre of ["x", "orden", "_", "a.b", "a-b", "A1", "fecha_2"]) {
+      expect(revisarConsulta({}, `?${nombre}=1`), nombre).toEqual({
+        tipo: "parametro-desconocido",
+        detalle: `Esta ruta no acepta el parámetro ${nombre}.`,
+        extras: { parametro: nombre },
+      });
+    }
+  });
+
+  // Con un carácter de control o invisible, "no acepta el parámetro fecha" se leería como el
+  // nombre de uno que sí acepta. `parametro` lleva el nombre tal cual.
+  it("otro nombre va entre comillas en el detalle, con lo invisible escapado", () => {
+    for (const [search, parametro, mostrado] of [
+      ["?fecha%00=1", "fecha\u0000", '"fecha\\u0000"'],
+      ["?fecha%20=1", "fecha ", '"fecha "'],
+      ["?fecha+=1", "fecha ", '"fecha "'],
+      ["?a%22b=1", 'a"b', '"a\\"b"'],
+      ["?a%5Cb=1", "a\\b", '"a\\\\b"'],
+      ["?a%0Ab=1", "a\nb", '"a\\nb"'],
+      ["?a%C2%85b=1", "a\u0085b", '"a\\u0085b"'],
+      ["?a%7Fb=1", "a\u007fb", '"a\\u007fb"'],
+      ["?a%E2%80%8Bb=1", "a​b", '"a\\u200bb"'],
+      ["?a%E2%80%AEb=1", "a‮b", '"a\\u202eb"'],
+      ["?a%E2%80%A8b=1", "a b", '"a\\u2028b"'],
+      ["?a%EF%BB%BFb=1", "a﻿b", '"a\\ufeffb"'],
+      ["?a%F3%A0%80%81b=1", "a\u{e0001}b", '"a\\udb40\\udc01b"'],
+      ["?a%C3%B1o=1", "año", '"año"'],
+      ["?ids[]=1", "ids[]", '"ids[]"'],
+    ] as const) {
+      expect(revisarConsulta({}, search), search).toEqual({
+        tipo: "parametro-desconocido",
+        detalle: `Esta ruta no acepta el parámetro ${mostrado}.`,
+        extras: { parametro },
+      });
+    }
+  });
+
   it("revisa en el orden de la API: sin nombre, desconocido y luego cada regla en su orden", () => {
     expect(revisar("?z=1&&b=x")).toMatchObject({
       detalle: "La query tiene un parámetro sin nombre.",
