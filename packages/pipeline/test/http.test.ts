@@ -364,6 +364,16 @@ describe("redirecciones", () => {
     expect(m.pedidas.filter((u) => u === `${A}/x`)).toHaveLength(2);
   });
 
+  it("no sigue una redirección al mismo host con otro puerto", async () => {
+    const m = montar({
+      [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
+      [`${A}/x`]: [res(302, "", { location: "https://a.example.mx:8443/y" })],
+    });
+    const e = await m.cliente.obtener(`${A}/x`).catch((x: unknown) => x);
+    expect((e as ErrorHttp).message).toMatch(/Host no permitido \(a\.example\.mx:8443\)/);
+    expect(m.pedidas.some((u) => u.includes(":8443"))).toBe(false);
+  });
+
   it("sigue una redirección a otro host de la lista, con su robots.txt y su intervalo", async () => {
     const m = montar({
       [`${A}/robots.txt`]: [ROBOTS_ABIERTO],
