@@ -265,7 +265,7 @@ export function paginaUdis(
       ? `<p class="intro">El valor de la Unidad de Inversión (UDI) que el Banco de México publica en el Diario Oficial de la Federación, en pesos por UDI: uno por cada día del calendario, publicados por adelantado.</p>`
       : `<p class="intro">El valor de la Unidad de Inversión (UDI) que el Banco de México publica en el Diario Oficial de la Federación, en pesos por UDI. El ${fechaEnTexto(referencia)} (la publicación más reciente del FIX) vale ${monto(deReferencia.valor, false)}; el último valor cargado, el del ${fechaEnTexto(ultima.fecha)}, ${monto(ultima.valor, false)}.</p>`;
   const contenido = seccion("valores", "Valor de la UDI por día", [
-    `<p>Hay un valor para cada día del calendario, fines de semana y feriados incluidos. Las UDIS se publican por adelantado, dos veces al mes, para los días siguientes: por eso la tabla llega hasta ${fechaEnTexto(ultima.fecha)}, de uno a unos 15 días después de la fecha de la última actualización. La fila del día de hoy en la Ciudad de México se resalta cuando la página puede ejecutar su script.</p>`,
+    `<p>Hay un valor para cada día del calendario, fines de semana y feriados incluidos. Las UDIS se publican por adelantado, dos veces al mes, para los días siguientes: por eso la tabla llega hasta ${fechaEnTexto(ultima.fecha)}, unos días después de la fecha de la última actualización. La fila del día de hoy en la Ciudad de México se resalta cuando la página puede ejecutar su script.</p>`,
     tabla(
       "udis-tabla",
       `UDI de los ${UDIS_ANTES} días anteriores al ${fechaEnTexto(referencia)} y de los siguientes publicados`,
