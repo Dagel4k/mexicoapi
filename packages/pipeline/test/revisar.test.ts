@@ -45,6 +45,19 @@ async function cambiar<T>(archivo: string, cambio: (registros: T[]) => T[]): Pro
   await writeFile(ruta, `${JSON.stringify(cambio(registros), null, 2)}\n`);
 }
 
+/**
+ * Corta la serie de `archivo` en `fecha`, incluida, en los dos lados: los datos reales crecen con
+ * cada corrida del bot, y un alta de prueba no debe chocar con una fecha que ya llegó.
+ */
+async function hasta<T>(archivo: string, fechaDe: (r: T) => string, fecha: string): Promise<void> {
+  for (const raiz of [antes, despues]) {
+    const ruta = join(raiz, archivo);
+    const registros = JSON.parse(await readFile(ruta, "utf8")) as T[];
+    const cortados = registros.filter((r) => fechaDe(r) <= fecha);
+    await writeFile(ruta, `${JSON.stringify(cortados, null, 2)}\n`);
+  }
+}
+
 async function revisar(...extra: string[]) {
   const entorno = await crearEntorno(despues);
   const codigo = await principal(["revisar", "--antes", antes, "--datos", despues, ...extra], {
@@ -62,6 +75,11 @@ interface Udi {
   valor: string;
 }
 
+interface Fix {
+  fecha_publicacion: string;
+  valor: string;
+}
+
 describe("revisar", { timeout: PRUEBA_LENTA }, () => {
   it("sin cambios termina en 0 y lo dice por dataset", async () => {
     const r = await revisar();
@@ -73,6 +91,7 @@ describe("revisar", { timeout: PRUEBA_LENTA }, () => {
   });
 
   it("una UDI nueva dentro del umbral no pide revisión", async () => {
+    await hasta<Udi>("udis/udis.json", (u) => u.fecha, "2026-10-25");
     await cambiar<Udi>("udis/udis.json", (rs) => [
       ...rs,
       { fecha: "2026-10-26", valor: (rs.at(-1) as Udi).valor },
@@ -156,6 +175,42 @@ describe("revisar", { timeout: PRUEBA_LENTA }, () => {
     await writeFile(ruta, `${JSON.stringify(m, null, 2)}\n`);
   }
   const fuente = (m: Manifiesto, i: number) => m.sources[i] as Manifiesto["sources"][number];
+
+  // Una corrida diaria del FIX o de las UDIS siempre trae altas: la fuente cambiada tiene que pedir
+  // revisión también cuando los registros cambian y por sí solos no la piden.
+  it("un alta que no pide revisión junto con una fuente cambiada pide revisión", async () => {
+    await hasta<Udi>("udis/udis.json", (u) => u.fecha, "2026-10-25");
+    await cambiar<Udi>("udis/udis.json", (rs) => [
+      ...rs,
+      { fecha: "2026-10-26", valor: (rs.at(-1) as Udi).valor },
+    ]);
+    await manifiesto("udis", (m) => {
+      fuente(m, 0).citation = "Otra cita";
+    });
+    const r = await revisar();
+    expect(r.codigo).toBe(3);
+    expect(r.salida).toContain("udis: requiere_revision (+1 -0 ~0)");
+  });
+
+  it("el FIX del día de la corrida junto con la URL de la fuente cambiada pide revisión", async () => {
+    // Viernes 16 y lunes 19 de octubre de 2026: el lunes no es feriado bancario.
+    await hasta<Fix>("tipo-cambio-fix/fix.json", (f) => f.fecha_publicacion, "2026-10-16");
+    await cambiar<Fix>("tipo-cambio-fix/fix.json", (rs) => [
+      ...rs,
+      { fecha_publicacion: "2026-10-19", valor: (rs.at(-1) as Fix).valor },
+    ]);
+    const sola = await revisar("--fecha", "2026-10-19");
+    expect(sola.codigo).toBe(0);
+    expect(sola.salida).toContain("tipo-cambio.fix: actualizado (+1 -0 ~0)");
+
+    await manifiesto("tipo-cambio-fix", (m) => {
+      fuente(m, 0).url = "https://sidof.segob.gob.mx/otra/";
+    });
+    const r = await revisar("--fecha", "2026-10-19");
+    expect(r.codigo).toBe(3);
+    expect(r.salida).toContain("tipo-cambio.fix: requiere_revision (+1 -0 ~0)");
+    expect(r.salida).toContain("no es la que arma el código: url");
+  });
 
   it("una fuente del manifiesto distinta de la que arma el código pide revisión", async () => {
     await manifiesto("bancos", (m) => {
