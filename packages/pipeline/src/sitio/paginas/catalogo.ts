@@ -19,7 +19,12 @@ export interface EntradaCatalogo {
 
 export const CATALOGO: Readonly<Record<string, EntradaCatalogo>> = {
   "inegi.estados": { nombre: "Estados", ruta: "/v1/estados" },
-  "inegi.municipios": { nombre: "Municipios", ruta: "/v1/municipios" },
+  "inegi.municipios": {
+    nombre: "Municipios",
+    ruta: "/v1/municipios",
+    nota: "todos los del país",
+    otras: [{ ruta: "/v1/estados/{cve_ent}/municipios", nota: "los de un estado" }],
+  },
   bancos: { nombre: "Bancos y participantes del SPEI", ruta: "/v1/bancos" },
   // Para un pago la que aplica es `operacion`: `publicado` en un día sin publicación es un 404.
   "tipo-cambio.fix": {
