@@ -1,10 +1,13 @@
+/** El fondo de cada tema; también es el `theme-color` de las páginas. */
+export const FONDO = { claro: "#ffffff", oscuro: "#111514" } as const;
+
 /**
  * `estilo.css`: la única hoja del sitio. Solo ASCII, sin `url()` ni `@import`; los colores son
  * variables que el modo oscuro redefine y que la prueba revisa contra el contraste AA.
  */
 export const ESTILO = `:root {
   color-scheme: light dark;
-  --fondo: #ffffff;
+  --fondo: ${FONDO.claro};
   --texto: #1c1f1e;
   --tenue: #535a57;
   --acento: #0a6640;
@@ -18,7 +21,7 @@ export const ESTILO = `:root {
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --fondo: #111514;
+    --fondo: ${FONDO.oscuro};
     --texto: #e3e8e5;
     --tenue: #a3aca8;
     --acento: #6ccf9d;

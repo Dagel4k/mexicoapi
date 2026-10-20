@@ -10,11 +10,12 @@ export function paginaEstado(
   catalogo: Readonly<Record<string, Pick<EntradaCatalogo, "nombre">>> = CATALOGO,
 ): string {
   const nombres = Object.fromEntries(Object.entries(catalogo).map(([id, e]) => [id, e.nombre]));
+  const ruta = "/estado/";
   const cuerpo = `<a class="saltar" href="#contenido">Saltar al contenido</a>
 <header class="cabecera">
 <div class="marco">
 <p class="marca"><a href="/">MéxicoAPI</a></p>
-${navegacion(false)}
+${navegacion(ruta)}
 </div>
 </header>
 <main id="contenido" class="marco">
@@ -65,6 +66,7 @@ ${navegacion(false)}
     descripcion:
       "Si cada dataset automático de MéxicoAPI está al día: la fecha de sus datos, su última revisión correcta y su plazo.",
     cuerpo,
+    ruta,
     scripts: ["/sitio.js"],
   });
 }

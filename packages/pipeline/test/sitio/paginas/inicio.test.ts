@@ -196,8 +196,27 @@ describe("página de inicio", () => {
       html.indexOf("</header>"),
     );
     expect(cabecera).toContain(`<li><a href="${URL_REPO}">GitHub</a></li>`);
-    // Las demás páginas solo navegan dentro del sitio.
-    expect(paginaEstado()).not.toContain(URL_REPO);
+    expect(cabecera).not.toContain("aria-current");
+    // La navegación de las demás páginas no sale del sitio; el repositorio queda en el pie.
+    const estado = paginaEstado();
+    expect(estado.slice(0, estado.indexOf("</header>"))).not.toContain(URL_REPO);
+  });
+
+  // La descripción es la de los buscadores y la tarjeta al compartir el enlace.
+  it("declara su canónica y una descripción que los buscadores no cortan", () => {
+    expect(html).toContain(`<link rel="canonical" href="${URL_API}/">`);
+    expect(html).toContain(`<meta property="og:url" content="${URL_API}/">`);
+    const [descripcion] = [...html.matchAll(/<meta name="description" content="([^"]*)">/g)].map(
+      (m) => desescapar(m[1] as string),
+    );
+    expect(descripcion?.length).toBeLessThanOrEqual(155);
+    expect(html).toContain(`<meta property="og:description" content="${descripcion}">`);
+    expect(html).toContain('<meta name="twitter:card" content="summary">');
+  });
+
+  it("cierra con el pie y un solo footer", () => {
+    expect(html.match(/<footer class="pie">/g)).toHaveLength(1);
+    expect(html.indexOf("</main>")).toBeLessThan(html.indexOf('<footer class="pie">'));
   });
 
   // "Datos al" es la última actualización; en el FIX no hay dato del domingo.
@@ -331,7 +350,8 @@ describe("página de inicio", () => {
       ),
     );
     expect(html).toContain('<a href="https://www.banxico.org.mx/servicios/d/%7BC24C7DBC%7D.pdf">');
-    const hrefs = atributos(html, "href");
+    // Los del cuerpo: en el head solo están la hoja, el favicon y la canónica.
+    const hrefs = atributos(html.slice(html.indexOf("<body>")), "href");
     expect(hrefs.length).toBeGreaterThan(20);
     for (const href of hrefs) {
       const valido =

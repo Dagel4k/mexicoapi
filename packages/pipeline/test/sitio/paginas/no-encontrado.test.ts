@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { URL_ARCHIVOS, URL_REPO } from "../../../src/sitio/meta.js";
 import { CSP_404 } from "../../../src/sitio/paginas/encabezados.js";
 import { ESTILO } from "../../../src/sitio/paginas/estilo.js";
 import { paginaNoEncontrada } from "../../../src/sitio/paginas/no-encontrado.js";
@@ -40,9 +41,22 @@ describe("404.html", () => {
   });
 
   // Se sirve en cualquier URL que no existe: un enlace relativo apuntaría a otra ruta inexistente.
-  it("todos sus enlaces son absolutos al sitio o a la misma página", () => {
-    for (const href of atributos(html, "href")) expect(href).toMatch(/^(\/(?!\/)|#)/);
+  it("todos sus enlaces son absolutos: al sitio, a la misma página o, en el pie, al repositorio", () => {
+    for (const href of atributos(html, "href")) {
+      const valido =
+        /^(\/(?!\/)|#)/.test(href) || href === URL_REPO || href.startsWith(`${URL_REPO}/`);
+      expect(valido, href).toBe(true);
+    }
     const clases = new Set(atributos(html, "class").flatMap((c) => c.split(" ")));
     for (const clase of clases) expect(ESTILO, clase).toMatch(new RegExp(`\\.${clase}\\b`));
+  });
+
+  // No tiene URL propia: ni canónica ni tarjeta, y ningún enlace del menú es la página actual.
+  it("lleva el pie, sin canónica ni Open Graph y sin aria-current", () => {
+    expect(html).toContain('<footer class="pie">');
+    expect(html).toContain(`<a href="${URL_ARCHIVOS}/SECURITY.md">Reportar una vulnerabilidad</a>`);
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain("og:");
+    expect(html).not.toContain("aria-current");
   });
 });

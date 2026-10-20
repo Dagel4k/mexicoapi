@@ -1,4 +1,7 @@
+import { URL_API } from "@mexicoapi/core/problemas";
+import { URL_ARCHIVOS, URL_REPO } from "../meta.js";
 import { CSP_404 } from "./encabezados.js";
+import { FONDO } from "./estilo.js";
 
 const ENTIDADES: Readonly<Record<string, string>> = {
   "&": "&amp;",
@@ -46,34 +49,58 @@ export function enlaceSeguro(url: string, texto: string): string {
 const RUTA_SCRIPT = /^\/[\w.-][\w./-]*$/;
 
 /**
- * La navegación del sitio: desde otra página, las secciones apuntan a las de `/`. Con
- * `repositorio` (una URL del proyecto, no de los datos), lo enlaza al final.
+ * Ruta de una página del sitio: absoluta y con la barra final con la que se sirve su
+ * `index.html` (`/`, `/estado/`), sin caracteres que haya que codificar.
  */
-export function navegacion(desdeInicio: boolean, repositorio?: string): string {
-  const prefijo = desdeInicio ? "" : "/";
-  const secciones = [
-    ["empieza", "Empieza"],
-    ["datos", "Datos"],
-    ["descargas", "Descargas"],
-    ["referencia", "Referencia"],
-  ]
-    .map(([id, texto]) => `<li><a href="${prefijo}#${id}">${texto}</a></li>`)
-    .join("\n");
-  const repo =
-    repositorio === undefined ? "" : `\n<li><a href="${escaparHtml(repositorio)}">GitHub</a></li>`;
+const RUTA_PAGINA = /^\/(?:[a-z0-9][a-z0-9._-]*\/)*$/;
+
+/** Lo que los buscadores muestran de la descripción antes de cortarla. */
+export const MAXIMO_DESCRIPCION = 155;
+
+/**
+ * La navegación del sitio. En `/` las secciones son anclas de la página; en las demás apuntan a
+ * las de `/`. El enlace de la página en la que se está (`ruta`) lleva `aria-current`; el 404
+ * (`null`) no tiene ruta propia. Con `repositorio` (una URL del proyecto, no de los datos), lo
+ * enlaza al final.
+ */
+export function navegacion(ruta: string | null, repositorio?: string): string {
+  const prefijo = ruta === "/" ? "" : "/";
+  const enlace = (href: string, texto: string): string =>
+    `<li><a href="${escaparHtml(href)}"${href === ruta ? ' aria-current="page"' : ""}>${texto}</a></li>`;
+  const enlaces = [
+    enlace(`${prefijo}#empieza`, "Empieza"),
+    enlace(`${prefijo}#datos`, "Datos"),
+    enlace(`${prefijo}#descargas`, "Descargas"),
+    enlace(`${prefijo}#referencia`, "Referencia"),
+    enlace("/estado/", "Estado"),
+    ...(repositorio === undefined ? [] : [enlace(repositorio, "GitHub")]),
+  ];
   return `<nav class="secciones" aria-label="Secciones">
 <ul>
-${secciones}
-<li><a href="/estado/">Estado</a></li>${repo}
+${enlaces.join("\n")}
 </ul>
 </nav>`;
 }
 
+/** El pie de toda página: licencias, repositorio y cómo reportar una vulnerabilidad. */
+const PIE = `<footer class="pie">
+<div class="marco">
+<p>El código es <a href="${URL_ARCHIVOS}/LICENSE">MIT</a>. Los datos conservan los términos de la institución que los publica: ver <a href="${URL_ARCHIVOS}/DATA_LICENSE.md">DATA_LICENSE.md</a>.</p>
+<p><a href="${URL_REPO}">Repositorio en GitHub</a> · <a href="${URL_ARCHIVOS}/SECURITY.md">Reportar una vulnerabilidad</a></p>
+</div>
+</footer>`;
+
 export interface Documento {
   titulo: string;
   descripcion: string;
-  /** HTML ya armado del `body`; quien lo arma escapa los datos. */
+  /** HTML ya armado del `body`, sin el pie, que se agrega aquí; quien lo arma escapa los datos. */
   cuerpo: string;
+  /**
+   * La ruta con la que se sirve la página (`/`, `/estado/`): da la URL canónica, que siempre es
+   * la de la API pública (también en staging), y la tarjeta de Open Graph. `null` en el 404, que
+   * se sirve en cualquier URL: sin canónica ni tarjeta, y con `noindex`.
+   */
+  ruta: string | null;
   /** Módulos del mismo origen (`/sitio.js`), sin scripts en línea: la CSP no los permite. */
   scripts?: readonly string[];
   /**
@@ -81,26 +108,48 @@ export interface Documento {
    * su CSP y su política de referrer van en `<meta>`, antes de cualquier recurso.
    */
   seguridadEnMeta?: boolean;
-  /** `false` pide a los buscadores no indexarla (el 404 se sirve en cualquier URL). */
-  indexable?: boolean;
 }
 
 const SEGURIDAD_EN_META = `<meta http-equiv="Content-Security-Policy" content="${CSP_404}">
 <meta name="referrer" content="no-referrer">
 `;
 
+const TEMA = `<meta name="theme-color" content="${FONDO.claro}" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="${FONDO.oscuro}" media="(prefers-color-scheme: dark)">
+`;
+
+/** La canónica y la tarjeta para compartir el enlace (Open Graph, sin imagen). */
+function tarjeta(ruta: string, titulo: string, descripcion: string): string {
+  if (!RUTA_PAGINA.test(ruta)) throw new Error(`ruta de página inválida: ${ruta}`);
+  const canonica = escaparHtml(`${URL_API}${ruta}`);
+  return `<link rel="canonical" href="${canonica}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="MéxicoAPI">
+<meta property="og:locale" content="es_MX">
+<meta property="og:title" content="${escaparHtml(titulo)}">
+<meta property="og:description" content="${escaparHtml(descripcion)}">
+<meta property="og:url" content="${canonica}">
+<meta name="twitter:card" content="summary">
+`;
+}
+
 export function documento({
   titulo,
   descripcion,
   cuerpo,
+  ruta,
   scripts = [],
   seguridadEnMeta = false,
-  indexable = true,
 }: Documento): string {
+  if ([...descripcion].length > MAXIMO_DESCRIPCION) {
+    throw new Error(`la descripción pasa de ${MAXIMO_DESCRIPCION} caracteres: ${descripcion}`);
+  }
   const modulos = scripts.map((src) => {
     if (!RUTA_SCRIPT.test(src)) throw new Error(`script fuera del sitio: ${src}`);
     return `<script type="module" src="${src}"></script>\n`;
   });
+  const indexacion =
+    ruta === null ? '<meta name="robots" content="noindex">\n' : tarjeta(ruta, titulo, descripcion);
   return `<!doctype html>
 <html lang="es-MX">
 <head>
@@ -108,12 +157,13 @@ export function documento({
 ${seguridadEnMeta ? SEGURIDAD_EN_META : ""}<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escaparHtml(titulo)}</title>
 <meta name="description" content="${escaparHtml(descripcion)}">
-${indexable ? "" : '<meta name="robots" content="noindex">\n'}<meta name="color-scheme" content="light dark">
+${indexacion}${TEMA}<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/estilo.css">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 ${modulos.join("")}</head>
 <body>
 ${cuerpo}
+${PIE}
 </body>
 </html>
 `;

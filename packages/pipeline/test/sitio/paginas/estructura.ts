@@ -1,3 +1,4 @@
+import { URL_API } from "@mexicoapi/core/problemas";
 import { expect } from "vitest";
 
 /** Las etiquetas de HTML que no se cierran. */
@@ -82,9 +83,15 @@ export function esperarDocumentoValido(html: string): void {
   for (let i = minusculas.indexOf("<script"); i !== -1; i = minusculas.indexOf("<script", i + 1)) {
     expect(html.slice(i)).toMatch(/^<script type="module" src="\/[^/"][^"]*"><\/script>/);
   }
-  // Ningún recurso externo: lo que carga la página es del mismo origen.
+  // Ningún recurso externo: lo que carga la página es del mismo origen. La canónica no carga nada
+  // y apunta a la API pública, la misma desde cualquier despliegue.
   for (const src of atributos(html, "src")) expect(src).toMatch(/^\/(?!\/)/);
-  for (const [link] of html.matchAll(/<link\b[^>]*>/g)) expect(link).toMatch(/\shref="\/(?!\/)/);
+  const canonicas = [...html.matchAll(/<link rel="canonical" href="([^"]*)">/g)];
+  expect(canonicas.length).toBeLessThanOrEqual(1);
+  for (const [, href] of canonicas) expect(href?.startsWith(`${URL_API}/`), href).toBe(true);
+  for (const [link] of html.matchAll(/<link\b[^>]*>/g)) {
+    if (!link.startsWith('<link rel="canonical"')) expect(link).toMatch(/\shref="\/(?!\/)/);
+  }
 
   // Los id son únicos y cada referencia interna apunta a uno que existe.
   const ids = atributos(html, "id");
