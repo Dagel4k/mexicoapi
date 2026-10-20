@@ -95,8 +95,11 @@ describe("estilo.css", () => {
     expect(ESTILO).toMatch(
       /\.secciones a \{[^}]*display: inline-block;[^}]*padding-block: 0\.25rem;/,
     );
-    // La página actual también se distingue a la vista, no solo con aria-current.
-    expect(ESTILO).toMatch(/\.secciones \[aria-current\] \{[^}]*color: var\(--texto\);/);
+    // La página actual también se distingue a la vista, no solo con aria-current, y no solo por
+    // el color (WCAG 1.4.1): lleva una línea debajo.
+    expect(ESTILO).toMatch(
+      /\.secciones \[aria-current\] \{[^}]*color: var\(--texto\);[^}]*border-bottom: 2px solid;/,
+    );
   });
 
   // El caption es tan ancho como la tabla: sin esto, a 320 px se desplaza con ella y se corta.

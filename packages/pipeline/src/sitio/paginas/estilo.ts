@@ -84,7 +84,7 @@ p, pre, dl, details { max-width: 68ch; }
 }
 .secciones a { display: inline-block; padding-block: 0.25rem; font-weight: 600; text-decoration: none; }
 .secciones a:hover { text-decoration: underline; }
-.secciones [aria-current] { color: var(--texto); }
+.secciones [aria-current] { color: var(--texto); border-bottom: 2px solid; }
 main { padding-block: 2rem 3rem; }
 section { margin-top: 2.5rem; }
 .intro { font-size: 1.0625rem; }
