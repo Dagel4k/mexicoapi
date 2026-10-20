@@ -290,6 +290,40 @@ describe("el package.json de packages/mcp", () => {
     await expect(revisarHistorial(MCP)).resolves.toBeUndefined();
   });
 
+  it("lleva su nombre del registro de MCP, el mismo de server.json, con la misma versión", async () => {
+    const manifiesto = await leerJson(join(MCP, "package.json"));
+    const servidor = await leerJson(join(MCP, "server.json"));
+    // El registro conserva las mayúsculas del usuario de GitHub.
+    expect(manifiesto.mcpName).toBe("io.github.Dagel4k/mexicoapi-mcp");
+    const publicable = manifiestoPublicable(manifiesto, { mexicoapi: await rangoMexicoapi(SDK) });
+    expect(publicable.mcpName).toBe(manifiesto.mcpName);
+    expect(servidor.$schema).toBe(
+      "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    );
+    expect(servidor.name).toBe(manifiesto.mcpName);
+    expect(servidor.version).toBe(manifiesto.version);
+    // El esquema pide 100 caracteres o menos; en bytes, por si el registro los cuenta así.
+    expect(Buffer.byteLength(String(servidor.description))).toBeLessThanOrEqual(100);
+    expect(servidor.repository).toEqual({
+      url: "https://github.com/Dagel4k/mexicoapi",
+      source: "github",
+      subfolder: "packages/mcp",
+    });
+    const [paquete, ...otros] = servidor.packages as Record<string, unknown>[];
+    expect(otros).toEqual([]);
+    expect(paquete).toMatchObject({
+      registryType: "npm",
+      identifier: manifiesto.name,
+      version: manifiesto.version,
+      transport: { type: "stdio" },
+    });
+    const variables = paquete?.environmentVariables as Record<string, unknown>[];
+    expect(variables.map((v) => [v.name, v.isRequired])).toEqual([
+      ["MEXICOAPI_BASE", false],
+      ["MEXICOAPI_SIN_RED", false],
+    ]);
+  });
+
   it("trae la misma licencia que el repositorio", async () => {
     expect(await readFile(join(MCP, "LICENSE"), "utf8")).toBe(
       await readFile(join(REPO, "LICENSE"), "utf8"),
