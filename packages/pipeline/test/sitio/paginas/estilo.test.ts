@@ -61,12 +61,13 @@ describe("estilo.css", () => {
     );
   });
 
-  // Debajo de 640 px una tabla de seis columnas no cabe: cada renglón es una tarjeta y cada celda
-  // lleva la etiqueta de su columna (data-etiqueta), sin estilos en línea.
-  it("debajo de 40rem las tablas .tarjetas se ven como tarjetas con la etiqueta de cada celda", () => {
+  // Debajo de 1024 px una tabla de seis columnas no cabe (a 768 escondía dos): cada renglón es una
+  // tarjeta y cada celda lleva la etiqueta de su columna (data-etiqueta), sin estilos en línea.
+  it("debajo de 64rem las tablas .tarjetas se ven como tarjetas con la etiqueta de cada celda", () => {
     // max-width y no la sintaxis de rango, que Safari solo entiende desde la 16.4.
     expect(ESTILO).not.toMatch(/@media \([^)]*[<>]/);
-    const inicio = ESTILO.indexOf("@media (max-width: 39.99rem) {\n");
+    expect(ESTILO).not.toContain("39.99rem) {\n");
+    const inicio = ESTILO.indexOf("@media (max-width: 63.99rem) {\n");
     expect(inicio).toBeGreaterThan(0);
     const bloque = ESTILO.slice(inicio, ESTILO.indexOf("\n}\n", inicio));
     expect(bloque).toMatch(/\.tarjetas thead \{[^}]*display: none;/);
@@ -76,6 +77,26 @@ describe("estilo.css", () => {
     );
     expect(bloque).toMatch(/\.tarjetas \.junto, [^{]*\{[^}]*white-space: normal;/);
     expect(ESTILO).not.toMatch(/style=/);
+  });
+
+  // Entre 1024 y 1280 px la tabla completa cabe si las rutas se parten y la fuente es más angosta.
+  it("entre 64 y 80rem las rutas se parten y la columna de fuentes es más angosta", () => {
+    const inicio = ESTILO.indexOf("@media (min-width: 64rem) and (max-width: 79.99rem) {\n");
+    expect(inicio).toBeGreaterThan(0);
+    const bloque = ESTILO.slice(inicio, ESTILO.indexOf("\n}\n", inicio));
+    expect(bloque).toMatch(/\.fuentes \{ min-width: 14rem; \}/);
+    expect(bloque).toMatch(/\.rutas code \{ white-space: normal; overflow-wrap: anywhere; \}/);
+    // Sin un mínimo, la columna API se queda en un carácter de ancho y parte /v1/estados.
+    expect(bloque).toMatch(/\.rutas \{ min-width: 11rem; \}/);
+  });
+
+  // WCAG 2.5.8: los enlaces del menú miden al menos 24 px de alto.
+  it("los enlaces del menú tienen caja propia con relleno vertical", () => {
+    expect(ESTILO).toMatch(
+      /\.secciones a \{[^}]*display: inline-block;[^}]*padding-block: 0\.25rem;/,
+    );
+    // La página actual también se distingue a la vista, no solo con aria-current.
+    expect(ESTILO).toMatch(/\.secciones \[aria-current\] \{[^}]*color: var\(--texto\);/);
   });
 
   // El caption es tan ancho como la tabla: sin esto, a 320 px se desplaza con ella y se corta.

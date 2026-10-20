@@ -116,6 +116,11 @@ const CONFIGURACION_MCP = `{
   }
 }`;
 
+/** Los `args` del MCP en Windows; cada argumento, entero en su renglón ("-y" no se parte). */
+const ARGUMENTOS_WINDOWS = `&quot;args&quot;: [${["/c", "npx", "-y", "mexicoapi-mcp"]
+  .map((a) => `<span class="junto">${escaparHtml(JSON.stringify(a))}</span>`)
+  .join(", ")}]`;
+
 function bloqueApi(ejemplo: unknown): string {
   return `<div class="bloque">
 <h3>API</h3>
@@ -153,7 +158,7 @@ ${documentacion("mexicoapi", "sdk")}
 <p>Los mismos datos y validadores como herramientas de un servidor MCP por stdio.</p>
 <p>Agrégalo a la configuración de tu cliente:</p>
 ${codigo(CONFIGURACION_MCP)}
-<p>En Windows, si el cliente no encuentra <code>npx</code>, usa <code>${escaparHtml('"command": "cmd"')}</code> y <code>${escaparHtml('"args": ["/c", "npx", "-y", "mexicoapi-mcp"]')}</code>.</p>
+<p>En Windows, si el cliente no encuentra <code>npx</code>, usa <code>${escaparHtml('"command": "cmd"')}</code> y <code>${ARGUMENTOS_WINDOWS}</code>.</p>
 ${documentacion("mexicoapi-mcp", "mcp")}
 </div>
 </div>`
@@ -208,6 +213,16 @@ const tiempo = (fecha: string): string => {
 
 const conMayuscula = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1);
 
+/**
+ * La ruta escapada, con `<wbr>` después de cada `/` (salvo la inicial) y antes de `?` y `&`: donde
+ * la columna es angosta se parte ahí y no a media palabra. No cambia lo que se copia.
+ */
+const rutaPartible = (ruta: string): string =>
+  ruta
+    .split(/(?<=.\/)|(?=[?&])/)
+    .map(escaparHtml)
+    .join("<wbr>");
+
 /** Las rutas del dataset, la principal primero, cada una con lo que responde si el catálogo lo dice. */
 function rutasApi(id: string): string {
   const { ruta, nota, otras = [] } = describir(id);
@@ -215,16 +230,19 @@ function rutasApi(id: string): string {
   return [{ ruta, nota }, ...otras]
     .map(
       (r) =>
-        `<code>${escaparHtml(r.ruta)}</code>${r.nota === undefined ? "" : `<span class="detalle">${escaparHtml(conMayuscula(r.nota))}</span>`}`,
+        `<code>${rutaPartible(r.ruta)}</code>${r.nota === undefined ? "" : `<span class="detalle">${escaparHtml(conMayuscula(r.nota))}</span>`}`,
     )
     .join("");
 }
 
 function datos(entrada: EntradaInicio): string {
   const existe = (archivo: string): boolean => entrada.descargas.has(archivo);
-  // data-etiqueta: debajo de 640 px cada renglón es una tarjeta y la hoja la usa como etiqueta.
+  // data-etiqueta: debajo de 1024 px cada renglón es una tarjeta y la hoja la usa como etiqueta.
+  // Los roles: con display: block, WebKit deja de anunciarla como tabla.
   const celda = (etiqueta: string, clase: string, contenido: string): string =>
-    `<td class="${clase}" data-etiqueta="${etiqueta}">${contenido}</td>`;
+    `<td class="${clase}" data-etiqueta="${etiqueta}" role="cell">${contenido}</td>`;
+  const columna = (texto: string, clase = ""): string =>
+    `<th scope="col"${clase === "" ? "" : ` class="${clase}"`} role="columnheader">${texto}</th>`;
   const filas = entrada.datasets.map((d) => {
     const { nombre } = describir(d.id);
     const nombreHtml = escaparHtml(nombre);
@@ -232,8 +250,8 @@ function datos(entrada: EntradaInicio): string {
       d.ultimo_dato === undefined
         ? ""
         : `<span class="detalle">último dato ${tiempo(d.ultimo_dato)}</span>`;
-    return `<tr>
-<th scope="row">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span><span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
+    return `<tr role="row">
+<th scope="row" role="rowheader">${enlaceSeguro(d.docs, nombre)}<span class="id">${escaparHtml(d.id)}</span><span class="detalle">${d.tipo === "curado" ? "Curado" : "Automático"}</span></th>
 ${celda("Datos al", "junto", `${tiempo(d.as_of)}${ultimo}`)}
 ${celda("Registros", "num", formatearEntero(d.registros))}
 ${celda("Fuente y licencia", "fuentes", fuentes(d.fuentes))}
@@ -245,12 +263,12 @@ ${celda("Descargas", "junto", descargasDe(d, nombreHtml, existe))}
 <h2 id="titulo-datos">Datos</h2>
 <p>Los datasets automáticos los actualiza un bot desde su fuente; los curados se transcriben de publicaciones oficiales y se verifican contra ellas. <em>Datos al</em> es, en los automáticos, la fecha de la última actualización que los cambió y, en los curados, la de su publicación oficial más reciente; en <a href="/estado/">Estado</a> se ve si cada dataset automático está al día. En las series (FIX y UDIS), el <em>último dato</em> es la fecha de su registro más reciente: el FIX no se publica en fines de semana ni en feriados bancarios, y las UDIS se publican por adelantado.</p>
 <div class="tabla tarjetas" role="region" aria-labelledby="tabla-datos" tabindex="0">
-<table>
+<table role="table">
 <caption id="tabla-datos">${entrada.datasets.length} datasets, con su fecha, fuente y licencia</caption>
-<thead>
-<tr><th scope="col">Dataset</th><th scope="col">Datos al</th><th scope="col" class="num">Registros</th><th scope="col">Fuente y licencia</th><th scope="col">API</th><th scope="col">Descargas</th></tr>
+<thead role="rowgroup">
+<tr role="row">${columna("Dataset")}${columna("Datos al")}${columna("Registros", "num")}${columna("Fuente y licencia")}${columna("API")}${columna("Descargas")}</tr>
 </thead>
-<tbody>
+<tbody role="rowgroup">
 ${filas.join("\n")}
 </tbody>
 </table>

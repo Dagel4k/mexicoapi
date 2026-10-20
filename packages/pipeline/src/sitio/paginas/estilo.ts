@@ -82,8 +82,9 @@ p, pre, dl, details { max-width: 68ch; }
   margin: 1.25rem 0 0;
   padding: 0;
 }
-.secciones a { font-weight: 600; text-decoration: none; }
+.secciones a { display: inline-block; padding-block: 0.25rem; font-weight: 600; text-decoration: none; }
 .secciones a:hover { text-decoration: underline; }
+.secciones [aria-current] { color: var(--texto); }
 main { padding-block: 2rem 3rem; }
 section { margin-top: 2.5rem; }
 .intro { font-size: 1.0625rem; }
@@ -174,8 +175,14 @@ tbody th { font-weight: 600; }
 .licencia { margin: 0; color: var(--tenue); font-size: 0.875rem; }
 .rutas code { display: block; width: fit-content; white-space: nowrap; }
 .rutas .detalle { margin-bottom: 0.25rem; }
+/* hasta 80rem la tabla completa solo cabe si las rutas se parten */
+@media (min-width: 64rem) and (max-width: 79.99rem) {
+  .fuentes { min-width: 14rem; }
+  .rutas { min-width: 11rem; }
+  .rutas code { white-space: normal; overflow-wrap: anywhere; }
+}
 /* cada renglon como tarjeta; la etiqueta de cada celda sale de data-etiqueta */
-@media (max-width: 39.99rem) {
+@media (max-width: 63.99rem) {
   .tarjetas thead { display: none; }
   .tarjetas table, .tarjetas caption, .tarjetas tbody, .tarjetas tr, .tarjetas th, .tarjetas td { display: block; }
   .tarjetas tr { border-top: 1px solid var(--borde); padding: 0.5rem 0; }

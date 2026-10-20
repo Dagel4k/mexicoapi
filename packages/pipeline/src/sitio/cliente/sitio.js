@@ -82,7 +82,7 @@ const forma = (detalle) => new ErrorEstado(`la respuesta no tiene la forma esper
 
 /**
  * El nombre de cada columna después de la del dataset, como en la cabecera de `/estado/`: debajo
- * de 640 px cada renglón es una tarjeta y la hoja de estilo toma la etiqueta de `data-etiqueta`.
+ * de 1024 px cada renglón es una tarjeta y la hoja de estilo toma la etiqueta de `data-etiqueta`.
  */
 export const ETIQUETAS = Object.freeze([
   "Estado",
@@ -307,6 +307,8 @@ function crearFila(documento, fila, nombres) {
       ? crear("th", "", fila.dataset)
       : crear("th", "", nombre, crear("span", "id", fila.dataset));
   encabezado.setAttribute("scope", "row");
+  // Roles explícitos: en modo tarjeta (display: block) WebKit deja de anunciarla como tabla.
+  encabezado.setAttribute("role", "rowheader");
   const exito =
     fila.instante === null
       ? crear("td", "", fila.ultimoExito)
@@ -334,8 +336,11 @@ function crearFila(documento, fila, nombres) {
   ];
   celdas.forEach((celda, i) => {
     celda.setAttribute("data-etiqueta", ETIQUETAS[i] ?? "");
+    celda.setAttribute("role", "cell");
   });
-  return crear("tr", "", encabezado, ...celdas);
+  const renglon = crear("tr", "", encabezado, ...celdas);
+  renglon.setAttribute("role", "row");
+  return renglon;
 }
 
 /**
