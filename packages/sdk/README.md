@@ -1,5 +1,7 @@
 # mexicoapi
 
+Este README sigue a `main`; lo marcado "(desde 0.2.0)" no está en la 0.1.0 de npm, cuyo README se ve en [npm](https://www.npmjs.com/package/mexicoapi/v/0.1.0).
+
 Validadores, reglas y datos oficiales de México para JavaScript y TypeScript: CLABE, RFC, CURP y NSS; días hábiles de la LFT, la CNBV y el SAT; tipo de cambio FIX, UDIS, UMA, salario mínimo y tarifas de ISR; estados, municipios y bancos. Incluye el cliente de la API de [MéxicoAPI](https://github.com/Dagel4k/mexicoapi), que usa los datos del paquete si la API no responde, y una herramienta para descargar en tu equipo el catálogo de códigos postales de Correos de México.
 
 - Sin dependencias. ESM con tipos incluidos.
@@ -20,7 +22,7 @@ También con `pnpm add mexicoapi`, `yarn add mexicoapi` o `bun add mexicoapi`. E
 
 | Entrada | Qué trae | Dónde corre |
 | --- | --- | --- |
-| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; `hoyEnMexico`; las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `aUnaLinea` | Universal |
+| `mexicoapi` | Validadores y reglas: CLABE, RFC, CURP, NSS, días hábiles, FIX y UDIS sobre una serie; `hoyEnMexico` (desde 0.2.0); las reglas de la API entre parámetros (`revisarTipoPlazo`, `revisarFix`), los catálogos de los calendarios (`AUTORIDADES`, `TIPOS_PLAZO`, `TIPOS_DIA_CURADO`, `NOMBRE_AUTORIDAD`), `normalizarClabe` y `aUnaLinea` | Universal |
 | `mexicoapi/datos` | Estados, municipios y bancos | Universal |
 | `mexicoapi/datos/fix` | Serie del tipo de cambio FIX | Universal |
 | `mexicoapi/datos/udis` | Serie de las UDIS | Universal |
@@ -41,7 +43,7 @@ import { catalogoClabe } from "mexicoapi/datos";
 const bancos = catalogoClabe(); // guárdalo si vas a validar muchas
 const r = validarClabe("002010077777777771", { bancos });
 r.valido; // true
-r.banco_revisado; // true
+r.banco_revisado; // true (desde 0.2.0)
 r.detalle?.banco; // { codigo: "002", nombre_corto: "BANAMEX", activo: true }
 r.detalle?.cuenta; // "07777777777"
 
@@ -50,7 +52,7 @@ validarCurp("HEGG560427MVZRRL04").valido; // true
 validarNss("12345678903").valido; // true
 ```
 
-Cada validador devuelve `{ valor, valido, formato_valido, digito_verificador_valido, errores, nota, detalle }`; la CLABE agrega `banco_revisado`. `errores` dice qué falló (`longitud`, `caracteres`, `banco`, `digito_verificador`...). `nota` dice qué revisa cada uno: ninguno confirma que la cuenta, el RFC, la CURP o el NSS existan ante el banco, el SAT, RENAPO o el IMSS.
+Cada validador devuelve `{ valor, valido, formato_valido, digito_verificador_valido, errores, nota, detalle }`; la CLABE agrega `banco_revisado` (desde 0.2.0). `errores` dice qué falló (`longitud`, `caracteres`, `banco`, `digito_verificador`...). `nota` dice qué revisa cada uno: ninguno confirma que la cuenta, el RFC, la CURP o el NSS existan ante el banco, el SAT, RENAPO o el IMSS.
 
 En el RFC, un dígito verificador que no coincide aparece en `errores` como `digito_verificador`, pero no invalida el resultado: `valido` es igual a `formato_valido`, porque cerca del 1.5 % de los RFC en uso tienen un dígito inválido y rechazar uno real es peor. Si necesitas exigirlo, revisa `digito_verificador_valido`:
 
@@ -63,7 +65,7 @@ En la CLABE, la CURP y el NSS, un dígito que no coincide sí hace `valido: fals
 
 Con el catálogo, un código de banco que no existe es un error de formato (`banco`). Un banco dado de baja sigue dando una CLABE válida, con `activo: false`. Es el mismo resultado que dan la API, la CLI, el MCP y `api.clabe()` del cliente.
 
-Sin el catálogo no se revisa que el banco exista: una CLABE con un banco que no existe y el dígito de control correcto sale válida, con `banco_revisado: false` y una nota que lo dice. Úsalo así solo si ya revisaste el banco por tu cuenta:
+Sin el catálogo no se revisa que el banco exista: una CLABE con un banco que no existe y el dígito de control correcto sale válida, con `banco_revisado: false` (desde 0.2.0) y una nota que lo dice. Úsalo así solo si ya revisaste el banco por tu cuenta:
 
 ```ts
 validarClabe("999010077777777774");
@@ -82,10 +84,10 @@ const r = sumarDiasHabiles({ calendario: calendarioLft(), desde: "2026-11-13", d
 r.resultado; // "2026-11-19": salta el lunes 16 de noviembre
 r.inhabiles_saltados; // [{ fecha: "2026-11-16", motivo: "Tercer lunes de noviembre...", tipo: "descanso", fuente }]
 r.advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; ..."]
-r.avisos; // [{ codigo: "lft-art-715", texto: "Solo descuenta sábados, domingos y ..." }]
+r.avisos; // [{ codigo: "lft-art-715", texto: "Solo descuenta sábados, domingos y ..." }] (desde 0.2.0)
 ```
 
-`avisos` son las mismas advertencias, en el mismo orden, cada una con un código estable: para decidir en un programa sin leer el texto, que puede cambiar de redacción. Los códigos y qué hacer con cada uno están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
+`avisos` (desde 0.2.0) son las mismas advertencias, en el mismo orden, cada una con un código estable: para decidir en un programa sin leer el texto, que puede cambiar de redacción. Los códigos y qué hacer con cada uno están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
 
 `desde` no se cuenta: en un plazo que corre desde una notificación, es el día en que surte efectos, no el día en que se hizo.
 
@@ -134,16 +136,16 @@ const sat = calendarioCurado("sat");
 sat.plazos.get("general")?.cobertura; // { desde: "2026-01-01", hasta: "..." }
 ```
 
-`calendarioCurado(autoridad).plazos` es un `ReadonlyMap`: cada plazo trae su `cobertura`, su `calendario` y, si aplica, un `respaldo`. Fuera de la cobertura, `sumarDiasHabiles` lanza `CalendarioIncompletoError`. Con `permitirIncompleto: true` calcula de todos modos, como la API: en el SAT con `general`, después de las vacaciones publicadas sigue con el `respaldo` del plazo, que descuenta los días del art. 12, y avisa que pueden faltar vacaciones (del 23 de diciembre de 2026, 2 días hábiles dan el 28, no el 25). Más allá de lo que se sabe solo descuenta fines de semana y lo dice en `advertencias`, con lo que puede faltar (en el SAT, los días del art. 12 y las vacaciones; en la CNBV, los cierres bancarios).
+`calendarioCurado(autoridad).plazos` es un `ReadonlyMap`: cada plazo trae su `cobertura`, su `calendario` y, si aplica, un `respaldo`. Fuera de la cobertura, `sumarDiasHabiles` lanza `CalendarioIncompletoError`. Con `permitirIncompleto: true` calcula de todos modos, como la API: en el SAT con `general`, después de las vacaciones publicadas sigue con el `respaldo` del plazo (desde 0.2.0), que descuenta los días del art. 12, y avisa que pueden faltar vacaciones (del 23 de diciembre de 2026, 2 días hábiles dan el 28, no el 25). Más allá de lo que se sabe solo descuenta fines de semana y lo dice en `advertencias`, con lo que puede faltar (en el SAT, los días del art. 12 y las vacaciones; en la CNBV, los cierres bancarios).
 
-El cliente (`crearCliente`, también sin red) da las mismas advertencias que la API, además de las del calendario: con `declaraciones_pagos`, la de la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un día de cierre bancario, que `resultado` no aplica, y otra si cae fuera de las vacaciones publicadas del SAT (después de la última o antes de la primera): ese día podría ser de vacaciones. Para plazos del SAT de declaraciones y pagos, usa el cliente.
+El cliente (`crearCliente`, también sin red) da las mismas advertencias que la API, además de las del calendario: con `declaraciones_pagos`, la de la prórroga del quinto párrafo del artículo 12 si el resultado cae en viernes, en vacaciones del SAT o en un día de cierre bancario, que `resultado` no aplica, y (desde 0.2.0) otra si cae fuera de las vacaciones publicadas del SAT (después de la última o antes de la primera): ese día podría ser de vacaciones. Para plazos del SAT de declaraciones y pagos, usa el cliente.
 
 ## Tipo de cambio FIX y UDIS
 
 El FIX que aplica a un pago de hoy (CFF, artículo 20), con el cliente:
 
 ```ts
-import { hoyEnMexico } from "mexicoapi";
+import { hoyEnMexico } from "mexicoapi"; // desde 0.2.0
 import { crearCliente } from "mexicoapi/cliente";
 
 const api = crearCliente(); // o crearCliente({ offline: true }), sin red
@@ -152,7 +154,7 @@ data.valor; // pesos por dólar, con 4 decimales: "18.4250"
 data.fecha_publicacion; // la publicación en el DOF que aplica: la última antes de hoy
 ```
 
-Las fechas de la API, del paquete y del servidor MCP son días de la Ciudad de México (America/Mexico_City). `hoyEnMexico()` da la fecha de hoy en esa zona (`hoyEnMexico(fecha)` para otro momento). Si tu servidor está en UTC, `new Date().toISOString().slice(0, 10)` da el día siguiente de las 18:00 a las 24:00 de la Ciudad de México: un pago del lunes 19 de octubre de 2026 a las 19:00 se consultaría como del martes 20 y, ya cargado el FIX del lunes, daría ese en lugar del publicado el viernes 16, que es el que aplica. Sin el paquete, lo mismo es `new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date())`.
+Las fechas de la API, del paquete y del servidor MCP son días de la Ciudad de México (America/Mexico_City). `hoyEnMexico()` (desde 0.2.0) da la fecha de hoy en esa zona (`hoyEnMexico(fecha)` para otro momento). Si tu servidor está en UTC, `new Date().toISOString().slice(0, 10)` da el día siguiente de las 18:00 a las 24:00 de la Ciudad de México: un pago del lunes 19 de octubre de 2026 a las 19:00 se consultaría como del martes 20 y, ya cargado el FIX del lunes, daría ese en lugar del publicado el viernes 16, que es el que aplica. Sin el paquete, o con la 0.1.0, lo mismo es `new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date())`.
 
 Las series viajan en `mexicoapi/datos/fix` y `mexicoapi/datos/udis`; las reglas, en la entrada principal. Cada consulta da `{ tipo: "encontrado", registro }`, `{ tipo: "sin_dato" }` (ese día no hubo publicación) o `{ tipo: "no_disponible" }` (el paquete todavía no tiene el dato).
 
@@ -221,9 +223,9 @@ origen; // "api", o "paquete" si la API no respondió
 advertencias; // ["Solo descuenta sábados, domingos y los días de descanso obligatorio del art. 74 de la LFT; ..."]
 ```
 
-`advertencias` trae todo lo que hay que decirle a quien usa el resultado: primero las del cliente (la API no respondió y salió del paquete, los datos del paquete son viejos) y después las del cálculo (calendario incompleto, el art. 715 de la LFT, la prórroga del art. 12 del CFF), sin repetidos. Las del cálculo siguen también en `data.advertencias`, como las da la API. Muéstralas junto al resultado.
+`advertencias` trae todo lo que hay que decirle a quien usa el resultado: primero las del cliente (la API no respondió y salió del paquete, los datos del paquete son viejos) y después las del cálculo (calendario incompleto, el art. 715 de la LFT, la prórroga del art. 12 del CFF), sin repetidos (desde 0.2.0; antes solo venían en `data.advertencias`). Las del cálculo siguen también en `data.advertencias`, como las da la API. Muéstralas junto al resultado.
 
-`avisos` trae las mismas advertencias, en el mismo orden, como `{ codigo, texto }`, y `data.avisos` las del cálculo. Para decidir en un programa usa `codigo`, que no cambia aunque cambie el texto:
+`avisos` (desde 0.2.0) trae las mismas advertencias, en el mismo orden, como `{ codigo, texto }`, y `data.avisos` las del cálculo. Para decidir en un programa usa `codigo`, que no cambia aunque cambie el texto:
 
 ```ts
 const { avisos } = await api.diasHabiles({ autoridad: "lft", desde: "2026-12-22", dias: 5 });
@@ -234,16 +236,16 @@ if (avisos.some((a) => a.codigo === "lft-art-715")) {
 
 Si la API manda el código de un aviso, el cliente lo conserva aunque el texto tenga otra redacción. Si no lo manda (una API anterior) o manda uno que esta versión no conoce, el cliente lo saca del texto con su catálogo (`CODIGOS_AVISO` y `codigoAviso` de `mexicoapi`), y un texto que no conoce sale como `otro`. La lista con qué significa cada código está en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos).
 
-Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `http://127.0.0.1:8787` (`wrangler dev`) o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
+Sin `base`, el cliente usa la API pública, `URL_API` (https://mexicoapi.dagel4k.workers.dev). Una `base` la cambia por otra, como `http://127.0.0.1:8787` (`wrangler dev`) o tu despliegue; con query, fragmento o credenciales (`usuario:clave@`) lanza `TypeError`, y desde 0.2.0 también con `http://`, que solo se acepta para `localhost`, `127.0.0.1` o `[::1]`: para otro host, usa `https://`. Sin red: `crearCliente({ offline: true })` responde todo con los datos del paquete, con las mismas reglas y los mismos errores que la API.
 
-Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen`, `advertencias` y `avisos`.
+Métodos: `estados`, `estado`, `municipios`, `municipio`, `bancos`, `banco`, `clabe`, `diasHabiles`, `diasInhabiles`, `fixPublicado`, `fixParaOperacion`, `fixUltimo`, `udi`, `uma`, `umaVigente`, `salarioMinimo`, `tarifaIsr`, `status` y `consultar` para cualquier ruta (`api.consultar("/v1/estados/{cve_ent}", { cve_ent: "25" })`). Cada respuesta trae `data` y `meta` como los da la API, más `origen`, `advertencias` y `avisos` (desde 0.2.0).
 
 ### Qué responde el paquete y qué la API
 
 Por omisión solo salen a la red los datos que caducan, y solo a la `base` (sin ella, `URL_API`). Los datos estables y los validadores se quedan en tu equipo, y una CLABE solo sale si pides su validación a la API con `{ fuente: "api" }`.
 
 - Datos estables (estados, municipios, bancos) y la validación de la CLABE: salen del paquete por omisión, también cuando el cliente tiene `base`, sin red. Con `{ fuente: "api" }` en la consulta se piden a la API.
-- Datos que caducan (FIX, UDIS, días hábiles e inhábiles, UMA, salario mínimo y tarifas de ISR): se piden a la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), responde el paquete con `origen: "paquete"`, su `meta.as_of` y advertencias: que la API falló y, en las series, que el último dato del paquete tiene más de 7 días (`DIAS_DATOS_RECIENTES`, de `mexicoapi/cliente`). `fixUltimo()` del paquete avisa siempre que pueden faltar publicaciones recientes (`AVISO_SIN_API`, el mismo aviso del servidor MCP). Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
+- Datos que caducan (FIX, UDIS, días hábiles e inhábiles, UMA, salario mínimo y tarifas de ISR): se piden a la API. Si no responde (red, tiempo agotado, 5xx, 429 o una respuesta que no es de la API), responde el paquete con `origen: "paquete"`, su `meta.as_of` y advertencias: que la API falló y, en las series, que el último dato del paquete tiene más de 7 días (`DIAS_DATOS_RECIENTES`, de `mexicoapi/cliente`). `fixUltimo()` del paquete avisa siempre (desde 0.2.0) que pueden faltar publicaciones recientes (`AVISO_SIN_API`, el mismo aviso del servidor MCP). Un problema de la API (400, 404, 422) no se cambia por el paquete, y lo que el paquete no tiene da `dato-no-disponible`, nunca un valor anterior.
 - `{ fuente: "paquete" }` en una consulta, u `offline: true` en el cliente, nunca usan la red. `status()` solo existe en la API: sin red lanza `TypeError`.
 
 Los datos estables del paquete no llevan advertencia de antigüedad: su `as_of` es la fecha del último cambio en la fuente, no de la última revisión, y el paquete no guarda cuándo se construyó. Un catálogo que no cambió en años tiene un `as_of` viejo y está al día. Por eso tampoco avisa `bancos`, aunque es el que más cambia: Banxico actualiza la lista de participantes y la API la revisa cada día, mientras que el paquete trae la de su versión. Si necesitas la lista al día, pide `{ fuente: "api" }`.
@@ -276,11 +278,11 @@ Los tipos de problema están en [docs/api/problemas.md](https://github.com/Dagel
 - `esperaMaximaMs` (10 000 por omisión; 0 para no esperar nunca): lo más que espera una consulta en total entre reintentos. Nunca reintenta antes de lo que pide un `Retry-After` (lo respeta hasta 60 s). Si esa espera no cabe en lo que queda, no reintenta y responde de inmediato con el error, la caché o el paquete. La API pide 60 s en un 429, así que con los valores por omisión un 429 no se reintenta: una función serverless se cortaría antes.
 - `signal`: cancela la consulta, también durante las esperas.
 
-El cliente no sigue redirecciones ni las reintenta: la API no redirige lo que pide el cliente. Lee el cuerpo con un tope de 8 MB (la respuesta más grande, `/v1/municipios`, ronda los 250 KB) y revisa que `data` sea una lista o un objeto según la ruta. Una redirección, o un cuerpo más grande o con otra forma, es una respuesta inesperada (`about:blank`, con el estado HTTP): como con un fallo de la API, las rutas que caducan responden con el paquete y una advertencia.
+Desde 0.2.0, el cliente no sigue redirecciones ni las reintenta: la API no redirige lo que pide el cliente. Lee el cuerpo con un tope de 8 MB (la respuesta más grande, `/v1/municipios`, ronda los 250 KB) y revisa que `data` sea una lista o un objeto según la ruta. Una redirección, o un cuerpo más grande o con otra forma, es una respuesta inesperada (`about:blank`, con el estado HTTP): como con un fallo de la API, las rutas que caducan responden con el paquete y una advertencia.
 
 ### Caché
 
-`cache: true` (o `{ ttlMs, maxEntradas }`, 5 minutos y 100 respuestas por omisión) guarda en memoria las respuestas de la API, nunca más de lo que permite su `Cache-Control`, y revalida con `ETag`. Si al revalidar la API no responde, usa la respuesta guardada mientras no pase su `stale-if-error` (7 días en la API), con `origen: "api"` y una advertencia con su edad: es más nueva que los datos del paquete.
+`cache: true` (o `{ ttlMs, maxEntradas }`, 5 minutos y 100 respuestas por omisión) guarda en memoria las respuestas de la API, nunca más de lo que permite su `Cache-Control`, y revalida con `ETag`. Desde 0.2.0 descuenta de `max-age` la edad con la que llega la respuesta (`Age`), no guarda las respuestas `no-cache` (como las `no-store`) y, si una de ellas llega para algo guardado, deja de usarlo. Si al revalidar la API no responde, usa la respuesta guardada mientras no pase su `stale-if-error` (7 días en la API), con `origen: "api"` y una advertencia con su edad: es más nueva que los datos del paquete.
 
 ## Códigos postales (SEPOMEX)
 
@@ -301,7 +303,7 @@ await sepomex.colonias("80000");
 await sepomex.resumen(); // cuándo se descargó, cuántos códigos, el aviso, dónde quedó
 ```
 
-`resumen()` trae `advertencias` y `avisos` con lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI (`municipio-sin-inegi`), que aparecen en más de un municipio (`cp-varios-municipios`) o un aviso de uso distinto del conocido (`aviso-de-uso-sepomex-distinto`).
+`resumen()` trae `advertencias` y, desde 0.2.0, `avisos` con lo que conviene revisar del catálogo: códigos postales con un municipio que no está en INEGI (`municipio-sin-inegi`), que aparecen en más de un municipio (`cp-varios-municipios`) o un aviso de uso distinto del conocido (`aviso-de-uso-sepomex-distinto`).
 
 - Si el sitio bloquea la descarga automática (un 403, un 429 o un CAPTCHA), no se intenta evadir: el error dice cómo bajar el archivo a mano (estado "Todos", formato TXT) y cargarlo con `sepomex.importar("CPdescarga.zip")`, que acepta el ZIP o el TXT.
 - La caché queda en `%LOCALAPPDATA%\mexicoapi\sepomex` en Windows y en `$XDG_CACHE_HOME/mexicoapi/sepomex` (o `~/.cache/mexicoapi/sepomex`) en los demás; la opción `dir` la cambia. Si algo falla, la caché anterior queda igual.
@@ -318,10 +320,10 @@ npx mexicoapi dias-habiles --autoridad lft --desde 2026-03-16 --dias 5
 npx mexicoapi dias-habiles --autoridad sat --tipo-plazo general --desde 2026-07-17 --dias 3
 npx mexicoapi dias-habiles --autoridad cnbv --desde 2026-12-28 --dias 5 --permitir-incompleto
 npx mexicoapi municipio culiacan
-npx mexicoapi municipios 25
+npx mexicoapi municipios 25                 # desde 0.2.0
 npx mexicoapi banco 002
-npx mexicoapi fix --operacion 2026-10-13
-npx mexicoapi udi 2026-10-01
+npx mexicoapi fix --operacion 2026-10-13    # desde 0.2.0
+npx mexicoapi udi 2026-10-01                # desde 0.2.0
 npx mexicoapi uma 2026
 npx mexicoapi isr mensual 2026
 npx mexicoapi sepomex sync
@@ -337,7 +339,7 @@ Inhábiles saltados:
 Origen: API
 ```
 
-`fix` da el FIX que aplica a una operación (`--operacion`), el publicado un día (`--publicado`) o, sin opciones, la publicación más reciente; `udi <fecha>`, la UDI de un día. `dias-habiles`, `fix`, `udi`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` (o `true`, `yes`, `si`, `on`, sin distinguir mayúsculas) todo sale del paquete, sin red; `--base` gana a esa variable. Con `0`, `false`, `no`, `off` o vacía se consulta la API, y otro valor es un error de configuración: sale con 2, sin el recordatorio de `--help`, como en el servidor MCP. `estados` (las 32, con su clave), `municipios <cve_ent>` (todos los de un estado, con el total), `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error, `-v` la versión y `mexicoapi --help` lista todos los comandos, también `curp`, `nss`, `salario-minimo`, `uma --fecha`, `sepomex importar` y `sepomex resumen`; `mexicoapi <comando> --help` explica cada uno, y un error de uso remite a esa ayuda. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control. Un error de la API nombra las opciones de la CLI (`--tipo-plazo general`, `--permitir-incompleto`, `--operacion 2026-10-10`) en lugar de sus parámetros; con `--json`, el problema va tal cual.
+`fix` (desde 0.2.0) da el FIX que aplica a una operación (`--operacion`), el publicado un día (`--publicado`) o, sin opciones, la publicación más reciente; `udi <fecha>` (desde 0.2.0), la UDI de un día. `dias-habiles`, `fix`, `udi`, `uma`, `salario-minimo` e `isr` consultan primero la API pública (`URL_API`), o la de `--base <url>` o la variable `MEXICOAPI_BASE`, y si no responde usan el paquete y lo dicen en el pie (`Origen: datos del paquete (la API no respondió)`). Con `MEXICOAPI_SIN_RED=1` (o, desde 0.2.0, `true`, `yes`, `si`, `on`, sin distinguir mayúsculas) todo sale del paquete, sin red; `--base` gana a esa variable. Con `0`, `false`, `no`, `off` o vacía se consulta la API, y otro valor es un error de configuración (desde 0.2.0): sale con 2, sin el recordatorio de `--help`, como en el servidor MCP. `estados` (las 32, con su clave) y `municipios <cve_ent>` (todos los de un estado, con el total), los dos desde 0.2.0, `municipio`, `banco` y los validadores salen siempre del paquete, sin red, también con `--base`. `--permitir-incompleto` deja que `dias-habiles` calcule fuera de la cobertura del calendario y lo avise, como `permitir_incompleto=true` en la API. `--json` imprime el resultado completo (los errores, por stderr), `--depurar` muestra el detalle técnico de un error, `-v` la versión y `mexicoapi --help` lista todos los comandos, también `curp`, `nss`, `salario-minimo`, `uma --fecha`, `sepomex importar` y `sepomex resumen`; `mexicoapi <comando> --help` explica cada uno, y un error de uso remite a esa ayuda. Los textos de la API, de los datos y del catálogo de SEPOMEX se imprimen sin caracteres de control. Desde 0.2.0, un error de la API nombra las opciones de la CLI (`--tipo-plazo general`, `--permitir-incompleto`, `--operacion 2026-10-10`) en lugar de sus parámetros; con `--json`, el problema va tal cual.
 
 Códigos de salida:
 
@@ -345,17 +347,17 @@ Códigos de salida:
 | --- | --- |
 | 0 | Todo bien |
 | 1 | Dato o resultado inválido (una CLABE con mal dígito, un banco o un año que no existe) o error al ejecutar. En el RFC, un mal dígito verificador solo se avisa y sale con 0 |
-| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`dias-habiles` sin `--autoridad`, `--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`); o un error de configuración, como un `MEXICOAPI_SIN_RED` que no se reconoce |
+| 2 | Uso incorrecto: comando desconocido, falta un argumento u opción (`dias-habiles` sin `--autoridad`, desde 0.2.0; `--autoridad sat` sin `--tipo-plazo`), sobra una (`--tipo-plazo` con `lft`) o uno mal formado (`--dias x`, `sepomex cp 8000`); o un error de configuración, como un `MEXICOAPI_SIN_RED` que no se reconoce (desde 0.2.0) |
 
 ## Otras exportaciones
 
 De `mexicoapi`:
 
 - `digitoControlClabe`, `digitoVerificadorRfc`, `digitoVerificadorCurp` y `digitoVerificadorNss` calculan el dígito verificador a partir de los primeros caracteres (17 en la CLABE y la CURP, 11 o 12 en el RFC, 10 en el NSS). Lanzan `RangeError` si la entrada no tiene la longitud o los caracteres esperados.
-- `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTAS_VALIDACION` (la nota de cada validador; la CLABE tiene una con el catálogo de bancos y otra sin él). `NOTA_VALIDACION`, la nota común de la 0.1.0, sigue exportada pero ningún validador la usa.
+- `RFC_GENERICOS` (`XAXX010101000` y `XEXX010101000`), `ENTIDADES_CURP` (la clave de entidad de la CURP y su nombre) y `NOTAS_VALIDACION` (desde 0.2.0: la nota de cada validador; la CLABE tiene una con el catálogo de bancos y otra sin él). `NOTA_VALIDACION`, la nota común de la 0.1.0, sigue exportada pero ningún validador la usa.
 - `esFechaIsoValida`: si un texto es una fecha real `AAAA-MM-DD`.
-- `CODIGOS_AVISO` y `codigoAviso(texto)`: el catálogo de códigos de los avisos y el código de una advertencia (`otro` si no la conoce). Tipos `Aviso` y `CodigoAviso`.
-- `hoyEnMexico(ahora?)`: la fecha de hoy (`AAAA-MM-DD`) en la Ciudad de México, la zona de todas las fechas de MéxicoAPI. `ahora` (un `Date` o milisegundos) fija el reloj, por ejemplo en pruebas.
+- `CODIGOS_AVISO` y `codigoAviso(texto)` (desde 0.2.0): el catálogo de códigos de los avisos y el código de una advertencia (`otro` si no la conoce). Tipos `Aviso` y `CodigoAviso`.
+- `hoyEnMexico(ahora?)` (desde 0.2.0): la fecha de hoy (`AAAA-MM-DD`) en la Ciudad de México, la zona de todas las fechas de MéxicoAPI. `ahora` (un `Date` o milisegundos) fija el reloj, por ejemplo en pruebas.
 - `diasDescansoLft(anio)`: los días de descanso obligatorio del artículo 74 de un año, de 2007 a 2100, con su cita. `COBERTURA_LFT` es ese rango y `VIGENCIA_LFT`, la fecha de la última reforma de la LFT que se tomó en cuenta.
 - `crearCalendario`: arma un `Calendario` para `sumarDiasHabiles` con tus propios días inhábiles, su cobertura y la fuente de los fines de semana.
 - `FUENTE_LFT_74`, `FUENTE_LFT_715` y `FUENTE_CFF_20`: nombre, URL y fragmento citado de esos artículos.
@@ -368,7 +370,7 @@ De las entradas de datos: `umas()`, `salariosMinimos()`, `tarifasIsr()` (las lis
 - Los datos (`data`, `meta`, los registros de `mexicoapi/datos`), `consultar` y los problemas usan los nombres de la API: `cve_ent`, `nombre_corto`, `tipo_plazo`, `permitir_incompleto`, `inhabiles_saltados`. El servidor MCP (`mexicoapi-mcp`) también.
 - La CLI usa los de la API con guiones: `--tipo-plazo`, `--permitir-incompleto`.
 - Las reglas y sus textos son los mismos en todas; solo cambia cómo se nombra cada parámetro. `revisarTipoPlazo` da los de la API.
-- `diasHabiles` revisa `tipoPlazo` antes de ir a la red o al paquete: con un valor que no es `general` ni `declaraciones_pagos`, con el SAT sin él, o con otra autoridad y con él, lanza `TypeError` con el nombre del método (`Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.`). La CLI dice `--tipo-plazo`. `consultar` da el `MexicoApiError` de la API, con `tipo_plazo`.
+- `diasHabiles` revisa `tipoPlazo` antes de ir a la red o al paquete (desde 0.2.0): con un valor que no es `general` ni `declaraciones_pagos`, con el SAT sin él, o con otra autoridad y con él, lanza `TypeError` con el nombre del método (`Con autoridad=sat falta tipoPlazo: general o declaraciones_pagos.`). La CLI dice `--tipo-plazo`. `consultar` da el `MexicoApiError` de la API, con `tipo_plazo`.
 
 ## Privacidad
 

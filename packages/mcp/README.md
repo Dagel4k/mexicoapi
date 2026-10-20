@@ -1,5 +1,7 @@
 # mexicoapi-mcp
 
+Este README sigue a `main`; lo marcado "(desde 0.2.0)" no está en la 0.1.0 de npm, cuyo README se ve en [npm](https://www.npmjs.com/package/mexicoapi-mcp/v/0.1.0).
+
 Servidor MCP (Model Context Protocol) con datos de referencia oficiales de México, para que un asistente consulte el dato publicado en vez de inventarlo: estados y municipios, bancos y CLABE, RFC, CURP y NSS, tipo de cambio FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo, tarifas de ISR y códigos postales.
 
 - Corre en tu equipo y habla con el cliente por stdio.
@@ -67,8 +69,8 @@ Sin npx, con el paquete instalado (`npm install mexicoapi-mcp`) o armado desde e
 
 Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, UMA, salario mínimo e ISR) consultan la API pública de MéxicoAPI, https://mexicoapi.dagel4k.workers.dev, y si no responde usan los datos del paquete `mexicoapi` y lo advierten. Las demás nunca usan la red.
 
-- `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a un despliegue propio o a la API local de `wrangler dev`.
-- `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`. También acepta `true`, `yes`, `si` u `on`, y `0`, `false`, `no`, `off` o vacía para consultar la API, sin distinguir mayúsculas.
+- `MEXICOAPI_BASE` cambia la dirección de la API, por ejemplo a un despliegue propio o a la API local de `wrangler dev`. Desde 0.2.0, una dirección `http://` solo se acepta para `localhost`, `127.0.0.1` o `[::1]`; para otro host, usa `https://`.
+- `MEXICOAPI_SIN_RED=1` hace que el servidor responda todo con los datos del paquete y no use la red, aunque haya `MEXICOAPI_BASE`. Desde 0.2.0 también acepta `true`, `yes`, `si` u `on`, y `0`, `false`, `no`, `off` o vacía para consultar la API, sin distinguir mayúsculas.
 
 ```json
 {
@@ -82,7 +84,7 @@ Las herramientas de datos que caducan (FIX, UDIS, días inhábiles y hábiles, U
 }
 ```
 
-Una dirección inválida (con credenciales, query o fragmento) o un `MEXICOAPI_SIN_RED` con otro valor hacen que el servidor no arranque: sale con código 2 y un mensaje en stderr que no repite el valor.
+Una dirección inválida (con credenciales, query o fragmento y, desde 0.2.0, `http://` a otro host) o un `MEXICOAPI_SIN_RED` con otro valor (desde 0.2.0) hacen que el servidor no arranque: sale con código 2 y un mensaje en stderr que no repite el valor.
 
 ## Herramientas
 
@@ -90,8 +92,8 @@ Una dirección inválida (con credenciales, query o fragmento) o un `MEXICOAPI_S
 | --- | --- | --- |
 | `buscar_municipio` | Busca municipios y alcaldías por nombre en el catálogo de INEGI | No |
 | `municipio` | Un municipio por su clave geoestadística (`cvegeo`) | No |
-| `estados` | Las 32 entidades federativas con su clave (`cve_ent`), nombre y abreviatura | No |
-| `municipios_de_estado` | Todos los municipios y alcaldías de un estado (clave `cvegeo` y nombre), con el total; el estado va por su clave (`cve_ent`) o por su nombre | No |
+| `estados` (desde 0.2.0) | Las 32 entidades federativas con su clave (`cve_ent`), nombre y abreviatura | No |
+| `municipios_de_estado` (desde 0.2.0) | Todos los municipios y alcaldías de un estado (clave `cvegeo` y nombre), con el total; el estado va por su clave (`cve_ent`) o por su nombre | No |
 | `validar_clabe` | Valida una CLABE (dígito de control y banco) | No |
 | `banco_por_codigo` | Un banco o participante del SPEI por su código de 3 dígitos | No |
 | `validar_rfc` | Valida el formato de un RFC; el dígito verificador de la homoclave se revisa, pero si no coincide solo se avisa y el RFC no se marca inválido | No |
@@ -100,11 +102,11 @@ Una dirección inválida (con credenciales, query o fragmento) o un `MEXICOAPI_S
 | `tipo_de_cambio_fix` | FIX publicado un día, el que aplica a una operación o el más reciente | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
 | `udis` | Valor de la UDI de un día | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
 | `dias_inhabiles` | Días inhábiles de un año según la LFT, la CNBV o el SAT | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
-| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, los festivos y las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF, también si el resultado cae fuera de las vacaciones publicadas | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
+| `sumar_dias_habiles` | Suma días hábiles a una fecha con el calendario de la LFT, la CNBV (bancario) o el SAT, con advertencias de lo que no descuenta: con la LFT, los festivos y las suspensiones de labores del art. 715; con el SAT y `declaraciones_pagos`, la prórroga del art. 12 del CFF, también (desde 0.2.0) si el resultado cae fuera de las vacaciones publicadas | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
 | `constantes` | UMA, salario mínimo y tarifas de ISR | Sí, salvo con `MEXICOAPI_SIN_RED=1` |
 | `codigo_postal` | Estado, municipio y asentamientos de un código postal | No (lee la caché local) |
 
-Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. `openWorldHint` es `true` solo en las que usan la red, es decir, en las de datos que caducan, salvo con `MEXICOAPI_SIN_RED=1`. Los validadores revisan formato y dígito verificador, y cada uno lo dice en su `nota`; no confirman que la cuenta, el RFC, la CURP o el NSS existan. `validar_clabe` siempre revisa el banco contra el catálogo (`banco_revisado: true`).
+Todas declaran `readOnlyHint: true`, un esquema de entrada estricto y un `outputSchema`. `openWorldHint` es `true` solo en las que usan la red, es decir, en las de datos que caducan, salvo con `MEXICOAPI_SIN_RED=1`. Los validadores revisan formato y dígito verificador, y cada uno lo dice en su `nota`; no confirman que la cuenta, el RFC, la CURP o el NSS existan. `validar_clabe` siempre revisa el banco contra el catálogo (`banco_revisado: true`, desde 0.2.0).
 
 ## Qué trae cada resultado
 
@@ -127,13 +129,13 @@ Cada resultado tiene un texto en español y `structuredContent`, que cumple el `
 - `fuente` y `fuentes`: la publicación oficial con su URL, para citarla. `fuente` es la primera de `fuentes`.
 - `origen`: `api` si respondió la API (la pública o la de `MEXICOAPI_BASE`), `paquete` si salió de los datos y las reglas del paquete `mexicoapi`, o `cache_local` en `codigo_postal`.
 - `advertencias`: lo que hay que decirle a quien pregunta, por ejemplo que la API falló o que un calendario puede estar incompleto.
-- `avisos`: las mismas advertencias, en el mismo orden, cada una con un código estable (`{ "codigo": "lft-art-715", "texto": "…" }`), para que un programa decida sin leer el texto. `sumar_dias_habiles` trae también `datos.avisos`. Los códigos están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos). El texto del resultado solo trae las advertencias.
+- `avisos` (desde 0.2.0): las mismas advertencias, en el mismo orden, cada una con un código estable (`{ "codigo": "lft-art-715", "texto": "…" }`), para que un programa decida sin leer el texto. `sumar_dias_habiles` trae también `datos.avisos`. Los códigos están en [la guía de la API](https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/README.md#avisos). El texto del resultado solo trae las advertencias.
 
-Las fechas que reciben y devuelven las herramientas (`publicado`, `operacion`, `fecha`, `desde`) son días de la Ciudad de México (America/Mexico_City). El servidor no decide qué día es hoy: para el FIX de un pago de hoy, el asistente debe pedir `operacion` con la fecha de hoy en esa zona. De las 18:00 a las 24:00 de la Ciudad de México, en UTC ya es el día siguiente, y con esa fecha la respuesta puede ser el FIX de otro día sin ningún error. La descripción de `tipo_de_cambio_fix` se lo dice al asistente.
+Las fechas que reciben y devuelven las herramientas (`publicado`, `operacion`, `fecha`, `desde`) son días de la Ciudad de México (America/Mexico_City). El servidor no decide qué día es hoy: para el FIX de un pago de hoy, el asistente debe pedir `operacion` con la fecha de hoy en esa zona. De las 18:00 a las 24:00 de la Ciudad de México, en UTC ya es el día siguiente, y con esa fecha la respuesta puede ser el FIX de otro día sin ningún error. Desde 0.2.0, la descripción de `tipo_de_cambio_fix` se lo dice al asistente.
 
-Sin red (`MEXICOAPI_SIN_RED=1`), el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. El cliente da el mismo aviso (`AVISO_SIN_API`) en el FIX más reciente del paquete, y en una respuesta sale una sola vez. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
+Sin red (`MEXICOAPI_SIN_RED=1`), el FIX sin fecha (la publicación más reciente) y el FIX o las UDIS a 7 días o menos del último dato del paquete advierten que pueden faltar publicaciones recientes. Es el mismo umbral del cliente de `mexicoapi` (`DIAS_DATOS_RECIENTES`), que lo cuenta desde el último dato hasta hoy; por eso una respuesta puede traer las dos advertencias. El cliente da el mismo aviso (`AVISO_SIN_API`) en el FIX más reciente del paquete, y desde 0.2.0 en una respuesta sale una sola vez. Los calendarios y las constantes no lo necesitan: fuera de lo que cubre el paquete responden con error, nunca con un valor anterior.
 
-Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó. El texto empieza con su tipo de problema entre corchetes, los mismos de la API: `[parametro-invalido]` y `[parametro-faltante]` (hay que corregir la llamada), `[no-encontrado]` (el dato no existe), `[dato-no-disponible]` (todavía no se publica o no se ha cargado: puede llegar después), `[calendario-incompleto]`, `[demasiadas-peticiones]` y `[error-interno]` (una respuesta que no se esperaba). Por ejemplo: `[no-encontrado] No existe el banco 999.` Además, `[sin-conexion]`, que no es un tipo de la API: el servidor no pudo llegar a la API (sin conexión o tiempo agotado) y los datos del paquete no bastan para responder, así que el dato puede existir y conviene intentar más tarde. Sale sin respaldo del paquete o cuando el paquete tampoco tenía el dato porque todavía no se publica o no lo cubre (`dato-no-disponible`, `calendario-incompleto`), y entonces el texto dice después lo que respondió el paquete: `[sin-conexion] No se pudo conectar con la API. Con los datos del paquete: El FIX del … no está en los datos del paquete; …`. Una respuesta definitiva del paquete no cambia aunque la API no responda: un día sin publicación del FIX sigue siendo `[no-encontrado]` y un argumento inválido, `[parametro-invalido]`.
+Un error de la herramienta (un argumento inválido, un dato que no existe, un calendario que no cubre el periodo, una respuesta de la API con otra forma de la esperada) llega como resultado con `isError: true` y un texto que dice qué pasó. El texto empieza con su tipo de problema entre corchetes, los mismos de la API: `[parametro-invalido]` y `[parametro-faltante]` (hay que corregir la llamada), `[no-encontrado]` (el dato no existe), `[dato-no-disponible]` (todavía no se publica o no se ha cargado: puede llegar después), `[calendario-incompleto]`, `[demasiadas-peticiones]` y `[error-interno]` (una respuesta que no se esperaba). Por ejemplo: `[no-encontrado] No existe el banco 999.` Además, desde 0.2.0, `[sin-conexion]`, que no es un tipo de la API: el servidor no pudo llegar a la API (sin conexión o tiempo agotado) y los datos del paquete no bastan para responder, así que el dato puede existir y conviene intentar más tarde. Sale sin respaldo del paquete o cuando el paquete tampoco tenía el dato porque todavía no se publica o no lo cubre (`dato-no-disponible`, `calendario-incompleto`), y entonces el texto dice después lo que respondió el paquete: `[sin-conexion] No se pudo conectar con la API. Con los datos del paquete: El FIX del … no está en los datos del paquete; …`. Una respuesta definitiva del paquete no cambia aunque la API no responda: un día sin publicación del FIX sigue siendo `[no-encontrado]` y un argumento inválido, `[parametro-invalido]`.
 
 ### Datos al día
 
