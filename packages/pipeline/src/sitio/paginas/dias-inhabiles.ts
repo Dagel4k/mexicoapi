@@ -23,7 +23,7 @@ import { calendarioCurado, coberturasDeLaLista } from "../../curado/calendario.j
 import { COBERTURA_LISTA_LFT } from "../calendarios.js";
 import { type Meta, URL_DOCS } from "../meta.js";
 import { escaparHtml } from "./html.js";
-import type { CitaPagina, PaginaDatos } from "./pagina-datos.js";
+import type { CitaPagina, PaginaDatos, PaquetePagina } from "./pagina-datos.js";
 
 export const RUTA_DIAS_SAT = "/dias-inhabiles-sat/";
 export const RUTA_DIAS_LFT = "/dias-de-descanso-obligatorio/";
@@ -87,7 +87,22 @@ const cubreAnio = (rango: Rango, anio: number): boolean =>
 const aniosCubiertos = (anio: number, rango: Rango): number[] =>
   [anio, anio + 1].filter((a) => cubreAnio(rango, a));
 
-const enTexto = (anios: readonly number[]): string => anios.join(" y ");
+/** "2026", "2026 y 2027", "2027, 2028 y 2029". */
+const enTexto = (anios: readonly number[]): string =>
+  anios.length < 2 ? anios.join("") : `${anios.slice(0, -1).join(", ")} y ${anios.at(-1)}`;
+
+/** Los años de `desde` a `hasta`, los dos incluidos. */
+const aniosEntre = (desde: number, hasta: number): number[] =>
+  Array.from({ length: Math.max(0, hasta - desde + 1) }, (_, i) => desde + i);
+
+/**
+ * La fecha de la página en el sitemap: su título y sus tablas cambian con el año actual, así que
+ * no es anterior al 1 de enero de ese año.
+ */
+const modificadaEn = (datosAl: FechaISO, anio: number): FechaISO => {
+  const enero = `${anio}-01-01`;
+  return datosAl > enero ? datosAl : enero;
+};
 
 const cuenta = (n: number): string => `${n} ${n === 1 ? "día" : "días"}`;
 
@@ -165,12 +180,14 @@ const DESCARGA_COBERTURAS = {
 
 const GUIA_INHABILES = `${URL_DOCS}/api/README.md#dias-inhabiles`;
 
-/** El ejemplo del cliente del paquete para la lista de un año. */
-const conCliente = (autoridad: string, anio: number): string =>
-  `import { crearCliente } from "mexicoapi/cliente";
+/** El ejemplo del cliente del paquete para la lista de un año: pide a la API y tiene respaldo. */
+const conCliente = (autoridad: string, anio: number): PaquetePagina => ({
+  codigo: `import { crearCliente } from "mexicoapi/cliente";
 
 const api = crearCliente();
-const { data, advertencias } = await api.diasInhabiles({ autoridad: "${autoridad}", anio: ${anio} });`;
+const { data, advertencias } = await api.diasInhabiles({ autoridad: "${autoridad}", anio: ${anio} });`,
+  nota: "Con <code>npm install mexicoapi</code>. El cliente pide la lista a la API; si no responde, usa los datos del paquete y lo avisa.",
+});
 
 /** Qué tanto de las vacaciones de `anio` está publicado, según la cobertura del plazo general. */
 function vacacionesDelAnio(anio: number, general: Rango): string {
@@ -181,9 +198,13 @@ function vacacionesDelAnio(anio: number, general: Rango): string {
   if (general.hasta < inicio || general.desde > fin) {
     return `<p class="aviso">Las vacaciones del SAT de ${anio} no se han publicado o no se han cargado: esta lista solo trae los días del artículo 12, que fija la ley.</p>`;
   }
-  const desde = general.desde > inicio ? general.desde : inicio;
-  const hasta = general.hasta < fin ? general.hasta : fin;
-  return `<p class="aviso">Las vacaciones de ${anio} están publicadas del ${fechaEnTexto(desde)} al ${fechaEnTexto(hasta)}; las demás no se han publicado o no se han cargado, así que en esta lista pueden faltar días de vacaciones.</p>`;
+  const faltan =
+    "pueden faltar días de vacaciones que el SAT no ha publicado o que no se han cargado";
+  const hasta = diaYMes(general.hasta < fin ? general.hasta : fin);
+  if (general.desde > inicio) {
+    return `<p class="aviso">Las vacaciones publicadas de ${anio} van del ${diaYMes(general.desde)} al ${hasta}; fuera de esas fechas ${faltan}.</p>`;
+  }
+  return `<p class="aviso">Las vacaciones publicadas de ${anio} llegan al ${hasta}; después ${faltan}.</p>`;
 }
 
 /** Qué tipo de día cuenta como inhábil en cada plazo, según los `excluirTipos` del calendario. */
@@ -218,6 +239,7 @@ export function paginaDiasSat(anio: number, sat: CalendarioDePagina): PaginaDato
   const declaraciones =
     calendario.plazos.get("declaraciones_pagos")?.cobertura ?? calendario.amplia;
   const listas = anios.map((a) => ({ anio: a, ...diasInhabilesCurados(calendario, a) }));
+  const deLaLista = enTexto(aniosEntre(anioDe(lista.desde), anioDe(lista.hasta)));
   const secciones = listas.map(({ anio: a, dias, avisos }) => {
     const descanso = dias.filter((d) => d.tipo === "descanso").length;
     const vacaciones = dias.length - descanso;
@@ -238,28 +260,42 @@ export function paginaDiasSat(anio: number, sat: CalendarioDePagina): PaginaDato
   });
   const plazos = `<section id="plazos" aria-labelledby="titulo-plazos">
 <h2 id="titulo-plazos">Plazos generales y de declaraciones y pagos</h2>
-<p>El artículo 12 del Código Fiscal de la Federación dice que en los plazos para presentar declaraciones y pagar contribuciones los periodos generales de vacaciones de las autoridades fiscales se consideran hábiles. En los demás plazos no cuentan.</p>
+<p>El artículo 12 del Código Fiscal de la Federación dice que en los plazos para presentar declaraciones y pagar contribuciones los periodos generales de vacaciones de las autoridades fiscales se consideran hábiles. En los demás plazos son inhábiles.</p>
 ${tablaPlazos(calendario)}
 <p>Los días que la regla 2.1.6 declara inhábiles para el SAT sin ser vacaciones generales se tratan como vacaciones: en un plazo de declaraciones y pagos cuentan como hábiles y el plazo vence antes, no después, que es el lado seguro para el contribuyente.</p>
 <p>Para sumar días hábiles, <code>/v1/dias-habiles</code> con <code>autoridad=sat</code> pide <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>.</p>
 </section>`;
   const pendiente = `<section id="pendiente" aria-labelledby="titulo-pendiente">
 <h2 id="titulo-pendiente">Lo que falta publicar</h2>
-<p>Para un plazo general, la lista está completa del ${fechaEnTexto(general.desde)} al ${fechaEnTexto(general.hasta)}: después pueden faltar las vacaciones que el SAT no ha publicado o que no se han cargado. Se agregan cuando el DOF publica la regla 2.1.6 que las fija.</p>
-<p>Para un plazo de declaraciones y pagos, que no cuenta las vacaciones, la lista está completa del ${fechaEnTexto(declaraciones.desde)} al ${fechaEnTexto(declaraciones.hasta)}: los días del artículo 12 se calculan por regla.</p>
+<p>Para un plazo general, la lista está completa del ${fechaEnTexto(general.desde)} al ${fechaEnTexto(general.hasta)}, en la API y en la descarga: después pueden faltar las vacaciones que el SAT no ha publicado o que no se han cargado. Se agregan cuando el DOF publica la regla 2.1.6 que las fija.</p>
+<p>Para un plazo de declaraciones y pagos, en el que las vacaciones son días hábiles, la API cubre del ${fechaEnTexto(declaraciones.desde)} al ${fechaEnTexto(declaraciones.hasta)}, porque los días del artículo 12 se calculan por regla. La descarga trae los días de ${deLaLista}, hasta donde llega su lista en <code>dias-inhabiles-coberturas.json</code>.</p>
 <p>Un cálculo de plazo general que pase del ${fechaEnTexto(general.hasta)} responde 422 <code>calendario-incompleto</code>; con <code>permitir_incompleto=true</code> calcula con lo publicado y avisa lo que puede faltar.</p>
 </section>`;
-  const deLaLista = enTexto([...new Set([anioDe(lista.desde), anioDe(lista.hasta)])]);
   const texto = enTexto(anios);
   const h1 = `Días inhábiles del SAT ${texto}`;
+  // La descripción no da a entender que las vacaciones de los años de la página están completas.
+  const sinVacaciones = anios.filter(
+    (a) => general.hasta < `${a}-01-01` || general.desde > `${a}-12-31`,
+  );
+  const inicioDescripcion = `Días inhábiles del SAT en ${texto}: los del artículo 12 del CFF`;
+  let descripcion: string;
+  if (anios.every((a) => cubreAnio(general, a))) {
+    descripcion = `${inicioDescripcion} y las vacaciones de la regla 2.1.6 de la RMF, con su fuente oficial en el DOF.`;
+  } else if (sinVacaciones.length === anios.length) {
+    descripcion = `${inicioDescripcion}, con su fuente oficial; las vacaciones de ${texto} aún no están publicadas.`;
+  } else {
+    const aunNo = sinVacaciones.length === 0 ? "" : `; las de ${enTexto(sinVacaciones)}, aún no`;
+    descripcion = `${inicioDescripcion} y las vacaciones publicadas hasta el ${fechaEnTexto(general.hasta)}${aunNo}.`;
+  }
   return {
     ruta: RUTA_DIAS_SAT,
     titulo: `${h1} · MéxicoAPI`,
-    descripcion: `Días inhábiles del SAT en ${texto}: los del artículo 12 del CFF y las vacaciones de la regla 2.1.6 de la RMF, con su fuente oficial en el DOF.`,
+    descripcion,
     h1,
     miga: "Días inhábiles del SAT",
     dataset: meta.dataset,
     datosAl: meta.as_of,
+    modificada: modificadaEn(meta.as_of, anio),
     queEsDatosAl: "la fecha de la publicación más reciente de sus fuentes",
     intro: `<p class="intro">Días que no cuentan en los plazos fiscales ante el SAT: los del artículo 12 del Código Fiscal de la Federación y los periodos de vacaciones y días inhábiles que fija la regla 2.1.6 de la Resolución Miscelánea Fiscal. Los sábados y domingos también son inhábiles y no se listan por serlo; un periodo de vacaciones se lista completo, con sus fines de semana.</p>`,
     contenido: [...secciones, plazos, pendiente].join("\n"),
@@ -348,9 +384,11 @@ export function paginaDiasLft(anio: number): PaginaDatos {
     miga: "Días de descanso obligatorio",
     dataset: null,
     datosAl: meta.as_of,
+    modificada: modificadaEn(meta.as_of, anio),
     queEsDatosAl:
       "la fecha de la última reforma de la Ley Federal del Trabajo que se tomó en cuenta",
-    intro: `<p class="intro">Los días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Para nómina (días de descanso obligatorio, artículo 75) esta es la lista que aplica. Los sábados y domingos no se listan por serlo; un día de descanso obligatorio que cae en fin de semana sí aparece.</p>`,
+    intro: `<p class="intro">Los días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Para nómina (días de descanso obligatorio, artículo 75) esta es la lista que aplica, salvo la fracción IX. Los sábados y domingos no se listan por serlo; un día de descanso obligatorio que cae en fin de semana sí aparece.</p>
+<p>La fracción IX del artículo 74, el día de la jornada electoral de las elecciones ordinarias federales y locales, no está en la lista: su fecha la fijan las leyes electorales (las elecciones se celebran en domingo) y las locales cambian de un estado a otro.</p>`,
     contenido: [...secciones, ...transmision, art715].join("\n"),
     fuentes: meta.sources,
     citas: citasDe(
@@ -359,9 +397,12 @@ export function paginaDiasLft(anio: number): PaginaDatos {
     ),
     consultas: anios.map((a) => `/v1/dias-inhabiles?autoridad=lft&anio=${a}`),
     guiaApi: GUIA_INHABILES,
-    paquete: `import { diasDescansoLft } from "mexicoapi";
+    paquete: {
+      codigo: `import { diasDescansoLft } from "mexicoapi";
 
-diasDescansoLft(${anio}); // sin red: los días del artículo 74, cada uno con su cita`,
+diasDescansoLft(${anio}); // los días del artículo 74, cada uno con su cita`,
+      nota: "Con <code>npm install mexicoapi</code>. <code>diasDescansoLft</code> calcula los días en tu equipo, sin red.",
+    },
     descargas: [
       {
         archivo: "dias-inhabiles-lft.json",
@@ -373,7 +414,7 @@ diasDescansoLft(${anio}); // sin red: los días del artículo 74, cada uno con s
     docs: null,
     conjunto: {
       nombre: "Días de descanso obligatorio de la Ley Federal del Trabajo",
-      descripcion: `Días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Cada día trae su fecha, su motivo y la cita del texto del artículo 74 que estaba en vigor ese día. Los sábados y domingos no se listan por serlo. No incluye los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715).`,
+      descripcion: `Días de descanso obligatorio del artículo 74 de la Ley Federal del Trabajo, calculados por regla para cada año de ${desde} a ${hasta}. Cada día trae su fecha, su motivo y la cita del texto del artículo 74 que estaba en vigor ese día. Los sábados y domingos no se listan por serlo. No incluye la jornada electoral de la fracción IX, cuya fecha fijan las leyes electorales, ni los festivos del calendario oficial ni los días en que las autoridades laborales suspenden labores (artículo 715).`,
       palabrasClave: [
         "días de descanso obligatorio",
         "Ley Federal del Trabajo",
@@ -396,7 +437,8 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
   const cubiertos = aniosCubiertos(anio, amplia);
   // Antes de que la CNBV publique el año, la página se queda con el último que tiene.
   const anios = cubiertos.length > 0 ? cubiertos : [ultimo];
-  const faltan = [anio, anio + 1].filter((a) => a > ultimo);
+  // Todos los años sin cargar, del siguiente al último cargado al siguiente al actual.
+  const faltan = aniosEntre(ultimo + 1, anio + 1);
   const anteriores: number[] = [];
   for (let a = anioDe(amplia.desde); a < (anios[0] as number); a++) {
     if (cubreAnio(amplia, a)) anteriores.push(a);
@@ -440,6 +482,7 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
     miga: "Días inhábiles bancarios",
     dataset: meta.dataset,
     datosAl: meta.as_of,
+    modificada: modificadaEn(meta.as_of, anio),
     queEsDatosAl: "la fecha de la publicación más reciente de sus fuentes",
     intro: `<p class="intro">Días en que las entidades financieras supervisadas por la Comisión Nacional Bancaria y de Valores (bancos, casas de bolsa y demás entidades que enumeran las disposiciones) deben cerrar sus puertas y suspender operaciones. Es el calendario bancario, no el de la CNBV como autoridad: en un procedimiento ante la Comisión cuentan sus propios días de suspensión de labores, que no están aquí.</p>
 <p>Los sábados y domingos también son inhábiles (fracción IX del artículo 1 de las disposiciones) y no se listan; una fecha de las disposiciones que cae en fin de semana sí aparece.</p>`,
@@ -452,7 +495,7 @@ export function paginaDiasCnbv(anio: number, cnbv: CalendarioDePagina): PaginaDa
     descargas: [
       {
         archivo: "dias-inhabiles-cnbv.json",
-        contenido: `Los días de ${enTexto([...new Set([anioDe(lista.desde), anioDe(lista.hasta)])])}, con su motivo y su fuente`,
+        contenido: `Los días de ${enTexto(aniosEntre(anioDe(lista.desde), anioDe(lista.hasta)))}, con su motivo y su fuente`,
       },
       { archivo: "dias-inhabiles-cnbv.csv", contenido: "Lo mismo, con la fuente en columnas" },
       { archivo: "dias-inhabiles-cnbv.manifest.json", contenido: "Fuentes, licencia y sha256" },

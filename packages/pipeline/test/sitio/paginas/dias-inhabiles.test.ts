@@ -84,7 +84,9 @@ let cnbv: CalendarioDePagina;
 let manifiestoSat: Manifiesto;
 let manifiestoCnbv: Manifiesto;
 let vacacionesSat: DiaInhabilCurado[];
+let guiaApi: string;
 beforeAll(async () => {
+  guiaApi = await readFile(join(REAL, "..", "docs", "api", "README.md"), "utf8");
   const deSat = await calendarioReal(curadoDiasSat, "sat");
   const deCnbv = await calendarioReal(curadoDiasCnbv, "cnbv");
   sat = deSat.pagina;
@@ -229,8 +231,10 @@ describe("días inhábiles del SAT", () => {
     const texto = html(paginaDiasSat(2026, sat));
     const { desde, hasta } = sat.calendario.general.cobertura;
     expect(hasta < "2026-12-31").toBe(true);
+    expect(desde).toBe("2026-01-01");
+    // Que no se lea como un periodo de vacaciones de enero a noviembre.
     expect(seccion(texto, "anio-2026")).toContain(
-      `<p class="aviso">Las vacaciones de 2026 están publicadas del ${fechaEnTexto(desde)} al ${fechaEnTexto(hasta)}; las demás no se han publicado o no se han cargado, así que en esta lista pueden faltar días de vacaciones.</p>`,
+      `<p class="aviso">Las vacaciones publicadas de 2026 llegan al ${fechaEnTexto(hasta).replace(" de 2026", "")}; después pueden faltar días de vacaciones que el SAT no ha publicado o que no se han cargado.</p>`,
     );
     expect(seccion(texto, "anio-2027")).toContain(
       '<p class="aviso">Las vacaciones del SAT de 2027 no se han publicado o no se han cargado: esta lista solo trae los días del artículo 12, que fija la ley.</p>',
@@ -244,12 +248,77 @@ describe("días inhábiles del SAT", () => {
     const declaraciones = sat.calendario.plazos.get("declaraciones_pagos")?.cobertura;
     expect(declaraciones).toBeDefined();
     expect(pendiente).toContain(
-      `Para un plazo general, la lista está completa del ${fechaEnTexto(desde)} al ${fechaEnTexto(hasta)}`,
+      `Para un plazo general, la lista está completa del ${fechaEnTexto(desde)} al ${fechaEnTexto(hasta)}, en la API y en la descarga`,
     );
+    // La API calcula los días del art. 12 hasta 2100; la descarga solo trae los años de su lista,
+    // los mismos que dice dias-inhabiles-coberturas.json.
+    expect(declaraciones?.hasta).toBe("2100-12-31");
+    expect(sat.lista.hasta).toBe("2026-12-31");
     expect(pendiente).toContain(
-      `la lista está completa del ${fechaEnTexto(declaraciones?.desde as string)} al ${fechaEnTexto(declaraciones?.hasta as string)}`,
+      `<p>Para un plazo de declaraciones y pagos, en el que las vacaciones son días hábiles, la API cubre del ${fechaEnTexto(declaraciones?.desde as string)} al ${fechaEnTexto(declaraciones?.hasta as string)}, porque los días del artículo 12 se calculan por regla. La descarga trae los días de 2026, hasta donde llega su lista en <code>dias-inhabiles-coberturas.json</code>.</p>`,
+    );
+    expect(pendiente).not.toContain(
+      "la lista está completa del 1 de enero de 2026 al 31 de diciembre de 2100",
     );
     expect(pendiente).toContain("<code>calendario-incompleto</code>");
+  });
+
+  it("si las vacaciones publicadas empiezan después del 1 de enero, dice desde y hasta cuándo", () => {
+    const desdeMarzo = calendarioDePagina(
+      "sat",
+      vacacionesSat.filter((v) => v.fecha >= "2026-03-01"),
+      { vacaciones: { desde: "2026-03-01", hasta: "2026-11-30" } },
+      sat.meta,
+    );
+    expect(seccion(html(paginaDiasSat(2026, desdeMarzo)), "anio-2026")).toContain(
+      '<p class="aviso">Las vacaciones publicadas de 2026 van del 1 de marzo al 30 de noviembre; fuera de esas fechas pueden faltar días de vacaciones que el SAT no ha publicado o que no se han cargado.</p>',
+    );
+  });
+
+  // La descripción dice qué vacaciones están: las publicadas hasta una fecha, y qué año no tiene.
+  it("su descripción dice hasta dónde están las vacaciones y qué año no las tiene", () => {
+    const pagina = paginaDiasSat(2026, sat);
+    expect(pagina.descripcion).toBe(
+      "Días inhábiles del SAT en 2026 y 2027: los del artículo 12 del CFF y las vacaciones publicadas hasta el 30 de noviembre de 2026; las de 2027, aún no.",
+    );
+    expect([...pagina.descripcion].length).toBeLessThanOrEqual(155);
+    const completo = calendarioDePagina(
+      "sat",
+      vacacionesSat,
+      { vacaciones: { desde: "2026-01-01", hasta: "2027-12-31" } },
+      sat.meta,
+    );
+    expect(paginaDiasSat(2026, completo).descripcion).toBe(
+      "Días inhábiles del SAT en 2026 y 2027: los del artículo 12 del CFF y las vacaciones de la regla 2.1.6 de la RMF, con su fuente oficial en el DOF.",
+    );
+    const hastaJunio = calendarioDePagina(
+      "sat",
+      vacacionesSat,
+      { vacaciones: { desde: "2026-01-01", hasta: "2027-06-30" } },
+      sat.meta,
+    );
+    expect(paginaDiasSat(2026, hastaJunio).descripcion).toBe(
+      "Días inhábiles del SAT en 2026 y 2027: los del artículo 12 del CFF y las vacaciones publicadas hasta el 30 de junio de 2027.",
+    );
+    expect(paginaDiasSat(2030, sat).descripcion).toBe(
+      "Días inhábiles del SAT en 2030 y 2031: los del artículo 12 del CFF, con su fuente oficial; las vacaciones de 2030 y 2031 aún no están publicadas.",
+    );
+  });
+
+  // El título cambia con el año actual: el sitemap no puede dar una fecha anterior a ese año.
+  it("su fecha en el sitemap es la de sus datos o, si es anterior, el 1 de enero del año actual", () => {
+    expect(paginaDiasSat(2026, sat).modificada).toBe(manifiestoSat.as_of);
+    expect(paginaDiasSat(2027, sat).modificada).toBe("2027-01-01");
+    expect(paginaDiasLft(2026).modificada).toBe(VIGENCIA_LFT);
+    expect(paginaDiasLft(2027).modificada).toBe("2027-01-01");
+    expect(manifiestoCnbv.as_of < "2026-01-01").toBe(true);
+    expect(paginaDiasCnbv(2026, cnbv).modificada).toBe("2026-01-01");
+  });
+
+  it("su ejemplo del paquete usa el cliente, que pide a la API y si no responde usa el paquete", () => {
+    expect(paginaDiasSat(2026, sat).paquete?.nota).toBe(
+      "Con <code>npm install mexicoapi</code>. El cliente pide la lista a la API; si no responde, usa los datos del paquete y lo avisa.",
+    );
   });
 
   it("con las vacaciones de los dos años publicadas, dice que las listas están completas", () => {
@@ -279,6 +348,9 @@ describe("días inhábiles del SAT", () => {
     expect(sat.calendario.plazos.get("declaraciones_pagos")?.excluirTipos).toEqual(["vacaciones"]);
     expect(sat.calendario.general.excluirTipos).toEqual([]);
     expect(plazos).toContain("<code>tipo_plazo=declaraciones_pagos</code>");
+    // "No cuentan" se leería como hábiles o como inhábiles: se dice cuál.
+    expect(plazos).toContain("se consideran hábiles. En los demás plazos son inhábiles.</p>");
+    expect(plazos).not.toContain("no cuentan");
   });
 
   // En 2030 el SAT no descuenta el 1o. de octubre: la API lo advierte y la página también.
@@ -364,6 +436,31 @@ describe("días de descanso obligatorio (LFT)", () => {
     );
   });
 
+  // La fracción IX (jornada electoral) no se calcula: la página no dice que la lista es completa.
+  it("dice que la jornada electoral (fracción IX) no está en la lista, también para nómina", () => {
+    const pagina = paginaDiasLft(2026);
+    expect(pagina.intro).toContain(
+      "Para nómina (días de descanso obligatorio, artículo 75) esta es la lista que aplica, salvo la fracción IX.",
+    );
+    expect(pagina.intro).toContain(
+      "La fracción IX del artículo 74, el día de la jornada electoral de las elecciones ordinarias federales y locales, no está en la lista: su fecha la fijan las leyes electorales (las elecciones se celebran en domingo) y las locales cambian de un estado a otro.",
+    );
+    expect(diasInhabilesLft(2026).dias.some((d) => /electoral/i.test(d.motivo))).toBe(false);
+    // La guía de la API dice lo mismo.
+    expect(guiaApi).toContain(
+      "salvo la fracción IX: el día de la jornada electoral de las elecciones ordinarias federales y locales no está en la lista, porque su fecha la fijan las leyes electorales (las elecciones se celebran en domingo) y las locales cambian de un estado a otro.",
+    );
+  });
+
+  // diasDescansoLft calcula en el equipo: su nota no habla de la API.
+  it("su ejemplo del paquete es diasDescansoLft, sin red", () => {
+    const { paquete } = paginaDiasLft(2026);
+    expect(paquete?.codigo).toContain('import { diasDescansoLft } from "mexicoapi";');
+    expect(paquete?.nota).toBe(
+      "Con <code>npm install mexicoapi</code>. <code>diasDescansoLft</code> calcula los días en tu equipo, sin red.",
+    );
+  });
+
   // 2100 es el último año del calendario: sin el siguiente ni otra transmisión.
   it("al final de la cobertura solo muestra los años que existen", () => {
     const pagina = paginaDiasLft(2100);
@@ -442,6 +539,14 @@ describe("días inhábiles bancarios (CNBV)", () => {
       "Los calendarios de 2027 y 2028 no se han cargado",
     );
     expect(texto).toContain("La API y las descargas también traen 2025.");
+  });
+
+  // Ningún año faltante se queda sin nombrar, por lejos que esté el último cargado.
+  it("nombra cada año que falta entre el último cargado y el siguiente al actual", () => {
+    const texto = html(paginaDiasCnbv(2028, cnbv), 2028);
+    expect(seccion(texto, "cobertura")).toContain(
+      "Los calendarios de 2027, 2028 y 2029 no se han cargado",
+    );
   });
 
   it("su Dataset y su fuente son los del manifiesto", () => {

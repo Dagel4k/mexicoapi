@@ -41,7 +41,7 @@ export interface EntradaDataset {
   fuentes: readonly string[];
   palabrasClave: readonly string[];
   coberturaTemporal: string;
-  /** AAAA-MM-DD, el `as_of` de los datos. */
+  /** AAAA-MM-DD, el `as_of` de los datos: su `dateModified` y su `version`. */
   modificado: string;
   /** Archivos de `/descargas/`, cada uno `.json` o `.csv`. */
   distribucion: readonly string[];
@@ -86,6 +86,7 @@ export function nodoDataset(d: EntradaDataset): Nodo {
     temporalCoverage: d.coberturaTemporal,
     spatialCoverage: { "@type": "Place", name: "México" },
     dateModified: d.modificado,
+    version: d.modificado,
     isBasedOn: [...d.fuentes],
     includedInDataCatalog: { "@type": "DataCatalog", ...sitio },
     distribution,
