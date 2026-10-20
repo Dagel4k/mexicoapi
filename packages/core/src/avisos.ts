@@ -25,7 +25,7 @@ export const AVISO_SIN_API =
  *   plazo.
  * - `lft-art-715`: el calendario de la LFT no tiene los festivos ni las suspensiones de labores.
  * - `transmision-poder-ejecutivo`: el SAT no descuenta el 1o. de octubre ni el 1o. de diciembre de
- *   un año de transmisión del Poder Ejecutivo.
+ *   un año de transmisión del Poder Ejecutivo; el texto nombra los que caen entre semana.
  * - `prorroga-art-12`: el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario;
  *   el quinto párrafo del art. 12 del CFF puede prorrogarlo y el resultado no lo incluye.
  * - `vacaciones-sin-publicar`: el resultado cae fuera de las vacaciones del SAT publicadas.
@@ -107,7 +107,8 @@ const PATRONES: readonly (readonly [CodigoAviso, RegExp])[] = [
   ],
   [
     "transmision-poder-ejecutivo",
-    /^En \d{4} no se descuentan el 1o\. de octubre ni el 1o\. de diciembre: /,
+    // Con las dos fechas o con la única que cae entre semana.
+    /^En \d{4} no se descuentan? el 1o\. de (?:octubre|diciembre)(?: ni el 1o\. de diciembre)?: /,
   ],
   [
     "prorroga-art-12",

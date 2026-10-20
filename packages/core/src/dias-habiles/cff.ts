@@ -1,6 +1,6 @@
 import type { Aviso } from "../avisos.js";
 import type { FuenteDof } from "../datos/curados.js";
-import { enesimoDiaDeSemana, type FechaISO } from "../fechas.js";
+import { diaDeLaSemana, enesimoDiaDeSemana, type FechaISO } from "../fechas.js";
 import type { DiaInhabil } from "./tipos.js";
 
 /** Fecha de la última reforma del CFF en el DOF; el texto de abajo es el de esa versión. */
@@ -64,16 +64,38 @@ export function diasDescansoCff(anio: number): DiaInhabil[] {
   ];
 }
 
-/** El aviso de un año de transmisión del Poder Ejecutivo: qué no se descuenta y por qué. */
+/**
+ * El 1o. de octubre y el 1o. de diciembre de un año de transmisión que caen entre semana: en
+ * sábado o domingo ya son inhábiles y declararlos no mueve ningún plazo. Nunca caen los dos en fin
+ * de semana (el 1o. de diciembre va 61 días después, cinco días de la semana más adelante).
+ */
+function fechasTransmision(anio: number): { fecha: FechaISO; nombre: string }[] {
+  return [
+    { fecha: `${anio}-10-01`, nombre: "1o. de octubre" },
+    { fecha: `${anio}-12-01`, nombre: "1o. de diciembre" },
+  ].filter(({ fecha }) => diaDeLaSemana(fecha) % 6 !== 0);
+}
+
+/**
+ * El aviso de un año de transmisión del Poder Ejecutivo: qué no se descuenta y por qué. Nombra
+ * solo las fechas que caen entre semana (en 2030 el 1o. de diciembre es domingo).
+ */
 export function avisoTransmisionCff(anio: number): Aviso {
-  const texto = `En ${anio} no se descuentan el 1o. de octubre ni el 1o. de diciembre: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.`;
+  const [una, otra] = fechasTransmision(anio).map((f) => f.nombre);
+  const cuales =
+    otra === undefined ? `no se descuenta el ${una}` : `no se descuentan el ${una} ni el ${otra}`;
+  const si =
+    otra === undefined
+      ? "Si el SAT lo declara inhábil"
+      : "Si el SAT declara inhábil alguno de los dos";
+  const texto = `En ${anio} ${cuales}: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. ${si}, el plazo que lo cruce vence un día hábil después.`;
   return { codigo: "transmision-poder-ejecutivo", texto };
 }
 
 /**
- * Los avisos de un cálculo que pasa por el 1o. de octubre o el 1o. de diciembre de un año de
- * transmisión (cada seis años desde 2024) dentro de la cobertura: de `desde`, sin contarlo, a
- * `hasta`. Uno por año, en orden; vacío si no pasa por ninguno.
+ * Los avisos de un cálculo que pasa por el 1o. de octubre o el 1o. de diciembre, entre semana, de
+ * un año de transmisión (cada seis años desde 2024) dentro de la cobertura: de `desde`, sin
+ * contarlo, a `hasta`. Uno por año, en orden; vacío si no pasa por ninguno.
  */
 export function avisosTransmisionCff(desde: FechaISO, hasta: FechaISO): Aviso[] {
   const avisos: Aviso[] = [];
@@ -81,7 +103,7 @@ export function avisosTransmisionCff(desde: FechaISO, hasta: FechaISO): Aviso[] 
   const ultimo = Math.min(Number(hasta.slice(0, 4)), ANIO_MAX);
   for (let anio = primero; anio <= ultimo; anio++) {
     if ((anio - 2024) % 6 !== 0) continue;
-    const cruza = [`${anio}-10-01`, `${anio}-12-01`].some((f) => f > desde && f <= hasta);
+    const cruza = fechasTransmision(anio).some(({ fecha }) => fecha > desde && fecha <= hasta);
     if (cruza) avisos.push(avisoTransmisionCff(anio));
   }
   return avisos;

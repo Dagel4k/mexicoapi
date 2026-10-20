@@ -129,28 +129,66 @@ describe("fuente y cobertura", () => {
 
 describe("avisosTransmisionCff", () => {
   const aviso2030 = avisoTransmisionCff(2030);
+  const aviso2036 = avisoTransmisionCff(2036);
+  const EXPLICACION =
+    "el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre.";
+  /** 0 = domingo ... 6 = sábado, con Date como referencia independiente. */
+  const diaSemana = (anio: number, mes: number) => new Date(Date.UTC(anio, mes - 1, 1)).getUTCDay();
 
   it("da cada aviso con su código", () => {
     expect(aviso2030.codigo).toBe("transmision-poder-ejecutivo");
-    expect(aviso2030.texto).toMatch(/^En 2030 no se descuentan el 1o\. de octubre/);
+    expect(aviso2030.texto).toMatch(/^En 2030 no se descuenta el 1o\. de octubre:/);
   });
 
-  it("dice qué no se descuenta y por qué", () => {
+  it("dice qué no se descuenta y por qué, solo con las fechas que caen entre semana", () => {
+    // 2030: el 1o. de diciembre es domingo.
     expect(aviso2030.texto).toBe(
-      "En 2030 no se descuentan el 1o. de octubre ni el 1o. de diciembre: el art. 12 del CFF no cuenta el 1o. de diciembre de cada 6 años cuando corresponde a la transmisión del Poder Ejecutivo, que desde 2024 es el 1o. de octubre. Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.",
+      `En 2030 no se descuenta el 1o. de octubre: ${EXPLICACION} Si el SAT lo declara inhábil, el plazo que lo cruce vence un día hábil después.`,
     );
+    // 2036: miércoles y lunes.
+    expect(aviso2036.texto).toBe(
+      `En 2036 no se descuentan el 1o. de octubre ni el 1o. de diciembre: ${EXPLICACION} Si el SAT declara inhábil alguno de los dos, el plazo que lo cruce vence un día hábil después.`,
+    );
+    // 2072: el 1o. de octubre es sábado.
+    expect(avisoTransmisionCff(2072).texto).toBe(
+      `En 2072 no se descuenta el 1o. de diciembre: ${EXPLICACION} Si el SAT lo declara inhábil, el plazo que lo cruce vence un día hábil después.`,
+    );
+  });
+
+  it("en cada año de transmisión nombra justo las fechas que caen entre semana", () => {
+    for (let anio = 2030; anio <= 2096; anio += 6) {
+      const { texto } = avisoTransmisionCff(anio);
+      const nombradas = texto.slice(0, texto.indexOf(":"));
+      const entreSemana = (mes: number) => diaSemana(anio, mes) % 6 !== 0;
+      expect(nombradas.includes("octubre"), `${anio}`).toBe(entreSemana(10));
+      expect(nombradas.includes("diciembre"), `${anio}`).toBe(entreSemana(12));
+    }
   });
 
   it("avisa si el cálculo pasa por el 1o. de octubre o el 1o. de diciembre de un año de transmisión", () => {
     expect(avisosTransmisionCff("2030-09-30", "2030-10-01")).toEqual([aviso2030]);
-    expect(avisosTransmisionCff("2030-11-30", "2030-12-02")).toEqual([aviso2030]);
     expect(avisosTransmisionCff("2030-09-01", "2030-12-31")).toEqual([aviso2030]);
-    expect(avisosTransmisionCff("2036-09-30", "2036-10-05")).toEqual([avisoTransmisionCff(2036)]);
+    expect(avisosTransmisionCff("2036-09-30", "2036-10-05")).toEqual([aviso2036]);
+    expect(avisosTransmisionCff("2036-11-28", "2036-12-01")).toEqual([aviso2036]);
+  });
+
+  it("no avisa por una fecha que cae en sábado o domingo: ya es inhábil", () => {
+    expect(diaSemana(2030, 12)).toBe(0);
+    expect(avisosTransmisionCff("2030-11-29", "2030-12-02")).toEqual([]);
+    expect(diaSemana(2072, 10)).toBe(6);
+    expect(avisosTransmisionCff("2072-09-30", "2072-10-03")).toEqual([]);
+    expect(diaSemana(2084, 10)).toBe(0);
+    expect(avisosTransmisionCff("2084-09-29", "2084-10-02")).toEqual([]);
+    expect(diaSemana(2096, 12)).toBe(6);
+    expect(avisosTransmisionCff("2096-11-30", "2096-12-03")).toEqual([]);
+    // La otra fecha de esos años sí avisa.
+    expect(avisosTransmisionCff("2072-11-30", "2072-12-01")).toEqual([avisoTransmisionCff(2072)]);
+    expect(avisosTransmisionCff("2096-09-30", "2096-10-01")).toEqual([avisoTransmisionCff(2096)]);
   });
 
   it("no cuenta el día de partida, como el cálculo", () => {
     expect(avisosTransmisionCff("2030-10-01", "2030-10-15")).toEqual([]);
-    expect(avisosTransmisionCff("2030-12-01", "2031-01-15")).toEqual([]);
+    expect(avisosTransmisionCff("2036-12-01", "2037-01-15")).toEqual([]);
   });
 
   it("no avisa si el cálculo no pasa por esos días", () => {
@@ -160,10 +198,7 @@ describe("avisosTransmisionCff", () => {
   });
 
   it("da un aviso por cada año de transmisión dentro de la cobertura", () => {
-    expect(avisosTransmisionCff("2026-01-01", "2037-01-01")).toEqual([
-      aviso2030,
-      avisoTransmisionCff(2036),
-    ]);
+    expect(avisosTransmisionCff("2026-01-01", "2037-01-01")).toEqual([aviso2030, aviso2036]);
     expect(avisosTransmisionCff("2024-09-01", "2024-12-31")).toEqual([]);
     expect(avisosTransmisionCff("2096-09-01", "2102-12-31")).toEqual([avisoTransmisionCff(2096)]);
   });

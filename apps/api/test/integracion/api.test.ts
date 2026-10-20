@@ -936,8 +936,9 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     // Cambio: al final, que las vacaciones de 2030 no están publicadas.
     expect(data.advertencias).toHaveLength(2);
     expect(data.advertencias[1]).toBe(vacacionesSinPublicar("2030-10-01")[0]);
+    // Cambio: el 1o. de diciembre de 2030 es domingo y el aviso ya no lo nombra.
     expect(data.advertencias[0]).toMatch(
-      /^En 2030 no se descuentan el 1o\. de octubre ni el 1o\. de diciembre: el art\. 12 del CFF/,
+      /^En 2030 no se descuenta el 1o\. de octubre: el art\. 12 del CFF/,
     );
   });
 
@@ -1113,7 +1114,7 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
       expect(cuerpo.advertencias.slice(0, vacaciones.length), anio).toEqual(vacaciones);
       expect(cuerpo.advertencias, anio).toHaveLength(vacaciones.length + (transmision ? 1 : 0));
       if (transmision) {
-        expect(cuerpo.advertencias.at(-1)).toMatch(new RegExp(`^En ${anio} no se descuentan`));
+        expect(cuerpo.advertencias.at(-1)).toMatch(new RegExp(`^En ${anio} no se descuentan? `));
       }
       expect(cuerpo.meta.docs).toBe(`${DOCS_API}#dias-inhabiles`);
     }
