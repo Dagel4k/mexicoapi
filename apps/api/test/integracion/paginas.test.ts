@@ -1,6 +1,7 @@
 // Las páginas de datos del build servidas por el Worker local: cada una con la CSP de las páginas,
 // cada descarga de su JSON-LD responde 200 y cada tabla de días dice lo mismo que la API.
 import { describe, expect, it } from "vitest";
+import { urlDiasHabiles } from "../../../../packages/pipeline/src/sitio/cliente/sitio.js";
 import { CSP_PAGINAS } from "../../../../packages/pipeline/src/sitio/paginas/encabezados.ts";
 import { leerPublico, pedir, pedirJson, tipoDeMedio } from "./ayudas.js";
 
@@ -49,6 +50,8 @@ const INDICADORES = [
 ];
 
 /** Las páginas de los catálogos de arriba; /municipios/ trae además una página por estado. */
+const CALCULADORA = "/calculadora-dias-habiles/";
+
 const CATALOGOS = ["/bancos-clabe/", "/validar-clabe/", "/municipios/"];
 
 /** Las páginas hijas de /municipios/: `/municipios/{cve_ent}-{estado}/`. */
@@ -59,7 +62,13 @@ describe("páginas de datos en el Worker local", () => {
     const rutas = await paginasDeDatos();
     const hijas = rutas.filter(esHija);
     expect(hijas).toHaveLength(32);
-    expect(rutas).toEqual([...Object.keys(AUTORIDADES), ...INDICADORES, ...CATALOGOS, ...hijas]);
+    expect(rutas).toEqual([
+      ...Object.keys(AUTORIDADES),
+      CALCULADORA,
+      ...INDICADORES,
+      ...CATALOGOS,
+      ...hijas,
+    ]);
     for (const ruta of rutas) {
       const respuesta = await pedir(ruta);
       expect(respuesta.status, ruta).toBe(200);
@@ -82,7 +91,7 @@ describe("páginas de datos en el Worker local", () => {
       const html = (await leerPublico(`${ruta.slice(1)}index.html`)).toString("utf8");
       const [dataset] = nodos(html).filter((n) => n["@type"] === "Dataset");
       // El validador y las páginas de cada estado no declaran Dataset: el de /municipios/ las cubre.
-      if (ruta === "/validar-clabe/" || esHija(ruta)) {
+      if (ruta === "/validar-clabe/" || ruta === CALCULADORA || esHija(ruta)) {
         expect(dataset, ruta).toBeUndefined();
         continue;
       }
@@ -95,6 +104,22 @@ describe("páginas de datos en el Worker local", () => {
         expect(respuesta.status, contentUrl).toBe(200);
         expect(tipoDeMedio(respuesta), contentUrl).toBe(encodingFormat);
       }
+    }
+  });
+
+  // La calculadora pide al Worker la URL que arma su formulario: la de cada autoridad responde 200.
+  it("la URL que arma el formulario de la calculadora responde 200", async () => {
+    const casos = [
+      { autoridad: "lft", tipoPlazo: "general", desde: "2026-12-18", dias: "3" },
+      { autoridad: "cnbv", tipoPlazo: "general", desde: "2026-12-23", dias: "3" },
+      { autoridad: "sat", tipoPlazo: "general", desde: "2026-07-17", dias: "3" },
+      { autoridad: "sat", tipoPlazo: "declaraciones_pagos", desde: "2026-07-17", dias: "3" },
+    ];
+    for (const caso of casos) {
+      const url = urlDiasHabiles({ ...caso, permitirIncompleto: false });
+      const { respuesta, cuerpo } = await pedirJson(url);
+      expect(respuesta.status, url).toBe(200);
+      expect((cuerpo as { data: { autoridad: string } }).data.autoridad).toBe(caso.autoridad);
     }
   });
 

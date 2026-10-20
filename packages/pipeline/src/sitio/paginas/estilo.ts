@@ -215,4 +215,15 @@ blockquote { margin: 0 0 1rem; padding-left: 1rem; border-left: 4px solid var(--
 #resultado-clabe:not(:empty) { margin: 0 0 1rem; padding: 0.75rem 1rem; border-left: 4px solid var(--borde); background: var(--superficie); }
 #resultado-clabe.ok { border-left-color: var(--acento); }
 #resultado-clabe.mal { border-left-color: var(--aviso-borde); background: var(--aviso); }
+.calculadora { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: end; margin: 0 0 1rem; }
+.calculadora[hidden] { display: none; }
+.calculadora > div { flex: 1 1 14rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.calculadora label { font-weight: 600; }
+.calculadora select, .calculadora input:not([type="checkbox"]) { font: 1rem var(--mono); padding: 0.5rem 0.75rem; min-width: 0; color: var(--texto); background: var(--fondo); border: 1px solid var(--tenue); border-radius: 6px; }
+.calculadora .opcion { flex-direction: row; align-items: center; gap: 0.5rem; }
+#resultado-dias:not(:empty) { margin: 0 0 1rem; padding: 0.75rem 1rem; border-left: 4px solid var(--borde); background: var(--superficie); }
+#resultado-dias.ok { border-left-color: var(--acento); }
+#resultado-dias.mal { border-left-color: var(--aviso-borde); background: var(--aviso); }
+#resultado-dias h3 { margin: 0.75rem 0 0.25rem; font-size: 1rem; }
+#resultado-dias p, #resultado-dias ul { margin: 0 0 0.5rem; }
 `;

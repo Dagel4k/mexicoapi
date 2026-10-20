@@ -52,6 +52,7 @@ import {
   metaDesdeManifiesto,
 } from "./meta.js";
 import { documentoOpenApi } from "./openapi.js";
+import { paginaCalculadora } from "./paginas/calculadora.js";
 import { paginasDeCatalogos } from "./paginas/catalogos.js";
 import {
   type CalendarioDePagina,
@@ -482,6 +483,10 @@ export async function construirSitio(opciones: {
   const registro = registrarPaginas([
     ...paginasDeCalendarios({
       anio,
+      sat: calendarios.get("sat") as CalendarioDePagina,
+      cnbv: calendarios.get("cnbv") as CalendarioDePagina,
+    }),
+    paginaCalculadora({
       sat: calendarios.get("sat") as CalendarioDePagina,
       cnbv: calendarios.get("cnbv") as CalendarioDePagina,
     }),
