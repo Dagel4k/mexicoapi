@@ -317,6 +317,11 @@ describe("GET /v1/dias-habiles?autoridad=sat", () => {
       });
     });
 
+    it("un resultado en el último día cubierto no avisa", async () => {
+      const { cuerpo } = await datos(permitir("2026-11-27", 1));
+      expect(cuerpo.data).toMatchObject({ resultado: "2026-11-30", advertencias: [], avisos: [] });
+    });
+
     it("un rango que llega a 2027 salta el 1 de enero con la regla, sin aviso de 2027", async () => {
       // Cambio: antes daba 2027-01-01 con "Calendario incompleto: SAT 2027".
       const { cuerpo } = await datos(permitir("2026-12-24", 5));

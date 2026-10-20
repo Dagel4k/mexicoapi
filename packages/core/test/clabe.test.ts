@@ -71,6 +71,16 @@ describe("validarClabe", () => {
     expect(r.valido).toBe(false);
   });
 
+  it("rechaza 19 dígitos aunque los primeros 18 sean una CLABE válida", () => {
+    const r = validarClabe("0021800123456789060");
+    expect(r.valor).toBe("0021800123456789060");
+    expect(r.errores).toEqual(["longitud"]);
+    expect(r.formato_valido).toBe(false);
+    expect(r.digito_verificador_valido).toBeNull();
+    expect(r.detalle).toBeNull();
+    expect(r.valido).toBe(false);
+  });
+
   it.each(["00218001234567890A", "００２１８００１２３４５６７８９０６"])(
     "rechaza caracteres no válidos: %s",
     (clabe) => {
