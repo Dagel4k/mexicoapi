@@ -362,8 +362,12 @@ function ejemplo(ruta: string, op: Operacion): string {
   return ejemplos(ruta, op)[0] as string;
 }
 
-/** Ruta de ejemplo de una operación, armada con los `example` de sus parámetros obligatorios. */
-function armarEjemplo(ruta: string, op: Operacion): string {
+/**
+ * Ruta de ejemplo de una operación, armada con los `example` de sus parámetros obligatorios. Con
+ * `todos`, también con los de los opcionales que lo traen: lo que arman Swagger UI o Postman al
+ * llenar cada parámetro con su ejemplo.
+ */
+function armarEjemplo(ruta: string, op: Operacion, todos = false): string {
   const valor = (p: Parametro | undefined, nombre: string): string => {
     if (p?.example === undefined) throw new Error(`${ruta}: ${nombre} no tiene example.`);
     return p.example;
@@ -376,7 +380,7 @@ function armarEjemplo(ruta: string, op: Operacion): string {
     ),
   );
   const query = parametros
-    .filter((p) => p.in === "query" && p.required === true)
+    .filter((p) => p.in === "query" && (todos ? p.example !== undefined : p.required === true))
     .map((p) => `${p.name}=${encodeURIComponent(valor(p, p.name))}`);
   return query.length === 0 ? camino : `${camino}?${query.join("&")}`;
 }
@@ -637,6 +641,22 @@ describe("respuestas del Worker contra el documento", () => {
       expect(o, id).toBeDefined();
       for (const ruta of rutas) expect(operacionDe(ruta).ruta, ruta).toBe(o?.ruta);
     }
+  });
+
+  // Lo que arma una herramienta que llena cada parámetro con su example: la primera prueba de
+  // quien importa el documento no debe salir en 400.
+  it.each(OPERACIONES.map((o) => ({ ruta: armarEjemplo(o.ruta, o.op, true) })))(
+    "$ruta, con el example de cada parámetro → 200",
+    ({ ruta }) => validarCaso({ ruta, estado: 200 }),
+  );
+
+  it("con todos los example también van los opcionales", () => {
+    const armada = (id: string): string => {
+      const o = OPERACIONES.find((x) => x.op.operationId === id) as OperacionDoc;
+      return armarEjemplo(o.ruta, o.op, true);
+    };
+    expect(armada("sumarDiasHabiles")).toContain("permitir_incompleto=");
+    expect(armada("consultarFix")).toMatch(/^\/v1\/tipo-cambio\/fix\?[a-z]+=\d{4}-\d{2}-\d{2}$/);
   });
 
   describe.each(OPERACIONES.flatMap((o) => ejemplos(o.ruta, o.op).map((ejemplo) => ({ ejemplo }))))(

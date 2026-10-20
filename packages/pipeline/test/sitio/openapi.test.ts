@@ -1,11 +1,14 @@
 import { readFile } from "node:fs/promises";
-import { CODIGOS_AVISO_API, FUENTE_CFF_20 } from "@mexicoapi/core";
+import { type Autoridad, CODIGOS_AVISO_API, FUENTE_CFF_20, type TipoPlazo } from "@mexicoapi/core";
 import { PROBLEMAS, URL_API } from "@mexicoapi/core/problemas";
 import {
   CONSULTAS,
   REGLAS_RUTA,
   type ReglaConsulta,
   type ReglaParametro,
+  revisarConsulta,
+  revisarFix,
+  revisarTipoPlazo,
 } from "@mexicoapi/core/rutas";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
@@ -491,8 +494,10 @@ describe("documento OpenAPI", () => {
       expect(fix[nombre].in, nombre).toBe("query");
       expect(fix[nombre].required, nombre).toBe(false);
       expect(fix[nombre].schema, nombre).toEqual(fecha);
-      expect(fix[nombre].example, nombre).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
+    // Solo publicado lleva example: con los dos, la petición armada con todos daría 400.
+    expect(fix.publicado.example).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(fix.operacion).not.toHaveProperty("example");
     const udis = params("/v1/udis");
     expect(Object.keys(udis)).toEqual(["fecha"]);
     expect(udis.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
@@ -500,6 +505,36 @@ describe("documento OpenAPI", () => {
     const uma = params("/v1/constantes/uma");
     expect(Object.keys(uma)).toEqual(["fecha"]);
     expect(uma.fecha).toMatchObject({ in: "query", required: true, schema: fecha });
+  });
+
+  // Swagger UI y Postman llenan cada parámetro con su example: juntos deben dar una petición que
+  // la API acepta. tipo_plazo solo vale con sat y publicado excluye a operacion, así que esos no
+  // llevan example. La prueba de contrato de la API pide cada una y espera 200.
+  it("los example de cada operación, juntos, forman una consulta que la API acepta", () => {
+    let revisadas = 0;
+    for (const { ruta, op } of operaciones) {
+      const reglas = (CONSULTAS as Record<string, Record<string, ReglaConsulta>>)[ruta];
+      const query = ((op.parameters ?? []) as Obj[]).filter((p) => p.in === "query");
+      if (reglas === undefined) {
+        expect(query, ruta).toEqual([]);
+        continue;
+      }
+      revisadas += 1;
+      const valores = Object.fromEntries(
+        query.filter((p) => p.example !== undefined).map((p) => [p.name, String(p.example)]),
+      );
+      const revision = revisarConsulta(reglas, new URLSearchParams(valores).toString());
+      expect(revision, ruta).toEqual({ consulta: valores });
+      if (ruta === "/v1/dias-habiles") {
+        expect(
+          revisarTipoPlazo(valores.autoridad as Autoridad, valores.tipo_plazo as TipoPlazo),
+        ).toBeNull();
+      }
+      if (ruta === "/v1/tipo-cambio/fix") {
+        expect(revisarFix(valores.publicado, valores.operacion)).toBeNull();
+      }
+    }
+    expect(revisadas).toBe(Object.keys(CONSULTAS).length);
   });
 
   it("listarDiasInhabiles responde la lista con advertencias y dice cuándo las hay", () => {
