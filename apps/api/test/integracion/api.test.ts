@@ -15,6 +15,7 @@ import {
   pedir,
   pedirCruda,
   pedirJson,
+  pedirPorHttp,
   registrosDe,
   SEGURIDAD,
   tipoDeMedio,
@@ -468,6 +469,45 @@ describe("errores del Worker", () => {
     expect(respuesta.status).toBe(405);
     expect(respuesta.headers.get("Allow")).toBe("GET, HEAD, OPTIONS");
     expect(((await respuesta.json()) as Obj).type).toBe(`${BASE_PROBLEMAS}metodo-no-permitido`);
+  });
+
+  // Las pruebas piden por http a 127.0.0.1, que es local; con otro Host el Worker ve una petición
+  // por http a la API pública.
+  it.each(["GET", "HEAD", "OPTIONS", "POST"])(
+    "%s por http desde otro host → 403 https-requerido, sin redirigir",
+    async (metodo) => {
+      for (const ruta of ["/v1/estados/25", "/v1/estados/25/", "/v1/no-existe"]) {
+        const respuesta = await pedirPorHttp(ruta, metodo);
+        const contexto = `${metodo} ${ruta}`;
+        expect(respuesta.status, contexto).toBe(403);
+        expect(respuesta.headers.get("Location"), contexto).toBeNull();
+        expect(respuesta.headers.get("Allow"), contexto).toBeNull();
+        expect(respuesta.headers.get("Content-Type")).toBe(
+          "application/problem+json; charset=utf-8",
+        );
+        expect(respuesta.headers.get("Cache-Control")).toBe("no-store");
+        esperarSeguridad(respuesta, contexto);
+        const texto = await respuesta.text();
+        if (metodo === "HEAD") {
+          expect(texto, contexto).toBe("");
+          continue;
+        }
+        expect(JSON.parse(texto), contexto).toEqual({
+          type: `${BASE_PROBLEMAS}https-requerido`,
+          title: "Se requiere HTTPS",
+          status: 403,
+          detail: "La API solo acepta HTTPS; repite la petición con https:// y la misma ruta.",
+          instance: ruta,
+        });
+      }
+    },
+  );
+
+  it("fuera de /v1 el http lo atienden los assets, sin el Worker", async () => {
+    const respuesta = await pedirPorHttp("/llms.txt");
+    expect(respuesta.status).toBe(200);
+    expect(respuesta.headers.get("cross-origin-resource-policy")).toBeNull();
+    await respuesta.arrayBuffer();
   });
 });
 

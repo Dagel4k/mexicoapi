@@ -85,6 +85,101 @@ describe("métodos", () => {
   }
 });
 
+describe("http", () => {
+  const HTTPS_REQUERIDO = {
+    type: `${TIPO}https-requerido`,
+    title: "Se requiere HTTPS",
+    status: 403,
+    detail: "La API solo acepta HTTPS; repite la petición con https:// y la misma ruta.",
+  };
+
+  /** Pide `url` completa (con su esquema) y cuenta las llamadas al límite de peticiones. */
+  async function pedirUrl(url: string, init?: RequestInit) {
+    const assets = crearAssets();
+    const claves: string[] = [];
+    const LIMITE = {
+      limit: async ({ key }: { key: string }) => {
+        claves.push(key);
+        return { success: true };
+      },
+    } as RateLimit;
+    const respuesta = await manejar(new Request(url, init), entornoDe(assets, { LIMITE }));
+    return { respuesta, assets, claves };
+  }
+
+  it("una petición a /v1 por http da 403 https-requerido, sin redirigir", async () => {
+    for (const ruta of ["/v1", "/v1/estados/25", "/v1/no-existe", "/v1/udis?fecha=x"]) {
+      const { respuesta, assets } = await pedirUrl(`http://mexicoapi.dagel4k.workers.dev${ruta}`);
+      expect(respuesta.status, ruta).toBe(403);
+      expect(respuesta.headers.get("location"), ruta).toBeNull();
+      expect(respuesta.headers.get("content-type")).toBe("application/problem+json; charset=utf-8");
+      expect(respuesta.headers.get("cache-control")).toBe("no-store");
+      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+      expect(await respuesta.json(), ruta).toEqual({
+        ...HTTPS_REQUERIDO,
+        instance: new URL(ruta, "http://x").pathname,
+      });
+      expect(assets.pedidas, ruta).toEqual([]);
+    }
+  });
+
+  it("gana a la 308 de la barra final y a cualquier método: HEAD sin cuerpo, OPTIONS y POST", async () => {
+    const base = "http://api.test";
+    const conBarra = await pedirUrl(`${base}/v1/estados/`);
+    expect(conBarra.respuesta.status).toBe(403);
+    expect(conBarra.respuesta.headers.get("location")).toBeNull();
+    for (const method of ["HEAD", "OPTIONS", "POST", "DELETE"]) {
+      const { respuesta } = await pedirUrl(`${base}/v1/estados`, { method });
+      expect(respuesta.status, method).toBe(403);
+      expect(respuesta.headers.get("allow"), method).toBeNull();
+      expect(respuesta.headers.get("access-control-allow-methods"), method).toBeNull();
+      expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
+      if (method === "HEAD") expect(respuesta.body).toBeNull();
+      else expect(await respuesta.json(), method).toMatchObject(HTTPS_REQUERIDO);
+    }
+  });
+
+  it("se responde antes del límite de peticiones: no lo consulta", async () => {
+    for (const method of ["GET", "HEAD", "OPTIONS", "POST"]) {
+      const { respuesta, claves } = await pedirUrl("http://api.test/v1/estados", { method });
+      expect(respuesta.status, method).toBe(403);
+      expect(claves, method).toEqual([]);
+    }
+  });
+
+  it("los hosts locales aceptan http: wrangler dev y las pruebas de integración", async () => {
+    for (const origen of [
+      "http://localhost:8787",
+      "http://localhost",
+      "http://127.0.0.1:51234",
+      "http://[::1]:8787",
+    ]) {
+      const { respuesta, claves } = await pedirUrl(`${origen}/v1`);
+      expect(respuesta.status, origen).toBe(200);
+      expect(claves, origen).toEqual(["ip:desconocida"]);
+    }
+  });
+
+  it("otro host, aunque se parezca a uno local, no", async () => {
+    for (const origen of [
+      "http://localhost.example",
+      "http://127.0.0.2",
+      "http://0.0.0.0:8787",
+      "http://[::2]",
+      "http://api.test:443",
+    ]) {
+      const { respuesta } = await pedirUrl(`${origen}/v1`);
+      expect(respuesta.status, origen).toBe(403);
+    }
+  });
+
+  it("por https responde igual que siempre", async () => {
+    const { respuesta, claves } = await pedirUrl("https://mexicoapi.dagel4k.workers.dev/v1");
+    expect(respuesta.status).toBe(200);
+    expect(claves).toEqual(["ip:desconocida"]);
+  });
+});
+
 describe("barra final", () => {
   it("redirige con 308 a la ruta sin barra y conserva la query", async () => {
     for (const [ruta, destino] of [

@@ -3,7 +3,7 @@ import { CODIGOS_AVISO_API, type CodigoAviso, codigoAviso, sumarDias } from "@me
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
 import { PROBLEMAS } from "../../src/problemas.js";
-import { BASE_PROBLEMAS, PUBLICO, pedir, tipoDeMedio } from "./ayudas.js";
+import { BASE_PROBLEMAS, PUBLICO, pedir, pedirPorHttp, tipoDeMedio } from "./ayudas.js";
 
 interface Parametro {
   name: string;
@@ -123,6 +123,8 @@ interface Caso {
   ruta: string;
   estado: number;
   metodo?: string;
+  /** Por http desde un host que no es local (`pedirPorHttp`). */
+  porHttp?: boolean;
 }
 
 /**
@@ -338,7 +340,7 @@ const CASOS: Caso[] = [
 ];
 
 /** 429 pide el binding de límite y 500 un asset roto; ninguno se provoca en local. */
-const PRACTICABLES = [200, 308, 400, 404, 422];
+const PRACTICABLES = [200, 308, 400, 403, 404, 422];
 
 /**
  * Ejemplos de las operaciones que no se arman con sus parámetros obligatorios: `consultarFix`
@@ -394,6 +396,13 @@ const CASOS_308: Caso[] = OPERACIONES.map((o) => ({
   estado: 308,
 }));
 
+/** El ejemplo de cada operación por http desde un host que no es local: 403 https-requerido. */
+const CASOS_HTTP: Caso[] = OPERACIONES.map((o) => ({
+  ruta: ejemplo(o.ruta, o.op),
+  estado: 403,
+  porHttp: true,
+}));
+
 /**
  * Donde una respuesta trae advertencias (de primer nivel o en `data`) trae `avisos`: los mismos
  * textos en el mismo orden, cada uno con un código de CODIGOS_AVISO_API (el documento lo publica
@@ -416,9 +425,10 @@ function revisarAvisos(cuerpo: Record<string, unknown>, ruta: string): CodigoAvi
 }
 
 /** Pide el caso y valida estado, tipo de medio y cuerpo contra lo que declara el documento. */
-async function validarCaso({ ruta, estado, metodo = "GET" }: Caso): Promise<void> {
+async function validarCaso({ ruta, estado, metodo = "GET", porHttp }: Caso): Promise<void> {
   const o = operacionDe(ruta);
-  const respuesta = await pedir(ruta, { method: metodo });
+  const respuesta =
+    porHttp === true ? await pedirPorHttp(ruta, metodo) : await pedir(ruta, { method: metodo });
   expect(respuesta.status).toBe(estado);
 
   const declarada = respuestaDeclarada(o, estado);
@@ -458,9 +468,9 @@ describe("documento OpenAPI del build", () => {
     expect(doc.info.description).toContain("y OPTIONS, que responde 204 sin cuerpo con");
   });
 
-  it("toda operación declara 400, 405, 429 y 500 como problem+json", () => {
+  it("toda operación declara 400, 403, 405, 429 y 500 como problem+json", () => {
     for (const o of OPERACIONES) {
-      for (const estado of [400, 405, 429, 500]) {
+      for (const estado of [400, 403, 405, 429, 500]) {
         const declarada = respuestaDeclarada(o, estado);
         expect(declarada?.respuesta.content, `${o.ruta} ${estado}`).toHaveProperty([
           "application/problem+json",
@@ -471,7 +481,7 @@ describe("documento OpenAPI del build", () => {
 
   it("cada operación tiene casos para cada estado practicable que declara", () => {
     const cubiertos = new Set(
-      [...CASOS, ...CASOS_308].map((c) => `${operacionDe(c.ruta).ruta} ${c.estado}`),
+      [...CASOS, ...CASOS_308, ...CASOS_HTTP].map((c) => `${operacionDe(c.ruta).ruta} ${c.estado}`),
     );
     const faltantes = OPERACIONES.flatMap((o) =>
       Object.keys(o.op.responses)
@@ -484,7 +494,7 @@ describe("documento OpenAPI del build", () => {
   });
 
   it("cada caso pide un estado que su operación declara", () => {
-    const sinDeclarar = [...CASOS, ...CASOS_308]
+    const sinDeclarar = [...CASOS, ...CASOS_308, ...CASOS_HTTP]
       .filter((c) => {
         const o = operacionDe(c.ruta);
         return o.op.responses[String(c.estado)] === undefined;
@@ -596,6 +606,15 @@ describe("respuestas del Worker contra el documento", () => {
     await respuesta.arrayBuffer();
     const { pathname, search } = new URL(caso.ruta, "http://local");
     expect(respuesta.headers.get("Location")).toBe(`${pathname.slice(0, -1)}${search}`);
+  });
+
+  it.each(CASOS_HTTP)("GET $ruta por http desde otro host → 403 https-requerido", async (caso) => {
+    await validarCaso(caso);
+    const respuesta = await pedirPorHttp(caso.ruta);
+    expect(respuesta.headers.get("Location")).toBeNull();
+    expect(((await respuesta.json()) as Record<string, unknown>).type).toBe(
+      `${BASE_PROBLEMAS}https-requerido`,
+    );
   });
 
   it("/v1/status: las series mandan la cobertura opcional que declara EstadoDataset", async () => {

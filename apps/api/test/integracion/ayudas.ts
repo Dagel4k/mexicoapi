@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { request } from "node:http";
 import { inject } from "vitest";
 
 /** El `public/` que construyó `pnpm -r build` y que sirve el Worker. */
@@ -20,6 +21,49 @@ export const SEGURIDAD: Readonly<Record<string, string>> = {
 /** Pide `ruta` (con su query) al Worker local; las redirecciones no se siguen. */
 export function pedir(ruta: string, init: RequestInit = {}): Promise<Response> {
   return fetch(new URL(ruta, inject("urlApi")), { redirect: "manual", ...init });
+}
+
+/** Un host que no es local: por http, el Worker lo trata como una petición sin cifrar. */
+export const HOST_PUBLICO = "mexicoapi.example";
+
+/**
+ * Pide `ruta` por http al Worker local con `Host: mexicoapi.example`: el Worker ve
+ * `http://mexicoapi.example<ruta>`, como una petición por http a la API pública. Usa node:http
+ * porque fetch no deja cambiar el `Host`.
+ */
+export function pedirPorHttp(ruta: string, metodo = "GET"): Promise<Response> {
+  const origen = new URL(inject("urlApi"));
+  return new Promise((resolver, rechazar) => {
+    const peticion = request(
+      {
+        host: origen.hostname,
+        port: origen.port,
+        path: ruta,
+        method: metodo,
+        headers: { Host: HOST_PUBLICO },
+      },
+      (respuesta) => {
+        const partes: Buffer[] = [];
+        respuesta.on("data", (parte: Buffer) => partes.push(parte));
+        respuesta.on("error", rechazar);
+        respuesta.on("end", () => {
+          const encabezados = new Headers();
+          for (const [nombre, valor] of Object.entries(respuesta.headers)) {
+            for (const v of [valor ?? []].flat()) encabezados.append(nombre, v);
+          }
+          const cuerpo = Buffer.concat(partes);
+          resolver(
+            new Response(cuerpo.length === 0 ? null : cuerpo, {
+              status: respuesta.statusCode ?? 0,
+              headers: encabezados,
+            }),
+          );
+        });
+      },
+    );
+    peticion.on("error", rechazar);
+    peticion.end();
+  });
 }
 
 /**
