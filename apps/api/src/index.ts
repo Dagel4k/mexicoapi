@@ -115,10 +115,10 @@ function registrarError(error: unknown, rastro: Rastro): void {
   console.error(`mexicoapi: error interno: ${nombre} en ${rastro.plantilla ?? "(sin ruta)"}`);
 }
 
-export async function manejar(
+async function responder(
   peticion: Request,
   entorno: Entorno,
-  opciones: Opciones = {},
+  opciones: Opciones,
 ): Promise<Response> {
   const url = new URL(peticion.url);
   const rastro: Rastro = {};
@@ -133,6 +133,17 @@ export async function manejar(
       ? new Response(null, { status: r.status, headers: r.headers })
       : r;
   }
+}
+
+export async function manejar(
+  peticion: Request,
+  entorno: Entorno,
+  opciones: Opciones = {},
+): Promise<Response> {
+  const respuesta = await responder(peticion, entorno, opciones);
+  const robots = entorno.X_ROBOTS_TAG;
+  if (robots !== undefined && robots !== "") respuesta.headers.set("X-Robots-Tag", robots);
+  return respuesta;
 }
 
 export default {

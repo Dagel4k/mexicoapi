@@ -6,6 +6,8 @@ coverage
 .wrangler
 *.log
 apps/api/public/
+# Copia de public/ para staging, con X-Robots-Tag (la genera `cloudflare.ts configurar`).
+apps/api/public-staging/
 # Secretos locales de wrangler y de entorno.
 .dev.vars*
 .env*

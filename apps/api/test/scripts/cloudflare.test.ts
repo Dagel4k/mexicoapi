@@ -1,15 +1,18 @@
 import { spawnSync } from "node:child_process";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { archivoEncabezados } from "../../../../packages/pipeline/src/sitio/paginas/encabezados.ts";
 import {
+  ASSETS_STAGING,
   type ClienteCloudflare,
   configuracionDespliegue,
   type EntornoCli,
   ErrorCloudflare,
   ErrorEstados,
+  encabezadosSinIndexar,
   escribirEstados,
   leerJsonc,
   principal,
@@ -462,20 +465,44 @@ const BASE_WRANGLER = {
 };
 
 describe("configuracionDespliegue", () => {
-  it("staging: Worker aparte con KV y límite propio", () => {
+  // Staging no se indexa: X-Robots-Tag en el Worker (vars) y en los assets, que salen de una copia
+  // de public/ con su propio _headers.
+  it("staging: Worker aparte con KV y límite propio, sin indexar", () => {
     expect(configuracionDespliegue(BASE_WRANGLER, "staging", KV)).toStrictEqual({
       $schema: "./node_modules/wrangler/config-schema.json",
       name: "mexicoapi-staging",
       main: "src/index.ts",
       compatibility_date: "2026-10-01",
-      assets: { directory: "./public", binding: "ASSETS", run_worker_first: ["/v1", "/v1/*"] },
+      assets: {
+        directory: "./public-staging",
+        binding: "ASSETS",
+        run_worker_first: ["/v1", "/v1/*"],
+      },
       observability: { enabled: false },
       send_metrics: false,
       workers_dev: true,
       preview_urls: false,
       kv_namespaces: [{ binding: "ESTADO", id: KV }],
       ratelimits: [{ name: "LIMITE", namespace_id: "1002", simple: { limit: 600, period: 60 } }],
+      vars: { X_ROBOTS_TAG: "noindex" },
     });
+    expect(ASSETS_STAGING).toBe("./public-staging");
+  });
+
+  it("staging conserva las vars de la base y agrega X_ROBOTS_TAG", () => {
+    const base = { ...BASE_WRANGLER, vars: { OTRA: "1" } };
+    expect(configuracionDespliegue(base, "staging", KV).vars).toStrictEqual({
+      OTRA: "1",
+      X_ROBOTS_TAG: "noindex",
+    });
+  });
+
+  it("staging sin assets.directory en la base es un error", () => {
+    const { assets: _sin, ...base } = BASE_WRANGLER;
+    expect(() => configuracionDespliegue(base, "staging", KV)).toThrow(/assets\.directory/);
+    expect(() =>
+      configuracionDespliegue({ ...base, assets: { binding: "ASSETS" } }, "staging", KV),
+    ).toThrow(/assets\.directory/);
   });
 
   it("producción: el Worker mexicoapi con KV y límite propio", () => {
@@ -507,25 +534,61 @@ describe("configuracionDespliegue", () => {
     expect((config.assets as { directory: string }).directory).toBe("./public");
   });
 
+  // Producción se indexa: con el wrangler.jsonc real no lleva X_ROBOTS_TAG ni la copia de staging.
+  it("producción, con el wrangler.jsonc real, no lleva X_ROBOTS_TAG", async () => {
+    const real = leerJsonc(await readFile(join(RAIZ_API, "wrangler.jsonc"), "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const config = configuracionDespliegue(real, "produccion", KV);
+    expect(JSON.stringify(config)).not.toContain("X_ROBOTS_TAG");
+    expect(JSON.stringify(config)).not.toContain("public-staging");
+  });
+
   // Lo que no es un asset ni está en /v1 lo responden los assets con 404.html, sin el Worker:
   // cada entorno debe llevar el bloque `assets` completo de wrangler.jsonc.
-  it.each(["staging", "produccion"] as const)(
+  it.each([
+    ["staging", "./public-staging"],
+    ["produccion", "./public"],
+  ] as const)(
     "%s conserva el bloque assets de wrangler.jsonc, con el 404 de los assets",
-    async (entorno) => {
+    async (entorno, directorio) => {
       const real = leerJsonc(await readFile(join(RAIZ_API, "wrangler.jsonc"), "utf8")) as Record<
         string,
         unknown
       >;
       const config = configuracionDespliegue(real, entorno, KV);
       expect(config.assets).toStrictEqual({
-        directory: "./public",
+        directory: directorio,
         binding: "ASSETS",
         run_worker_first: ["/v1", "/v1/*"],
         not_found_handling: "404-page",
       });
-      expect(config.assets).toStrictEqual(real.assets);
+      expect(config.assets).toStrictEqual({
+        ...(real.assets as Record<string, unknown>),
+        directory: directorio,
+      });
     },
   );
+});
+
+describe("encabezadosSinIndexar", () => {
+  it("agrega X-Robots-Tag: noindex a la regla /* y deja lo demás igual", () => {
+    const texto = archivoEncabezados(["SHA256SUMS", "bancos.csv"]);
+    const resultado = encabezadosSinIndexar(texto);
+    expect(resultado).toBe(`/*\n  X-Robots-Tag: noindex\n${texto.slice("/*\n".length)}`);
+    // Solo una vez, dentro de la regla /*.
+    expect(resultado.split("X-Robots-Tag").length).toBe(2);
+    const reglaTodas = resultado.slice(0, resultado.indexOf("\n\n"));
+    expect(reglaTodas).toContain("  X-Robots-Tag: noindex\n");
+    expect(reglaTodas).toContain("  Strict-Transport-Security: max-age=31536000");
+  });
+
+  it("un _headers que no empieza con la regla /* es un error", () => {
+    for (const texto of ["", "/descargas/x\n  A: b\n", "/*/x\n  A: b\n", " /*\n"]) {
+      expect(() => encabezadosSinIndexar(texto), JSON.stringify(texto)).toThrow(/regla \/\*/);
+    }
+  });
 });
 
 const PREVIO = {
@@ -900,12 +963,19 @@ const VARIABLES = { CLOUDFLARE_API_TOKEN: TOKEN, CLOUDFLARE_ACCOUNT_ID: CUENTA }
 describe("CLI", () => {
   let raiz: string;
 
+  /** Un `public/` mínimo, como el del build. */
+  const HEADERS = archivoEncabezados(["SHA256SUMS"]);
+
   beforeEach(async () => {
     raiz = await mkdtemp(join(tmpdir(), "mexicoapi-cloudflare-"));
     await writeFile(
       join(raiz, "wrangler.jsonc"),
       await readFile(join(RAIZ_API, "wrangler.jsonc"), "utf8"),
     );
+    await mkdir(join(raiz, "public", "descargas"), { recursive: true });
+    await writeFile(join(raiz, "public", "_headers"), HEADERS);
+    await writeFile(join(raiz, "public", "index.html"), "<!doctype html>");
+    await writeFile(join(raiz, "public", "descargas", "SHA256SUMS"), "abc  x.csv\n");
   });
 
   afterEach(async () => {
@@ -1025,6 +1095,88 @@ describe("CLI", () => {
       );
       expect(c.todo()).not.toContain(TOKEN);
       expect(c.todo()).not.toContain(CUENTA);
+    },
+  );
+
+  it("configurar staging copia public/ en public-staging/ con X-Robots-Tag en /*", async () => {
+    // Lo que quedó de una corrida anterior no pasa a la nueva copia.
+    await mkdir(join(raiz, "public-staging"), { recursive: true });
+    await writeFile(join(raiz, "public-staging", "viejo.html"), "x");
+    const { fetch } = fetchFalso(
+      pagina(1, 1, [{ id: KV, title: TITULO_KV }]),
+      sobre({ subdomain: "dagel" }),
+    );
+    const c = cli(VARIABLES, fetch);
+    expect(await principal(configurar(), c.entorno)).toBe(0);
+    const copia = join(raiz, "public-staging");
+    expect(await readFile(join(copia, "_headers"), "utf8")).toBe(encabezadosSinIndexar(HEADERS));
+    expect(await readFile(join(copia, "index.html"), "utf8")).toBe("<!doctype html>");
+    expect(await readFile(join(copia, "descargas", "SHA256SUMS"), "utf8")).toBe("abc  x.csv\n");
+    await expect(access(join(copia, "viejo.html"))).rejects.toThrow();
+    // El public/ de producción no cambia.
+    expect(await readFile(join(raiz, "public", "_headers"), "utf8")).toBe(HEADERS);
+    const config = JSON.parse(await readFile(join(raiz, "wrangler.staging.json"), "utf8"));
+    expect(config.assets.directory).toBe("./public-staging");
+    expect(config.vars).toEqual({ X_ROBOTS_TAG: "noindex" });
+    expect(c.errores.join("")).toContain("public-staging");
+  });
+
+  it("configurar produccion no hace la copia ni toca public/", async () => {
+    const salida = join(raiz, "wrangler.produccion.json");
+    const { fetch } = fetchFalso(
+      pagina(1, 1, [{ id: KV, title: TITULO_KV }]),
+      sobre({ subdomain: "dagel" }),
+    );
+    const c = cli(VARIABLES, fetch);
+    expect(await principal(configurar("produccion", salida), c.entorno)).toBe(0);
+    await expect(access(join(raiz, "public-staging"))).rejects.toThrow();
+    expect(await readFile(join(raiz, "public", "_headers"), "utf8")).toBe(HEADERS);
+    const texto = await readFile(salida, "utf8");
+    expect(texto).not.toContain("X_ROBOTS_TAG");
+    expect(texto).not.toContain("public-staging");
+  });
+
+  it("configurar staging sin el build (sin public/_headers) sale con 1, antes de pedir nada", async () => {
+    await rm(join(raiz, "public"), { recursive: true });
+    const { fetch, peticiones } = fetchFalso();
+    const c = cli(VARIABLES, fetch);
+    const salida = join(raiz, "wrangler.staging.json");
+    expect(await principal(configurar("staging", salida), c.entorno)).toBe(1);
+    expect(c.errores.join("")).toMatch(/_headers/);
+    expect(c.errores.join("")).toMatch(/build/);
+    expect(peticiones).toEqual([]);
+    await expect(access(salida)).rejects.toThrow();
+    await expect(access(join(raiz, "public-staging"))).rejects.toThrow();
+  });
+
+  it("configurar staging con un _headers sin la regla /* sale con 1 sin copiar", async () => {
+    await writeFile(join(raiz, "public", "_headers"), "/descargas/x\n  A: b\n");
+    const { fetch, peticiones } = fetchFalso();
+    const c = cli(VARIABLES, fetch);
+    expect(await principal(configurar(), c.entorno)).toBe(1);
+    expect(c.errores.join("")).toMatch(/regla \/\*/);
+    expect(peticiones).toEqual([]);
+    await expect(access(join(raiz, "public-staging"))).rejects.toThrow();
+  });
+
+  // Borrar la copia antes de hacerla borraría los assets mismos.
+  it.each(["./public-staging", "./public-staging/sub", "."])(
+    "configurar staging con assets.directory %s sale con 1 sin borrar nada",
+    async (directorio) => {
+      const wrangler = JSON.parse(
+        JSON.stringify(leerJsonc(await readFile(join(raiz, "wrangler.jsonc"), "utf8"))),
+      );
+      wrangler.assets.directory = directorio;
+      await writeFile(join(raiz, "wrangler.jsonc"), JSON.stringify(wrangler));
+      await mkdir(join(raiz, "public-staging", "sub"), { recursive: true });
+      await writeFile(join(raiz, "public-staging", "sub", "_headers"), HEADERS);
+      const { fetch, peticiones } = fetchFalso();
+      const c = cli(VARIABLES, fetch);
+      expect(await principal(configurar(), c.entorno)).toBe(1);
+      expect(c.errores.join("")).toMatch(/public-staging/);
+      expect(peticiones).toEqual([]);
+      expect(await readFile(join(raiz, "public-staging", "sub", "_headers"), "utf8")).toBe(HEADERS);
+      expect(await readFile(join(raiz, "public", "_headers"), "utf8")).toBe(HEADERS);
     },
   );
 
