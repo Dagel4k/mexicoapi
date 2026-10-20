@@ -39,7 +39,7 @@ Con `API_URL` definida, `frescura.yml` empieza a revisar los datos todos los dí
 | --- | --- | --- |
 | `despliegue.yml` (cada merge a `main` y a mano desde `main`) | Compila, despliega a staging, corre la prueba de humo, despliega a producción, corre el humo otra vez y, si falla, revierte | Deja un aviso y termina en verde sin desplegar |
 | `datos.yml`, job `estado-kv` (solo desde `main`) | Escribe en KV el estado de cada dataset, que `/v1/status` muestra, con `CLOUDFLARE_KV_TOKEN` y nunca con el token de despliegue | Sin `CLOUDFLARE_KV_TOKEN` o `CLOUDFLARE_ACCOUNT_ID`, deja un aviso y no escribe; el bot de datos funciona igual |
-| `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues; además, abre un issue por cada cobertura de los datos curados que termina en 30 días o menos | Sin `API_URL`, deja un aviso y no consulta `/v1/status`; la alerta de coberturas corre igual |
+| `frescura.yml` (diario, 13:00 de la Ciudad de México) | Consulta `/v1/status` de `API_URL` y abre issues; además, abre un issue por cada cobertura de los datos curados que termina en 30 días o menos y otro por cada publicación del DOF del día que coincide con una captura pendiente | Sin `API_URL`, deja un aviso y no consulta `/v1/status`; la alerta de coberturas y el vigía del DOF corren igual |
 
 ### Despliegue
 
@@ -82,6 +82,12 @@ Además, sin `API_URL` ni secretos, revisa en `data/` hasta cuándo cubren los d
 - Por cada cobertura que termina en 30 días o menos, o que ya terminó, abre un issue `Cobertura por vencer: <cobertura>` con el procedimiento de [datos-curados.md](datos-curados.md). Si ya hay uno abierto, reescribe su descripción con los días que faltan, sin comentar cada día.
 - Nunca cierra uno de estos issues: se cierra a mano al integrar el PR con la publicación nueva.
 - Va en dos jobs: el que instala y corre el pipeline solo puede leer el repositorio, y el que abre los issues solo puede escribir issues y no instala nada.
+
+El vigía del DOF, también sin `API_URL` ni secretos, lee el índice del SIDOF del día con el cliente HTTP del pipeline (solo `sidof.segob.gob.mx`, con su `robots.txt`; el comando `dof`).
+
+- Por cada nota cuyo título coincide con una captura pendiente de `data/curado/` abre un issue `Publicación en el DOF: <código> (<captura>)` con el enlace a su texto y el procedimiento de [datos-curados.md](datos-curados.md). Si ya hay un issue con ese título, abierto o cerrado, no hace nada: nunca comenta, reabre ni cierra.
+- Si el SIDOF no responde, deja un aviso y la corrida sigue en verde. Si responde algo con otra forma, la corrida queda en rojo: el vigía dejó de funcionar y hay que revisarlo.
+- El título de la nota viene del SIDOF: en el issue va en un bloque de código, en una línea y sin acentos graves. Va en dos jobs, igual que la alerta de coberturas.
 
 ### Estado en KV
 
