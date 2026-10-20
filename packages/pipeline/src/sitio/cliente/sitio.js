@@ -432,6 +432,194 @@ export function instalarEstado(pagina, pedir, reloj) {
   return actualizar();
 }
 
+/** De dónde sale el catálogo de bancos del validador: la descarga, que no lleva la CLABE. */
+export const RUTA_CATALOGO_BANCOS = "/descargas/bancos.json";
+
+/**
+ * @typedef {object} BancoValidador
+ * @property {string} codigo
+ * @property {string} nombre_corto
+ * @property {boolean} activo
+ */
+
+/**
+ * @typedef {object} ResultadoClabe
+ * @property {string} valor La CLABE sin espacios ni guiones.
+ * @property {boolean} valido
+ * @property {string[]} errores `vacio`, `caracteres`, `longitud`, `banco` o `digito_verificador`.
+ * @property {boolean} bancoRevisado Si el código de banco se revisó contra el catálogo.
+ * @property {BancoValidador | null} banco
+ * @property {string | null} digitoEsperado El dígito que corresponde a los 17 primeros.
+ */
+
+const PESOS_CLABE = [3, 7, 1];
+
+/**
+ * Valida una CLABE como `validarClabe` del núcleo con el mismo catálogo: sin espacios ni guiones,
+ * 18 dígitos, banco en el catálogo y dígito verificador con pesos 3, 7 y 1. Corre en el navegador:
+ * la CLABE no sale de la página. Sin catálogo (`null`) no revisa el banco.
+ * @param {string} clabe
+ * @param {ReadonlyMap<string, BancoValidador> | null} bancos
+ * @returns {ResultadoClabe}
+ */
+export function validarClabeLocal(clabe, bancos) {
+  const valor = clabe.replace(/[\p{Zs}\t\n\r\v\f-]/gu, "");
+  const revisado = bancos !== null;
+  /** @param {string} error */
+  const falla = (error) => ({
+    valor,
+    valido: false,
+    errores: [error],
+    bancoRevisado: revisado,
+    banco: null,
+    digitoEsperado: null,
+  });
+  if (valor.length === 0) return falla("vacio");
+  if (!/^[0-9]+$/.test(valor)) return falla("caracteres");
+  if (valor.length !== 18) return falla("longitud");
+  const banco = bancos?.get(valor.slice(0, 3)) ?? null;
+  if (revisado && banco === null) return falla("banco");
+  let suma = 0;
+  for (let i = 0; i < 17; i++) {
+    suma += Number(valor[i]) * /** @type {number} */ (PESOS_CLABE[i % 3]);
+  }
+  const digitoEsperado = String((10 - (suma % 10)) % 10);
+  const digitoOk = digitoEsperado === valor[17];
+  return {
+    valor,
+    valido: digitoOk,
+    errores: digitoOk ? [] : ["digito_verificador"],
+    bancoRevisado: revisado,
+    banco,
+    digitoEsperado,
+  };
+}
+
+/**
+ * El catálogo de bancos de `/descargas/bancos.json` como mapa código a banco. Lanza Error si no
+ * tiene la forma esperada.
+ * @param {unknown} cuerpo
+ * @returns {Map<string, BancoValidador>}
+ */
+export function catalogoDeBancos(cuerpo) {
+  if (!Array.isArray(cuerpo)) throw new Error("el catálogo de bancos no es una lista.");
+  /** @type {Map<string, BancoValidador>} */
+  const bancos = new Map();
+  for (const banco of cuerpo) {
+    if (
+      !esObjeto(banco) ||
+      typeof banco.codigo !== "string" ||
+      !/^[0-9]{3}$/.test(banco.codigo) ||
+      typeof banco.nombre_corto !== "string" ||
+      typeof banco.activo !== "boolean"
+    ) {
+      throw new Error("un banco del catálogo no tiene código, nombre y estado.");
+    }
+    const { codigo, nombre_corto, activo } = banco;
+    bancos.set(codigo, { codigo, nombre_corto, activo });
+  }
+  return bancos;
+}
+
+const NO_CONFIRMA = "Esto no confirma que la cuenta exista.";
+
+/**
+ * El texto que se muestra de un resultado.
+ * @param {ResultadoClabe} r
+ * @returns {{ ok: boolean, texto: string }}
+ */
+export function mensajeClabe(r) {
+  const [error] = r.errores;
+  if (error === "vacio") return { ok: false, texto: "Escribe una CLABE." };
+  if (error === "caracteres") {
+    return {
+      ok: false,
+      texto: "La CLABE solo lleva dígitos; se ignoran los espacios y los guiones.",
+    };
+  }
+  if (error === "longitud") {
+    return { ok: false, texto: `La CLABE lleva 18 dígitos y esta tiene ${r.valor.length}.` };
+  }
+  if (error === "banco") {
+    return {
+      ok: false,
+      texto: `El código de banco ${r.valor.slice(0, 3)} no está en el catálogo de bancos.`,
+    };
+  }
+  if (error === "digito_verificador") {
+    return {
+      ok: false,
+      texto: `El dígito verificador no coincide: con estos 17 dígitos debería ser ${r.digitoEsperado}.`,
+    };
+  }
+  if (r.banco === null) {
+    return {
+      ok: true,
+      texto: `Formato y dígito verificador correctos. El banco no se revisó, porque no se cargó el catálogo. ${NO_CONFIRMA}`,
+    };
+  }
+  const estado = r.banco.activo ? "" : " (ya no aparece en el SPEI)";
+  return {
+    ok: true,
+    texto: `CLABE válida: banco ${r.banco.codigo} ${r.banco.nombre_corto}${estado}, plaza ${r.valor.slice(3, 6)}, cuenta ${r.valor.slice(6, 17)}, dígito verificador ${r.valor[17]}. ${NO_CONFIRMA}`,
+  };
+}
+
+/**
+ * Lo que el validador usa de los elementos de `/validar-clabe/`.
+ * @typedef {object} PaginaValidador
+ * @property {{ hidden: boolean | "until-found", addEventListener(tipo: "submit", oyente: (evento: { preventDefault(): void }) => void): void }} formulario
+ * @property {{ value: string }} entrada
+ * @property {{ textContent: string | null, className: string }} resultado
+ * @property {{ textContent: string | null }} estado
+ */
+
+/**
+ * Carga el catálogo de bancos (es la única petición: la CLABE no se manda a ningún lado), muestra
+ * el formulario y valida al enviarlo. Si el catálogo no carga, valida formato y dígito y lo avisa.
+ * @param {PaginaValidador} pagina
+ * @param {Pedir} pedir
+ */
+export async function instalarValidador(pagina, pedir) {
+  /** @type {Map<string, BancoValidador> | null} */
+  let bancos = null;
+  try {
+    const respuesta = await pedir(RUTA_CATALOGO_BANCOS, {
+      headers: { accept: "application/json" },
+    });
+    if (!respuesta.ok) throw new Error(`la descarga respondió ${respuesta.status}`);
+    bancos = catalogoDeBancos(await respuesta.json());
+  } catch (error) {
+    const motivo = error instanceof Error ? error.message.replace(/\.$/, "") : "falla inesperada";
+    pagina.estado.textContent = `No se pudo cargar el catálogo de bancos (${motivo}): se revisan el formato y el dígito verificador, pero no el banco.`;
+  }
+  pagina.formulario.addEventListener("submit", (evento) => {
+    evento.preventDefault();
+    const { ok, texto } = mensajeClabe(validarClabeLocal(pagina.entrada.value, bancos));
+    pagina.resultado.textContent = texto;
+    pagina.resultado.className = ok ? "ok" : "mal";
+  });
+  pagina.formulario.hidden = false;
+}
+
+/**
+ * Los elementos de `/validar-clabe/`, o `null` en las demás páginas.
+ * @param {{ getElementById(id: string): unknown }} documento
+ * @returns {PaginaValidador | null}
+ */
+function paginaDeValidador(documento) {
+  const formulario = documento.getElementById("form-clabe");
+  const entrada = documento.getElementById("entrada-clabe");
+  const resultado = documento.getElementById("resultado-clabe");
+  const estado = documento.getElementById("estado-catalogo");
+  if (formulario === null || entrada === null || resultado === null || estado === null) {
+    return null;
+  }
+  return /** @type {PaginaValidador} */ (
+    /** @type {unknown} */ ({ formulario, entrada, resultado, estado })
+  );
+}
+
 /**
  * Lo que este módulo usa de los elementos de `/estado/` que busca por id.
  * @template N
@@ -480,6 +668,8 @@ function arrancar(documento, { origin }) {
   const pagina = paginaDeEstado(documento);
   // Envuelto: `fetch` llamado como método de otro objeto falla en el navegador.
   if (pagina !== null) instalarEstado(pagina, (url, init) => fetch(url, init));
+  const validador = paginaDeValidador(documento);
+  if (validador !== null) instalarValidador(validador, (url, init) => fetch(url, init));
 }
 
 /**
