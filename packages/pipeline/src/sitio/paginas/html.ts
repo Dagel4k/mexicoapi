@@ -111,6 +111,11 @@ export interface Documento {
    * su CSP y su política de referrer van en `<meta>`, antes de cualquier recurso.
    */
   seguridadEnMeta?: boolean;
+  /**
+   * Los nodos de schema.org de la página (`WebSite`, `Dataset`, `BreadcrumbList`), que van en un
+   * solo bloque JSON-LD con `@graph`. Es un bloque de datos: no se ejecuta y la CSP no lo bloquea.
+   */
+  datosEstructurados?: readonly Readonly<Record<string, unknown>>[];
 }
 
 const SEGURIDAD_EN_META = `<meta http-equiv="Content-Security-Policy" content="${CSP_404}">
@@ -136,6 +141,24 @@ function tarjeta(ruta: string, titulo: string, descripcion: string): string {
 `;
 }
 
+/**
+ * JSON para un bloque `<script type="application/ld+json">`: `<`, `>` y `&` van como `\u003c`,
+ * `\u003e` y `\u0026`, así que un texto de los datos no cierra el bloque ni abre un comentario;
+ * U+2028 y U+2029 también van escapados. El JSON que se lee es el mismo.
+ */
+export function jsonEnScript(valor: unknown): string {
+  return JSON.stringify(valor).replace(
+    /[<>&\u2028\u2029]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
+const bloqueJsonLd = (nodos: Documento["datosEstructurados"]): string => {
+  if (nodos === undefined) return "";
+  const json = jsonEnScript({ "@context": "https://schema.org", "@graph": nodos });
+  return `<script type="application/ld+json">${json}</script>\n`;
+};
+
 export function documento({
   titulo,
   descripcion,
@@ -143,6 +166,7 @@ export function documento({
   ruta,
   scripts = [],
   seguridadEnMeta = false,
+  datosEstructurados,
 }: Documento): string {
   if ([...descripcion].length > MAXIMO_DESCRIPCION) {
     throw new Error(`la descripción pasa de ${MAXIMO_DESCRIPCION} caracteres: ${descripcion}`);
@@ -163,7 +187,7 @@ ${seguridadEnMeta ? SEGURIDAD_EN_META : ""}<meta name="viewport" content="width=
 ${indexacion}${TEMA}<meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="/estilo.css">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-${modulos.join("")}</head>
+${modulos.join("")}${bloqueJsonLd(datosEstructurados)}</head>
 <body>
 ${cuerpo}
 ${PIE}
