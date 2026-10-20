@@ -119,9 +119,13 @@ export function interpretarIndiceDof(bytes: Uint8Array, fecha: FechaISO): NotaDo
   return notas;
 }
 
-/** Sin acentos ni mayúsculas, con los espacios juntos: así se comparan los títulos. */
+/**
+ * Sin acentos, mayúsculas ni caracteres invisibles, con los espacios juntos: así se comparan los
+ * títulos.
+ */
 const normalizar = (texto: string): string =>
   texto
+    .replace(/\p{Cf}/gu, "")
     .normalize("NFD")
     .replace(/\p{M}+/gu, "")
     .toLowerCase()
