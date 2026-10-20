@@ -91,6 +91,15 @@ export const formatearEntero = (n: number): string =>
  */
 const VARIABLE_API = `API=<wbr><span data-origen>${escaparHtml(URL_API)}</span>`;
 
+/**
+ * La línea para PowerShell (5.1 y 7) que va debajo de un bloque de bash: la variable se asigna
+ * con espacios y comillas, y `curl` es un alias de Invoke-WebRequest en la 5.1, así que el
+ * comando es `curl.exe` (viene con Windows 10 y posteriores), con la URL entre comillas para que
+ * PowerShell sustituya `$API`. El origen también lo rellena `sitio.js`.
+ */
+const enPowerShell = (comando: string, despues = ""): string =>
+  `<p>En PowerShell: <code>$API = &quot;<span data-origen>${escaparHtml(URL_API)}</span>&quot;</code> y <code>${escaparHtml(comando)}</code>${despues}.</p>`;
+
 /** Sin tabindex: con pre-wrap no se desplaza, y Tab no tiene por qué detenerse en él. */
 const codigo = (texto: string): string => `<pre><code>${escaparHtml(texto)}</code></pre>`;
 
@@ -128,6 +137,7 @@ function bloqueApi(ejemplo: unknown): string {
 <pre><code>${VARIABLE_API}
 curl $API/v1/estados/25
 curl $API/v1/clabe/${CLABE_EJEMPLO}</code></pre>
+${enPowerShell('curl.exe "$API/v1/estados/25"')}
 <p>La respuesta de la CLABE, recortada:</p>
 ${codigo(JSON.stringify(ejemplo, null, 2))}
 <p>Para sumar días hábiles: <code>/v1/dias-habiles?autoridad=lft&amp;desde=2026-12-18&amp;dias=3</code>, también con <code>cnbv</code>; con <code>sat</code>, agrega <code>tipo_plazo=general</code> o <code>tipo_plazo=declaraciones_pagos</code>. Las fechas van en <code>AAAA-MM-DD</code> y son días de la Ciudad de México.</p>
@@ -299,6 +309,7 @@ function descargas(entrada: EntradaInicio): string {
 <pre><code>${VARIABLE_API}
 curl -O $API/descargas/SHA256SUMS
 sha256sum -c SHA256SUMS --ignore-missing</code></pre>
+${enPowerShell('curl.exe -O "$API/descargas/SHA256SUMS"', "; <code>Get-FileHash</code> da el sha256 de cada archivo para compararlo")}
 <details>
 <summary>Los ${nombres.length} archivos, con su tamaño</summary>
 <div class="tabla" role="region" aria-labelledby="tabla-descargas" tabindex="0">
