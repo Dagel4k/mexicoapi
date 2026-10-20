@@ -651,7 +651,8 @@ describe("descargas", () => {
 
 describe("prueba de humo", () => {
   it("pasa contra el Worker local", async () => {
-    const resultado = await probarHumo(inject("urlApi"));
+    // El Worker local no define X_ROBOTS_TAG: como producción, sin X-Robots-Tag.
+    const resultado = await probarHumo(inject("urlApi"), { robots: "ninguno" });
     expect(resultado.fallas).toEqual([]);
     expect(resultado.ok).toBe(true);
   });

@@ -114,7 +114,7 @@ jobs:
           codigo=1
           for intento in 1 2 3 4 5; do
             codigo=0
-            node apps/api/scripts/humo.ts "${URL_STAGING}" > "${SALIDA_DIR}/humo-staging.txt" 2>&1 || codigo=$?
+            node apps/api/scripts/humo.ts "${URL_STAGING}" --robots noindex > "${SALIDA_DIR}/humo-staging.txt" 2>&1 || codigo=$?
             cat "${SALIDA_DIR}/humo-staging.txt"
             if [ "${codigo}" -eq 0 ]; then break; fi
             echo "Intento ${intento} de 5 fallido."
@@ -182,7 +182,7 @@ jobs:
           codigo=1
           for intento in 1 2 3 4 5; do
             codigo=0
-            node apps/api/scripts/humo.ts "${URL_PROD}" > "${SALIDA_DIR}/humo-produccion.txt" 2>&1 || codigo=$?
+            node apps/api/scripts/humo.ts "${URL_PROD}" --robots ninguno > "${SALIDA_DIR}/humo-produccion.txt" 2>&1 || codigo=$?
             cat "${SALIDA_DIR}/humo-produccion.txt"
             if [ "${codigo}" -eq 0 ]; then break; fi
             echo "Intento ${intento} de 5 fallido."
