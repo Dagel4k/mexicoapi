@@ -688,10 +688,10 @@ describe("registro oficial de MCP en publicacion.yml", () => {
   it("cada paso que usa la red tiene su tope y el del job deja correr la explicación", async () => {
     const wf = await workflow("publicacion.yml");
     const job = wf.jobs["registro-mcp"] as unknown as JobRegistro & { "timeout-minutes": number };
-    const topes = Object.fromEntries(
-      job.steps.flatMap((p) => {
+    const topes: Record<string, number> = Object.fromEntries(
+      job.steps.flatMap((p): [string, number][] => {
         const tope = (p as Paso & { "timeout-minutes"?: number })["timeout-minutes"];
-        return tope === undefined ? [] : [[p.name, tope]];
+        return tope === undefined ? [] : [[p.name ?? "", tope]];
       }),
     );
     expect(topes).toEqual({
