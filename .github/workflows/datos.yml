@@ -620,23 +620,27 @@ jobs:
             | jq -r --arg p "datos/${GRUPO}-" \
               '[.[] | select((.isCrossRepository | not) and (.headRefName | startswith($p)))][0].url // empty')"
           if [ -n "${pr_pendiente}" ]; then
-            # Si el PR ya trae estos registros, no hay nada nuevo que comentar.
+            # Si el PR ya trae estos registros (la corrida de respaldo del FIX, por ejemplo), no hay
+            # nada nuevo que comentar ni que revisar; el aviso de PR atascado corre igual.
+            mismo=no
             numero_pr="${pr_pendiente##*/}"
             if [[ "${numero_pr}" =~ ^[0-9]+$ ]] \
               && git fetch -q --no-tags --depth=1 origin "refs/pull/${numero_pr}/head" \
               && sin_novedad FETCH_HEAD; then
-              echo "El PR ${pr_pendiente} ya trae los mismos registros de ${GRUPO}: no hay nada nuevo."
-              exit 0
+              mismo=si
+              echo "El PR ${pr_pendiente} ya trae los mismos registros de ${GRUPO}: no se comenta en él."
             fi
-            cuerpo="${RUNNER_TEMP}/pr-pendiente.md"
-            {
-              echo "Una corrida nueva de \`${GRUPO}\` trae cambios, pero este PR sigue abierto, así que no se abrió otro."
-              echo
-              resumen
-              echo
-              echo "Corrida: ${url_corrida}"
-            } > "${cuerpo}"
-            gh pr comment "${pr_pendiente}" --body-file "${cuerpo}"
+            if [ "${mismo}" = "no" ]; then
+              cuerpo="${RUNNER_TEMP}/pr-pendiente.md"
+              {
+                echo "Una corrida nueva de \`${GRUPO}\` trae cambios, pero este PR sigue abierto, así que no se abrió otro."
+                echo
+                resumen
+                echo
+                echo "Corrida: ${url_corrida}"
+              } > "${cuerpo}"
+              gh pr comment "${pr_pendiente}" --body-file "${cuerpo}"
+            fi
             # Avisa si el PR lleva más de 48 horas abierto o tiene algún check en rojo. Si la API
             # falla aquí, solo queda un aviso: el paso sigue y el issue de revisión de abajo se abre.
             if estado_pr="$(gh pr view "${pr_pendiente}" --json createdAt,statusCheckRollup)" \
@@ -661,7 +665,7 @@ jobs:
             else
               echo "::warning::No se pudo revisar si el PR ${pr_pendiente} está atascado."
             fi
-            if [ "${pide_revision}" = "si" ]; then
+            if [ "${pide_revision}" = "si" ] && [ "${mismo}" = "no" ]; then
               cuerpo="${RUNNER_TEMP}/issue-pendiente.md"
               {
                 echo "Hay cambios nuevos en \`${GRUPO}\` que piden revisión humana, pero el PR ${pr_pendiente} sigue abierto, así que no se abrió otro."
