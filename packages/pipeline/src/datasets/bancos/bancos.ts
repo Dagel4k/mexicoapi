@@ -32,7 +32,11 @@ import {
 const ID = "bancos";
 const DIRECTORIO = "bancos";
 const URL_INFO = "https://www.banxico.org.mx/servicios/spei_-informacion-banco-mex.html";
-const URL_CEP_HISTORICO = "https://www.banxico.org.mx/cep/instituciones.do";
+/**
+ * El crudo histórico es una compilación de MéxicoAPI con las respuestas mensuales del CEP: su url es
+ * la plantilla de esa consulta, no una URL que lo descargue (docs/datos/bancos.md).
+ */
+const URL_CEP_HISTORICO = "https://www.banxico.org.mx/cep/instituciones.do?fecha=DD-MM-AAAA";
 /**
  * Hosts de Banxico a los que pide el dataset. El robots.txt de www redirige al de
  * anterior.banxico.org.mx, que es el que se aplica.

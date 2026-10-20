@@ -702,7 +702,11 @@ describe("crudo histórico y corrida completa", { timeout: PRUEBA_LENTA }, () =>
       "raw/cep-historico.json",
       "raw/participantes-spei.pdf",
     ]);
-    expect(archivos[1].url).toBe("https://www.banxico.org.mx/cep/instituciones.do");
+    // Es una compilación de MéxicoAPI: su url es la plantilla de la consulta mensual al CEP, que
+    // explica de dónde sale cada parte (docs/datos/bancos.md), no una URL que la descargue.
+    expect(archivos[1].url).toBe(
+      "https://www.banxico.org.mx/cep/instituciones.do?fecha=DD-MM-AAAA",
+    );
     expect(await readFile(join(raiz, "bancos", "raw", "cep-historico.json"), "utf8")).toContain(
       "2019-01-02",
     );

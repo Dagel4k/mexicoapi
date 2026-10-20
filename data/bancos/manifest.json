@@ -22,7 +22,7 @@
         },
         {
           "file": "raw/cep-historico.json",
-          "url": "https://www.banxico.org.mx/cep/instituciones.do",
+          "url": "https://www.banxico.org.mx/cep/instituciones.do?fecha=DD-MM-AAAA",
           "sha256": "d314d7d8318045ac69536d08ed96f9fa0575affad5f9c5730b68b65af79e80c2"
         }
       ]
