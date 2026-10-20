@@ -641,3 +641,136 @@ describe("publicacion.yml", () => {
     expect(publicar.indexOf("rutas-tgz")).toBeLessThan(publicar.indexOf("npm publish"));
   });
 });
+
+type JobRegistro = Omit<Job, "needs"> & {
+  needs: string[];
+  environment?: unknown;
+  env?: Record<string, string>;
+};
+
+/** El filtro de jq con que se revisa server.json, del bloque run de un paso. */
+const filtroServerJson = (run: string): string | undefined =>
+  /jq -e --arg v "\$\{VERSION\}" '([^']+)' packages\/mcp\/server\.json/.exec(run)?.[1];
+
+describe("registro oficial de MCP en publicacion.yml", () => {
+  it("registro-mcp corre solo con mexicoapi-mcp@*, después de npm y sin el Environment npm", async () => {
+    const wf = await workflow("publicacion.yml");
+    const job = wf.jobs["registro-mcp"] as unknown as JobRegistro;
+    expect(job.needs).toEqual(["preparar", "publicar"]);
+    expect(job.if).toBe(
+      "startsWith(github.event.release.tag_name, 'mexicoapi-mcp@') && needs.publicar.result == 'success'",
+    );
+    // id-token para el OIDC del registro, sin el Environment npm: su token no publica en npm.
+    expect(job.permissions).toEqual({ contents: "read", "id-token": "write" });
+    expect(job.environment).toBeUndefined();
+    expect(JSON.stringify(job)).not.toMatch(/secrets\.|NODE_AUTH_TOKEN|NPM_TOKEN/);
+    // Las mismas acciones fijadas por SHA que preparar.
+    const usos = job.steps.flatMap((p) => p.uses ?? []);
+    expect(usos).toEqual([
+      expect.stringMatching(/^actions\/checkout@[0-9a-f]{40}$/),
+      expect.stringMatching(/^actions\/setup-node@[0-9a-f]{40}$/),
+    ]);
+    expect(wf.jobs.preparar?.steps.flatMap((p) => p.uses ?? [])).toEqual(
+      expect.arrayContaining(usos),
+    );
+    expect(job.steps[0]?.with).toEqual({ "persist-credentials": false });
+    expect(job.steps[2]?.with).toEqual({
+      "node-version": expresion("needs.preparar.outputs.node"),
+    });
+    // En este orden: revisa server.json, espera a npm, entra con OIDC y publica.
+    expect(job.steps.map((p) => p.name ?? p.uses?.split("@")[0])).toEqual([
+      "actions/checkout",
+      "Revisar server.json",
+      "actions/setup-node",
+      "Instalar mcp-publisher",
+      "Esperar la versión en npm",
+      "Entrar al registro con OIDC",
+      "Publicar en el registro de MCP",
+      "Explicar el fallo",
+    ]);
+    // Nada se interpola en los scripts: todo llega por env.
+    for (const p of job.steps) expect(p.run ?? "", p.name).not.toContain("$" + "{{");
+  });
+
+  it("baja mcp-publisher en una versión fija y revisa su sha256 antes de extraerlo", async () => {
+    const wf = await workflow("publicacion.yml");
+    const job = wf.jobs["registro-mcp"] as unknown as JobRegistro;
+    // De registry_1.8.1_checksums.txt del release v1.8.1 de modelcontextprotocol/registry.
+    expect(job.env).toEqual({
+      MCP_PUBLISHER_VERSION: "1.8.1",
+      MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc",
+    });
+    const run = paso(wf, "registro-mcp", "Instalar mcp-publisher").run ?? "";
+    expect(run).toContain(
+      `base="https://github.com/modelcontextprotocol/registry/releases/download/v\${MCP_PUBLISHER_VERSION}"`,
+    );
+    expect(run).toContain('tarball="mcp-publisher_linux_amd64.tar.gz"');
+    expect(run).not.toContain("latest");
+    // Nada pasa de curl a otro programa: primero se guarda y se revisa.
+    expect(run).not.toMatch(/curl[^\n]*\|/);
+    const descarga = run.indexOf(`curl -fsSL -o "\${dir}/\${tarball}" "\${base}/\${tarball}"`);
+    const revision = run.indexOf(
+      `echo "\${MCP_PUBLISHER_SHA256}  \${dir}/\${tarball}" | sha256sum -c -`,
+    );
+    const extraccion = run.indexOf("tar -xzf");
+    expect(descarga).toBeGreaterThan(-1);
+    expect(revision).toBeGreaterThan(descarga);
+    expect(extraccion).toBeGreaterThan(revision);
+    expect(run.startsWith("set -euo pipefail\n")).toBe(true);
+  });
+
+  it("espera a que npm muestre la versión, con un tope, y publica packages/mcp/server.json", async () => {
+    const wf = await workflow("publicacion.yml");
+    const esperar = paso(wf, "registro-mcp", "Esperar la versión en npm");
+    expect(esperar.env).toEqual({ VERSION: expresion("needs.preparar.outputs.version") });
+    const run = esperar.run ?? "";
+    expect(run).toContain(`spec="mexicoapi-mcp@\${VERSION}"`);
+    // Sin la copia de la caché de npm, hasta 40 veces cada 15 segundos (10 minutos).
+    expect(run).toContain(
+      `if [ "$(npm view "\${spec}" version --prefer-online 2>/dev/null || true)" = "\${VERSION}" ]; then`,
+    );
+    expect(run).toContain("for intento in $(seq 1 40); do");
+    expect(run).toContain("sleep 15");
+    expect(run).toMatch(/echo "::error::[^"]*no aparece en npm/);
+    expect(run.trimEnd().endsWith("exit 1")).toBe(true);
+    expect(paso(wf, "registro-mcp", "Entrar al registro con OIDC").run).toBe(
+      "mcp-publisher login github-oidc",
+    );
+    const publicar = paso(wf, "registro-mcp", "Publicar en el registro de MCP").run ?? "";
+    expect(publicar).toContain("mcp-publisher publish packages/mcp/server.json");
+    expect(publicar).toContain(`>> "\${GITHUB_STEP_SUMMARY}"`);
+    // Si algo falla, el job queda en rojo y dice que npm ya publicó la versión.
+    const fallo = paso(wf, "registro-mcp", "Explicar el fallo") as Paso & { if?: string };
+    expect(fallo.if).toBe("failure()");
+    expect(fallo.run).toMatch(/echo "::error::mexicoapi-mcp@\$\{VERSION\} ya está en npm/);
+    expect(fallo.run).toContain("docs/operacion/publicacion-npm.md");
+    expect(fallo.run).toContain(`>> "\${GITHUB_STEP_SUMMARY}"`);
+    for (const p of wf.jobs["registro-mcp"]?.steps ?? []) {
+      expect((p as Paso & { "continue-on-error"?: unknown })["continue-on-error"]).toBeUndefined();
+    }
+  });
+
+  it("preparar y registro-mcp revisan que server.json traiga la versión del Release", async () => {
+    const wf = await workflow("publicacion.yml");
+    const enPreparar = paso(wf, "preparar", "Revisar server.json") as Paso & { if?: string };
+    expect(enPreparar.if).toBe("steps.revisar.outputs.nombre == 'mexicoapi-mcp'");
+    expect(enPreparar.env).toEqual({ VERSION: expresion("steps.revisar.outputs.version") });
+    // En preparar, antes de consultar npm: si no coincide, no se publica nada.
+    const nombres = wf.jobs.preparar?.steps.map((p) => p.name) ?? [];
+    expect(nombres.indexOf("Revisar server.json")).toBe(
+      nombres.indexOf("Revisar la etiqueta, el package.json y el CHANGELOG.md") + 1,
+    );
+    const enRegistro = paso(wf, "registro-mcp", "Revisar server.json");
+    expect(enRegistro.env).toEqual({ VERSION: expresion("needs.preparar.outputs.version") });
+    const filtro = filtroServerJson(enPreparar.run ?? "");
+    expect(filtro).toBe(
+      '.version == $v and (.packages | length) == 1 and .packages[0].version == $v and .packages[0].identifier == "mexicoapi-mcp"',
+    );
+    expect(filtroServerJson(enRegistro.run ?? "")).toBe(filtro);
+    for (const run of [enPreparar.run ?? "", enRegistro.run ?? ""]) {
+      expect(run).toMatch(/echo "::error::packages\/mcp\/server\.json no trae la versión/);
+    }
+    // registro-mcp lee el server.json del commit del Release, el que revisó preparar.
+    expect(enRegistro.run).toContain(`if [ "$(git rev-parse HEAD)" != "\${GITHUB_SHA}" ]; then`);
+  });
+});

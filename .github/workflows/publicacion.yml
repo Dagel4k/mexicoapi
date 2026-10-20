@@ -2,7 +2,8 @@ name: Publicación
 
 # Publica en npm el paquete de la etiqueta de un Release de GitHub: mexicoapi@X.Y.Z (packages/sdk)
 # o mexicoapi-mcp@X.Y.Z (packages/mcp). Sin tokens: npm confía en este workflow (trusted
-# publishing, por OIDC) y agrega la procedencia. Pasos y requisitos en
+# publishing, por OIDC) y agrega la procedencia. Con mexicoapi-mcp, registra después la versión en
+# el registro oficial de servidores MCP, también por OIDC. Pasos y requisitos en
 # docs/operacion/publicacion-npm.md.
 on:
   release:
@@ -73,6 +74,19 @@ jobs:
             exit 1
           fi
           node packages/sdk/scripts/liberacion.ts revisar "${ETIQUETA}" | tee -a "${GITHUB_OUTPUT}"
+
+      # registro-mcp sube server.json al registro oficial de MCP después de npm: si no trae la
+      # versión del Release, se detiene aquí, antes de publicar nada.
+      - name: Revisar server.json
+        if: steps.revisar.outputs.nombre == 'mexicoapi-mcp'
+        env:
+          VERSION: ${{ steps.revisar.outputs.version }}
+        run: |
+          set -euo pipefail
+          if ! jq -e --arg v "${VERSION}" '.version == $v and (.packages | length) == 1 and .packages[0].version == $v and .packages[0].identifier == "mexicoapi-mcp"' packages/mcp/server.json > /dev/null; then
+            echo "::error::packages/mcp/server.json no trae la versión ${VERSION} en version y en packages[0].version, con mexicoapi-mcp como único paquete: corrígelo en un PR."
+            exit 1
+          fi
 
       # El check que exige la protección de main (job verify de ci.yml), en este mismo commit.
       - name: Revisar que CI pasó en el commit
@@ -287,4 +301,109 @@ jobs:
             echo "## npm publish falló"
             echo
             echo "Con E403, E404, ENEEDAUTH, un error de OIDC o un aviso de acción no permitida, lo más probable es que el paquete no confíe en este workflow o no le permita npm publish: revisa su publicador de confianza en npmjs.com (usuario, repositorio, publicacion.yml, el Environment npm y, en Allowed actions, npm publish) en [publicacion-npm.md](${guia})."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  # Registra la versión de mexicoapi-mcp en el registro oficial de servidores MCP
+  # (registry.modelcontextprotocol.io), después de que npm la publicó: el registro revisa que el
+  # mcpName de esa versión en npm sea el name de server.json. Va aparte de publicar y fuera del
+  # Environment npm: su token de OIDC no le sirve al publicador de confianza de npm, y mcp-publisher
+  # no corre donde sí serviría. El registro da el espacio io.github.Dagel4k/* al dueño del
+  # repositorio que dice el token. Si este job falla, la versión ya quedó en npm.
+  registro-mcp:
+    needs: [preparar, publicar]
+    if: startsWith(github.event.release.tag_name, 'mexicoapi-mcp@') && needs.publicar.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: 1.8.1
+      # SHA-256 de mcp-publisher_linux_amd64.tar.gz, de registry_1.8.1_checksums.txt del release
+      # v1.8.1 de modelcontextprotocol/registry. Si cambia la versión, hay que cambiar este valor.
+      MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # El mismo server.json que revisó preparar: el del commit del Release.
+      - name: Revisar server.json
+        env:
+          VERSION: ${{ needs.preparar.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse HEAD)" != "${GITHUB_SHA}" ]; then
+            echo "::error::La etiqueta ya no apunta al commit del Release (${GITHUB_SHA})."
+            exit 1
+          fi
+          if ! jq -e --arg v "${VERSION}" '.version == $v and (.packages | length) == 1 and .packages[0].version == $v and .packages[0].identifier == "mexicoapi-mcp"' packages/mcp/server.json > /dev/null; then
+            echo "::error::packages/mcp/server.json no trae la versión ${VERSION} en version y en packages[0].version, con mexicoapi-mcp como único paquete: corrígelo en un PR."
+            exit 1
+          fi
+
+      # Solo para npm view, con el mismo Node que preparar.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ needs.preparar.outputs.node }}
+
+      # Versión fija y su sha256 revisado antes de extraer: nada de latest ni de curl | tar.
+      - name: Instalar mcp-publisher
+        run: |
+          set -euo pipefail
+          base="https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}"
+          tarball="mcp-publisher_linux_amd64.tar.gz"
+          dir="$(mktemp -d)"
+          curl -fsSL -o "${dir}/${tarball}" "${base}/${tarball}"
+          echo "${MCP_PUBLISHER_SHA256}  ${dir}/${tarball}" | sha256sum -c -
+          mkdir -p "${HOME}/.local/bin"
+          tar -xzf "${dir}/${tarball}" -C "${HOME}/.local/bin" mcp-publisher
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      # El registro lee de npm el mcpName de la versión: mientras npm no la muestre, rechaza el
+      # server.json. --prefer-online consulta npm cada vez, sin la copia de su caché.
+      - name: Esperar la versión en npm
+        env:
+          VERSION: ${{ needs.preparar.outputs.version }}
+        run: |
+          set -euo pipefail
+          spec="mexicoapi-mcp@${VERSION}"
+          for intento in $(seq 1 40); do
+            if [ "$(npm view "${spec}" version --prefer-online 2>/dev/null || true)" = "${VERSION}" ]; then
+              echo "${spec} ya está en npm (intento ${intento})."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::${spec} no aparece en npm después de 10 minutos y no se registró en el registro de MCP."
+          exit 1
+
+      - name: Entrar al registro con OIDC
+        run: mcp-publisher login github-oidc
+
+      - name: Publicar en el registro de MCP
+        env:
+          VERSION: ${{ needs.preparar.outputs.version }}
+        run: |
+          set -euo pipefail
+          mcp-publisher publish packages/mcp/server.json
+          {
+            echo "## mexicoapi-mcp@${VERSION} en el registro de MCP"
+            echo
+            echo "Registrado como io.github.Dagel4k/mexicoapi-mcp: https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.Dagel4k/mexicoapi-mcp"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      # El job queda en rojo para que se vea, sin tocar lo que ya publicó npm.
+      - name: Explicar el fallo
+        if: failure()
+        env:
+          VERSION: ${{ needs.preparar.outputs.version }}
+        run: |
+          set -euo pipefail
+          guia="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/main/docs/operacion/publicacion-npm.md#registro-oficial-de-mcp"
+          echo "::error::mexicoapi-mcp@${VERSION} ya está en npm, pero no quedó en el registro oficial de MCP. Usa Re-run failed jobs o regístrala a mano. Ver ${guia}"
+          {
+            echo "## Registro de MCP: falló"
+            echo
+            echo "mexicoapi-mcp@${VERSION} ya está publicado en npm y eso no cambia: lo que falló es el registro oficial de servidores MCP, y el paso en rojo dice por qué. Re-run failed jobs repite solo este job. Si el error es \"invalid audience\", mcp-publisher quedó viejo y hay que subir su versión. También se puede registrar a mano: [publicacion-npm.md](${guia})."
           } >> "${GITHUB_STEP_SUMMARY}"
