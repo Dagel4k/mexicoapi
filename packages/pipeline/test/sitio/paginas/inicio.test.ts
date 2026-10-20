@@ -312,6 +312,19 @@ describe("página de inicio", () => {
     expect(nuevo).toContain("Solo en descargas");
   });
 
+  // La ruta de uso común para los municipios es la de un estado.
+  it("en Municipios muestra también la ruta de los municipios de un estado", () => {
+    const municipios: DatasetInicio = {
+      ...(DATASETS[0] as DatasetInicio),
+      id: "inegi.municipios",
+      directorio: "inegi-municipios",
+    };
+    const [fila] = renglones(paginaInicio({ ...ENTRADA, datasets: [municipios] }), "tabla-datos");
+    expect(fila).toContain(
+      '<code>/v1/municipios</code><span class="detalle">Todos los del país</span><code>/v1/estados/{cve_ent}/municipios</code><span class="detalle">Los de un estado</span></td>',
+    );
+  });
+
   it("enlaza las descargas JSON y CSV que existen de cada dataset", () => {
     const [estados, uma, nuevo] = renglones(html, "tabla-datos") as [string, string, string];
     expect(estados).toContain('<a href="/descargas/inegi-estados.json">JSON');
@@ -342,7 +355,11 @@ describe("página de inicio", () => {
     );
   });
 
-  it("cada href es del sitio, del repositorio o una URL https de los manifiestos", () => {
+  it("cada href es del sitio, del repositorio, de npm o una URL https de los manifiestos", () => {
+    const NPM = [
+      "https://www.npmjs.com/package/mexicoapi",
+      "https://www.npmjs.com/package/mexicoapi-mcp",
+    ];
     // Las URL de los manifiestos tal como las deja enlaceSeguro, normalizadas.
     const deManifiestos = new Set(
       DATASETS.flatMap((d) => d.fuentes.flatMap((f) => [f.url, f.license_url])).flatMap((u) =>
@@ -359,6 +376,7 @@ describe("página de inicio", () => {
         href.startsWith("#") ||
         href === URL_REPO ||
         href.startsWith(`${URL_REPO}/`) ||
+        NPM.includes(href) ||
         (deManifiestos.has(href) && href.startsWith("https://"));
       expect(valido, href).toBe(true);
     }
@@ -451,21 +469,66 @@ describe("página de inicio", () => {
     expect(html).not.toContain("<CEP>");
   });
 
-  it("ya publicados, trae el ejemplo del paquete y la configuración del servidor MCP", () => {
+  // Sin el catálogo, validarClabe no revisa el banco: el ejemplo que se copia lo pasa.
+  it("ya publicados, trae el ejemplo del paquete con el catálogo de bancos y la configuración del MCP", () => {
     const codigo = bloquesDeCodigo(paginaInicio(ENTRADA, true));
     expect(codigo).toContain("npm install mexicoapi");
     const ejemplo = [
       'import { validarClabe } from "mexicoapi";',
+      'import { catalogoClabe } from "mexicoapi/datos";',
       "",
-      'const r = validarClabe("002010077777777771");',
-      "r.valido; // true",
+      'const r = validarClabe("002010077777777771", { bancos: catalogoClabe() });',
+      'r.valido; // true; un banco que no existe da false con errores ["banco"]',
     ].join("\n");
     expect(codigo).toContain(ejemplo);
-    expect(validarClabe("002010077777777771").valido).toBe(true);
+    // Lo que dice el comentario, con un catálogo que solo trae el 002.
+    const bancos = new Map([["002", { codigo: "002", nombre_corto: "BANAMEX", activo: true }]]);
+    expect(validarClabe("002010077777777771", { bancos }).valido).toBe(true);
+    expect(validarClabe("999010077777777774", { bancos })).toMatchObject({
+      valido: false,
+      errores: ["banco"],
+    });
+    expect(validarClabe("999010077777777774").valido).toBe(true);
     const mcp = codigo.find((c) => c.includes("mcpServers"));
     expect(JSON.parse(mcp ?? "")).toEqual({
       mcpServers: { mexicoapi: { command: "npx", args: ["-y", "mexicoapi-mcp"] } },
     });
+  });
+
+  // npm muestra el README de la versión publicada; el CHANGELOG de main dice qué viene.
+  it("al pie del paquete y del MCP enlaza su página de npm y su CHANGELOG", () => {
+    const bloque = (titulo: string): string => {
+      const inicio = html.indexOf(`<h3>${titulo}</h3>`);
+      return html.slice(inicio, html.indexOf("</div>", inicio));
+    };
+    const pie = (nombre: string, carpeta: string): string =>
+      `<p>Documentación: <a href="https://www.npmjs.com/package/${nombre}">README<span class="oculto"> de ${nombre}</span> en npm</a> · <a href="${URL_ARCHIVOS}/packages/${carpeta}/CHANGELOG.md">cambios<span class="oculto"> de ${nombre}</span></a></p>\n`;
+    expect(bloque("Paquete de npm").endsWith(pie("mexicoapi", "sdk"))).toBe(true);
+    expect(bloque("Servidor MCP").endsWith(pie("mexicoapi-mcp", "mcp"))).toBe(true);
+  });
+
+  // Varios clientes en Windows no encuentran npx (es npx.cmd) si no pasa por cmd.
+  it("debajo de la configuración del MCP dice cómo usarla en Windows", () => {
+    const inicio = html.indexOf("<h3>Servidor MCP</h3>");
+    const mcp = html.slice(inicio, html.indexOf("</div>", inicio));
+    const nota = mcp.match(
+      /<p>En Windows, si el cliente no encuentra <code>npx<\/code>, usa <code>([^<]+)<\/code> y <code>([^<]+)<\/code>\.<\/p>/,
+    );
+    expect(nota).not.toBeNull();
+    expect(mcp.indexOf("</code></pre>")).toBeLessThan(mcp.indexOf("<p>En Windows"));
+    const [, comando, argumentos] = nota as RegExpMatchArray;
+    expect(JSON.parse(`{${desescapar(comando ?? "")}, ${desescapar(argumentos ?? "")}}`)).toEqual({
+      command: "cmd",
+      args: ["/c", "npx", "-y", "mexicoapi-mcp"],
+    });
+  });
+
+  // La API solo valida CLABE; el paquete también RFC, CURP y NSS, sin mandar el dato a la red.
+  it("dice qué valida el paquete y que lo hace en el equipo de quien lo usa", () => {
+    const inicio = html.indexOf("<h3>Paquete de npm</h3>");
+    expect(html.slice(inicio, html.indexOf("</div>", inicio))).toContain(
+      "Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo)",
+    );
   });
 
   // Un comando copiable de un paquete que no existe en npm falla, o instala el de otra persona.
@@ -500,10 +563,13 @@ describe("página de inicio", () => {
       `${URL_ARCHIVOS}/docs/api/README.md`,
       `${URL_ARCHIVOS}/docs/api/problemas.md`,
       "/llms.txt",
+      "/llms-full.txt",
       "/estado/",
       `${URL_ARCHIVOS}/LICENSE`,
       `${URL_ARCHIVOS}/DATA_LICENSE.md`,
       `${URL_ARCHIVOS}/SECURITY.md`,
+      `${URL_ARCHIVOS}/packages/sdk/CHANGELOG.md`,
+      `${URL_ARCHIVOS}/packages/mcp/CHANGELOG.md`,
       URL_REPO,
     ]) {
       expect(html).toContain(`<a href="${href}">`);

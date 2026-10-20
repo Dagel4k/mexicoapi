@@ -268,6 +268,26 @@ describe("llms.txt", () => {
     expect(publicado).toContain("`npx -y mexicoapi-mcp`");
   });
 
+  // La API solo valida CLABE: quien pida validar un RFC tiene que saber que el paquete lo hace.
+  it("dice qué valida el paquete y que lo hace en el equipo de quien lo usa", () => {
+    expect(texto).toContain(
+      "validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo)",
+    );
+  });
+
+  it("en Municipios da también la ruta de los municipios de un estado", () => {
+    const municipios = archivoLlms([
+      {
+        id: "inegi.municipios",
+        as_of: "2026-10-17",
+        docs: `${URL_DOCS}/datos/inegi-municipios.md`,
+      },
+    ]);
+    expect(municipios).toContain(
+      `- [Municipios](${URL_DOCS}/datos/inegi-municipios.md): \`inegi.municipios\`, as_of 2026-10-17, \`GET /v1/municipios\` (todos los del país); también \`GET /v1/estados/{cve_ent}/municipios\` (los de un estado)\n`,
+    );
+  });
+
   it("Optional: descargas, diseño técnico y seguridad; los enlaces al repositorio existen", async () => {
     expect(seccion("Optional").map((l) => enlaces(l)[0])).toEqual([
       "/descargas/SHA256SUMS",

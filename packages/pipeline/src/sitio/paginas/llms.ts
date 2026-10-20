@@ -64,7 +64,7 @@ function renglonDataset(d: DatasetLlms): string {
 
 function paquetes(publicado: boolean): string {
   return publicado
-    ? "También hay un paquete de npm con validadores, los mismos datos sin red y un cliente de la API (`npm install mexicoapi`), y un servidor MCP por stdio con los mismos datos y validadores como herramientas (`npx -y mexicoapi-mcp`)."
+    ? "También hay un paquete de npm con validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo), los mismos datos sin red y un cliente de la API (`npm install mexicoapi`), y un servidor MCP por stdio con los mismos datos y validadores como herramientas (`npx -y mexicoapi-mcp`)."
     : "El paquete de npm `mexicoapi` (validadores y los mismos datos sin red) y el servidor MCP `mexicoapi-mcp` todavía no están publicados en npm; mientras tanto, usa la API.";
 }
 

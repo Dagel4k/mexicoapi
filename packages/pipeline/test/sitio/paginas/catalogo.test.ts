@@ -74,6 +74,16 @@ describe("catálogo de datasets", () => {
     ]);
   });
 
+  // La ruta de uso común es la de un estado; /v1/municipios trae los 2,478 de una vez.
+  it("Municipios lleva la ruta de todo el país y la de los municipios de un estado", () => {
+    expect(CATALOGO["inegi.municipios"]).toEqual({
+      nombre: "Municipios",
+      ruta: "/v1/municipios",
+      nota: "todos los del país",
+      otras: [{ ruta: "/v1/estados/{cve_ent}/municipios", nota: "los de un estado" }],
+    });
+  });
+
   it("un dataset que el catálogo no conoce se muestra con su id y sin ruta", () => {
     expect(describir("nuevo.dataset")).toEqual({ nombre: "nuevo.dataset", ruta: null });
     expect(describir("inegi.estados")).toEqual({ nombre: "Estados", ruta: "/v1/estados" });

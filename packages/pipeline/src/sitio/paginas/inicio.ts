@@ -98,10 +98,12 @@ const codigo = (texto: string): string =>
  */
 const PENDIENTE = `<p class="aviso"><strong>Pendiente:</strong> el paquete <code>mexicoapi</code> y el servidor MCP <code>mexicoapi-mcp</code> se publicarán en npm; mientras tanto, usa la API. Lo que traen está en sus README: <a href="${URL_ARCHIVOS}/packages/sdk/README.md">paquete</a> y <a href="${URL_ARCHIVOS}/packages/mcp/README.md">servidor MCP</a>.</p>`;
 
+/** Con el catálogo, como en el README: sin él, `validarClabe` no revisa el banco. */
 const EJEMPLO_CLABE = `import { validarClabe } from "mexicoapi";
+import { catalogoClabe } from "mexicoapi/datos";
 
-const r = validarClabe("${CLABE_EJEMPLO}");
-r.valido; // true`;
+const r = validarClabe("${CLABE_EJEMPLO}", { bancos: catalogoClabe() });
+r.valido; // true; un banco que no existe da false con errores ["banco"]`;
 
 const CONFIGURACION_MCP = `{
   "mcpServers": {
@@ -124,6 +126,13 @@ ${codigo(JSON.stringify(ejemplo, null, 2))}
 </div>`;
 }
 
+/**
+ * Al pie de cada bloque: la página de npm, que muestra el README de la versión publicada, y el
+ * CHANGELOG. El nombre del paquete va oculto en el texto de cada enlace para que no se repitan.
+ */
+const documentacion = (nombre: string, carpeta: string): string =>
+  `<p>Documentación: <a href="https://www.npmjs.com/package/${nombre}">README<span class="oculto"> de ${nombre}</span> en npm</a> · <a href="${URL_ARCHIVOS}/packages/${carpeta}/CHANGELOG.md">cambios<span class="oculto"> de ${nombre}</span></a></p>`;
+
 /** Ya publicados, la API, el paquete y el servidor van en tres bloques; antes, la API y un aviso. */
 function empieza(publicado: boolean, ejemplo: unknown): string {
   const contenido = publicado
@@ -131,15 +140,18 @@ function empieza(publicado: boolean, ejemplo: unknown): string {
 ${bloqueApi(ejemplo)}
 <div class="bloque">
 <h3>Paquete de npm</h3>
-<p>Validadores, reglas y los mismos datos para JavaScript y TypeScript, sin dependencias y sin red.</p>
+<p>Para JavaScript y TypeScript, sin dependencias. Validadores de CLABE, RFC, CURP y NSS (formato y dígito verificador, en tu equipo), días hábiles y los mismos datos, sin red.</p>
 ${codigo("npm install mexicoapi")}
 ${codigo(EJEMPLO_CLABE)}
+${documentacion("mexicoapi", "sdk")}
 </div>
 <div class="bloque">
 <h3>Servidor MCP</h3>
 <p>Los mismos datos y validadores como herramientas de un servidor MCP por stdio.</p>
 <p>Agrégalo a la configuración de tu cliente:</p>
 ${codigo(CONFIGURACION_MCP)}
+<p>En Windows, si el cliente no encuentra <code>npx</code>, usa <code>${escaparHtml('"command": "cmd"')}</code> y <code>${escaparHtml('"args": ["/c", "npx", "-y", "mexicoapi-mcp"]')}</code>.</p>
+${documentacion("mexicoapi-mcp", "mcp")}
 </div>
 </div>`
     : `${bloqueApi(ejemplo)}\n${PENDIENTE}`;
@@ -292,7 +304,7 @@ const REFERENCIA = `<section id="referencia" aria-labelledby="titulo-referencia"
 <dt><a href="${URL_DOCS}/api/problemas.md">Errores</a></dt>
 <dd>Los errores responden <code>application/problem+json</code>; cada tipo está documentado.</dd>
 <dt><a href="/llms.txt">/llms.txt</a></dt>
-<dd>Resumen del sitio en texto plano, con la documentación completa en <code>/llms-full.txt</code>.</dd>
+<dd>Resumen del sitio en texto plano, con la documentación completa en <a href="/llms-full.txt">/llms-full.txt</a>.</dd>
 <dt><a href="/estado/">Estado</a></dt>
 <dd>Si cada dataset automático está al día y cuándo se revisó por última vez.</dd>
 </dl>
