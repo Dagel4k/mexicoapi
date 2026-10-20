@@ -505,6 +505,17 @@ describe("publicar de datos.yml", () => {
     expect(contraPr).toBeGreaterThan(run.indexOf('pr_pendiente="$('));
     expect(contraPr).toBeLessThan(run.indexOf(`gh pr comment "\${pr_pendiente}"`));
     expect(run).toContain(`if [[ "\${numero_pr}" =~ ^[0-9]+$ ]]`);
+    // Con los mismos registros solo se calla el comentario y el issue de revisión: el aviso de
+    // PR atascado (48 horas o CI en rojo) corre siempre, así que no hay un exit antes de él.
+    const atasco = run.indexOf(`gh pr view "\${pr_pendiente}" --json createdAt,statusCheckRollup`);
+    expect(atasco).toBeGreaterThan(contraPr);
+    expect(run.slice(contraPr, atasco)).not.toMatch(/\bexit\b/);
+    expect(run).toContain(`mismo=si`);
+    const comentario = run.indexOf(`gh pr comment "\${pr_pendiente}"`);
+    expect(run.lastIndexOf(`if [ "\${mismo}" = "no" ]; then`, comentario)).toBeGreaterThan(
+      contraPr,
+    );
+    expect(run).toContain(`if [ "\${pide_revision}" = "si" ] && [ "\${mismo}" = "no" ]; then`);
   });
 
   it("el resumen va en un bloque de código y los artefactos se leen solo si son archivos comunes", async () => {
