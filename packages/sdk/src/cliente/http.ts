@@ -89,13 +89,9 @@ export async function pedirApi(c: ConfigHttp, p: Pedido): Promise<RespuestaPrevi
   try {
     return await deLaApi(c, fetch, url, guardado, p);
   } catch (error) {
-    if (
-      guardado !== undefined &&
-      error instanceof MexicoApiError &&
-      !esDefinitivo(error) &&
-      Date.now() <= guardado.expira + guardado.rancioMs
-    ) {
-      return rancia(guardado, error);
+    if (guardado !== undefined && error instanceof MexicoApiError && !esDefinitivo(error)) {
+      const respaldo = rancia(guardado, error);
+      if (respaldo !== undefined) return respaldo;
     }
     throw error;
   }
@@ -386,11 +382,17 @@ function duracion(ms: number): string {
 }
 
 /**
- * La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo antes de las suyas.
- * Conserva los avisos que mandó la API, con el de la respuesta guardada al principio.
+ * La respuesta guardada, ya caducada, con la advertencia de su edad y del fallo antes de las suyas;
+ * undefined si ya pasó su stale-if-error. Conserva los avisos que mandó la API, con el de la
+ * respuesta guardada al principio.
  */
-function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaPrevia {
+function rancia(guardado: Guardado, causa: MexicoApiError): RespuestaPrevia | undefined {
   const ahora = Date.now();
+  // La ventana se revisa aquí, junto al texto: una entrada invalidada por no-store o no-cache
+  // (expira -Infinity) nunca se sirve ni llega a decir "caducada hace Infinity días".
+  if (!Number.isFinite(guardado.expira) || ahora > guardado.expira + guardado.rancioMs) {
+    return undefined;
+  }
   const texto = `Respuesta guardada de la API, de hace ${duracion(ahora - guardado.guardadoEn)} y caducada hace ${duracion(ahora - guardado.expira)}, porque la API falló: ${causa.message}`;
   const { avisos } = guardado.respuesta;
   return congelar({
