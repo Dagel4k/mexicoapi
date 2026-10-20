@@ -119,6 +119,30 @@ describe("crearCalendario", () => {
     ).toThrow(RangeError);
   });
 
+  it("acepta una cobertura de un solo día", () => {
+    const unDia = { desde: "2026-07-01", hasta: "2026-07-01" };
+    const c = crearCalendario({
+      autoridad: "sat",
+      cobertura: unDia,
+      dias: [],
+      fuenteFinDeSemana: fuenteFds,
+    });
+    expect(c.cobertura).toEqual(unDia);
+    expect(c.inhabil("2026-07-01")).toBeNull(); // miércoles
+    expect(() => c.inhabil("2026-07-02")).toThrow(CalendarioIncompletoError);
+  });
+
+  it("el respaldo puede terminar el mismo día que el calendario", () => {
+    const base = { autoridad: "sat", dias: [], fuenteFinDeSemana: fuenteFds } as const;
+    const amplio = crearCalendario({ ...base, cobertura });
+    const c = crearCalendario({
+      ...base,
+      cobertura: { desde: "2026-02-01", hasta: "2026-12-31" },
+      respaldo: { calendario: amplio, aviso: () => undefined },
+    });
+    expect(c.respaldo?.calendario).toBe(amplio);
+  });
+
   it("lanza RangeError con días inválidos o fuera de cobertura", () => {
     expect(() => calendario([dia("2026-02-30", "descanso")])).toThrow(RangeError);
     expect(() => calendario([dia("2025-12-31", "descanso")])).toThrow(RangeError);

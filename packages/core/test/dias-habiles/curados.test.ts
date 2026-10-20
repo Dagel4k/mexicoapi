@@ -768,6 +768,14 @@ describe("sumarDiasHabilesCurado con el SAT", () => {
       });
     });
 
+    it("un resultado en el último día cubierto no avisa", () => {
+      expect(sat("general", "2026-11-27", 1, true)).toMatchObject({
+        resultado: "2026-11-30",
+        advertencias: [],
+        avisos: [],
+      });
+    });
+
     it("un rango que llega a 2027 salta el 1 de enero con la regla, sin aviso de 2027", () => {
       // Cambio: antes daba 2027-01-01 con "Calendario incompleto: SAT 2027"; el 1 de enero es
       // inhábil por el art. 12 y el respaldo lo descuenta.
