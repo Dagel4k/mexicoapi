@@ -366,9 +366,11 @@ El catálogo de plazas de la CLABE no tiene fuente oficial pública, así que v1
   - Datos que cambian: `Cache-Control: public, max-age=3600, stale-while-revalidate=86400, stale-if-error=604800`. No lleva `s-maxage=86400`: un caché compartido de 24 h rompería la meta de frescura de 24 h.
   - `/v1/tipo-cambio/fix/ultimo`: `public, max-age=300`, sin `stale-while-revalidate` ni `stale-if-error`, porque cambia con cada publicación.
   - `/v1/status`: `public, max-age=60`. Errores: `no-store`.
+  - `/v1/clabe/{clabe}`: `private, max-age=3600`. La CLABE va en la URL y es de la cuenta de una persona: la guarda el cliente, no un caché compartido.
   - Históricos (cuando existan): `public, max-age=31536000, immutable`.
   - `ETag` = hash del contenido en los shards; con `If-None-Match` responde 304.
-- Encabezados: `Access-Control-Allow-Origin: *` (expone `ETag` y `Retry-After`), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`. Sin cookies. Solo `GET`, `HEAD` y `OPTIONS`.
+- Encabezados: `Access-Control-Allow-Origin: *` (expone `ETag` y `Retry-After`), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `Strict-Transport-Security: max-age=31536000` (sin `includeSubDomains` ni `preload`) y `Vary: Accept-Encoding`. Sin cookies. Solo `GET`, `HEAD` y `OPTIONS`.
+- HTTPS: una petición a `/v1` por `http://` responde 403 `https-requerido`, sin redirigir y antes del límite de peticiones. `localhost`, `127.0.0.1` y `[::1]` aceptan `http://` (`wrangler dev` y las pruebas de integración).
 - Privacidad: el Worker no registra ni guarda consultas (la observabilidad está desactivada). Una CLABE viaja en la ruta; quien no quiera enviarla puede validarla sin red con el SDK.
 
 ### Endpoints v1
