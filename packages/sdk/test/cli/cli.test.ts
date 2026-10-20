@@ -181,6 +181,31 @@ describe("CLI: a qué API pregunta", () => {
     expect(clabe.codigo).toBe(0);
   });
 
+  it("una base http:// a un host que no es local sale con 2, con el mensaje del cliente", async () => {
+    const { fetch, urls } = fetchFalso();
+    const mensaje =
+      "mexicoapi: base con http:// solo se acepta para localhost, 127.0.0.1 o [::1]; para otro host usa https://, como https://mexicoapi.example.workers.dev.\n";
+    const casos: [readonly string[], Record<string, string | undefined>][] = [
+      [[...DIAS, "--base", "http://example.com"], {}],
+      [[...DIAS, "--base", "http://example.com"], { MEXICOAPI_SIN_RED: "1" }],
+      [DIAS, { ...conRed, MEXICOAPI_BASE: "http://example.com" }],
+    ];
+    for (const [argv, env] of casos) {
+      const c = await correr(argv, env, enDirectorio, fetch);
+      expect(c.codigo, argv.join(" ")).toBe(2);
+      expect(c.salida).toBe("");
+      expect(c.errores).toBe(mensaje);
+    }
+    expect(urls).toEqual([]);
+    const local = await correr(
+      [...DIAS, "--base", "http://localhost:8787"],
+      {},
+      enDirectorio,
+      fetch,
+    );
+    expect(local.codigo).toBe(0);
+  });
+
   it("--base gana a MEXICOAPI_SIN_RED y a MEXICOAPI_BASE", async () => {
     const { fetch, urls } = fetchFalso();
     const env = { MEXICOAPI_SIN_RED: "1", MEXICOAPI_BASE: "https://otra.example" };
@@ -291,9 +316,9 @@ describe("CLI: errores inesperados", () => {
     expect(c.errores).toBe("mexicoapi: error inesperado: texto suelto\ntexto suelto\n");
   });
 
-  it("una base inválida es un error de entrada, sin traza", async () => {
+  it("una base inválida es un error de configuración (2), sin traza", async () => {
     const c = await correr(["banco", "002", "--base", "no es una url"]);
-    expect(c.codigo).toBe(1);
+    expect(c.codigo).toBe(2);
     expect(c.errores).toMatch(/^mexicoapi: /);
     expect(c.errores).not.toContain("    at ");
   });
