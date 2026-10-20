@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { type BancoClabe, validarClabe } from "@mexicoapi/core";
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   catalogoDeBancos,
   instalarValidador,
@@ -193,5 +193,42 @@ describe("instalarValidador", () => {
     p.entrada.value = "999010077777777774";
     p.formulario.oyentes.get("submit")?.({ preventDefault() {} });
     expect(p.resultado.textContent).toMatch(/banco no se revisó/);
+  });
+});
+
+describe("al cargarse en /validar-clabe/", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("pide solo el catálogo y muestra el formulario; en otra página no hace nada", async () => {
+    const p = pagina();
+    const porId: Record<string, Campo> = {
+      "form-clabe": p.formulario,
+      "entrada-clabe": p.entrada,
+      "resultado-clabe": p.resultado,
+      "estado-catalogo": p.estado,
+    };
+    const pedidas: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      pedidas.push(url);
+      return new Response(BANCOS_JSON, { status: 200 });
+    });
+    vi.stubGlobal("location", { origin: "null" });
+    vi.stubGlobal("document", {
+      querySelectorAll: () => [],
+      getElementById: (id: string) => porId[id] ?? null,
+    });
+    vi.resetModules();
+    await import("../../../src/sitio/cliente/sitio.js");
+    await vi.waitFor(() => expect(p.formulario.hidden).toBe(false));
+    expect(pedidas).toEqual([RUTA_CATALOGO_BANCOS]);
+
+    pedidas.length = 0;
+    vi.stubGlobal("document", { querySelectorAll: () => [], getElementById: () => null });
+    vi.resetModules();
+    await import("../../../src/sitio/cliente/sitio.js");
+    expect(pedidas).toEqual([]);
   });
 });

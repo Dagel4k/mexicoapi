@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { metaDesdeManifiesto } from "../../../src/sitio/meta.js";
 import {
   type EntradaCatalogos,
+  paginaMunicipios,
   paginasDeCatalogos,
   RUTA_BANCOS,
   RUTA_MUNICIPIOS,
@@ -272,5 +273,126 @@ describe("/validar-clabe/", () => {
     expect(pagina.descargas.map((d) => d.archivo)).toEqual(["bancos.json"]);
     expect(pagina.datosAl).toBe(entrada.bancos.meta.as_of);
     expect(pagina.relacionadas).toEqual([RUTA_BANCOS]);
+  });
+});
+
+/** Un catálogo mínimo, para los casos que los datos reales no traen. */
+function pequena(): EntradaCatalogos {
+  const banco = (codigo: string, extra: Partial<Banco> = {}): Banco => ({
+    codigo,
+    codigo_spei: `4${codigo}`,
+    nombre_corto: `BANCO ${codigo}`,
+    razon_social: null,
+    sector: null,
+    tipo: "banca_multiple",
+    participacion: "directa",
+    activo: true,
+    baja_detectada: null,
+    historial: [
+      {
+        codigo_spei: `4${codigo}`,
+        nombre_corto: `BANCO ${codigo}`,
+        desde: "2012-05-01",
+        hasta: null,
+      },
+    ],
+    ...extra,
+  });
+  const { meta } = entrada.bancos;
+  return {
+    bancos: {
+      meta,
+      registros: [
+        banco("040", { razon_social: "Razón & Cía." }),
+        banco("041", { activo: false, baja_detectada: "2020-03-01" }),
+        banco("042", {
+          activo: false,
+          historial: [
+            {
+              codigo_spei: "4042",
+              nombre_corto: "VIEJO",
+              desde: "2010-01-01",
+              hasta: "2012-05-01",
+            },
+            { codigo_spei: "4042", nombre_corto: "BANCO 042", desde: "2012-05-01", hasta: null },
+          ],
+        }),
+      ],
+    },
+    estados: {
+      meta: { ...entrada.estados.meta, as_of: "2026-10-20" },
+      registros: [
+        { cve_ent: "09", nombre: "Ciudad de México", abreviatura: "CDMX", cvegeo: "09" },
+        { cve_ent: "10", nombre: "Durango", abreviatura: "Dgo.", cvegeo: "10" },
+      ],
+    },
+    municipios: {
+      meta: { ...entrada.municipios.meta, as_of: "2026-10-18" },
+      registros: [
+        {
+          cvegeo: "09002",
+          cve_ent: "09",
+          cve_mun: "002",
+          nombre: "Azcapotzalco",
+          cve_cabecera: null,
+        },
+        { cvegeo: "10001", cve_ent: "10", cve_mun: "001", nombre: "Durango", cve_cabecera: "0001" },
+      ],
+    },
+  };
+}
+
+describe("con un catálogo pequeño", () => {
+  it("bancos: ejemplo del primero si no hay 012, razón social e inactivos con y sin baja", () => {
+    const paginas = paginasDeCatalogos(pequena());
+    const registro = registrarPaginas(paginas);
+    const bancos = paginas[0] as PaginaDatos;
+    const html = paginaDeDatos(bancos, registro, DESCARGAS);
+    expect(bancos.consultas).toEqual(["/v1/bancos", "/v1/bancos/040"]);
+    expect(html).toContain("3 instituciones: 1 activas y 2 inactivas");
+    expect(html).toContain("Razón &amp; Cía.");
+    expect(html).toContain("baja detectada el 2020-03-01");
+    expect(filas(html, "bancos-tabla")[2]).not.toContain("baja detectada");
+    expect(bancos.conjunto?.coberturaTemporal).toBe("2010-01-01/..");
+  });
+
+  it("municipios: ejemplo del primer estado si no está el 25, la fecha más reciente y sin municipios", () => {
+    const paginas = paginasDeCatalogos(pequena());
+    const municipios = paginas[2] as PaginaDatos;
+    expect(municipios.consultas).toContain("/v1/estados/09/municipios");
+    expect(municipios.datosAl).toBe("2026-10-20");
+    const otra = pequena();
+    otra.estados.meta.as_of = "2026-10-01";
+    expect(paginasDeCatalogos(otra)[2]?.datosAl).toBe("2026-10-18");
+    const sinDurango = pequena();
+    sinDurango.municipios = {
+      ...sinDurango.municipios,
+      registros: sinDurango.municipios.registros.slice(0, 1),
+    };
+    expect(() => paginasDeCatalogos(sinDurango)).toThrow(/estado 10 no tiene municipios/);
+  });
+
+  it("la Ciudad de México habla de alcaldías", () => {
+    const paginas = paginasDeCatalogos(pequena());
+    const registro = registrarPaginas(paginas);
+    const cdmx = paginas.find((p) => p.ruta === "/municipios/09-ciudad-de-mexico/") as PaginaDatos;
+    const html = paginaDeDatos(cdmx, registro, DESCARGAS);
+    expect(cdmx.h1).toBe("Alcaldías de Ciudad de México: claves INEGI y CVEGEO");
+    expect(html).toContain("tiene 1 alcaldías");
+    const durango = paginas.find((p) => p.ruta === "/municipios/10-durango/") as PaginaDatos;
+    expect(durango.h1).toMatch(/^Municipios de Durango/);
+  });
+
+  it("un estado sin municipios en la tabla cuenta cero", () => {
+    const sin = pequena();
+    sin.estados = {
+      ...sin.estados,
+      registros: [
+        ...sin.estados.registros,
+        { cve_ent: "11", nombre: "Otro", abreviatura: "O", cvegeo: "11" },
+      ],
+    };
+    const municipios = paginaMunicipios(sin.estados, sin.municipios);
+    expect(municipios.contenido).toContain('Otro</a></td><td class="num">0</td>');
   });
 });

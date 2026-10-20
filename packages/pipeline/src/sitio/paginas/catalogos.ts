@@ -63,10 +63,9 @@ export function paginaBancos({ registros, meta }: SerieDePagina<Banco>): PaginaD
   const filas = registros.map((b) => {
     const razon =
       b.razon_social === null ? "" : `<span class="detalle">${escaparHtml(b.razon_social)}</span>`;
-    const estado =
-      b.baja_detectada === null && b.activo
-        ? "Activo"
-        : `Inactivo<span class="detalle">dejó de aparecer en la lista del CEP; baja detectada el ${escaparHtml(b.baja_detectada ?? "")}</span>`;
+    const estado = b.activo
+      ? "Activo"
+      : `Inactivo<span class="detalle">dejó de aparecer en la lista del CEP${b.baja_detectada === null ? "" : `; baja detectada el ${escaparHtml(b.baja_detectada)}`}</span>`;
     return `<tr><th scope="row">${escaparHtml(b.codigo)}</th><td>${escaparHtml(b.nombre_corto)}${razon}</td><td>${estado}</td></tr>`;
   });
 
