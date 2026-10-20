@@ -603,6 +603,230 @@ export async function instalarValidador(pagina, pedir) {
 }
 
 /**
+ * @typedef {object} ParametrosDiasHabiles
+ * @property {string} autoridad `sat`, `lft` o `cnbv`.
+ * @property {string} tipoPlazo Solo se manda con `sat`.
+ * @property {string} desde
+ * @property {string} dias
+ * @property {boolean} permitirIncompleto
+ */
+
+/**
+ * La consulta a `/v1/dias-habiles` del mismo origen con lo que escribió la persona, codificado.
+ * `tipo_plazo` solo va con el SAT, y `permitir_incompleto` solo si se marcó.
+ * @param {ParametrosDiasHabiles} p
+ */
+export function urlDiasHabiles(p) {
+  const par = (/** @type {string} */ nombre, /** @type {string} */ valor) =>
+    `${nombre}=${encodeURIComponent(valor)}`;
+  const partes = [par("autoridad", p.autoridad)];
+  if (p.autoridad === "sat") partes.push(par("tipo_plazo", p.tipoPlazo));
+  partes.push(par("desde", p.desde), par("dias", p.dias));
+  if (p.permitirIncompleto) partes.push("permitir_incompleto=true");
+  return `/v1/dias-habiles?${partes.join("&")}`;
+}
+
+/**
+ * @typedef {{ tipo: "ok", cuerpo: any } | { tipo: "problema", mensaje: string } | { tipo: "falla", mensaje: string }} RespuestaDiasHabiles
+ */
+
+/**
+ * Pide el cálculo a la API. Un problem+json da su `detail`; cualquier otra falla, una explicación.
+ * @param {Pedir} pedir
+ * @param {ParametrosDiasHabiles} parametros
+ * @param {number} [espera]
+ * @returns {Promise<RespuestaDiasHabiles>}
+ */
+export async function consultarDiasHabiles(pedir, parametros, espera = ESPERA_MS) {
+  /** @type {Response} */
+  let respuesta;
+  try {
+    respuesta = await pedir(urlDiasHabiles(parametros), {
+      signal: AbortSignal.timeout(espera),
+      headers: { accept: "application/json" },
+    });
+  } catch (error) {
+    if (esTiempoAgotado(error)) {
+      return { tipo: "falla", mensaje: `la API no respondió en ${espera / 1000} s.` };
+    }
+    return { tipo: "falla", mensaje: "no hubo respuesta de la API; revisa tu conexión." };
+  }
+  /** @type {unknown} */
+  let cuerpo;
+  try {
+    cuerpo = await respuesta.json();
+  } catch {
+    if (respuesta.status === 200) return { tipo: "falla", mensaje: "la respuesta no es JSON." };
+    return { tipo: "falla", mensaje: motivoHttp(respuesta) };
+  }
+  if (respuesta.status !== 200) {
+    const detalle = esObjeto(cuerpo) ? cuerpo.detail : undefined;
+    if (typeof detalle === "string" && detalle !== "")
+      return { tipo: "problema", mensaje: detalle };
+    return { tipo: "falla", mensaje: motivoHttp(respuesta) };
+  }
+  const data = esObjeto(cuerpo) ? cuerpo.data : undefined;
+  if (!esObjeto(data) || !esFecha(data.resultado)) {
+    return { tipo: "falla", mensaje: "la respuesta no tiene la forma esperada." };
+  }
+  return { tipo: "ok", cuerpo };
+}
+
+/**
+ * Los elementos de `/calculadora-dias-habiles/`.
+ * @template N
+ * @typedef {object} PaginaCalculadora
+ * @property {{ createElement(etiqueta: string): N }} documento
+ * @property {{ hidden: boolean | "until-found", addEventListener(tipo: "submit", oyente: (evento: { preventDefault(): void }) => void): void }} formulario
+ * @property {{ value: string, addEventListener(tipo: "change", oyente: () => void): void }} autoridad
+ * @property {{ hidden: boolean | "until-found" }} campoTipo Contenedor del tipo de plazo.
+ * @property {{ value: string }} tipoPlazo
+ * @property {{ value: string }} desde
+ * @property {{ value: string }} dias
+ * @property {{ checked: boolean }} incompleto
+ * @property {{ className: string, replaceChildren(...hijos: N[]): void }} resultado
+ */
+
+/**
+ * Un elemento con su texto. Todo lo que viene de la API entra por `textContent`.
+ * @template {Elemento<N>} N
+ * @param {{ createElement(etiqueta: string): N }} documento
+ * @param {string} etiqueta
+ * @param {string} texto
+ * @returns {N}
+ */
+function conTexto(documento, etiqueta, texto) {
+  const nodo = documento.createElement(etiqueta);
+  nodo.textContent = texto;
+  return nodo;
+}
+
+/**
+ * @template {Elemento<N>} N
+ * @param {{ createElement(etiqueta: string): N }} documento
+ * @param {string} titulo
+ * @param {string[]} textos
+ * @returns {N[]}
+ */
+function listaConTitulo(documento, titulo, textos) {
+  const lista = documento.createElement("ul");
+  for (const texto of textos) lista.append(conTexto(documento, "li", texto));
+  return [conTexto(documento, "h3", titulo), lista];
+}
+
+/**
+ * Los nodos del resultado: la fecha, los días saltados, los avisos y la cita de la fuente.
+ * @template {Elemento<N>} N
+ * @param {{ createElement(etiqueta: string): N }} documento
+ * @param {any} cuerpo La respuesta de `/v1/dias-habiles`, ya revisada en lo que se usa.
+ * @returns {N[]}
+ */
+export function nodosDelResultado(documento, cuerpo) {
+  const { data, meta } = cuerpo;
+  /** @type {N[]} */
+  const nodos = [conTexto(documento, "p", `El último día del cómputo es el ${data.resultado}.`)];
+  const saltados = Array.isArray(data.inhabiles_saltados) ? data.inhabiles_saltados : [];
+  if (saltados.length === 0) {
+    nodos.push(
+      conTexto(
+        documento,
+        "p",
+        "No se saltó ningún día de la lista de inhábiles de esa autoridad; los sábados y domingos no se listan por serlo.",
+      ),
+    );
+  } else {
+    nodos.push(
+      ...listaConTitulo(
+        documento,
+        "Días inhábiles que se saltaron",
+        saltados.map(
+          (/** @type {any} */ d) => `${d.fecha}: ${d.motivo}${d.tipo ? ` (${d.tipo})` : ""}`,
+        ),
+      ),
+    );
+  }
+  const avisos = Array.isArray(data.avisos)
+    ? data.avisos.map((/** @type {any} */ a) => String(a.texto))
+    : [];
+  if (avisos.length > 0) nodos.push(...listaConTitulo(documento, "Avisos", avisos));
+  const fuentes = esObjeto(meta) && Array.isArray(meta.sources) ? meta.sources : [];
+  if (fuentes.length > 0) {
+    nodos.push(
+      ...listaConTitulo(
+        documento,
+        "Fuente",
+        fuentes.map((f) => String(f.citation ?? f.name)),
+      ),
+    );
+  }
+  return nodos;
+}
+
+/**
+ * Muestra el formulario, deja el tipo de plazo solo para el SAT y, al enviarlo, pide el cálculo
+ * a la API del mismo origen y lo muestra.
+ * @template {Elemento<N>} N
+ * @param {PaginaCalculadora<N>} pagina
+ * @param {Pedir} pedir
+ */
+export function instalarCalculadora(pagina, pedir) {
+  const { documento, resultado } = pagina;
+  const ajustarTipo = () => {
+    pagina.campoTipo.hidden = pagina.autoridad.value !== "sat";
+  };
+  const decir = (/** @type {"ok" | "mal"} */ clase, /** @type {N[]} */ nodos) => {
+    resultado.className = clase;
+    resultado.replaceChildren(...nodos);
+  };
+  pagina.autoridad.addEventListener("change", ajustarTipo);
+  pagina.formulario.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const desde = pagina.desde.value.trim();
+    const dias = pagina.dias.value.trim();
+    if (desde === "" || dias === "") {
+      decir("mal", [conTexto(documento, "p", "Escribe la fecha de inicio y los días hábiles.")]);
+      return;
+    }
+    const r = await consultarDiasHabiles(pedir, {
+      autoridad: pagina.autoridad.value,
+      tipoPlazo: pagina.tipoPlazo.value,
+      desde,
+      dias,
+      permitirIncompleto: pagina.incompleto.checked,
+    });
+    if (r.tipo === "ok") decir("ok", nodosDelResultado(documento, r.cuerpo));
+    else {
+      const texto = r.tipo === "problema" ? r.mensaje : `No se pudo calcular: ${r.mensaje}`;
+      decir("mal", [conTexto(documento, "p", texto)]);
+    }
+  });
+  ajustarTipo();
+  pagina.formulario.hidden = false;
+}
+
+/**
+ * Los elementos de `/calculadora-dias-habiles/`, o `null` en las demás páginas.
+ * @template {Elemento<N>} N
+ * @param {Documento<N>} documento
+ * @returns {PaginaCalculadora<N> | null}
+ */
+function paginaDeCalculadora(documento) {
+  const get = (/** @type {string} */ id) => /** @type {any} */ (documento.getElementById(id));
+  const campos = {
+    formulario: get("form-dias"),
+    autoridad: get("dias-autoridad"),
+    campoTipo: get("campo-tipo-plazo"),
+    tipoPlazo: get("dias-tipo-plazo"),
+    desde: get("dias-desde"),
+    dias: get("dias-dias"),
+    incompleto: get("dias-incompleto"),
+    resultado: get("resultado-dias"),
+  };
+  if (Object.values(campos).some((c) => c === null)) return null;
+  return { documento, ...campos };
+}
+
+/**
  * Los elementos de `/validar-clabe/`, o `null` en las demás páginas.
  * @param {{ getElementById(id: string): unknown }} documento
  * @returns {PaginaValidador | null}
@@ -670,6 +894,8 @@ function arrancar(documento, { origin }) {
   if (pagina !== null) instalarEstado(pagina, (url, init) => fetch(url, init));
   const validador = paginaDeValidador(documento);
   if (validador !== null) instalarValidador(validador, (url, init) => fetch(url, init));
+  const calculadora = paginaDeCalculadora(documento);
+  if (calculadora !== null) instalarCalculadora(calculadora, (url, init) => fetch(url, init));
 }
 
 /**
