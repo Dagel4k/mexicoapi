@@ -106,7 +106,7 @@ export function paginaCalculadora({ sat, cnbv }: EntradaCalculadora): PaginaDato
   const comoCuenta = seccion("como-cuenta", "Cómo cuenta cada autoridad", [
     "<p>La API suma los días hábiles a una fecha según el calendario de una autoridad. El plazo empieza a contar el día hábil siguiente a <code>desde</code>, sea <code>desde</code> hábil o no. En un plazo que corre desde una notificación, <code>desde</code> es el día en que la notificación surte efectos. El resultado es el último día del cómputo y no aplica prórrogas que dependen de dónde se hace el trámite.</p>",
     `<h3 id="como-sat">SAT: artículo 12 del CFF</h3>
-<p>El artículo 12 del Código Fiscal de la Federación dice que en los plazos para presentar declaraciones y pagar contribuciones los periodos generales de vacaciones de las autoridades fiscales se consideran hábiles. En los demás plazos no cuentan. Los días de descanso del artículo 12 y los sábados y domingos son inhábiles en los dos casos.</p>
+<p>El artículo 12 del Código Fiscal de la Federación dice que en los plazos para presentar declaraciones y pagar contribuciones los periodos generales de vacaciones de las autoridades fiscales se consideran hábiles. En los demás plazos son inhábiles. Los días de descanso del artículo 12 y los sábados y domingos son inhábiles en los dos casos.</p>
 ${tablaPlazos}
 <p>Con <code>declaraciones_pagos</code>, si el resultado cae en viernes, en vacaciones del SAT o en un cierre bancario, la respuesta trae el aviso <code>prorroga-art-12</code>: el quinto párrafo del artículo 12 puede prorrogar el plazo según dónde se presente o se pague, y el cálculo no la aplica.</p>`,
     `<h3 id="como-lft">LFT: artículos 74 y 733</h3>
