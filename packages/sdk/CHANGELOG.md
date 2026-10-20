@@ -1,6 +1,6 @@
 # Cambios
 
-## 0.2.0 (sin publicar)
+## 0.2.0 (2026-10-20)
 
 Cambios de comportamiento. Revisa tu código si usas lo que nombran:
 
