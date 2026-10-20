@@ -1,9 +1,19 @@
 import type { DetalleClabe, ResultadoValidacion } from "@mexicoapi/core";
-import { URL_API } from "@mexicoapi/core/problemas";
 import { PUBLICADO_EN_NPM, porNombre } from "../comun.js";
 import { type Meta, URL_ARCHIVOS, URL_DOCS, URL_REPO } from "../meta.js";
+import {
+  codigo,
+  enPowerShell,
+  formatearEntero,
+  rutaPartible,
+  tamanoLegible,
+  tiempo,
+  VARIABLE_API,
+} from "./bloques.js";
 import { describir } from "./catalogo.js";
 import { documento, enlaceSeguro, escaparHtml, navegacion } from "./html.js";
+
+export { formatearEntero, tamanoLegible } from "./bloques.js";
 
 export interface FuenteInicio {
   name: string;
@@ -62,46 +72,6 @@ export function respuestaRecortada(respuesta: {
     },
   };
 }
-
-const UNIDADES = ["KB", "MB", "GB"] as const;
-
-/** Tamaño en unidades de 1024, con un decimal por debajo de 10: `512 B`, `1.5 KB`, `300 MB`. */
-export function tamanoLegible(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  let valor = bytes / 1024;
-  let unidad = 0;
-  // Lo que redondearía a 1024 pasa a la unidad siguiente.
-  while (valor >= 1023.5 && unidad < UNIDADES.length - 1) {
-    valor /= 1024;
-    unidad += 1;
-  }
-  const numero = valor < 9.95 ? valor.toFixed(1) : String(Math.round(valor));
-  return `${numero} ${UNIDADES[unidad]}`;
-}
-
-/** Miles con coma, como se escriben en México. */
-export const formatearEntero = (n: number): string =>
-  String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-/**
- * La base de los ejemplos, en una variable de shell: la API pública, que es la que funciona sin
- * JavaScript. `sitio.js` la cambia por el origen de la página, que sirve la misma API (otro
- * despliegue o `wrangler dev`). Cada `curl` usa `$API`, así que su renglón cabe en una columna
- * angosta; si `API=` no cabe, `<wbr>` lo parte antes de la URL y no a media URL.
- */
-const VARIABLE_API = `API=<wbr><span data-origen>${escaparHtml(URL_API)}</span>`;
-
-/**
- * La línea para PowerShell (5.1 y 7) que va debajo de un bloque de bash: la variable se asigna
- * con espacios y comillas, y `curl` es un alias de Invoke-WebRequest en la 5.1, así que el
- * comando es `curl.exe` (viene con Windows 10 y posteriores), con la URL entre comillas para que
- * PowerShell sustituya `$API`. El origen también lo rellena `sitio.js`.
- */
-const enPowerShell = (comando: string, despues = ""): string =>
-  `<p>En PowerShell: <code>$API = &quot;<span data-origen>${escaparHtml(URL_API)}</span>&quot;</code> y <code>${escaparHtml(comando)}</code>${despues}.</p>`;
-
-/** Sin tabindex: con pre-wrap no se desplaza, y Tab no tiene por qué detenerse en él. */
-const codigo = (texto: string): string => `<pre><code>${escaparHtml(texto)}</code></pre>`;
 
 /**
  * Un comando copiable de un paquete que todavía no está en npm falla, o instala el de alguien que
@@ -216,22 +186,7 @@ function descargasDe(
   return enlaces.join(" · ");
 }
 
-const tiempo = (fecha: string): string => {
-  const texto = escaparHtml(fecha);
-  return `<time datetime="${texto}">${texto}</time>`;
-};
-
 const conMayuscula = (texto: string): string => texto.charAt(0).toUpperCase() + texto.slice(1);
-
-/**
- * La ruta escapada, con `<wbr>` después de cada `/` (salvo la inicial) y antes de `?` y `&`: donde
- * la columna es angosta se parte ahí y no a media palabra. No cambia lo que se copia.
- */
-const rutaPartible = (ruta: string): string =>
-  ruta
-    .split(/(?<=.\/)|(?=[?&])/)
-    .map(escaparHtml)
-    .join("<wbr>");
 
 /** Las rutas del dataset, la principal primero, cada una con lo que responde si el catálogo lo dice. */
 function rutasApi(id: string): string {
