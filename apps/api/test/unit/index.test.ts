@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Entorno } from "../../src/entorno.js";
 import worker, { manejar, sinBarrasFinales } from "../../src/index.js";
 import * as respuestas from "../../src/respuestas.js";
-import { CACHE_DATOS } from "../../src/respuestas.js";
+import { CACHE_CLABE, CACHE_DATOS } from "../../src/respuestas.js";
 import { crearAssets, entornoDe, peticion, SEGURIDAD_ESPERADA, seguridadDe } from "./ayudas.js";
 
 const TIPO = "https://github.com/Dagel4k/mexicoapi/blob/main/docs/api/problemas.md#";
@@ -197,6 +197,13 @@ describe("barra final", () => {
       expect(seguridadDe(respuesta)).toEqual(SEGURIDAD_ESPERADA);
       expect(assets.pedidas).toEqual([]);
     }
+  });
+
+  it("la 308 de /v1/clabe/ es privada como la respuesta de la CLABE", async () => {
+    const { respuesta } = await pedir("/v1/clabe/002010077777777771/?x=1");
+    expect(respuesta.status).toBe(308);
+    expect(respuesta.headers.get("location")).toBe("/v1/clabe/002010077777777771?x=1");
+    expect(respuesta.headers.get("cache-control")).toBe(CACHE_CLABE);
   });
 
   it("HEAD también redirige", async () => {

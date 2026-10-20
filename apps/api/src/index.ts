@@ -2,6 +2,7 @@ import type { Entorno, Opciones } from "./entorno.js";
 import { dentroDelLimite } from "./limite.js";
 import { nombreDeError } from "./registro.js";
 import {
+  CACHE_CLABE,
   CACHE_DATOS,
   DETALLE_ERROR_INTERNO,
   respuestaProblema,
@@ -83,7 +84,9 @@ async function atender(
     const destino = sinBarrasFinales(camino);
     // "//dominio" en Location sería una redirección a otro origen.
     if (destino !== "" && !destino.startsWith("//")) {
-      return respuestaVacia(308, { Location: destino + url.search, "Cache-Control": CACHE_DATOS });
+      // La CLABE va en la URL y en Location: no se guarda en cachés compartidos.
+      const cache = camino.startsWith("/v1/clabe/") ? CACHE_CLABE : CACHE_DATOS;
+      return respuestaVacia(308, { Location: destino + url.search, "Cache-Control": cache });
     }
   }
 

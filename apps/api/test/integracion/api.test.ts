@@ -127,6 +127,13 @@ describe("datos reales del build", () => {
     expect(respuesta.headers.get("Cache-Control")).toBe("private, max-age=3600");
   });
 
+  it("la 308 de /v1/clabe/{clabe}/ tampoco se guarda en caché compartido", async () => {
+    const respuesta = await pedir("/v1/clabe/002010077777777771/");
+    await respuesta.arrayBuffer();
+    expect(respuesta.status).toBe(308);
+    expect(respuesta.headers.get("Cache-Control")).toBe("private, max-age=3600");
+  });
+
   it("/v1/dias-habiles salta el descanso obligatorio de febrero", async () => {
     // 2026-02-02 es el primer lunes de febrero (art. 74 LFT).
     const { data, meta } = await datos("/v1/dias-habiles?autoridad=lft&desde=2026-01-30&dias=1");
