@@ -42,9 +42,10 @@ describe("context7.json", () => {
     }
   });
 
-  it("lee docs y los dos paquetes, sin sus CHANGELOG", async () => {
+  it("lee la guía de la API, los datasets y los dos paquetes, sin sus CHANGELOG", async () => {
     const c = await leerJson("context7.json");
-    expect(c.folders).toEqual(["docs", "packages/sdk", "packages/mcp"]);
+    // Lista de permitidas: docs/operacion y docs/diseno son del mantenimiento, no del uso.
+    expect(c.folders).toEqual(["docs/api", "docs/datos", "packages/sdk", "packages/mcp"]);
     for (const carpeta of c.folders as string[]) {
       expect((await stat(join(RAIZ, carpeta))).isDirectory(), carpeta).toBe(true);
     }
@@ -59,30 +60,46 @@ describe("context7.json", () => {
   it("cada regla dice lo que hacen hoy el código y la documentación", async () => {
     const reglas = ((await leerJson("context7.json")).rules as string[]).join("\n");
     const api = await leerTexto("docs/api/README.md");
+    const sdk = await leerTexto("packages/sdk/README.md");
     const mcp = await leerTexto("packages/mcp/README.md");
-    const indice = await leerTexto("packages/sdk/src/index.ts");
-    // Las funciones que nombran las reglas salen de la entrada principal de mexicoapi.
-    const funciones = [...reglas.matchAll(/\b([a-z]+[A-Z]\w*)\(\)/g)].map((m) => m[1] as string);
+    // Las funciones que nombran las reglas salen de la entrada principal de mexicoapi o, la del
+    // catálogo de bancos, de mexicoapi/datos.
+    const principal = await leerTexto("packages/sdk/src/index.ts");
+    const datos = await leerTexto("packages/sdk/src/datos/index.ts");
+    const funciones = [
+      ...new Set([...reglas.matchAll(/\b([a-z]+[A-Z]\w*)\(\)/g)].map((m) => m[1] as string)),
+    ];
     expect(funciones.sort()).toEqual([
+      "catalogoClabe",
       "hoyEnMexico",
       "validarClabe",
       "validarCurp",
       "validarNss",
       "validarRfc",
     ]);
-    for (const f of funciones) expect(indice, f).toMatch(new RegExp(`^\\s+${f},\\r?$`, "m"));
+    for (const f of funciones) {
+      const exportada = new RegExp(`(^|[\\s{,])${f}(?=[\\s,}])`, "m");
+      expect(f === "catalogoClabe" ? datos : principal, f).toMatch(exportada);
+    }
     expect(reglas).toContain("Ciudad de México (America/Mexico_City)");
     expect(api).toContain("son días de la Ciudad de México (`America/Mexico_City`)");
-    expect(reglas).toContain("autoridad=sat");
+    expect(reglas).toContain("autoridad=sat manda siempre tipo_plazo (tipoPlazo en el paquete)");
     expect(api).toContain("Con `autoridad=sat`, `tipo_plazo` es obligatorio.");
     expect(api).toContain("Sin `tipo_plazo` responde 400 `parametro-faltante`");
+    expect(sdk).toContain("Con autoridad=sat falta tipoPlazo");
     expect(reglas).toContain("meta.sources");
     expect(api).toContain("| `sources` | Lista de fuentes");
     expect(mcp).toContain("`fuente` y `fuentes`: la publicación oficial con su URL, para citarla.");
     expect(mcp).toContain(
       "El servidor no envía a ninguna API una CLABE, un RFC, una CURP o un NSS: los valida en tu equipo",
     );
-    expect(reglas).toContain("avisos[].codigo");
+    // Sin el catálogo, validarClabe() no revisa que el banco exista.
+    expect(reglas).toContain("{ bancos: catalogoClabe() } de mexicoapi/datos");
+    expect(sdk).toContain('import { catalogoClabe } from "mexicoapi/datos";');
+    expect(sdk).toContain("Sin el catálogo no se revisa que el banco exista");
+    expect(sdk).toContain('validarClabe("999010077777777774", { bancos }).errores; // ["banco"]');
+    expect(reglas).toContain("avisos[].codigo (en el paquete, desde 0.2.0)");
+    expect(api).toContain("la 0.1.0 no trae `avisos`");
     expect(api).toContain("El texto es para mostrarlo y puede cambiar de redacción");
     expect(api).toContain("trata uno que no conozcas como `otro`");
   });
