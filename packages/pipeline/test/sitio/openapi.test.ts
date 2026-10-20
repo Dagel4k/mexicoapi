@@ -236,6 +236,23 @@ describe("documento OpenAPI", () => {
     expect(description).toContain("no es problem+json");
   });
 
+  // Lo que hace la plataforma entre el cliente y el Worker, y lo que no hacen las rutas calculadas.
+  it("la descripción general precisa HEAD, el ETag débil, las rutas calculadas y TRACE", () => {
+    const { description } = doc.info;
+    expect(description).toContain(
+      "(el mismo estado y los mismos encabezados salvo Content-Length, ETag y 304 incluidos)",
+    );
+    expect(description).toContain(
+      'Al comprimir la respuesta, la plataforma marca el ETag como débil (W/"…"); If-None-Match acepta las dos formas.',
+    );
+    expect(description).toContain(
+      "Solo las rutas que declaran 304 traen ETag y atienden If-None-Match; las que calculan la respuesta lo ignoran (también If-None-Match: *) y responden 200 completo.",
+    );
+    expect(description).toContain(
+      "TRACE y los métodos que no son de HTTP tampoco llegan a la API: la plataforma responde un 405 en HTML o un 501, sin Allow ni problem+json.",
+    );
+  });
+
   it("la descripción general y la 403 dicen que por http la respuesta es https-requerido", () => {
     expect(doc.info.description).toContain(
       "Por http://, salvo en localhost, 127.0.0.1 y [::1], toda petición (HEAD y OPTIONS incluidas) responde 403 https-requerido: no redirige y no cuenta en el límite de peticiones.",
