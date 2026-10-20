@@ -33,7 +33,7 @@ La serie empieza con la UMA de 2017, vigente desde el 1 de febrero de 2017. La d
 | `nombre` | Nombre de la publicación |
 | `url` | Nota del DOF |
 | `fecha_publicacion` | Fecha de publicación en el DOF (`AAAA-MM-DD`) |
-| `fragmento` | Texto oficial con las tres cifras, citado tal cual (con su ortografía, como "1o." o "1 º"); `[...]` marca texto omitido |
+| `fragmento` | Texto oficial con las tres cifras, citado tal cual (con su ortografía, como "1o.", "1 o." o "1º"); `[...]` marca texto omitido |
 
 ## Dónde consultarlo
 
