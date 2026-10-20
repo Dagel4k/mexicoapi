@@ -50,7 +50,11 @@ const masReciente = (...fechas: string[]): string => [...fechas].sort().at(-1) a
 export function paginaCalculadora({ sat, cnbv }: EntradaCalculadora): PaginaDatos {
   const lft = metaLft("dias-habiles");
   const generalSat = sat.calendario.general.cobertura;
-  const declaraciones = sat.calendario.plazos.get("declaraciones_pagos")?.cobertura;
+  const declaraciones = (
+    sat.calendario.plazos.get("declaraciones_pagos") as {
+      cobertura: { desde: string; hasta: string };
+    }
+  ).cobertura;
 
   const formulario = `<section id="calculadora" aria-labelledby="titulo-calculadora">
 <h2 id="titulo-calculadora">Calcular un plazo</h2>
@@ -113,7 +117,7 @@ ${tablaPlazos}
   ]);
 
   const cobertura = seccion("cobertura", "Qué fechas cubre", [
-    `<p>El calendario de la LFT cubre ${rango(COBERTURA_LFT)}. El de la CNBV, ${rango(cnbv.calendario.amplia)}. Para el SAT, el artículo 12 se calcula por regla ${declaraciones === undefined ? "" : rango(declaraciones)}, y las vacaciones están publicadas ${rango(generalSat)}: un plazo general que pase de esa fecha responde 422 <code>calendario-incompleto</code>.</p>`,
+    `<p>El calendario de la LFT cubre ${rango(COBERTURA_LFT)}. El de la CNBV, ${rango(cnbv.calendario.amplia)}. Para el SAT, el artículo 12 se calcula por regla ${rango(declaraciones)}, y las vacaciones están publicadas ${rango(generalSat)}: un plazo general que pase de esa fecha responde 422 <code>calendario-incompleto</code>.</p>`,
     "<p>Con <code>permitir_incompleto=true</code>, la API calcula con lo publicado y trae un aviso (<code>calendario-incompleto</code> o <code>tipo-plazo-incompleto</code>): el resultado puede cambiar cuando se publique lo que falta.</p>",
   ]);
 
