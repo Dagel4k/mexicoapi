@@ -85,6 +85,10 @@ p, pre, dl, details { max-width: 68ch; }
 .secciones a { display: inline-block; padding-block: 0.25rem; font-weight: 600; text-decoration: none; }
 .secciones a:hover { text-decoration: underline; }
 .secciones [aria-current] { color: var(--texto); border-bottom: 2px solid; }
+/* migas de las paginas de datos: en un renglon, separadas con / */
+.migas ol { display: flex; flex-wrap: wrap; gap: 0 0.5rem; list-style: none; margin: 0 0 1rem; padding: 0; }
+.migas li + li::before { content: "/"; margin-right: 0.5rem; color: var(--tenue); }
+.datos-al { color: var(--tenue); }
 main { padding-block: 2rem 3rem; }
 section { margin-top: 2.5rem; }
 .intro { font-size: 1.0625rem; }
@@ -194,6 +198,7 @@ summary { cursor: pointer; }
 details[open] > summary { margin-bottom: 0.5rem; }
 dt { font-weight: 600; }
 dd { margin: 0 0 0.875rem; color: var(--tenue); }
+blockquote { margin: 0 0 1rem; padding-left: 1rem; border-left: 4px solid var(--borde); max-width: 68ch; }
 .pie { border-top: 1px solid var(--borde); padding: 1.5rem 0 2.5rem; color: var(--tenue); font-size: 0.9375rem; }
 .pie p { margin: 0 0 0.5rem; }
 `;
