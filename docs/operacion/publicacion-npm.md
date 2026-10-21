@@ -2,7 +2,7 @@
 
 Los paquetes `mexicoapi` (`packages/sdk`) y `mexicoapi-mcp` (`packages/mcp`, el servidor MCP) están en npm desde el 2026-10-18 con su 0.1.0, que se publicó a mano. Cada versión siguiente la publica el workflow `publicacion.yml` cuando se publica un Release de GitHub con la etiqueta `mexicoapi@<versión>` o `mexicoapi-mcp@<versión>`: sin tokens (npm confía en ese workflow, con OIDC) y con procedencia. npm solo deja configurar esa confianza en un paquete que ya existe, por eso la primera versión de cada uno se publicó a mano.
 
-Estado al 2026-10-20: el Environment `npm` (con revisor obligatorio y solo las etiquetas `mexicoapi@*` y `mexicoapi-mcp@*`) y el ruleset de esas etiquetas están configurados, y las dos 0.1.0 están en npm. Falta el publicador de confianza de cada paquete, que se crea justo antes de cortar su siguiente versión (ver [Publicador de confianza](#publicador-de-confianza-una-vez-por-paquete)).
+Estado al 2026-10-20: el Environment `npm` (con revisor obligatorio y solo las etiquetas `mexicoapi@*` y `mexicoapi-mcp@*`), el ruleset de esas etiquetas y el publicador de confianza de los dos paquetes están configurados. Las 0.2.0 de los dos paquetes salieron por `publicacion.yml`, con procedencia, y `mexicoapi-mcp` 0.2.0 está en el registro oficial de MCP.
 
 Este documento dice cómo se arma cada paquete, qué hay que preparar en npm una sola vez, cómo se publica a mano la primera versión, cómo se configura el publicador de confianza, cómo se corta cada versión después, qué revisa el workflow y cómo registra el servidor en el registro oficial de MCP. `mexicoapi-mcp` depende de `mexicoapi`, así que siempre se publica después.
 
