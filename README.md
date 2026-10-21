@@ -1,5 +1,7 @@
 # MéxicoAPI
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15752/badge)](https://www.bestpractices.dev/projects/15752)
+
 Datos de referencia de México, abiertos y al día, con su fuente oficial.
 
 Cualquier sistema que se hace en México termina necesitando lo mismo:
