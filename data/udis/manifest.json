@@ -1,11 +1,11 @@
 {
   "dataset": "udis",
   "schema_version": 1,
-  "as_of": "2026-10-18",
-  "fetched_at": "2026-10-18T09:44:41.994Z",
+  "as_of": "2026-10-23",
+  "fetched_at": "2026-10-23T23:09:18.389Z",
   "data_file": "udis.json",
-  "data_sha256": "7492ef4e5eaef083fb99deb9bb9069a37624a6c3fca8c81285e11471c629d6b4",
-  "records": 2490,
+  "data_sha256": "0888f0df644001d0b0d116586b52aacdf328facea4d45838f0d707df6a178828",
+  "records": 2506,
   "sources": [
     {
       "name": "Diario Oficial de la Federación (SIDOF): valor de la unidad de inversión (UDIS)",
@@ -48,7 +48,7 @@
         {
           "file": "raw/sidof-159-2026.json",
           "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/159/01-01-2026/31-12-2026",
-          "sha256": "184c8600f08f13055e91e920ca857d2e0907152f9e6403aa6f39813c382b0efa"
+          "sha256": "44152d67d000d11e90bdb9fea72012bcd22b21279e162f56838d57cafe21cb47"
         }
       ]
     }
