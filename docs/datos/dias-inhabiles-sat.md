@@ -28,7 +28,7 @@ Los sábados y domingos también son inhábiles (artículo 12 del CFF), pero no 
 - `descanso`: los días del primer párrafo del artículo 12 del CFF (1o. de enero, primer lunes de febrero, etc.). No cuentan en ningún plazo.
 - `vacaciones`: los días de la regla 2.1.6 de la RMF. El segundo párrafo del artículo 12 dice que en los plazos para presentar declaraciones y pagar contribuciones esos días se consideran hábiles; en los demás plazos no cuentan.
 
-Los días de la fracción II de la regla 2.1.6 de la RMF 2026 (2 y 3 de abril de 2026) no son vacaciones generales, sino días inhábiles para el SAT. Se clasifican como `vacaciones` porque así, en los plazos de declaraciones y pagos, cuentan como hábiles: el plazo vence antes y no después, que es el lado seguro para el contribuyente.
+Los días de la fracción II de la regla 2.1.6 de la RMF 2026 (2 y 3 de abril y, desde la Cuarta Resolución de Modificaciones del 30 de octubre, 2 de noviembre de 2026) no son vacaciones generales, sino días inhábiles para el SAT. Se clasifican como `vacaciones` porque así, en los plazos de declaraciones y pagos, cuentan como hábiles: el plazo vence antes y no después, que es el lado seguro para el contribuyente.
 
 El artículo 12 también excluye "el 1o. de diciembre de cada 6 años, cuando corresponda a la transmisión del Poder Ejecutivo". Desde 2024 la transmisión es el 1o. de octubre y el artículo no se ha reformado, así que la regla no descuenta ninguno de los dos días en 2030 ni en los años de transmisión siguientes: el plazo vence antes, no después. La API lo advierte en esos años y en los cálculos que pasan por alguno de esos días cuando cae de lunes a viernes, y nombra solo esos: en 2030, el 1o. de octubre, porque el 1o. de diciembre es domingo.
 
