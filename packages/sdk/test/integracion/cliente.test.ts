@@ -70,17 +70,28 @@ beforeAll(async () => {
 const enMedio = <T>(serie: readonly T[]): T => serie[Math.floor(serie.length / 2)] as T;
 
 /**
- * El primer feriado bancario de la CNBV después del último FIX, si el calendario lo tiene. Se lee
- * al definir las pruebas para saltar (y que se vea) la que lo necesita.
+ * El primer feriado bancario de la CNBV después del último FIX con una publicación pendiente antes
+ * de él, si el calendario lo tiene. Un feriado pegado al último FIX no sirve: la mañana siguiente
+ * ya responde con ese FIX. Se lee al definir las pruebas para saltar (y que se vea) la que lo
+ * necesita.
  */
 const FERIADO = await (async () => {
   const [cal, serie] = await Promise.all([
     importar<ModuloCalendarios>("datos/calendarios.js"),
     importar<ModuloFix>("datos/fix.js"),
   ]);
+  const ultimo = serie.cobertura.hasta;
+  const faltaPublicacion = (feriado: string): boolean => {
+    for (let f = mover(feriado, -1); f > ultimo; f = mover(f, -1)) {
+      const semana = new Date(`${f}T00:00:00Z`).getUTCDay();
+      if (semana !== 0 && semana !== 6 && !cal.feriadoBancario(f)) return true;
+    }
+    return false;
+  };
   return cal
     .calendarioCurado("cnbv")
-    .dias.find((d) => d.tipo === "descanso" && d.fecha > serie.cobertura.hasta)?.fecha;
+    .dias.find((d) => d.tipo === "descanso" && d.fecha > ultimo && faltaPublicacion(d.fecha))
+    ?.fecha;
 })();
 
 /** Una consulta con su nombre, para correrla con la API y con el paquete. */
