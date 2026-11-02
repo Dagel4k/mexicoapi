@@ -678,10 +678,11 @@ describe("respuestas del Worker contra el documento", () => {
         const head = await pedir(ruta, { method: "HEAD" });
         expect(head.status).toBe(get.status);
         expect(await head.text()).toBe("");
-        // El runtime agrega la fecha y cómo manda el cuerpo (su largo o en partes).
+        // El runtime agrega la fecha, cómo mantiene la conexión y cómo manda el cuerpo (su largo o en partes).
         const propios = (r: Response) =>
           [...r.headers].filter(
-            ([nombre]) => !["date", "content-length", "transfer-encoding"].includes(nombre),
+            ([nombre]) =>
+              !["date", "connection", "content-length", "transfer-encoding"].includes(nombre),
           );
         expect(propios(head)).toEqual(propios(get));
       });
