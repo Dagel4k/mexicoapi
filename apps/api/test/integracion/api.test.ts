@@ -917,9 +917,13 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
   });
 
   it("declaraciones_pagos avisa de la prórroga del art. 12 en viernes, vacaciones y cierres bancarios", async () => {
-    // Un cierre bancario, vacaciones del SAT y un viernes: el resultado no cambia; se agrega la advertencia.
+    // Vacaciones del SAT con cierre bancario y un viernes: el resultado no cambia; se agrega la advertencia.
     for (const [desde, resultado, hechos] of [
-      ["2026-10-30", "2026-11-02", "día de cierre bancario según la CNBV"],
+      [
+        "2026-10-30",
+        "2026-11-02",
+        "día de vacaciones del SAT y día de cierre bancario según la CNBV",
+      ],
       [
         "2026-04-01",
         "2026-04-02",
@@ -935,6 +939,17 @@ describe("calendarios de la CNBV y el SAT con los datos reales", () => {
     }
     // Con general no aplica.
     expect((await datos(sat("general", "2026-07-16", 1))).data.advertencias).toEqual([]);
+  });
+
+  it("el 2 de noviembre de 2026 no cuenta en general y sí en declaraciones_pagos", async () => {
+    const general = await datos(sat("general", "2026-10-30", 1));
+    expect(general.data.resultado).toBe("2026-11-03");
+    expect(general.data.inhabiles_saltados).toEqual(
+      DIAS_SAT.filter((d) => d.fecha === "2026-11-02").map(comoApi),
+    );
+    const declaraciones = await datos(sat("declaraciones_pagos", "2026-10-30", 1));
+    expect(declaraciones.data.resultado).toBe("2026-11-02");
+    expect(declaraciones.data.inhabiles_saltados).toEqual([]);
   });
 
   it("avisa de la transmisión del Poder Ejecutivo de 2030 y no descuenta el 1o. de octubre", async () => {

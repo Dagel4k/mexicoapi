@@ -6,9 +6,9 @@
 # listan todos los días.
 #
 # Las vacaciones generales cuentan como días hábiles en los plazos para presentar declaraciones y
-# pagar contribuciones (art. 12, segundo párrafo). El 2 y 3 de abril (regla 2.1.6, fracción II) se
-# capturan también como vacaciones: en esos plazos cuentan como hábiles, que es el lado seguro
-# para el contribuyente (el plazo vence antes, no después).
+# pagar contribuciones (art. 12, segundo párrafo). El 2 y 3 de abril y el 2 de noviembre (regla
+# 2.1.6, fracción II) se capturan también como vacaciones: en esos plazos cuentan como hábiles, que
+# es el lado seguro para el contribuyente (el plazo vence antes, no después).
 #
 # El segundo periodo general de vacaciones de 2026 no se ha publicado: la lista de vacaciones
 # está completa hasta el 30 de noviembre de 2026. Cuando se publique, se agregan sus días y se
@@ -42,6 +42,13 @@ fuentes:
     fragmento: "2.1.6. ... I. ... II. ... III. El primer periodo general de vacaciones de 2026, comprende del 20 al 31 de julio de 2026."
     licencia: "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)"
     licencia_url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf
+  cuarta-rm-2026:
+    nombre: "Cuarta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026"
+    url: https://dof.gob.mx/nota_detalle.php?codigo=5802597&fecha=30/10/2026
+    fecha_publicacion: 2026-10-30
+    fragmento: "2.1.6. ... I. ... II. Son días inhábiles para el SAT el 2 y 3 de abril, así como el 2 de noviembre de 2026. III. y IV. ..."
+    licencia: "Texto oficial publicado en el DOF; no es objeto de derecho de autor (LFDA art. 14, fracción VIII)"
+    licencia_url: https://www.diputados.gob.mx/LeyesBiblio/pdf/LFDA.pdf
 registros:
   # Regla 2.1.6, fracción I: cola del segundo periodo de 2025 (el 1 de enero ya es de descanso
   # por el art. 12 y no se repite).
@@ -62,3 +69,5 @@ registros:
   - { fecha: 2026-07-29, autoridad: sat, motivo: "Primer periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }
   - { fecha: 2026-07-30, autoridad: sat, motivo: "Primer periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }
   - { fecha: 2026-07-31, autoridad: sat, motivo: "Primer periodo general de vacaciones de 2026", tipo: vacaciones, fuente: primera-rm-2026 }
+  # Regla 2.1.6, fracción II (Cuarta Resolución de Modificaciones, en vigor el día de publicación).
+  - { fecha: 2026-11-02, autoridad: sat, motivo: "Día inhábil para el SAT", tipo: vacaciones, fuente: cuarta-rm-2026 }

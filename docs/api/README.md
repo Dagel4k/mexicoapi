@@ -414,7 +414,7 @@ Sin `tipo_plazo` responde 400 `parametro-faltante`; con `lft` o `cnbv` y `tipo_p
 
 Los días del primer párrafo del artículo 12 (1o. de enero, primer lunes de febrero, tercer lunes de marzo, 1o. y 5 de mayo, 16 de septiembre, tercer lunes de noviembre y 25 de diciembre) los fija la ley, así que se calculan por regla para cada año de 2026 a 2100, como los de la LFT. Del 30 de diciembre de 2026, 2 días hábiles con `declaraciones_pagos` dan el lunes 4 de enero de 2027: el 1 de enero no cuenta.
 
-El 2 y 3 de abril de 2026 (regla 2.1.6, fracción II) no son vacaciones generales, sino días inhábiles para el SAT. Aquí se tratan como vacaciones: en un plazo de declaraciones y pagos cuentan como hábiles y el plazo vence antes, no después. Es el lado seguro para el contribuyente.
+El 2 y 3 de abril y el 2 de noviembre de 2026 (regla 2.1.6, fracción II) no son vacaciones generales, sino días inhábiles para el SAT. Aquí se tratan como vacaciones: en un plazo de declaraciones y pagos cuentan como hábiles y el plazo vence antes, no después. Es el lado seguro para el contribuyente.
 
 #### Transmisión del Poder Ejecutivo
 
@@ -430,7 +430,7 @@ Con `tipo_plazo=declaraciones_pagos`, si el resultado cae en viernes, en un día
 curl "https://mexicoapi.dagel4k.workers.dev/v1/dias-habiles?autoridad=sat&tipo_plazo=declaraciones_pagos&desde=2026-10-30&dias=1"
 ```
 
-El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". Su código en `avisos` es `prorroga-art-12`. La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos.
+El resultado es el lunes 2026-11-02, con la advertencia "El resultado (2026-11-02) es día de vacaciones del SAT y día de cierre bancario según la CNBV. El art. 12 del CFF, quinto párrafo, prorroga el plazo …". Su código en `avisos` es `prorroga-art-12`. La advertencia solo conoce lo publicado: fuera de la cobertura de la CNBV no se sabe qué días cierran los bancos.
 
 Si el resultado cae fuera de las vacaciones del SAT publicadas (después de su fin o antes de su inicio), no se sabe si ese día es de vacaciones, y `advertencias` lo dice (en `avisos`, con el código `vacaciones-sin-publicar`). Del 22 de diciembre de 2026, 5 días hábiles con `declaraciones_pagos` dan el 2026-12-30, mientras falte el segundo periodo de vacaciones:
 
@@ -603,9 +603,9 @@ Lista los días inhábiles de un año: los que salen de una regla (los del artí
 | --- | --- |
 | `lft` | 7 fechas: 01-01, 02-02, 03-16, 05-01, 09-16, 11-16 y 12-25 |
 | `cnbv` | 11 fechas: 01-01, 02-02, 03-16, 04-02, 04-03, 05-01, 09-16, 11-02, 11-16, 12-12 y 12-25 |
-| `sat` | 23 fechas, entre días de descanso del artículo 12 y días de vacaciones |
+| `sat` | 24 fechas, entre días de descanso del artículo 12 y días de vacaciones |
 
-`tipo` es `descanso` para los días que no cuentan en ningún plazo y `vacaciones` para los periodos de vacaciones del SAT y el 2 y 3 de abril de 2026 (días inhábiles de la regla 2.1.6 que se tratan igual), que en los plazos de declaraciones y pagos cuentan como hábiles ([SAT y tipo de plazo](#sat-y-tipo-de-plazo)). La LFT y la CNBV solo tienen `descanso`.
+`tipo` es `descanso` para los días que no cuentan en ningún plazo y `vacaciones` para los periodos de vacaciones del SAT y el 2 y 3 de abril y el 2 de noviembre de 2026 (días inhábiles de la regla 2.1.6 que se tratan igual), que en los plazos de declaraciones y pagos cuentan como hábiles ([SAT y tipo de plazo](#sat-y-tipo-de-plazo)). La LFT y la CNBV solo tienen `descanso`.
 
 ```json
 {

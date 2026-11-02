@@ -252,6 +252,18 @@
     }
   },
   {
+    "fecha": "2026-11-02",
+    "autoridad": "sat",
+    "motivo": "Día inhábil para el SAT",
+    "tipo": "vacaciones",
+    "fuente": {
+      "nombre": "Cuarta Resolución de Modificaciones a la Resolución Miscelánea Fiscal para 2026",
+      "url": "https://dof.gob.mx/nota_detalle.php?codigo=5802597&fecha=30/10/2026",
+      "fecha_publicacion": "2026-10-30",
+      "fragmento": "2.1.6. ... I. ... II. Son días inhábiles para el SAT el 2 y 3 de abril, así como el 2 de noviembre de 2026. III. y IV. ..."
+    }
+  },
+  {
     "fecha": "2026-11-16",
     "autoridad": "sat",
     "motivo": "Tercer lunes de noviembre, en conmemoración del 20 de noviembre",
