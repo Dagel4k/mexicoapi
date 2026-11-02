@@ -1,5 +1,9 @@
 # Cambios
 
+## 0.2.1 (2026-11-02)
+
+- Sube la dependencia a `mexicoapi` ^0.2.1, que trae el 2 de noviembre de 2026 como inhábil para el SAT.
+
 ## 0.2.0 (2026-10-20)
 
 Cambios de comportamiento. Revisa tu configuración o tu uso si dependes de lo que nombran:

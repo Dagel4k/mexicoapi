@@ -3,7 +3,7 @@
   "name": "io.github.Dagel4k/mexicoapi-mcp",
   "title": "MéxicoAPI",
   "description": "Datos oficiales de México: FIX, UDIS, días hábiles, UMA, ISR, municipios, CLABE, RFC, CURP y NSS.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "repository": {
     "url": "https://github.com/Dagel4k/mexicoapi",
     "source": "github",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "mexicoapi-mcp",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "transport": {
         "type": "stdio"
       },
