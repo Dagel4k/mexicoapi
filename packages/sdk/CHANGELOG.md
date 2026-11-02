@@ -1,5 +1,10 @@
 # Cambios
 
+## 0.2.1 (2026-11-02)
+
+- Datos: el 2 de noviembre de 2026 es inhábil para el SAT (regla 2.1.6, fracción II, de la Cuarta Resolución de Modificaciones a la RMF para 2026, DOF del 30 de octubre). Con `general` ya no cuenta como día hábil; con `declaraciones_pagos` sigue contando y avisa de la prórroga del art. 12.
+- Datos: FIX y UDIS al día.
+
 ## 0.2.0 (2026-10-20)
 
 Cambios de comportamiento. Revisa tu código si usas lo que nombran:
