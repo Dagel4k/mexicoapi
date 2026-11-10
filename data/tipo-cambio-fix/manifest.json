@@ -1,11 +1,11 @@
 {
   "dataset": "tipo-cambio.fix",
   "schema_version": 1,
-  "as_of": "2026-11-06",
-  "fetched_at": "2026-11-06T23:30:35.746Z",
+  "as_of": "2026-11-09",
+  "fetched_at": "2026-11-10T01:45:50.807Z",
   "data_file": "fix.json",
-  "data_sha256": "e2a47cfe993ad85f993b24c83a7cb897f3c051716b9bb620500cfcff8ba22415",
-  "records": 1724,
+  "data_sha256": "81ad9d96d56c83d2dc2ed3d1b14e1715fe55c9855105e780659c1f16da594beb",
+  "records": 1725,
   "sources": [
     {
       "name": "Diario Oficial de la Federación (SIDOF): tipo de cambio para solventar obligaciones denominadas en moneda extranjera (FIX)",
@@ -48,7 +48,7 @@
         {
           "file": "raw/sidof-158-2026.json",
           "url": "https://sidof.segob.gob.mx/dof/sidof/indicadores/158/01-01-2026/31-12-2026",
-          "sha256": "5f553856ce3540798af729dd289c6b0a1eae26031c102aff4fd9afa280c86ef1"
+          "sha256": "727586c68c19ff6ff1eb3a374ced8e622e8252f7854d935bb38252dafad00909"
         }
       ]
     }
